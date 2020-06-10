@@ -34,6 +34,11 @@ def build_argparser():
             "-d", "--database", required=False, type=str, metavar="DB",
             help="database to store results in")
 
+    parser.add_argument(
+            "-o", "--overwrite", action="store_true",
+            help="whether the result should override existing ones in "
+                 "case of name clashes")
+
     return parser
 
 

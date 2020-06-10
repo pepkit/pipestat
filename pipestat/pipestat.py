@@ -76,7 +76,7 @@ class PipeStatManager(object):
         """
         if type not in TYPES:
             raise InvalidTypeError(type)
-        self._database.setdefault(self._name, {})
+        self._database.setdefault(self.name, {})
         self._cache.setdefault(self.name, {})
         if id in self.database[self.name]:
             _LOGGER.warning("'{}' already in database for '{}' namespace"
@@ -167,4 +167,4 @@ def main():
                             database=args.database, name=args.name))
     db = {} if args.database is None else args.database
     psm = PipeStatManager(database=db, name=args.name)
-    psm.report(id=args.id, type=args.type, value=args.value)
+    psm.report(id=args.id, type=args.type, value=args.value, overwrite=args.overwrite)
