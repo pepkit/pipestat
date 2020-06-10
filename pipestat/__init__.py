@@ -1,12 +1,11 @@
-"""
-Project configuration
-"""
+# Project configuration, particularly for logging.
 
+import logmuse
 from ._version import __version__
-from .const import *
-from .exceptions import *
-from .eido import *
+from .pipestat import *
+from .helpers import *
 
+__classes__ = ["PipeStatManager"]
+__all__ = __classes__ + ["connect_mongo"]
 
-__all__ = ["validate_project", "validate_sample", "validate_config",
-           "read_schema", "inspect_project"]
+logmuse.init_logger("pipestat")
