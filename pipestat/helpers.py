@@ -15,19 +15,23 @@ def build_argparser():
                                  epilog=additional_description)
 
     parser.add_argument(
-            "-i", "--id", required=True, type=str,
+            "-n", "--name", required=True, type=str, metavar="N",
+            help="name of the pipeline to report result for")
+
+    parser.add_argument(
+            "-i", "--id", required=True, type=str, metavar="ID",
             help="id of the result to report")
 
     parser.add_argument(
-            "-v", "--value", required=True, type=str,
+            "-v", "--value", required=True, type=str, metavar="V",
             help="value of the result to report")
 
     parser.add_argument(
-            "-t", "--type", required=True, type=str,
+            "-t", "--type", required=True, type=str, metavar="T",
             help="type of the result to report")
 
     parser.add_argument(
-            "-d", "--database", required=False, type=str,
+            "-d", "--database", required=False, type=str, metavar="DB",
             help="database to store results in")
 
     return parser

@@ -16,19 +16,19 @@ _LOGGER = logging.getLogger(__name__)
 
 class PipeStatManager(object):
     def __init__(self, database, name):
-        self.name = name
+        self._name = str(name)
         self._cache = dict()
         self._db_file = None
 
         if isinstance(database, str):
             if os.path.exists(database):
                 with open(database, "r") as db_stream:
-                    self._database = yaml.safe_load(db_stream)
+                    self._database = yaml.safe_load(db_stream) or {}
                     self._db_file = database
             else:
                 raise FileNotFoundError(
                     "Provided database file path does not exist: {}".
-                        format(self.database))
+                        format(database))
         elif isinstance(database, Mapping):
             self._database = database
         else:
@@ -37,13 +37,22 @@ class PipeStatManager(object):
                     format(database.__class__.__name__))
 
     @property
+    def name(self):
+        """
+        namespace name
+
+        :return str: name of the namespace that results are reported for
+        """
+        return self._name
+
+    @property
     def database(self):
         """
         Database contents
 
         :return dict: contents of the database
         """
-        return self._database
+        return dict(self._database)
 
     @property
     def cache(self):
@@ -67,16 +76,23 @@ class PipeStatManager(object):
         """
         if type not in TYPES:
             raise InvalidTypeError(type)
-        if id in self.database:
-            _LOGGER.warning("'{}' already in database.".format(id))
+        self._database.setdefault(self._name, {})
+        self._cache.setdefault(self.name, {})
+        if id in self.database[self.name]:
+            _LOGGER.warning("'{}' already in database for '{}' namespace"
+                            .format(id, self.name))
             if not overwrite:
                 return False
-        if id in self.cache:
-            _LOGGER.warning("'{}' already in cache.".format(id))
+        if id in self.cache[self.name]:
+            _LOGGER.warning("'{}' already in cache for '{}' namespace"
+                            .format(id, self.name))
             if not overwrite:
                 return False
-        self._cache[id] = value
-        _LOGGER.info("Cached new record: {}={}({})".format(id, value, type))
+        self._cache[self.name].setdefault(id, {})
+        self._cache[self.name][id]["value"] = value
+        self._cache[self.name][id]["type"] = type
+        _LOGGER.info("Cached new '{}' record: {}={}({})".
+                     format(self.name, id, value, type))
         if not cache:
             self.write()
         return True
@@ -88,28 +104,56 @@ class PipeStatManager(object):
         :param str id: the name of the result to remove
         :return bool: whether the result was removed or not
         """
+        def _rm_res(instance, id, name):
+            if name not in instance:
+                return False
+            if id not in instance[name]:
+                return False
+            del instance[name][id]
+            return True
+
         removed = False
-        if id in self.database:
-            del self._database[id]
-            removed = True
-        if id in self.cache:
-            del self._cache[id]
-            removed = True
+        if self.name not in self.database and self.name not in self.cache:
+            _LOGGER.warning("namespace '{}' not found".format(self.name))
+            return removed
+        removed = any([_rm_res(self._database, id, self.name),
+                       _rm_res(self._cache, id, self.name)])
         if not removed:
-            _LOGGER.warning("'{}' has not been reported".format(id))
+            _LOGGER.warning("'{}' has not been reported for '{}' namespace".
+                            format(id, self.name))
         return removed
 
     def write(self):
         """
         Write reported results to the database
         """
-        self._database.update(self._cache)
+        self._database.setdefault(self.name, {})
+        self._database[self.name].update(self._cache[self.name])
         if self._db_file:
             with open(self._db_file, "w") as db_stream:
                 yaml.dump(self._database, db_stream, default_flow_style=False)
         _LOGGER.info("Wrote {} cached records: {}".
                      format(len(self.cache), self.cache))
         self._cache = {}
+
+    def __str__(self, max_len=20):
+        res = "{} ({})".format(self.__class__.__name__, self.name)
+        pip_db_len = 0 if self.name not in self.database \
+            else len(self.database[self.name])
+        pip_cache_len = 0 if self.name not in self.cache \
+            else len(self.cache[self.name])
+        res += "\nDatabase length: {}".format(pip_db_len)
+        if pip_db_len < max_len:
+            res += "\nDatabase: {}".format(dict(self.database))
+        res += "\nCache length: {}".format(pip_cache_len)
+        if pip_cache_len < max_len:
+            res += "\nCache: {}".format(dict(self.cache))
+        return res
+
+    def __repr__(self):
+        return "{name: " + self.name + ", " + \
+               "database: " + dict(self.database).__repr__() + ", " + \
+               "cache: " + dict(self.cache).__repr__() + "}"
 
 
 def main():
@@ -118,9 +162,9 @@ def main():
     args = parser.parse_args()
     global _LOGGER
     _LOGGER = logmuse.logger_via_cli(args, make_root=True)
-    msg = "ID: {id}; type: {type}; value: {value}; database: {database}"
+    msg = "ID: {id}; type: {type}; value: {value}; database: {database}; name: {name}"
     _LOGGER.debug(msg.format(id=args.id, type=args.type, value=args.value,
-                            database=args.database))
+                            database=args.database, name=args.name))
     db = {} if args.database is None else args.database
-    psm = PipeStatManager(database=db, name="test")
+    psm = PipeStatManager(database=db, name=args.name)
     psm.report(id=args.id, type=args.type, value=args.value)
