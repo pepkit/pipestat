@@ -84,7 +84,8 @@ class PipeStatManager(object):
         """
         return self._cache
 
-    def report(self, id, type, value, cache=False, overwrite=False):
+    def report(self, id, type, value, cache=False, overwrite=False,
+               strict_type=False):
         """
         Report a result
 
@@ -95,8 +96,10 @@ class PipeStatManager(object):
         :param bool overwrite: whether to overwrite the item in case of id clashes
         :return bool: whether the result was reported or not
         """
-        if type not in TYPES:
+        if type not in list(CLASSES_BY_TYPE.keys()):
             raise InvalidTypeError(type)
+        if strict_type:
+            validate_value_class(type, value)
         self._database.setdefault(self.name, {})
         self._cache.setdefault(self.name, {})
         if id in self.database[self.name]:
@@ -206,4 +209,5 @@ def main():
                         format(expandpath(value), getattr(e, 'message', repr(e)))
                 )
                 type = "file"
-        psm.report(id=args.id, type=type, value=value, overwrite=args.overwrite)
+        psm.report(id=args.id, type=type, value=value, overwrite=args.overwrite,
+                   strict_type=args.strict_type)

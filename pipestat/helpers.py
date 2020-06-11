@@ -1,7 +1,11 @@
+import logging
+
 from .const import *
 from ._version import __version__
+from .exceptions import IncompatibleClassError
 from ubiquerg import VersionInHelpParser
 
+_LOGGER = logging.getLogger(__name__)
 
 def build_argparser():
     """
@@ -40,6 +44,11 @@ def build_argparser():
             help="whether the result should override existing ones in "
                  "case of name clashes")
 
+    sps[REPORT_CMD].add_argument(
+            "-s", "--strict-type", action="store_true",
+            help="whether the result should be casted to the class required by "
+                 "the declared type and the effect of this operation verified")
+
     return parser
 
 
@@ -71,3 +80,24 @@ def connect_mongo(host='0.0.0.0', port=27017, database='pipestat_dict',
         pymongo.MongoClient(host=host, port=port)
     return mongodict.MongoDict(host=host, port=port, database=database,
                                collection=collection)
+
+
+def validate_value_class(type, value):
+    """
+    Try to convert provided result value to the required class for the declared
+     type and check if the conversion was successful.
+     Raise an informative exception if not.
+
+    :param str type: name of the type
+    :param value: value to check
+    :raise IncompatibleClassError: if type cannot be converted to the
+        required one
+    """
+    try:
+        value = CLASSES_BY_TYPE[type](value)
+    except Exception as e:
+        _LOGGER.debug("Impossible type conversion: {}".
+                      format(getattr(e, 'message', repr(e))))
+    if not isinstance(value, CLASSES_BY_TYPE[type]):
+        raise IncompatibleClassError(value.__class__.__name__,
+                                     CLASSES_BY_TYPE[type].__name__, type)
