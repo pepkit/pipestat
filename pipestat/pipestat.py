@@ -5,7 +5,8 @@ import logmuse
 import oyaml as yaml
 
 from collections import Mapping
-from copy import copy
+
+from ubiquerg import expandpath
 
 from .exceptions import *
 from .const import *
@@ -40,6 +41,7 @@ class PipeStatManager(object):
         self._db_file = None
 
         if isinstance(database, str):
+            database = expandpath(database)
             if os.path.exists(database):
                 with open(database, "r") as db_stream:
                     self._database = yaml.safe_load(db_stream) or {}
@@ -187,5 +189,21 @@ def main():
     _LOGGER.debug("Args namespace:\n{}".format(args))
     psm = PipeStatManager(database=args.database, name=args.name)
     if args.command == "report":
-        psm.report(id=args.id, type=args.type, value=args.value,
-                   overwrite=args.overwrite)
+        type = args.type
+        value = args.value
+        if args.type == "object" and os.path.exists(expandpath(value)):
+            # if reported type is object and value is and existing file path,
+            # try to load it as JSON. This way nested objects can be
+            # reported using CLI
+            from json import load
+            try:
+                with open(expandpath(value), "r") as json_file:
+                    value = load(json_file)
+            except Exception as e:
+                _LOGGER.warning(
+                    "Failed attempt to load a JSON file ({}), storing as file. "
+                    "Original exception: {}".
+                        format(expandpath(value), getattr(e, 'message', repr(e)))
+                )
+                type = "file"
+        psm.report(id=args.id, type=type, value=value, overwrite=args.overwrite)
