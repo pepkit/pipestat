@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 import logmuse
 import oyaml as yaml
@@ -12,6 +13,24 @@ from .helpers import *
 
 
 _LOGGER = logging.getLogger(__name__)
+
+"""
+This does not work for some reason for mongoDB:
+
+
+In [12]: psm = pipestat.PipeStatManager(pipestat.connect_mongo(), "test")                                                                                                                                 
+
+In [13]: psm.database                                                                                                                                                                                     
+Out[13]: {'TEST': {'value': {}}}
+
+In [14]: psm.report(id="AAA", value="new", type="string")                                                                                                                                                 
+Cached new 'test' record: AAA=new(string)
+Wrote 1 cached records: {'test': {'AAA': {'value': 'new', 'type': 'string'}}}
+Out[14]: True
+
+In [15]: psm.database                                                                                                                                                                                     
+Out[15]: {'TEST': {'value': {}}, 'test': {}} <-- no 'test' namespace content
+"""
 
 
 class PipeStatManager(object):
@@ -160,11 +179,13 @@ def main():
     """ Primary workflow """
     parser = logmuse.add_logging_options(build_argparser())
     args = parser.parse_args()
+    if args.command is None:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
     global _LOGGER
     _LOGGER = logmuse.logger_via_cli(args, make_root=True)
-    msg = "ID: {id}; type: {type}; value: {value}; database: {database}; name: {name}"
-    _LOGGER.debug(msg.format(id=args.id, type=args.type, value=args.value,
-                            database=args.database, name=args.name))
-    db = {} if args.database is None else args.database
-    psm = PipeStatManager(database=db, name=args.name)
-    psm.report(id=args.id, type=args.type, value=args.value, overwrite=args.overwrite)
+    _LOGGER.debug("Args namespace:\n{}".format(args))
+    psm = PipeStatManager(database=args.database, name=args.name)
+    if args.command == "report":
+        psm.report(id=args.id, type=args.type, value=args.value,
+                   overwrite=args.overwrite)

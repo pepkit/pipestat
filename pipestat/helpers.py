@@ -13,28 +13,29 @@ def build_argparser():
     additional_description = "\n..."
     parser = VersionInHelpParser(version=__version__, description=banner,
                                  epilog=additional_description)
+    subparsers = parser.add_subparsers(dest="command")
+    sps = {}
+    for cmd, desc in SUBPARSER_MSGS.items():
+        sps[cmd] = subparsers.add_parser(cmd, description=desc, help=desc)
+        sps[cmd].add_argument("-d", "--database", required=True, type=str,
+            metavar="DB", help="database to store results in")
+        sps[cmd].add_argument(
+                "-n", "--name", required=True, type=str, metavar="N",
+                help="name of the pipeline to report result for")
 
-    parser.add_argument(
-            "-n", "--name", required=True, type=str, metavar="N",
-            help="name of the pipeline to report result for")
-
-    parser.add_argument(
+    sps[REPORT_CMD].add_argument(
             "-i", "--id", required=True, type=str, metavar="ID",
             help="id of the result to report")
 
-    parser.add_argument(
+    sps[REPORT_CMD].add_argument(
             "-v", "--value", required=True, type=str, metavar="V",
             help="value of the result to report")
 
-    parser.add_argument(
+    sps[REPORT_CMD].add_argument(
             "-t", "--type", required=True, type=str, metavar="T",
             help="type of the result to report")
 
-    parser.add_argument(
-            "-d", "--database", required=False, type=str, metavar="DB",
-            help="database to store results in")
-
-    parser.add_argument(
+    sps[REPORT_CMD].add_argument(
             "-o", "--overwrite", action="store_true",
             help="whether the result should override existing ones in "
                  "case of name clashes")
