@@ -1,4 +1,4 @@
 test:
   result1:
-    type: "string"
-    value: "value"
+    type: string
+    value: value
