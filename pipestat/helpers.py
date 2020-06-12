@@ -1,11 +1,11 @@
 import logging
-
 from .const import *
 from ._version import __version__
 from .exceptions import IncompatibleClassError
 from ubiquerg import VersionInHelpParser
 
 _LOGGER = logging.getLogger(__name__)
+
 
 def build_argparser():
     """

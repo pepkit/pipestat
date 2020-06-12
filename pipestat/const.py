@@ -1,5 +1,6 @@
 from collections import Mapping
 
+LOCK_PREFIX = "lock."
 REPORT_CMD = "report"
 SUBPARSER_MSGS = {
     REPORT_CMD: "Report a result."

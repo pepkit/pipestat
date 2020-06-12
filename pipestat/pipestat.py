@@ -6,7 +6,7 @@ import oyaml as yaml
 
 from collections import Mapping
 
-from ubiquerg import expandpath
+from ubiquerg import expandpath, create_lock, remove_lock
 
 from .exceptions import *
 from .const import *
@@ -154,8 +154,10 @@ class PipeStatManager(object):
         self._database.setdefault(self.name, {})
         self._database[self.name].update(self._cache[self.name])
         if self._db_file:
+            create_lock(self._db_file)
             with open(self._db_file, "w") as db_stream:
                 yaml.dump(self._database, db_stream, default_flow_style=False)
+            remove_lock(self._db_file)
         _LOGGER.info("Wrote {} cached records: {}".
                      format(len(self.cache), self.cache))
         self._cache = {}
