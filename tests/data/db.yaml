@@ -1,0 +1,4 @@
+test:
+  result1:
+    type: "string"
+    value: "value"
