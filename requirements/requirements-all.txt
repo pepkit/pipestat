@@ -1,2 +1,3 @@
 ubiquerg>=0.5.2
 logmuse>=0.2.5
+oyaml
