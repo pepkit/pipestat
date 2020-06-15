@@ -99,7 +99,7 @@ class PipeStatManager(object):
         if type not in list(CLASSES_BY_TYPE.keys()):
             raise InvalidTypeError(type)
         if strict_type:
-            validate_value_class(type, value)
+            value = validate_value_class(type, value)
         self._database.setdefault(self.name, {})
         self._cache.setdefault(self.name, {})
         if id in self.database[self.name]:

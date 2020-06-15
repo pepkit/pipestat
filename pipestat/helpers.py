@@ -101,3 +101,4 @@ def validate_value_class(type, value):
     if not isinstance(value, CLASSES_BY_TYPE[type]):
         raise IncompatibleClassError(value.__class__.__name__,
                                      CLASSES_BY_TYPE[type].__name__, type)
+    return value
