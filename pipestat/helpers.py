@@ -19,6 +19,7 @@ def build_argparser():
                                  epilog=additional_description)
     subparsers = parser.add_subparsers(dest="command")
     sps = {}
+    # common arguments
     for cmd, desc in SUBPARSER_MSGS.items():
         sps[cmd] = subparsers.add_parser(cmd, description=desc, help=desc)
         sps[cmd].add_argument("-d", "--database", required=True, type=str,
@@ -27,10 +28,13 @@ def build_argparser():
                 "-n", "--name", required=True, type=str, metavar="N",
                 help="name of the pipeline to report result for")
 
-    sps[REPORT_CMD].add_argument(
-            "-i", "--id", required=True, type=str, metavar="ID",
-            help="id of the result to report")
+    # remove and report
+    for subparser in [REMOVE_CMD, REPORT_CMD]:
+        sps[subparser].add_argument(
+                "-i", "--id", required=True, type=str, metavar="ID",
+                help="id of the result to report")
 
+    # report
     sps[REPORT_CMD].add_argument(
             "-v", "--value", required=True, type=str, metavar="V",
             help="value of the result to report")

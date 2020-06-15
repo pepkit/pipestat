@@ -145,6 +145,7 @@ class PipeStatManager(object):
         if not removed:
             _LOGGER.warning("'{}' has not been reported for '{}' namespace".
                             format(id, self.name))
+        self.write()
         return removed
 
     def write(self):
@@ -152,14 +153,16 @@ class PipeStatManager(object):
         Write reported results to the database
         """
         self._database.setdefault(self.name, {})
-        self._database[self.name].update(self._cache[self.name])
+        if self.name in self._cache:
+            self._database[self.name].update(self._cache[self.name])
         if self._db_file:
             create_lock(self._db_file)
             with open(self._db_file, "w") as db_stream:
                 yaml.dump(self._database, db_stream, default_flow_style=False)
             remove_lock(self._db_file)
-        _LOGGER.info("Wrote {} cached records: {}".
-                     format(len(self.cache), self.cache))
+        if len(self.cache):
+            _LOGGER.info("Wrote {} cached records: {}".format(len(self.cache),
+                                                              self.cache))
         self._cache = {}
 
     def __str__(self, max_len=20):
@@ -193,7 +196,7 @@ def main():
     _LOGGER = logmuse.logger_via_cli(args, make_root=True)
     _LOGGER.debug("Args namespace:\n{}".format(args))
     psm = PipeStatManager(database=args.database, name=args.name)
-    if args.command == "report":
+    if args.command == REPORT_CMD:
         type = args.type
         value = args.value
         if args.type == "object" and os.path.exists(expandpath(value)):
@@ -213,3 +216,10 @@ def main():
                 type = "file"
         psm.report(id=args.id, type=type, value=value, overwrite=args.overwrite,
                    strict_type=args.strict_type)
+        sys.exit(0)
+    if args.command == INSPECT_CMD:
+        print(psm)
+        sys.exit(0)
+    if args.command == REMOVE_CMD:
+        psm.remove(id=args.id)
+        sys.exit(0)
