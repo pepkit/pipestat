@@ -3,6 +3,7 @@ import sys
 import logging
 import logmuse
 import oyaml as yaml
+import pandas as pd
 
 from collections import Mapping
 
@@ -83,6 +84,15 @@ class PipeStatManager(object):
         :return dict: contents of the cache
         """
         return self._cache
+
+    @property
+    def table(self):
+        """
+        Tabular database
+
+        :return pandas.DataFrame: database in a table format
+        """
+        return pd.DataFrame.from_dict(self.database[self.name], orient="index")
 
     def report(self, id, type, value, cache=False, overwrite=False,
                strict_type=False):
@@ -195,12 +205,16 @@ def main():
     global _LOGGER
     _LOGGER = logmuse.logger_via_cli(args, make_root=True)
     _LOGGER.debug("Args namespace:\n{}".format(args))
+    if args.command == TABLE_CMD:
+        pd.concat([PipeStatManager(d, args.name).table
+                   for d in args.databases]).to_csv(args.path)
+        sys.exit(0)
     psm = PipeStatManager(database=args.database, name=args.name)
     if args.command == REPORT_CMD:
         type = args.type
         value = args.value
         if args.type == "object" and os.path.exists(expandpath(value)):
-            # if reported type is object and value is and existing file path,
+            # if reported type is object and value is an existing file path,
             # try to load it as JSON. This way nested objects can be
             # reported using CLI
             from json import load

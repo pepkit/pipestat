@@ -22,15 +22,27 @@ def build_argparser():
     # common arguments
     for cmd, desc in SUBPARSER_MSGS.items():
         sps[cmd] = subparsers.add_parser(cmd, description=desc, help=desc)
-        sps[cmd].add_argument("-d", "--database", required=True, type=str,
-            metavar="DB", help="database to store results in")
         sps[cmd].add_argument(
                 "-n", "--name", required=True, type=str, metavar="N",
                 help="name of the pipeline to report result for")
 
+    # remove, report and inspect
+    for cmd in [REMOVE_CMD, REPORT_CMD, INSPECT_CMD]:
+        sps[cmd].add_argument("-d", "--database", required=True, type=str,
+            metavar="DB", help="database to store results in")
+
+    # table
+    sps[TABLE_CMD].add_argument("-d", "--databases", required=True, nargs="+",
+                                metavar="DB", help="collection of file paths "
+                                                   "the results are stored in")
+
+    sps[TABLE_CMD].add_argument("-p", "--path", required=True, type=str,
+                                metavar="P",
+                                help="Path to the file where to store the result.")
+
     # remove and report
-    for subparser in [REMOVE_CMD, REPORT_CMD]:
-        sps[subparser].add_argument(
+    for cmd in [REMOVE_CMD, REPORT_CMD]:
+        sps[cmd].add_argument(
                 "-i", "--id", required=True, type=str, metavar="ID",
                 help="id of the result to report")
 

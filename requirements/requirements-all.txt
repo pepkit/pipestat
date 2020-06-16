@@ -1,3 +1,4 @@
 ubiquerg>=0.6.0-dev
 logmuse>=0.2.5
 oyaml
+pandas>=1.0.0
