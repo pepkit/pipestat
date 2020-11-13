@@ -6,6 +6,6 @@ from .pipestat import *
 from .helpers import *
 
 __classes__ = ["PipeStatManager"]
-__all__ = __classes__ + ["connect_mongo"]
+__all__ = __classes__
 
 logmuse.init_logger("pipestat")

@@ -1,5 +1,4 @@
-from collections import Mapping
-
+PKG_NAME = "pipestat"
 LOCK_PREFIX = "lock."
 REPORT_CMD = "report"
 INSPECT_CMD = "inspect"
@@ -11,7 +10,52 @@ SUBPARSER_MSGS = {
     REMOVE_CMD: "Remove a result.",
     TABLE_CMD: "Create a results table."
 }
-LIBS_BY_BACKEND = {"mongo": ["pymongo", "mongodict"]}
-CLASSES_BY_TYPE = {"integer": int, "float": float, "string": str,
-                   "boolean": bool, "object": Mapping, "null": type(None),
-                   "array": list, "file": str, "image": str}
+
+ATTRS_BY_TYPE = {
+    "integer": [],
+    "float": [],
+    "string": [],
+    "boolean": [],
+    "object": [],
+    "array": [],
+    "file": ["path", "title"],
+    "image": ["thumbnail_path", "path", "title"]
+}
+
+TABLE_COLS_BY_TYPE = {
+    "integer": '{} INT',
+    "float": '{} FLOAT',
+    "string": "{} TEXT",
+    "boolean": '{} BOOLEAN',
+    "object": '{} JSONB',
+    "array": '{} TEXT[]',
+    "file": '{} JSONB',
+    "image": '{} JSONB'
+}
+
+DOC_URL = "TBA"
+
+# DB config keys
+CFG_DB_NAME_KEY = "db_name"
+CFG_DB_HOST_KEY = "db_host"
+CFG_DB_PORT_KEY = "db_port"
+CFG_DB_PASSWORD_KEY = "db_password"
+CFG_DB_USER_KEY = "db_user"
+
+DB_CREDENTIALS = [CFG_DB_HOST_KEY, CFG_DB_PORT_KEY, CFG_DB_PASSWORD_KEY,
+                  CFG_DB_USER_KEY, CFG_DB_NAME_KEY]
+
+# object attribute names
+CONFIG_KEY = "_config"
+SCHEMA_KEY = "_schema"
+DATA_KEY = "_data"
+NAME_KEY = "_name"
+FILE_KEY = "_file"
+DB_CONNECTION_KEY = "_db_connnection"
+
+# schema keys
+SCHEMA_PROP_KEY = "properties"
+SCHEMA_TYPE_KEY = "type"
+
+FIXED_COLUMNS = ["id BIGSERIAL PRIMARY KEY",
+                 "record_identifier TEXT UNIQUE NOT NULL"]

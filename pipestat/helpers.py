@@ -1,8 +1,9 @@
 import logging
 from .const import *
 from ._version import __version__
-from .exceptions import IncompatibleClassError
+from .exceptions import *
 from ubiquerg import VersionInHelpParser
+from collections import Mapping
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -68,36 +69,6 @@ def build_argparser():
     return parser
 
 
-def connect_mongo(host='0.0.0.0', port=27017, database='pipestat_dict',
-                  collection='store'):
-    """
-    Connect to MongoDB and return the MongoDB-backed dict object
-
-    Firstly, the required libraries are imported.
-
-    :param str host: DB address
-    :param int port: port DB is listening on
-    :param str database: DB name
-    :param str collection: collection key
-    :return mongodict.MongoDict: a dict backed by MongoDB, ready to use as a
-        Henge backend
-    """
-    from importlib import import_module
-    from inspect import stack
-    for lib in LIBS_BY_BACKEND["mongo"]:
-        try:
-            globals()[lib] = import_module(lib)
-        except ImportError:
-            raise ImportError(
-                "Requirements not met. Package '{}' is required to setup "
-                "MongoDB connection. Install the package and call '{}' again.".
-                    format(lib, stack()[0][3]))
-    pymongo.Connection = lambda host, port, **kwargs: \
-        pymongo.MongoClient(host=host, port=port)
-    return mongodict.MongoDict(host=host, port=port, database=database,
-                               collection=collection)
-
-
 def validate_value_class(type, value):
     """
     Try to convert provided result value to the required class for the declared
@@ -118,3 +89,66 @@ def validate_value_class(type, value):
         raise IncompatibleClassError(value.__class__.__name__,
                                      CLASSES_BY_TYPE[type].__name__, type)
     return value
+
+
+def mk_list_of_str(x):
+    """
+    Make sure the input is a list of strings
+    :param str | list[str] | falsy x: input to covert
+    :return list[str]: converted input
+    :raise TypeError: if the argument cannot be converted
+    """
+    if not x or isinstance(x, list):
+        return x
+    if isinstance(x, str):
+        return [x]
+    raise TypeError(f"String or list of strings required as input. Got: "
+                    f"{x.__class__.__name__}")
+
+
+def validate_schema(schema):
+    """
+    Check schema for any possible issues
+
+    :param schema:
+    :raises SchemaError: if any schema format issue is detected
+    """
+    _LOGGER.debug(f"Validating schema: {schema}")
+    assert SCHEMA_PROP_KEY in schema, \
+        SchemaError(f"Schema is missing '{SCHEMA_PROP_KEY}' section")
+    assert isinstance(schema[SCHEMA_PROP_KEY], Mapping), \
+        SchemaError(f"'{SCHEMA_PROP_KEY}' section in the schama has to be a "
+                    f"{Mapping.__class__.__name__}")
+    for k, v in schema[SCHEMA_PROP_KEY].items():
+        assert SCHEMA_TYPE_KEY in v, \
+            SchemaError(f"Result '{k}' is missing '{SCHEMA_TYPE_KEY}' key")
+
+
+def schema_to_columns(schema):
+    """
+    Get a list of database table columns from a schema
+
+    :param dict schema: schema to parse
+    :return list[str]: columns to inialize database table with
+    """
+    columns = []
+    for colname, col_dict in schema[SCHEMA_PROP_KEY].items():
+        if col_dict[SCHEMA_TYPE_KEY] not in TABLE_COLS_BY_TYPE:
+            _LOGGER.warning(f"'{col_dict[SCHEMA_TYPE_KEY]}' result type defined"
+                            f" in schema is not supported")
+            continue
+        columns.append(TABLE_COLS_BY_TYPE[col_dict[SCHEMA_TYPE_KEY]].format(colname))
+    _LOGGER.info(f"Table columns created based on schema: {columns}")
+    return columns
+
+
+
+
+
+
+
+
+
+
+
+
