@@ -129,7 +129,7 @@ def schema_to_columns(schema):
     Get a list of database table columns from a schema
 
     :param dict schema: schema to parse
-    :return list[str]: columns to inialize database table with
+    :return list[str]: columns to inial ize database table with
     """
     columns = []
     for colname, col_dict in schema[SCHEMA_PROP_KEY].items():

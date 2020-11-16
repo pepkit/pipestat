@@ -88,8 +88,6 @@ class PipestatManager(AttMap):
         super(PipestatManager, self).__init__()
 
         self[NAME_KEY] = str(name)
-        self[FILE_KEY] = None
-        self[DATA_KEY] = None
         _, self[SCHEMA_KEY] = _read_yaml_data(schema_path, "schema")
         validate_schema(self.schema)
         if db_file_path:
@@ -101,6 +99,7 @@ class PipestatManager(AttMap):
             if not all([_check_cfg_key(self[CONFIG_KEY], key) for key in DB_CREDENTIALS]):
                 raise MissingConfigDataError(
                     "Must specify all database login credentials")
+            self[DATA_KEY] = YacAttMap()
             self._init_postgres_table()
         else:
             raise MissingConfigDataError("Must specify either database login "
@@ -136,7 +135,7 @@ class PipestatManager(AttMap):
 
         :return dict: schema that formalizes the results structure
         """
-        return self[SCHEMA_KEY]
+        return getattr(self, SCHEMA_KEY, None)
 
     @property
     def file(self):
@@ -145,7 +144,7 @@ class PipestatManager(AttMap):
 
         :return str: file path that the object is reporting the results into
         """
-        return self[FILE_KEY]
+        return getattr(self, FILE_KEY, None)
 
     @property
     def data(self):
@@ -154,7 +153,7 @@ class PipestatManager(AttMap):
 
         :return yacman.YacAttMap: the object that stores the reported data
         """
-        return self[DATA_KEY]
+        return getattr(self, DATA_KEY, None)
 
     @property
     @contextmanager
@@ -171,20 +170,45 @@ class PipestatManager(AttMap):
             with self[DB_CONNECTION_KEY] as c, \
                     c.cursor(cursor_factory=LoggingCursor) as cur:
                 yield cur
-        except:
+        except Exception:
             raise
         finally:
             self.close_postgres_connection()
 
+    def _table_to_dict(self):
+        """
+        Create a dictionary from the database table data
+
+        :return dict: database table data in a dict form
+        """
+        with self.db_cursor as cur:
+            cur.execute(f"SELECT * FROM {self.name}")
+            data = cur.fetchall()
+        _LOGGER.info(f"Reading data from database for '{self.name}' namespace")
+        for record in data:
+            for result_id in list(self.schema[SCHEMA_PROP_KEY].keys()):
+                record_id = record[RECORD_ID]
+                value = record[result_id]
+                if value is not None:
+                    _LOGGER.debug(f"Saving result: {result_id}={value}")
+                    self._report_data_element(
+                        record_identifier=record_id,
+                        result_identifier=result_id,
+                        value=value
+                    )
+
     def _init_postgres_table(self):
         """
-        Initialize postgreSQL table based on the provided schema
+        Initialize postgreSQL table based on the provided schema,
+        if it does not exist. Read the data stored in the database into the
+        memory otherwise.
 
-        :return bool: whether the table has be created successfully
+        :return bool: whether the table has been created
         """
         if self._check_table_exists(table_name=self.name):
             _LOGGER.warning(
                 f"Table '{self.name}' already exists in the database")
+            self._table_to_dict()
             return False
         _LOGGER.info(
             f"Initializing '{self.name}' table in '{PKG_NAME}' database")
@@ -253,11 +277,11 @@ class PipestatManager(AttMap):
         # TODO: allow multi-value insertions
         # placeholder = sql.SQL(','.join(['%s'] * len(value)))
         # TODO: allow returning updated/inserted record ID
-        if not self._check_record(condition_col="record_identifier",
+        if not self._check_record(condition_col=RECORD_ID,
                                   condition_val=record_identifier):
             with self.db_cursor as cur:
                 cur.execute(
-                    f"INSERT INTO {self.name} (record_identifier) VALUES (%s)",
+                    f"INSERT INTO {self.name} ({RECORD_ID}) VALUES (%s)",
                     (record_identifier, )
                 )
         column = list(value.keys())
@@ -265,17 +289,19 @@ class PipestatManager(AttMap):
             NotImplementedError("Can't report more than one column at once")
         value = list(value.values())[0]
         query = "UPDATE {table_name} SET {column}=%s " \
-                "WHERE record_identifier=%s"
+                "WHERE {record_id_col}=%s"
         statement = sql.SQL(query).format(
             column=sql.Identifier(column[0]),
-            table_name=sql.Identifier(self.name)
+            table_name=sql.Identifier(self.name),
+            record_id_col=sql.SQL(RECORD_ID)
         )
         # convert mappings to JSON for postgres
         values = Json(value) if isinstance(value, Mapping) else value
         with self.db_cursor as cur:
             cur.execute(statement, (values, record_identifier))
 
-    def report(self, record_identifier, result_identifier, value):
+    def report(self, record_identifier, result_identifier, value,
+               force_overwrite=False):
         """
         Report a result.
 
@@ -284,9 +310,9 @@ class PipestatManager(AttMap):
             already exists
         :param any value: value to be reported
         :param str result_identifier: name of the result to be reported
+        :param bool force_overwrite: whether to overwrite the existing record
         :return:
         """
-        # TODO: add overwrite?
         known_results = self.schema[SCHEMA_PROP_KEY].keys()
         if result_identifier not in known_results:
             raise SchemaError(
@@ -300,28 +326,46 @@ class PipestatManager(AttMap):
                 raise ValueError(
                     f"Result value to insert is missing at least one of the "
                     f"required attributes: {attrs}")
-        if self.file:
-            if self.name in self.data and \
-                    record_identifier in self.data[self.name] and \
-                    result_identifier in self.data[self.name][record_identifier]:
-                _LOGGER.warning(
-                    f"'{result_identifier}' already in database for "
-                    f"'{record_identifier}' in '{self.name}' namespace")
+        if self.name in self.data and \
+                record_identifier in self.data[self.name] and \
+                result_identifier in self.data[self.name][record_identifier]:
+            _LOGGER.warning(
+                f"'{result_identifier}' exists for '{record_identifier}'")
+            if not force_overwrite:
                 return False
+        if self.file:
             self.data.make_writable()
-            self[DATA_KEY].setdefault(self.name, PXAM())
-            self[DATA_KEY][self.name].setdefault(record_identifier, PXAM())
-            self[DATA_KEY][self.name][record_identifier][result_identifier] = \
-                value
+        self._report_data_element(record_identifier, result_identifier, value)
+        if self.file:
             self.data.write()
             self.data.make_readonly()
-        else:
-            self._report_postgres(value={result_identifier: value},
-                                  record_identifier=record_identifier)
+        if self.file is None:
+            try:
+                self._report_postgres(value={result_identifier: value},
+                                      record_identifier=record_identifier)
+            except Exception as e:
+                _LOGGER.error(f"Could not insert the result into the database. "
+                              f"Exception: {e}")
+                del self[DATA_KEY][self.name][record_identifier][result_identifier]
         _LOGGER.info(
             f"Reported record for '{record_identifier}': {result_identifier}="
             f"{value} in '{self.name}' namespace")
         return True
+
+    def _report_data_element(self, record_identifier, result_identifier, value):
+        """
+        Update the value of a result in a current namespace.
+
+        This method overwrites any existing data and creates the required
+         hierarchical mapping structure if needed.
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to be reported
+        :param any value: value to be reported
+        """
+        self[DATA_KEY].setdefault(self.name, PXAM())
+        self[DATA_KEY][self.name].setdefault(record_identifier, PXAM())
+        self[DATA_KEY][self.name][record_identifier][result_identifier] = value
 
     def check_connection(self):
         """

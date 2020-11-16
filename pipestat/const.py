@@ -57,5 +57,9 @@ DB_CONNECTION_KEY = "_db_connnection"
 SCHEMA_PROP_KEY = "properties"
 SCHEMA_TYPE_KEY = "type"
 
-FIXED_COLUMNS = ["id BIGSERIAL PRIMARY KEY",
-                 "record_identifier TEXT UNIQUE NOT NULL"]
+# DB column names
+ID = "id"
+RECORD_ID = "record_identifier"
+
+FIXED_COLUMNS = [f"{ID} BIGSERIAL PRIMARY KEY",
+                 f"{RECORD_ID} TEXT UNIQUE NOT NULL"]
