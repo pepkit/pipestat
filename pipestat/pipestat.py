@@ -2,13 +2,13 @@ import psycopg2
 from psycopg2 import sql
 from psycopg2.extras import DictCursor, Json
 from psycopg2.extensions import connection
-
 from logging import getLogger
 from contextlib import contextmanager
 from collections.abc import Mapping
 
 import os
-import oyaml as yaml
+import sys
+import logmuse
 from attmap import AttMap, PathExAttMap as PXAM
 from yacman import YacAttMap
 from ubiquerg import expandpath
@@ -51,7 +51,7 @@ class PipestatManager(AttMap):
     tools developers to communicate -- results produced by a pipeline can
     easily and reliably become an input for downstream analyses.
     """
-    def __init__(self, name, schema_path, db_file_path=None, db_config_path=None):
+    def __init__(self, name, schema_path, results_file=None, database_config=None):
         """
         Initialize the object
 
@@ -59,9 +59,10 @@ class PipestatManager(AttMap):
             name if using DB as the object back-end
         :param str schema_path: path to the output schema that formalizes
             the results structure
-        :param str db_file_path: YAML file to report into, if file is used as
+        :param str results_file: YAML file to report into, if file is used as
             the object back-end
-        :param str db_config_path: DB login credentials to report into, if DB is
+        :param str database_config: DB login credentials to report into, 
+        if DB is
             used as the object back-end
         """
         def _check_cfg_key(cfg, key):
@@ -70,28 +71,19 @@ class PipestatManager(AttMap):
                 return False
             return True
 
-        def _read_yaml_data(path, what):
-            assert isinstance(path, str), \
-                TypeError(f"Path is not a string: {path}")
-            path = expandpath(path)
-            assert os.path.exists(path), \
-                FileNotFoundError(f"File not found: {path}")
-            _LOGGER.info(f"Reading {what} from '{path}'")
-            with open(path, "r") as f:
-                return path, yaml.safe_load(f)
-
         super(PipestatManager, self).__init__()
 
         self[NAME_KEY] = str(name)
-        _, self[SCHEMA_KEY] = _read_yaml_data(schema_path, "schema")
+        _, self[SCHEMA_KEY] = read_yaml_data(schema_path, "schema")
         validate_schema(self.schema)
-        if db_file_path:
-            self[FILE_KEY] = expandpath(db_file_path)
+        if results_file:
+            self[FILE_KEY] = expandpath(results_file)
             _LOGGER.info(f"Reading data from: '{self.file}'")
             self[DATA_KEY] = YacAttMap(filepath=self.file)
-        elif db_config_path:
-            _, self[CONFIG_KEY] = _read_yaml_data(db_config_path, "DB config")
-            if not all([_check_cfg_key(self[CONFIG_KEY], key) for key in DB_CREDENTIALS]):
+        elif database_config:
+            _, self[CONFIG_KEY] = read_yaml_data(database_config, "DB config")
+            if not all([_check_cfg_key(self[CONFIG_KEY][CFG_DATABASE_KEY], key)
+                        for key in DB_CREDENTIALS]):
                 raise MissingConfigDataError(
                     "Must specify all database login credentials")
             self[DATA_KEY] = YacAttMap()
@@ -435,23 +427,24 @@ class PipestatManager(AttMap):
             raise PipestatDatabaseError(f"Connection is already established: "
                                         f"{self[DB_CONNECTION_KEY].info.host}")
         try:
+            cfg_db = self[CONFIG_KEY][CFG_DATABASE_KEY]
             self[DB_CONNECTION_KEY] = psycopg2.connect(
-                dbname=self[CONFIG_KEY][CFG_DB_NAME_KEY],
-                user=self[CONFIG_KEY][CFG_DB_USER_KEY],
-                password=self[CONFIG_KEY][CFG_DB_PASSWORD_KEY],
-                host=self[CONFIG_KEY][CFG_DB_HOST_KEY],
-                port=self[CONFIG_KEY][CFG_DB_PORT_KEY]
+                dbname=cfg_db[CFG_NAME_KEY],
+                user=cfg_db[CFG_USER_KEY],
+                password=cfg_db[CFG_PASSWORD_KEY],
+                host=cfg_db[CFG_HOST_KEY],
+                port=cfg_db[CFG_PORT_KEY]
             )
         except psycopg2.Error as e:
             _LOGGER.error(f"Could not connect to: "
-                          f"{self[CONFIG_KEY][CFG_DB_HOST_KEY]}")
+                          f"{cfg_db[CFG_HOST_KEY]}")
             _LOGGER.info(f"Caught error: {e}")
             if suppress:
                 return False
             raise
         else:
             _LOGGER.debug(f"Established connection with PostgreSQL: "
-                          f"{self[CONFIG_KEY][CFG_DB_HOST_KEY]}")
+                          f"{cfg_db[CFG_HOST_KEY]}")
             return True
 
     def close_postgres_connection(self):
@@ -461,8 +454,64 @@ class PipestatManager(AttMap):
         if not self.check_connection():
             raise PipestatDatabaseError(
                 f"The connection has not been established: "
-                f"{self[CONFIG_KEY][CFG_DB_HOST_KEY]}")
+                f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}")
         self[DB_CONNECTION_KEY].close()
         del self[DB_CONNECTION_KEY]
         _LOGGER.debug(f"Closed connection with PostgreSQL: "
-                      f"{self[CONFIG_KEY][CFG_DB_HOST_KEY]}")
+                      f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}")
+
+
+def main():
+    """ Primary workflow """
+    parser = logmuse.add_logging_options(build_argparser())
+    args = parser.parse_args()
+    if args.command is None:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+    global _LOGGER
+    _LOGGER = logmuse.logger_via_cli(args, make_root=True)
+    _LOGGER.debug("Args namespace:\n{}".format(args))
+    psm = PipestatManager(
+        name=args.namespace,
+        schema_path=args.schema,
+        results_file=args.results_file,
+        database_config=args.database_config
+    )
+    _, schema = read_yaml_data(args.schema, "schema")
+    validate_schema(schema)
+    if args.command == REPORT_CMD:
+        value = args.value
+        if args.result_identifier in schema[SCHEMA_PROP_KEY]:
+            result_metadata = schema[SCHEMA_PROP_KEY][args.result_identifier]
+            if result_metadata[SCHEMA_TYPE_KEY] == "object" \
+                    and os.path.exists(expandpath(value)):
+                from json import load
+                try:
+                    with open(expandpath(value), "r") as json_file:
+                        value = load(json_file)
+                except Exception as e:
+                    _LOGGER.warning(
+                        "Failed attempt to load a JSON file ({}), storing as "
+                        "file. Original exception: {}".format(
+                            expandpath(value), getattr(e, 'message', repr(e))))
+        else:
+            raise SchemaError(
+                f"Can't report '{args.result_identifier}';"
+                f" not found in the schema")
+        psm.report(
+            result_identifier=args.result_identifier,
+            record_identifier=args.record_identifier,
+            value=value,
+            overwrite=args.overwrite
+        )
+        sys.exit(0)
+    if args.command == INSPECT_CMD:
+        print(psm)
+        sys.exit(0)
+    if args.command == REMOVE_CMD:
+        psm.remove(
+            result_identifier=args.result_identifier,
+            record_identifier=args.record_identifier
+        )
+        sys.exit(0)
+

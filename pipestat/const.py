@@ -7,8 +7,7 @@ TABLE_CMD = "table"
 SUBPARSER_MSGS = {
     REPORT_CMD: "Report a result.",
     INSPECT_CMD: "Inspect a database.",
-    REMOVE_CMD: "Remove a result.",
-    TABLE_CMD: "Create a results table."
+    REMOVE_CMD: "Remove a result."
 }
 
 ATTRS_BY_TYPE = {
@@ -36,14 +35,15 @@ TABLE_COLS_BY_TYPE = {
 DOC_URL = "TBA"
 
 # DB config keys
-CFG_DB_NAME_KEY = "db_name"
-CFG_DB_HOST_KEY = "db_host"
-CFG_DB_PORT_KEY = "db_port"
-CFG_DB_PASSWORD_KEY = "db_password"
-CFG_DB_USER_KEY = "db_user"
+CFG_DATABASE_KEY = "database"
+CFG_NAME_KEY = "name"
+CFG_HOST_KEY = "host"
+CFG_PORT_KEY = "port"
+CFG_PASSWORD_KEY = "password"
+CFG_USER_KEY = "user"
 
-DB_CREDENTIALS = [CFG_DB_HOST_KEY, CFG_DB_PORT_KEY, CFG_DB_PASSWORD_KEY,
-                  CFG_DB_USER_KEY, CFG_DB_NAME_KEY]
+DB_CREDENTIALS = [CFG_HOST_KEY, CFG_PORT_KEY, CFG_PASSWORD_KEY, CFG_USER_KEY,
+                  CFG_NAME_KEY]
 
 # object attribute names
 CONFIG_KEY = "_config"
