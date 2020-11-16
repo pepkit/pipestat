@@ -112,7 +112,7 @@ class TestReporting:
         psm = PipeStatManager({}, "test")
         psm.report(id, type, value)
         value = value + 1
-        psm.report(id, type, value, overwrite=True)
+        psm.report(id, type, value, force_overwrite=True)
         assert value == psm.database["test"][id]["value"]
 
 
