@@ -1,4 +1,6 @@
-ubiquerg>=0.6.0-dev
+ubiquerg>=0.6.1
 logmuse>=0.2.5
 oyaml
-pandas>=1.0.0
+yacman>=0.7.0
+psycopg2
+attmap

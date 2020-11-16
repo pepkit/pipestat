@@ -1,4 +1,4 @@
-Final targets: PipeStatManager, connect_mongo
+Final targets: PipestatManager
 <script>
 document.addEventListener('DOMContentLoaded', (event) => {
   document.querySelectorAll('h3 code').forEach((block) => {
@@ -30,35 +30,112 @@ h4 .content {
 
 # Package `pipestat` Documentation
 
-## <a name="PipeStatManager"></a> Class `PipeStatManager`
-```python
-def __init__(self, database, name)
-```
-
-Initialize self.  See help(type(self)) for accurate signature.
-
+## <a name="PipestatManager"></a> Class `PipestatManager`
+Class that provides methods for a standardized reporting of pipeline statistics. It formalizes a way for pipeline developers and downstream tools developers to communicate -- results produced by a pipeline can easily and reliably become an input for downstream analyses.
 
 
 ```python
-def cache(self)
+def __init__(self, name, schema_path, db_file_path=None, db_config_path=None)
 ```
 
-Cache contents
+Initialize the object
+#### Parameters:
+
+- `name` (`str`):  namespace to report into. This will be the DB tablename if using DB as the object back-end
+- `schema_path` (`str`):  path to the output schema that formalizesthe results structure
+- `db_file_path` (`str`):  YAML file to report into, if file is used asthe object back-end
+- `db_config_path` (`str`):  DB login credentials to report into, if DB isused as the object back-end
+
+
+
+
+```python
+def check_connection(self)
+```
+
+Check whether a PostgreSQL connection has been established
 #### Returns:
 
-- `dict`:  contents of the cache
+- `bool`:  whether the connection has been established
 
 
 
 
 ```python
-def database(self)
+def check_record_exists(self, record_identifier, result_identifier)
 ```
 
-Database contents
+Check if the record has been reported
+#### Parameters:
+
+- `record_identifier` (`str`):  unique identifier of the record
+- `result_identifier` (`str`):  name of the result to check
+
+
 #### Returns:
 
-- `dict`:  contents of the database
+- `bool`:  whether the specified result has been reported for theindicated record in current namespace
+
+
+
+
+```python
+def close_postgres_connection(self)
+```
+
+Close connection and remove client bound
+
+
+
+```python
+def data(self)
+```
+
+Data object
+#### Returns:
+
+- `yacman.YacAttMap`:  the object that stores the reported data
+
+
+
+
+```python
+def db_cursor(self)
+```
+
+Establish connection and get a PostgreSQL database cursor, commit and close the connection afterwards
+#### Returns:
+
+- `LoggingCursor`:  Database cursor object
+
+
+
+
+```python
+def establish_postgres_connection(self, suppress=False)
+```
+
+Establish PostgreSQL connection using the config data
+#### Parameters:
+
+- `suppress` (`bool`):  whether to suppress any connection errors
+
+
+#### Returns:
+
+- `bool`:  whether the connection has been established successfully
+
+
+
+
+```python
+def file(self)
+```
+
+File path that the object is reporting the results into
+#### Returns:
+
+- `str`:  file path that the object is reporting the results into
 
 
 
@@ -67,78 +144,60 @@ Database contents
 def name(self)
 ```
 
-namespace name
+Namespace the object writes the results to
 #### Returns:
 
-- `str`:  name of the namespace that results are reported for
+- `str`:  Namespace the object writes the results to
 
 
 
 
 ```python
-def remove(self, id)
+def remove(self, record_identifier, result_identifier)
 ```
 
-Remove a result
+Report a result.
 #### Parameters:
 
-- `id` (`str`):  the name of the result to remove
+- `record_identifier` (`str`):  unique identifier of the record
+- `result_identifier` (`str`):  name of the result to be removed
 
 
 #### Returns:
 
-- `bool`:  whether the result was removed or not
+- `bool`:  whether the result has been removed
 
 
 
 
 ```python
-def report(self, id, type, value, cache=False, overwrite=False, strict_type=False)
+def report(self, record_identifier, result_identifier, value, force_overwrite=False)
 ```
 
-Report a result
+Report a result.
 #### Parameters:
 
-- `id` (`str`):  unique name of the item to report
-- `type` (`str`):  type of the item to report
-- `value` (`str`):  value of the item to report
-- `cache` (`bool`):  whether just cache the reported item, not write it yet
-- `overwrite` (`bool`):  whether to overwrite the item in case of id clashes
+- `record_identifier` (`str`):  unique identifier of the record, value toin 'record_identifier' column to look for to determine if the record already exists
+- `value` (`any`):  value to be reported
+- `result_identifier` (`str`):  name of the result to be reported
+- `force_overwrite` (`bool`):  whether to overwrite the existing record
 
 
 #### Returns:
 
-- `bool`:  whether the result was reported or not
+- `bool`:  whether the result has been reported
 
 
 
 
 ```python
-def write(self)
+def schema(self)
 ```
 
-Write reported results to the database
-
-
-
-```python
-def connect_mongo(host='0.0.0.0', port=27017, database='pipestat_dict', collection='store')
-```
-
-Connect to MongoDB and return the MongoDB-backed dict object
-
-Firstly, the required libraries are imported.
-#### Parameters:
-
-- `host` (`str`):  DB address
-- `port` (`int`):  port DB is listening on
-- `database` (`str`):  DB name
-- `collection` (`str`):  collection key
-
-
+Schema mapping
 #### Returns:
 
-- `mongodict.MongoDict`:  a dict backed by MongoDB, ready to use as aHenge backend
+- `dict`:  schema that formalizes the results structure
 
 
 

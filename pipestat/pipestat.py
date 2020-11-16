@@ -6,21 +6,16 @@ from psycopg2.extensions import connection
 from logging import getLogger
 from contextlib import contextmanager
 from collections.abc import Mapping
-from re import findall
 
 import os
 import oyaml as yaml
-from attmap import AttMap
+from attmap import AttMap, PathExAttMap as PXAM
 from yacman import YacAttMap
-
-
-from attmap import PathExAttMap as PXAM
+from ubiquerg import expandpath
 
 from .const import *
 from .exceptions import *
-from.helpers import *
-
-from ubiquerg import expandpath, create_lock, remove_lock
+from .helpers import *
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -66,7 +61,7 @@ class PipestatManager(AttMap):
             the results structure
         :param str db_file_path: YAML file to report into, if file is used as
             the object back-end
-        :param db_config_path: DB login credentials to report into, if DB is
+        :param str db_config_path: DB login credentials to report into, if DB is
             used as the object back-end
         """
         def _check_cfg_key(cfg, key):
@@ -162,7 +157,7 @@ class PipestatManager(AttMap):
         Establish connection and get a PostgreSQL database cursor,
         commit and close the connection afterwards
 
-        :return DictCursor: Database cursor object
+        :return LoggingCursor: Database cursor object
         """
         try:
             if not self.check_connection():
@@ -300,6 +295,21 @@ class PipestatManager(AttMap):
         with self.db_cursor as cur:
             cur.execute(statement, (values, record_identifier))
 
+    def check_record_exists(self, record_identifier, result_identifier):
+        """
+        Check if the record has been reported
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to check
+        :return bool: whether the specified result has been reported for the
+            indicated record in current namespace
+        """
+        if self.name in self.data and \
+                record_identifier in self.data[self.name] and \
+                result_identifier in self.data[self.name][record_identifier]:
+            return True
+        return False
+
     def report(self, record_identifier, result_identifier, value,
                force_overwrite=False):
         """
@@ -311,7 +321,7 @@ class PipestatManager(AttMap):
         :param any value: value to be reported
         :param str result_identifier: name of the result to be reported
         :param bool force_overwrite: whether to overwrite the existing record
-        :return:
+        :return bool: whether the result has been reported
         """
         known_results = self.schema[SCHEMA_PROP_KEY].keys()
         if result_identifier not in known_results:
@@ -326,9 +336,7 @@ class PipestatManager(AttMap):
                 raise ValueError(
                     f"Result value to insert is missing at least one of the "
                     f"required attributes: {attrs}")
-        if self.name in self.data and \
-                record_identifier in self.data[self.name] and \
-                result_identifier in self.data[self.name][record_identifier]:
+        if self.check_record_exists(record_identifier, result_identifier):
             _LOGGER.warning(
                 f"'{result_identifier}' exists for '{record_identifier}'")
             if not force_overwrite:
@@ -347,6 +355,7 @@ class PipestatManager(AttMap):
                 _LOGGER.error(f"Could not insert the result into the database. "
                               f"Exception: {e}")
                 del self[DATA_KEY][self.name][record_identifier][result_identifier]
+                raise
         _LOGGER.info(
             f"Reported record for '{record_identifier}': {result_identifier}="
             f"{value} in '{self.name}' namespace")
@@ -366,6 +375,40 @@ class PipestatManager(AttMap):
         self[DATA_KEY].setdefault(self.name, PXAM())
         self[DATA_KEY][self.name].setdefault(record_identifier, PXAM())
         self[DATA_KEY][self.name][record_identifier][result_identifier] = value
+
+    def remove(self, record_identifier, result_identifier):
+        """
+        Report a result.
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to be removed
+        :return bool: whether the result has been removed
+        """
+        if not self.check_record_exists(record_identifier, result_identifier):
+            _LOGGER.error(f"'{result_identifier}' has not been reported for "
+                          f"'{record_identifier}'")
+            return False
+        if self.file:
+            self.data.make_writable()
+        val_backup = \
+            self[DATA_KEY][self.name][record_identifier][result_identifier]
+        del self[DATA_KEY][self.name][record_identifier][result_identifier]
+        if self.file:
+            self.data.write()
+            self.data.make_readonly()
+        if self.file is None:
+            try:
+                with self.db_cursor as cur:
+                    cur.execute(
+                        f"UPDATE {self.name} SET {result_identifier}=null "
+                        f"WHERE {RECORD_ID}='{record_identifier}'"
+                    )
+            except Exception as e:
+                _LOGGER.error(f"Could not remove the result from the database. "
+                              f"Exception: {e}")
+                self[DATA_KEY][self.name][record_identifier][result_identifier] = val_backup
+                raise
+        return True
 
     def check_connection(self):
         """
