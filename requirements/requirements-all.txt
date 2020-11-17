@@ -4,3 +4,4 @@ oyaml
 yacman>=0.7.0
 psycopg2
 attmap
+jsonschema
