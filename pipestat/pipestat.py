@@ -525,6 +525,8 @@ def main():
         sys.exit(0)
     if args.command == INSPECT_CMD:
         print(psm)
+        if args.data:
+            print(psm.data)
         sys.exit(0)
     if args.command == REMOVE_CMD:
         psm.remove(

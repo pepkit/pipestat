@@ -70,6 +70,11 @@ def build_argparser():
             help="Whether the result should override existing ones in "
                  "case of name clashes")
 
+    # inspect
+    sps[INSPECT_CMD].add_argument(
+            "-d", "--data", action="store_true",
+            help="Whether to display the data")
+
     # sps[REPORT_CMD].add_argument(
     #         "-s", "--strict-type", action="store_true",
     #         help="whether the result should be casted to the class required by "
