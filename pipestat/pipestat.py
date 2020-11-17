@@ -10,7 +10,7 @@ import os
 import sys
 import logmuse
 from attmap import AttMap, PathExAttMap as PXAM
-from yacman import YacAttMap, ATTR_KEYS
+from yacman import YacAttMap
 from ubiquerg import expandpath
 
 from .const import *
@@ -342,7 +342,7 @@ class PipestatManager(AttMap):
         if result_identifier not in known_results:
             raise SchemaError(
                 f"'{result_identifier}' is not a known result. Results defined "
-                f"in the schema are: {known_results}.")
+                f"in the schema are: {list(known_results)}.")
         attrs = ATTRS_BY_TYPE[
             self.schema[SCHEMA_PROP_KEY][result_identifier][SCHEMA_TYPE_KEY]]
         if attrs:
@@ -391,43 +391,42 @@ class PipestatManager(AttMap):
         self[DATA_KEY][self.name].setdefault(record_identifier, PXAM())
         self[DATA_KEY][self.name][record_identifier][result_identifier] = value
 
-    def remove(self, record_identifier, result_identifier, rm_record=False):
+    def remove(self, record_identifier, result_identifier=None):
         """
         Report a result.
 
+        If no result ID specified or last result is removed, the entire record
+        will be removed.
+
         :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to be removed
-        :param bool rm_record: remove entire record
+        :param str result_identifier: name of the result to be removed or None
+             if the record should be removed.
         :return bool: whether the result has been removed
         """
-        if not self.check_record_exists(record_identifier, result_identifier):
+        rm_record = True if result_identifier is None else False
+        if result_identifier and not self.check_record_exists(
+                record_identifier, result_identifier):
             _LOGGER.error(f"'{result_identifier}' has not been reported for "
                           f"'{record_identifier}'")
             return False
         if self.file:
             self.data.make_writable()
-        val_backup = \
-            self[DATA_KEY][self.name][record_identifier][result_identifier]
-        del self[DATA_KEY][self.name][record_identifier][result_identifier]
-        if not self[DATA_KEY][self.name][record_identifier] or rm_record:
+        if rm_record:
+            _LOGGER.info(f"Removing '{record_identifier}' record")
             del self[DATA_KEY][self.name][record_identifier]
-            rm_record = True
+        else:
+            val_backup = \
+                self[DATA_KEY][self.name][record_identifier][result_identifier]
+            del self[DATA_KEY][self.name][record_identifier][result_identifier]
+            if not self[DATA_KEY][self.name][record_identifier]:
+                _LOGGER.info(f"Last result removed for '{record_identifier}'. "
+                             f"Removing the record")
+                del self[DATA_KEY][self.name][record_identifier]
+                rm_record = True
         if self.file:
             self.data.write()
             self.data.make_readonly()
         if self.file is None:
-            try:
-                with self.db_cursor as cur:
-                    cur.execute(
-                        f"UPDATE {self.name} SET {result_identifier}=null "
-                        f"WHERE {RECORD_ID}='{record_identifier}'"
-                    )
-            except Exception as e:
-                _LOGGER.error(f"Could not remove the result from the database. "
-                              f"Exception: {e}")
-                self[DATA_KEY][self.name][record_identifier][result_identifier]\
-                    = val_backup
-                raise
             if rm_record:
                 try:
                     with self.db_cursor as cur:
@@ -439,6 +438,18 @@ class PipestatManager(AttMap):
                     self[DATA_KEY][self.name].setdefault(
                         record_identifier, PXAM())
                     raise
+                return True
+            try:
+                with self.db_cursor as cur:
+                    cur.execute(
+                        f"UPDATE {self.name} SET {result_identifier}=null "
+                        f"WHERE {RECORD_ID}='{record_identifier}'"
+                    )
+            except Exception as e:
+                _LOGGER.error(f"Could not remove the result from the database. "
+                              f"Exception: {e}")
+                self[DATA_KEY][self.name][record_identifier][result_identifier] = val_backup
+                raise
         return True
 
     def check_connection(self):
