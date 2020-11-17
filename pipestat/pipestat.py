@@ -193,7 +193,7 @@ class PipestatManager(AttMap):
         :return bool: whether the table has been created
         """
         if self._check_table_exists(table_name=self.name):
-            _LOGGER.warning(
+            _LOGGER.debug(
                 f"Table '{self.name}' already exists in the database")
             self._table_to_dict()
             return False
@@ -483,9 +483,11 @@ def main():
         value = args.value
         if args.result_identifier in schema[SCHEMA_PROP_KEY]:
             result_metadata = schema[SCHEMA_PROP_KEY][args.result_identifier]
-            if result_metadata[SCHEMA_TYPE_KEY] == "object" \
+            if result_metadata[SCHEMA_TYPE_KEY] in ["object", "image", "file"] \
                     and os.path.exists(expandpath(value)):
                 from json import load
+                _LOGGER.info(f"Reading JSON file with object type value: "
+                             f"{expandpath(value)}")
                 try:
                     with open(expandpath(value), "r") as json_file:
                         value = load(json_file)
@@ -502,7 +504,7 @@ def main():
             result_identifier=args.result_identifier,
             record_identifier=args.record_identifier,
             value=value,
-            overwrite=args.overwrite
+            force_overwrite=args.overwrite
         )
         sys.exit(0)
     if args.command == INSPECT_CMD:

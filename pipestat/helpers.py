@@ -31,7 +31,7 @@ def build_argparser():
         sps[cmd] = subparsers.add_parser(cmd, description=desc, help=desc)
         sps[cmd].add_argument(
                 "-n", "--namespace", required=True, type=str, metavar="N",
-                help="name of the pipeline to report result for")
+                help="Name of the pipeline to report result for")
 
     # remove, report and inspect
     for cmd in [REMOVE_CMD, REPORT_CMD, INSPECT_CMD]:
@@ -55,23 +55,19 @@ def build_argparser():
     for cmd in [REMOVE_CMD, REPORT_CMD]:
         sps[cmd].add_argument(
             "-i", "--result-identifier", required=True, type=str, metavar="I",
-            help="id of the result to report; needs to be defined in the schema")
+            help="ID of the result to report; needs to be defined in the schema")
         sps[cmd].add_argument(
             "-r", "--record-identifier", required=True, type=str, metavar="R",
-            help="id of the record to report the result for")
+            help="ID of the record to report the result for")
 
     # report
     sps[REPORT_CMD].add_argument(
             "-v", "--value", required=True, type=str, metavar="V",
-            help="value of the result to report")
-
-    sps[REPORT_CMD].add_argument(
-            "-t", "--type", required=True, type=str, metavar="T",
-            help="type of the result to report")
+            help="Value of the result to report")
 
     sps[REPORT_CMD].add_argument(
             "-o", "--overwrite", action="store_true",
-            help="whether the result should override existing ones in "
+            help="Whether the result should override existing ones in "
                  "case of name clashes")
 
     # sps[REPORT_CMD].add_argument(
@@ -166,7 +162,7 @@ def read_yaml_data(path, what):
     assert isinstance(path, str), TypeError(f"Path is not a string: {path}")
     path = expandpath(path)
     assert os.path.exists(path), FileNotFoundError(f"File not found: {path}")
-    _LOGGER.info(f"Reading {what} from '{path}'")
+    _LOGGER.debug(f"Reading {what} from '{path}'")
     with open(path, "r") as f:
         return path, safe_load(f)
 
