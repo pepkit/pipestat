@@ -10,17 +10,6 @@ SUBPARSER_MSGS = {
     REMOVE_CMD: "Remove a result."
 }
 
-ATTRS_BY_TYPE = {
-    "integer": [],
-    "float": [],
-    "string": [],
-    "boolean": [],
-    "object": [],
-    "array": [],
-    "file": ["path", "title"],
-    "image": ["thumbnail_path", "path", "title"]
-}
-
 TABLE_COLS_BY_TYPE = {
     "integer": '{} INT',
     "float": '{} FLOAT',
@@ -83,4 +72,15 @@ CANONICAL_TYPES = {
         },
         "required": ["path", "title"]
     }
+}
+
+CLASSES_BY_TYPE = {
+    "number": float,
+    "integer": int,
+    "object": dict,
+    "image": dict,
+    "file": dict,
+    "string": str,
+    "array": list,
+    "boolean": bool
 }

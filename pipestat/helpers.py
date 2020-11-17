@@ -1,5 +1,6 @@
 import logging
 import os
+import jsonschema
 from .const import *
 from ._version import __version__
 from .exceptions import *
@@ -59,13 +60,18 @@ def build_argparser(desc):
 
     # report
     sps[REPORT_CMD].add_argument(
-            "-v", "--value", required=True, type=str, metavar="V",
+            "-v", "--value", required=True, metavar="V",
             help="Value of the result to report")
 
     sps[REPORT_CMD].add_argument(
             "-o", "--overwrite", action="store_true",
             help="Whether the result should override existing ones in "
                  "case of name clashes")
+
+    sps[REPORT_CMD].add_argument(
+            "-t", "--try-convert", action="store_true",
+            help="Whether to try to convert the reported value into reqiuired "
+                 "class in case it does not meet the schema requirements")
 
     # inspect
     sps[INSPECT_CMD].add_argument(
@@ -78,28 +84,6 @@ def build_argparser(desc):
     #              "the declared type and the effect of this operation verified")
 
     return parser
-
-
-# def validate_value_class(type, value):
-#     """
-#     Try to convert provided result value to the required class for the declared
-#      type and check if the conversion was successful.
-#      Raise an informative exception if not.
-#
-#     :param str type: name of the type
-#     :param value: value to check
-#     :raise IncompatibleClassError: if type cannot be converted to the
-#         required one
-#     """
-#     try:
-#         value = CLASSES_BY_TYPE[type](value)
-#     except Exception as e:
-#         _LOGGER.debug("Impossible type conversion: {}".
-#                       format(getattr(e, 'message', repr(e))))
-#     if not isinstance(value, CLASSES_BY_TYPE[type]):
-#         raise IncompatibleClassError(value.__class__.__name__,
-#                                      CLASSES_BY_TYPE[type].__name__, type)
-#     return value
 
 
 def mk_list_of_str(x):
@@ -133,6 +117,42 @@ def schema_to_columns(schema):
         columns.append(TABLE_COLS_BY_TYPE[col_dict[SCHEMA_TYPE_KEY]].format(colname))
     _LOGGER.info(f"Table columns created based on schema: {columns}")
     return columns
+
+
+def validate_type(value, schema, strict_type=False):
+    """
+    Validate reported result against a partial schema, in case of failure try
+    to cast the value into the required class.
+
+    Does not support objects of objects.
+
+    :param any value: reported value
+    :param dict schema: partial jsonschema schema to validate
+        against, e.g. {"type": "integer"}
+    :param bool strict_type: whether the value should validate as is
+    """
+    try:
+        jsonschema.validate(value, schema)
+    except jsonschema.exceptions.ValidationError as e:
+        if strict_type:
+            raise
+        _LOGGER.debug(f"{str(e)}")
+        if schema[SCHEMA_TYPE_KEY] != "object":
+            value = CLASSES_BY_TYPE[schema[SCHEMA_TYPE_KEY]](value)
+        else:
+            for prop, prop_dict in schema[SCHEMA_PROP_KEY].items():
+                try:
+                    cls_fun = CLASSES_BY_TYPE[prop_dict[SCHEMA_TYPE_KEY]]
+                    value[prop] = cls_fun(value[prop])
+                except Exception as e:
+                    _LOGGER.error(f"{str(e)}: Could not cast the result into "
+                                  f"required type: {str(cls_fun)}")
+                else:
+                    _LOGGER.debug(f"Casted the reported result into required "
+                                  f"type: {str(cls_fun)}")
+        jsonschema.validate(value, schema)
+    else:
+        _LOGGER.debug(f"Value '{value}' validated successfully against a schema")
 
 
 def read_yaml_data(path, what):

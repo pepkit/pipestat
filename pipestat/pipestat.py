@@ -338,7 +338,7 @@ class PipestatManager(AttMap):
         return False
 
     def report(self, record_identifier, result_identifier, value,
-               force_overwrite=False):
+               force_overwrite=False, strict_type=True):
         """
         Report a result.
 
@@ -360,8 +360,9 @@ class PipestatManager(AttMap):
                 f"'{result_identifier}' exists for '{record_identifier}'")
             if not force_overwrite:
                 return False
-        validate(instance=value,
-                 schema=self.result_schemas[result_identifier].to_dict())
+        validate_type(value=value,
+                      schema=self.result_schemas[result_identifier].to_dict(),
+                      strict_type=strict_type)
         if self.file:
             self.data.make_writable()
         self._report_data_element(record_identifier, result_identifier, value)
@@ -577,7 +578,8 @@ def main():
             result_identifier=args.result_identifier,
             record_identifier=args.record_identifier,
             value=value,
-            force_overwrite=args.overwrite
+            force_overwrite=args.overwrite,
+            strict_type=not args.try_convert
         )
         sys.exit(0)
     if args.command == INSPECT_CMD:
