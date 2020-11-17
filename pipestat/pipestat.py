@@ -368,12 +368,13 @@ class PipestatManager(AttMap):
         self[DATA_KEY][self.name].setdefault(record_identifier, PXAM())
         self[DATA_KEY][self.name][record_identifier][result_identifier] = value
 
-    def remove(self, record_identifier, result_identifier):
+    def remove(self, record_identifier, result_identifier, rm_record=False):
         """
         Report a result.
 
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be removed
+        :param bool rm_record: remove entire record
         :return bool: whether the result has been removed
         """
         if not self.check_record_exists(record_identifier, result_identifier):
@@ -385,6 +386,9 @@ class PipestatManager(AttMap):
         val_backup = \
             self[DATA_KEY][self.name][record_identifier][result_identifier]
         del self[DATA_KEY][self.name][record_identifier][result_identifier]
+        if not self[DATA_KEY][self.name][record_identifier] or rm_record:
+            del self[DATA_KEY][self.name][record_identifier]
+            rm_record = True
         if self.file:
             self.data.write()
             self.data.make_readonly()
@@ -398,8 +402,20 @@ class PipestatManager(AttMap):
             except Exception as e:
                 _LOGGER.error(f"Could not remove the result from the database. "
                               f"Exception: {e}")
-                self[DATA_KEY][self.name][record_identifier][result_identifier] = val_backup
+                self[DATA_KEY][self.name][record_identifier][result_identifier]\
+                    = val_backup
                 raise
+            if rm_record:
+                try:
+                    with self.db_cursor as cur:
+                        cur.execute(f"DELETE FROM {self.name} WHERE "
+                                    f"{RECORD_ID}='{record_identifier}'")
+                except Exception as e:
+                    _LOGGER.error(f"Could not remove the result from the "
+                                  f"database. Exception: {e}")
+                    self[DATA_KEY][self.name].setdefault(
+                        record_identifier, PXAM())
+                    raise
         return True
 
     def check_connection(self):
