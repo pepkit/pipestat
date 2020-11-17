@@ -48,6 +48,7 @@ DB_CREDENTIALS = [CFG_HOST_KEY, CFG_PORT_KEY, CFG_PASSWORD_KEY, CFG_USER_KEY,
 # object attribute names
 CONFIG_KEY = "_config"
 SCHEMA_KEY = "_schema"
+RES_SCHEMAS_KEY = "_result_schemas"
 DATA_KEY = "_data"
 NAME_KEY = "_name"
 FILE_KEY = "_file"
@@ -63,3 +64,23 @@ RECORD_ID = "record_identifier"
 
 FIXED_COLUMNS = [f"{ID} BIGSERIAL PRIMARY KEY",
                  f"{RECORD_ID} TEXT UNIQUE NOT NULL"]
+
+CANONICAL_TYPES = {
+    "image": {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string"},
+            "thumbnail_path": {"type": "string"},
+            "title": {"type": "string"},
+        },
+        "required": ["path", "thumbnail_path", "title"]
+    },
+    "file": {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string"},
+            "title": {"type": "string"},
+        },
+        "required": ["path", "title"]
+    }
+}

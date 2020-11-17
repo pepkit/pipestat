@@ -4,6 +4,8 @@ from psycopg2.extras import DictCursor, Json
 from psycopg2.extensions import connection
 from logging import getLogger
 from contextlib import contextmanager
+from copy import deepcopy
+from jsonschema import validate
 from collections.abc import Mapping
 
 import os
@@ -46,7 +48,7 @@ class LoggingCursor(psycopg2.extras.DictCursor):
 
 class PipestatManager(AttMap):
     """
-    Class that provides methods for a standardized reporting of pipeline
+    Pipestat provides methods for a standardized reporting of pipeline
     statistics. It formalizes a way for pipeline developers and downstream
     tools developers to communicate -- results produced by a pipeline can
     easily and reliably become an input for downstream analyses.
@@ -75,7 +77,7 @@ class PipestatManager(AttMap):
 
         self[NAME_KEY] = str(name)
         _, self[SCHEMA_KEY] = read_yaml_data(schema_path, "schema")
-        validate_schema(self.schema)
+        self.validate_schema()
         if results_file:
             self[FILE_KEY] = expandpath(results_file)
             self._init_results_file()
@@ -122,6 +124,16 @@ class PipestatManager(AttMap):
         :return dict: schema that formalizes the results structure
         """
         return getattr(self, SCHEMA_KEY, None)
+
+    @property
+    def result_schemas(self):
+        """
+        Result schema mappings
+
+        :return dict: schemas that formalize the structure of each result
+            in a canonical jsonschema way
+        """
+        return getattr(self, RES_SCHEMAS_KEY, None)
 
     @property
     def file(self):
@@ -338,24 +350,18 @@ class PipestatManager(AttMap):
         :param bool force_overwrite: whether to overwrite the existing record
         :return bool: whether the result has been reported
         """
-        known_results = self.schema[SCHEMA_PROP_KEY].keys()
+        known_results = self.result_schemas.keys()
         if result_identifier not in known_results:
             raise SchemaError(
                 f"'{result_identifier}' is not a known result. Results defined "
                 f"in the schema are: {list(known_results)}.")
-        attrs = ATTRS_BY_TYPE[
-            self.schema[SCHEMA_PROP_KEY][result_identifier][SCHEMA_TYPE_KEY]]
-        if attrs:
-            if not (isinstance(value, Mapping) or
-                    all([attr in value for attr in attrs])):
-                raise ValueError(
-                    f"Result value to insert is missing at least one of the "
-                    f"required attributes: {attrs}")
         if self.check_record_exists(record_identifier, result_identifier):
             _LOGGER.warning(
                 f"'{result_identifier}' exists for '{record_identifier}'")
             if not force_overwrite:
                 return False
+        validate(instance=value,
+                 schema=self.result_schemas[result_identifier].to_dict())
         if self.file:
             self.data.make_writable()
         self._report_data_element(record_identifier, result_identifier, value)
@@ -452,6 +458,28 @@ class PipestatManager(AttMap):
                 raise
         return True
 
+    def validate_schema(self):
+        """
+        Check schema for any possible issues
+
+        :raises SchemaError: if any schema format issue is detected
+        """
+        schema = deepcopy(self.schema)
+        _LOGGER.debug(f"Validating schema: {schema}")
+        assert SCHEMA_PROP_KEY in schema, \
+            SchemaError(f"Schema is missing '{SCHEMA_PROP_KEY}' section")
+        assert isinstance(schema[SCHEMA_PROP_KEY], Mapping), \
+            SchemaError(f"'{SCHEMA_PROP_KEY}' section in the schama has to be a "
+                        f"{Mapping.__class__.__name__}")
+        self[RES_SCHEMAS_KEY] = {}
+        for k, v in schema[SCHEMA_PROP_KEY].items():
+            assert SCHEMA_TYPE_KEY in v, \
+                SchemaError(f"Result '{k}' is missing '{SCHEMA_TYPE_KEY}' key")
+            if v[SCHEMA_TYPE_KEY] in CANONICAL_TYPES.keys():
+                schema[SCHEMA_PROP_KEY][k].update(CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]])
+            self[RES_SCHEMAS_KEY].setdefault(k, {})
+            self[RES_SCHEMAS_KEY][k] = schema[SCHEMA_PROP_KEY][k]
+
     def check_connection(self):
         """
         Check whether a PostgreSQL connection has been established
@@ -513,7 +541,9 @@ class PipestatManager(AttMap):
 
 def main():
     """ Primary workflow """
-    parser = logmuse.add_logging_options(build_argparser())
+    from inspect import getdoc
+    parser = logmuse.add_logging_options(
+        build_argparser(getdoc(PipestatManager)))
     args = parser.parse_args()
     if args.command is None:
         parser.print_help(sys.stderr)
@@ -527,29 +557,22 @@ def main():
         results_file=args.results_file,
         database_config=args.database_config
     )
-    _, schema = read_yaml_data(args.schema, "schema")
-    validate_schema(schema)
     if args.command == REPORT_CMD:
         value = args.value
-        if args.result_identifier in schema[SCHEMA_PROP_KEY]:
-            result_metadata = schema[SCHEMA_PROP_KEY][args.result_identifier]
-            if result_metadata[SCHEMA_TYPE_KEY] in ["object", "image", "file"] \
-                    and os.path.exists(expandpath(value)):
-                from json import load
-                _LOGGER.info(f"Reading JSON file with object type value: "
-                             f"{expandpath(value)}")
-                try:
-                    with open(expandpath(value), "r") as json_file:
-                        value = load(json_file)
-                except Exception as e:
-                    _LOGGER.warning(
-                        "Failed attempt to load a JSON file ({}), storing as "
-                        "file. Original exception: {}".format(
-                            expandpath(value), getattr(e, 'message', repr(e))))
-        else:
-            raise SchemaError(
-                f"Can't report '{args.result_identifier}';"
-                f" not found in the schema")
+        result_metadata = psm.schema[SCHEMA_PROP_KEY][args.result_identifier]
+        if result_metadata[SCHEMA_TYPE_KEY] in ["object", "image", "file"] \
+                and os.path.exists(expandpath(value)):
+            from json import load
+            _LOGGER.info(f"Reading JSON file with object type value: "
+                         f"{expandpath(value)}")
+            try:
+                with open(expandpath(value), "r") as json_file:
+                    value = load(json_file)
+            except Exception as e:
+                _LOGGER.warning(
+                    "Failed attempt to load a JSON file ({}), storing as "
+                    "file. Original exception: {}".format(
+                        expandpath(value), getattr(e, 'message', repr(e))))
         psm.report(
             result_identifier=args.result_identifier,
             record_identifier=args.record_identifier,

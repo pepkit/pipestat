@@ -10,18 +10,15 @@ from oyaml import safe_load
 _LOGGER = logging.getLogger(__name__)
 
 
-def build_argparser():
+def build_argparser(desc):
     """
     Builds argument parser.
 
+    :param str desc: additional description to print in help
     :return argparse.ArgumentParser
     """
     banner = "%(prog)s - report pipeline results"
-    additional_description = f"""\n
-        {PKG_NAME} formalizes a way for pipeline developers and downstream
-        tools developers to communicate -- results produced by a pipeline can
-        easily and reliably become an input for downstream analyses
-    """
+    additional_description = desc
     parser = VersionInHelpParser(version=__version__, description=banner,
                                  epilog=additional_description)
     subparsers = parser.add_subparsers(dest="command")
@@ -118,24 +115,6 @@ def mk_list_of_str(x):
         return [x]
     raise TypeError(f"String or list of strings required as input. Got: "
                     f"{x.__class__.__name__}")
-
-
-def validate_schema(schema):
-    """
-    Check schema for any possible issues
-
-    :param schema:
-    :raises SchemaError: if any schema format issue is detected
-    """
-    _LOGGER.debug(f"Validating schema: {schema}")
-    assert SCHEMA_PROP_KEY in schema, \
-        SchemaError(f"Schema is missing '{SCHEMA_PROP_KEY}' section")
-    assert isinstance(schema[SCHEMA_PROP_KEY], Mapping), \
-        SchemaError(f"'{SCHEMA_PROP_KEY}' section in the schama has to be a "
-                    f"{Mapping.__class__.__name__}")
-    for k, v in schema[SCHEMA_PROP_KEY].items():
-        assert SCHEMA_TYPE_KEY in v, \
-            SchemaError(f"Result '{k}' is missing '{SCHEMA_TYPE_KEY}' key")
 
 
 def schema_to_columns(schema):
