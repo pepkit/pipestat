@@ -10,7 +10,7 @@ import os
 import sys
 import logmuse
 from attmap import AttMap, PathExAttMap as PXAM
-from yacman import YacAttMap
+from yacman import YacAttMap, ATTR_KEYS
 from ubiquerg import expandpath
 
 from .const import *
@@ -78,8 +78,7 @@ class PipestatManager(AttMap):
         validate_schema(self.schema)
         if results_file:
             self[FILE_KEY] = expandpath(results_file)
-            _LOGGER.info(f"Reading data from: '{self.file}'")
-            self[DATA_KEY] = YacAttMap(filepath=self.file)
+            self._init_results_file()
         elif database_config:
             _, self[CONFIG_KEY] = read_yaml_data(database_config, "DB config")
             if not all([_check_cfg_key(self[CONFIG_KEY][CFG_DATABASE_KEY], key)
@@ -204,6 +203,30 @@ class PipestatManager(AttMap):
             s = sql.SQL(f"CREATE TABLE {self.name} ({','.join(columns)})")
             cur.execute(s)
         return True
+
+    def _init_results_file(self):
+        """
+        Initialize postgreSQL table based on the provided schema,
+        if it does not exist. Read the data stored in the database into the
+        memory otherwise.
+
+        :return bool: whether the table has been created
+        """
+        if not os.path.exists(self.file):
+            _LOGGER.info(f"Initializing results file '{self.file}'")
+            data = YacAttMap(entries={self.name: PXAM()})
+            data.write(filepath=self.file)
+            self[DATA_KEY] = data
+            return True
+        _LOGGER.info(f"Reading data from '{self.file}'")
+        data = YacAttMap(filepath=self.file)
+        filtered = list(filter(lambda x: not x.startswith("_"), data.keys()))
+        if filtered and self.name not in filtered:
+            raise PipestatDatabaseError(
+                f"'{self.file}' is already used to report results for "
+                f"other namespace: {filtered[0]}")
+        self[DATA_KEY] = data
+        return False
 
     def _check_table_exists(self, table_name):
         """
