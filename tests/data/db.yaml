@@ -1,4 +1,5 @@
 test:
-  result1:
-    type: string
-    value: value
+  name:
+    output_file:
+      title: test
+      path: /path/to/file.yaml

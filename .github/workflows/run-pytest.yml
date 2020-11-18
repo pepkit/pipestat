@@ -16,10 +16,10 @@ jobs:
     services:
         postgres:
           image: postgres
-          env:
+          env: # needs to match DB config in: ../../tests/data/config.yaml
             POSTGRES_USER: postgres
-            POSTGRES_PASSWORD: bedbasepassword
-            POSTGRES_DB: postgres
+            POSTGRES_PASSWORD: pipestat-password
+            POSTGRES_DB: pipestat-test
           ports:
           - 5432:5432
           options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5

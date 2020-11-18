@@ -1,6 +1,6 @@
 database:
-  name: postgres
+  name: pipestat-test
   user: postgres
-  password: bedbasepassword
+  password: pipestat-password
   host: localhost
   port: 5432

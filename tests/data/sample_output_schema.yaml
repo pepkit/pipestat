@@ -4,7 +4,7 @@ properties:
     type: integer
     description: "Number of things"
   percentage_of_things:
-    type: float
+    type: number
     description: "Percentage of things"
   name_of_something:
     type: string
