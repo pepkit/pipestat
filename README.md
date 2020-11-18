@@ -1,7 +1,7 @@
 ![Run pytests](https://github.com/pepkit/pipestat/workflows/Run%20pytests/badge.svg)
 [![codecov](https://codecov.io/gh/pepkit/pipestat/branch/master/graph/badge.svg?token=O07MXSQZ32)](https://codecov.io/gh/pepkit/pipestat)
 <br></br>
-<img src="img/pipestat_logo.svg" class="img-header"> 
+<img src="docs/img/pipestat_logo.svg" class="img-header"> 
 
 # What is this?
 
