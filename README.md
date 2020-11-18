@@ -1,5 +1,5 @@
-[![Build Status](https://travis-ci.com/pepkit/pipestat.svg?branch=master)](https://travis-ci.com/pepkit/pipestat)
-[![Coverage Status](https://coveralls.io/repos/github/pepkit/pipestat/badge.svg?branch=master)](https://coveralls.io/github/pepkit/pipestat?branch=master)
+![Run pytests](https://github.com/pepkit/pipestat/workflows/Run%20pytests/badge.svg)
+[![codecov](https://codecov.io/gh/pepkit/pipestat/branch/master/graph/badge.svg?token=O07MXSQZ32)](https://codecov.io/gh/pepkit/pipestat)
 # pipestat
 
 ## What is this?

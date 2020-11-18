@@ -73,18 +73,19 @@ class TestReporting:
     @pytest.mark.parametrize(
         ["rec_id", "res_id", "val"],
         [("sample1", "name_of_something", "test_name"),
+         ("sample1", "number_of_things", 2),
          ("sample2", "number_of_things", 1),
+         ("sample2", "percentage_of_things", 10.1),
          ("sample2", "name_of_something", "test_name")]
     )
-    def test_report_basic_file(
-            self, rec_id, res_id, val, results_file_path, schema_file_path):
-        temp_file = os.path.join(mkdtemp(), os.path.basename(results_file_path))
-        copyfile(results_file_path, temp_file)
-        psm = PipestatManager(
-            schema_path=schema_file_path,
-            results_file=temp_file,
-            name="test"
-        )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_report_basic(self, rec_id, res_id, val, config_file_path,
+                          schema_file_path, results_file_path, backend):
+        args = dict(schema_path=schema_file_path, name="test")
+        backend_data = {"database_config": config_file_path} if backend == "db"\
+            else {"results_file": results_file_path}
+        args.update(backend_data)
+        psm = PipestatManager(**args)
         psm.report(
             result_identifier=res_id,
             record_identifier=rec_id,
@@ -92,103 +93,36 @@ class TestReporting:
         )
         assert rec_id in psm.data["test"]
         assert res_id in psm.data["test"][rec_id]
-        is_in_file(temp_file, str(val))
+        if backend == "file":
+            is_in_file(results_file_path, str(val))
 
-    # @pytest.mark.parametrize(["id", "type", "value"],
-    #                          [("id1", "string", "test"),
-    #                           ("id2", "integer", 1),
-    #                           ("id4", "array", [1, 2, 3]),
-    #                           ("id3", "object", {"test": "val"})])
-    # def test_report_basic_file(self, id, type, value, results_file_path):
-    #     temp_db = os.path.join(mkdtemp(), os.path.basename(results_file_path))
-    #     copyfile(results_file_path, temp_db)
-    #     psm = PipestatManager(temp_db, "test")
-    #     psm.report(id, type, value)
-    #     assert psm.database["test"][id]["value"] == value
-    #     if not (isinstance(value, list) or isinstance(value, dict)):
-    #         # arrays and objects are represented differently in yamls
-    #         is_in_file(temp_db, str(value))
-#
-#     @pytest.mark.parametrize(["id", "type", "value"],
-#                              [("id1", ["string"], "test"),
-#                               ("id2", "test", 1),
-#                               ("id4", "type", [1, 2, 3]),
-#                               ("id3", "aaa", {"test": "val"})])
-#     def test_invalid_type_error(self, id, type, value):
-#         psm = PipestatManager({}, "test")
-#         with pytest.raises(InvalidTypeError):
-#             psm.report(id, type, value)
-#
-#     @pytest.mark.parametrize(["id", "type", "value"],
-#                              [("id1", "string", 1),
-#                               ("id2", "integer", "1"),
-#                               ("id4", "float", "1")])
-#     def test_val_class_conversion(self, id, type, value):
-#         psm = PipestatManager({}, "test")
-#         psm.report(id, type, value, strict_type=True)
-#         assert isinstance(psm.database["test"][id]["value"],
-#                           CLASSES_BY_TYPE[type])
-#
-#     @pytest.mark.parametrize(["id", "type", "value"],
-#                              [("id2", "integer", 1),
-#                               ("id4", "float", 2.0)])
-#     def test_val_no_overwrite(self, id, type, value):
-#         psm = PipestatManager({}, "test")
-#         psm.report(id, type, value)
-#         value = value + 1
-#         psm.report(id, type, value)
-#         assert value != psm.database["test"][id]["value"]
-#
-#     @pytest.mark.parametrize(["id", "type", "value"],
-#                              [("id2", "integer", 1),
-#                               ("id4", "float", 2.0)])
-#     def test_val_overwrite(self, id, type, value):
-#         psm = PipestatManager({}, "test")
-#         psm.report(id, type, value)
-#         value = value + 1
-#         psm.report(id, type, value, force_overwrite=True)
-#         assert value == psm.database["test"][id]["value"]
-#
-#
-# class TestRemoval:
-#     @pytest.mark.parametrize(["id", "type", "value"],
-#                              [("id1", "string", "test"),
-#                               ("id2", "integer", 1),
-#                               ("id4", "array", [1, 2, 3]),
-#                               ("id3", "object", {"test": "val"})])
-#     def test_ramoval(self, id, type, value):
-#         psm = PipestatManager({}, "test")
-#         psm.report(id, type, value)
-#         psm.remove(id)
-#         assert id not in psm.database["test"]
-#
-#     @pytest.mark.parametrize(["id", "type", "value"],
-#                              [("id1", "string", "test"),
-#                               ("id2", "integer", 1),
-#                               ("id4", "array", [1, 2, 3]),
-#                               ("id3", "object", {"test": "val"})])
-#     def test_ramoval_cache(self, id, type, value):
-#         psm = PipestatManager({}, "test")
-#         psm.report(id, type, value, cache=True)
-#         assert id in psm.cache["test"]
-#         psm.remove(id)
-#         assert "test" not in psm.cache
-#
-#     @pytest.mark.parametrize(["id", "type", "value"],
-#                              [("id1", "string", "test"),
-#                               ("id2", "integer", 1),
-#                               ("id4", "array", [1, 2, 3]),
-#                               ("id3", "object", {"test": "val"})])
-#     def test_ramoval_nonexistent_namespace(self, id, type, value):
-#         psm = PipestatManager({}, "test")
-#         psm.remove(id)
-#
-#     @pytest.mark.parametrize(["id", "type", "value"],
-#                              [("id1", "string", "test"),
-#                               ("id2", "integer", 1),
-#                               ("id4", "array", [1, 2, 3]),
-#                               ("id3", "object", {"test": "val"})])
-#     def test_ramoval_nonexistent_entry(self, id, type, value):
-#         psm = PipestatManager({}, "test")
-#         psm.report(id + "_test", type, value)
-#         psm.remove(id)
+
+class TestRemoval:
+    @pytest.mark.parametrize(
+        ["rec_id", "res_id", "val"],
+        [("sample2", "number_of_things", 1)]
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_remove_basic_db(self, rec_id, res_id, val, config_file_path,
+                             results_file_path, schema_file_path, backend):
+        args = dict(schema_path=schema_file_path, name="test")
+        backend_data = {"database_config": config_file_path} if backend == "db"\
+            else {"results_file": results_file_path}
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        psm.remove(
+            result_identifier=res_id,
+            record_identifier=rec_id
+        )
+        assert res_id not in psm.data["test"][rec_id]
+
+    @pytest.mark.parametrize("rec_id", ["sample1", "sample2"])
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_remove_record(self, rec_id, schema_file_path, config_file_path, results_file_path, backend):
+        args = dict(schema_path=schema_file_path, name="test")
+        backend_data = {"database_config": config_file_path} if backend == "db"\
+            else {"results_file": results_file_path}
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        psm.remove(record_identifier=rec_id)
+        assert rec_id not in psm.data["test"]
