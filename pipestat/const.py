@@ -12,7 +12,7 @@ SUBPARSER_MSGS = {
 
 TABLE_COLS_BY_TYPE = {
     "integer": '{} INT',
-    "float": '{} FLOAT',
+    "number": '{} NUMERIC',
     "string": "{} TEXT",
     "boolean": '{} BOOLEAN',
     "object": '{} JSONB',

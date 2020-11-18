@@ -63,9 +63,8 @@ class PipestatManager(AttMap):
             the results structure
         :param str results_file: YAML file to report into, if file is used as
             the object back-end
-        :param str database_config: DB login credentials to report into, 
-        if DB is
-            used as the object back-end
+        :param str database_config: DB login credentials to report into,
+            if DB is used as the object back-end
         """
         def _check_cfg_key(cfg, key):
             if key not in cfg:
@@ -210,7 +209,7 @@ class PipestatManager(AttMap):
             return False
         _LOGGER.info(
             f"Initializing '{self.name}' table in '{PKG_NAME}' database")
-        columns = FIXED_COLUMNS.append(schema_to_columns(schema=self.schema))
+        columns = FIXED_COLUMNS + schema_to_columns(schema=self.schema)
         with self.db_cursor as cur:
             s = sql.SQL(f"CREATE TABLE {self.name} ({','.join(columns)})")
             cur.execute(s)
@@ -566,14 +565,8 @@ def main():
             from json import load
             _LOGGER.info(f"Reading JSON file with object type value: "
                          f"{expandpath(value)}")
-            try:
-                with open(expandpath(value), "r") as json_file:
-                    value = load(json_file)
-            except Exception as e:
-                _LOGGER.warning(
-                    "Failed attempt to load a JSON file ({}), storing as "
-                    "file. Original exception: {}".format(
-                        expandpath(value), getattr(e, 'message', repr(e))))
+            with open(expandpath(value), "r") as json_file:
+                value = load(json_file)
         psm.report(
             result_identifier=args.result_identifier,
             record_identifier=args.record_identifier,
