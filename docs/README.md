@@ -1,7 +1,7 @@
 ![Run pytests](https://github.com/pepkit/pipestat/workflows/Run%20pytests/badge.svg)
 [![codecov](https://codecov.io/gh/pepkit/pipestat/branch/master/graph/badge.svg?token=O07MXSQZ32)](https://codecov.io/gh/pepkit/pipestat)
 <br></br>
-<img src="img/pipestat_logo.svg" class="img-header"> 
+<img src="docs/img/pipestat_logo.svg" class="img-header"> 
 
 # What is this?
 
@@ -19,7 +19,7 @@ Thanks to a schema-derived specifications, results produced by a pipeline can ea
 pip install pipestat
 ```
 
-## Report result
+## Report a result
 
 From command line:
 
@@ -33,6 +33,22 @@ From Python:
 import pipestat
 psm = pipestat.PipestatManager(name="namespace", results_file="results.yaml", schema_path="schema.yaml")
 psm.report(record_identifier="record_id", result_identifier="result_name", value=1.1)
+```
+
+## Retrieve a result
+
+From command line:
+
+```console
+pipestat retrieve -f results.yaml -n namespace -r record_id -i result_name -s schema.yaml
+```
+
+From Python:
+
+```python
+import pipestat
+psm = pipestat.PipestatManager(name="namespace", results_file="results.yaml", schema_path="schema.yaml")
+psm.retrieve(record_identifier="record_id", result_identifier="result_name")
 ```
  
 

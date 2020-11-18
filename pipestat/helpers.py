@@ -32,7 +32,7 @@ def build_argparser(desc):
                 help="Name of the pipeline to report result for")
 
     # remove, report and inspect
-    for cmd in [REMOVE_CMD, REPORT_CMD, INSPECT_CMD]:
+    for cmd in [REMOVE_CMD, REPORT_CMD, INSPECT_CMD, RETRIEVE_CMD]:
         db_group = sps[cmd].add_mutually_exclusive_group(required=True)
         db_group.add_argument(
             "-f", "--results-file", type=str, metavar="F",
@@ -50,7 +50,7 @@ def build_argparser(desc):
                  "reported")
 
     # remove and report
-    for cmd in [REMOVE_CMD, REPORT_CMD]:
+    for cmd in [REMOVE_CMD, REPORT_CMD, RETRIEVE_CMD]:
         sps[cmd].add_argument(
             "-i", "--result-identifier", required=True, type=str, metavar="I",
             help="ID of the result to report; needs to be defined in the schema")

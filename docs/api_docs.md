@@ -31,11 +31,11 @@ h4 .content {
 # Package `pipestat` Documentation
 
 ## <a name="PipestatManager"></a> Class `PipestatManager`
-Class that provides methods for a standardized reporting of pipeline statistics. It formalizes a way for pipeline developers and downstream tools developers to communicate -- results produced by a pipeline can easily and reliably become an input for downstream analyses.
+pipestat standardizes reporting of pipeline results. It formalizes a way for pipeline developers and downstream tools developers to communicate -- results produced by a pipeline can easily and reliably become an input for downstream analyses. The ovject exposes API for interacting with the results can be backed by either a YAML-formatted file or a PostgreSQL database.
 
 
 ```python
-def __init__(self, name, schema_path, db_file_path=None, db_config_path=None)
+def __init__(self, name, schema_path, results_file=None, database_config=None)
 ```
 
 Initialize the object
@@ -43,8 +43,8 @@ Initialize the object
 
 - `name` (`str`):  namespace to report into. This will be the DB tablename if using DB as the object back-end
 - `schema_path` (`str`):  path to the output schema that formalizesthe results structure
-- `db_file_path` (`str`):  YAML file to report into, if file is used asthe object back-end
-- `db_config_path` (`str`):  DB login credentials to report into, if DB isused as the object back-end
+- `results_file` (`str`):  YAML file to report into, if file is used asthe object back-end
+- `database_config` (`str`):  DB login credentials to report into,if DB is used as the object back-end
 
 
 
@@ -153,14 +153,17 @@ Namespace the object writes the results to
 
 
 ```python
-def remove(self, record_identifier, result_identifier)
+def remove(self, record_identifier, result_identifier=None)
 ```
 
 Report a result.
+
+If no result ID specified or last result is removed, the entire record
+will be removed.
 #### Parameters:
 
 - `record_identifier` (`str`):  unique identifier of the record
-- `result_identifier` (`str`):  name of the result to be removed
+- `result_identifier` (`str`):  name of the result to be removed or Noneif the record should be removed.
 
 
 #### Returns:
@@ -171,7 +174,7 @@ Report a result.
 
 
 ```python
-def report(self, record_identifier, result_identifier, value, force_overwrite=False)
+def report(self, record_identifier, result_identifier, value, force_overwrite=False, strict_type=True)
 ```
 
 Report a result.
@@ -191,6 +194,39 @@ Report a result.
 
 
 ```python
+def result_schemas(self)
+```
+
+Result schema mappings
+#### Returns:
+
+- `dict`:  schemas that formalize the structure of each resultin a canonical jsonschema way
+
+
+
+
+```python
+def retrieve(self, record_identifier, result_identifier=None)
+```
+
+Retrieve a result for a record.
+
+If no result ID specified, results for the entire record will
+be returned.
+#### Parameters:
+
+- `record_identifier` (`str`):  unique identifier of the record
+- `result_identifier` (`str`):  name of the result to be retrieved
+
+
+#### Returns:
+
+- `any | dict[any]`:  a single result or a mapping with all theresults reported for the record
+
+
+
+
+```python
 def schema(self)
 ```
 
@@ -198,6 +234,18 @@ Schema mapping
 #### Returns:
 
 - `dict`:  schema that formalizes the results structure
+
+
+
+
+```python
+def validate_schema(self)
+```
+
+Check schema for any possible issues
+#### Raises:
+
+- `SchemaError`:  if any schema format issue is detected
 
 
 

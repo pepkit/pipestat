@@ -3,11 +3,12 @@ LOCK_PREFIX = "lock."
 REPORT_CMD = "report"
 INSPECT_CMD = "inspect"
 REMOVE_CMD = "remove"
-TABLE_CMD = "table"
+RETRIEVE_CMD = "retrieve"
 SUBPARSER_MSGS = {
     REPORT_CMD: "Report a result.",
     INSPECT_CMD: "Inspect a database.",
-    REMOVE_CMD: "Remove a result."
+    REMOVE_CMD: "Remove a result.",
+    RETRIEVE_CMD: "Retrieve a result."
 }
 
 TABLE_COLS_BY_TYPE = {

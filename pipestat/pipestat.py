@@ -394,6 +394,29 @@ class PipestatManager(AttMap):
         self[DATA_KEY][self.name].setdefault(record_identifier, PXAM())
         self[DATA_KEY][self.name][record_identifier][result_identifier] = value
 
+    def retrieve(self, record_identifier, result_identifier=None):
+        """
+        Retrieve a result for a record.
+
+        If no result ID specified, results for the entire record will
+        be returned.
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to be retrieved
+        :return any | dict[any]: a single result or a mapping with all the
+            results reported for the record
+        """
+        if record_identifier not in self.data[self.name]:
+            raise PipestatDatabaseError(
+                f"Record '{record_identifier}' not found")
+        if result_identifier is None:
+            return self.data[self.name][record_identifier].to_dict()
+        if result_identifier not in self.data[self.name][record_identifier]:
+            raise PipestatDatabaseError(
+                f"Result '{result_identifier}' not found for record "
+                f"'{record_identifier}'")
+        return self.data[self.name][record_identifier][result_identifier]
+
     def remove(self, record_identifier, result_identifier=None):
         """
         Report a result.
@@ -582,5 +605,11 @@ def main():
             result_identifier=args.result_identifier,
             record_identifier=args.record_identifier
         )
+        sys.exit(0)
+    if args.command == RETRIEVE_CMD:
+        print(psm.retrieve(
+            result_identifier=args.result_identifier,
+            record_identifier=args.record_identifier
+        ))
         sys.exit(0)
 
