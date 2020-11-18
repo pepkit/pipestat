@@ -5,15 +5,11 @@ from psycopg2.extensions import connection
 from logging import getLogger
 from contextlib import contextmanager
 from copy import deepcopy
-from jsonschema import validate
-from collections.abc import Mapping
 
-import os
 import sys
 import logmuse
 from attmap import AttMap, PathExAttMap as PXAM
 from yacman import YacAttMap
-from ubiquerg import expandpath
 
 from .const import *
 from .exceptions import *
@@ -48,10 +44,11 @@ class LoggingCursor(psycopg2.extras.DictCursor):
 
 class PipestatManager(AttMap):
     """
-    Pipestat provides methods for a standardized reporting of pipeline
-    statistics. It formalizes a way for pipeline developers and downstream
-    tools developers to communicate -- results produced by a pipeline can
-    easily and reliably become an input for downstream analyses.
+    pipestat standardizes reporting of pipeline results. It formalizes a way
+    for pipeline developers and downstream tools developers to communicate --
+    results produced by a pipeline can easily and reliably become an input for
+    downstream analyses. The ovject exposes API for interacting with the results
+    can be backed by either a YAML-formatted file or a PostgreSQL database.
     """
     def __init__(self, name, schema_path, results_file=None, database_config=None):
         """
