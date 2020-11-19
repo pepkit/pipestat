@@ -97,13 +97,37 @@ class TestReporting:
             is_in_file(results_file_path, str(val))
 
 
+class TestRetrieval:
+    @pytest.mark.parametrize(
+        ["rec_id", "res_id", "val"],
+        [("sample1", "name_of_something", "test_name"),
+         ("sample1", "number_of_things", 2),
+         ("sample2", "number_of_things", 1),
+         ("sample2", "percentage_of_things", 10.1),
+         ("sample2", "name_of_something", "test_name")]
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_retrieve_basic(self, rec_id, res_id, val, config_file_path,
+                            results_file_path, schema_file_path, backend):
+        args = dict(schema_path=schema_file_path, name="test")
+        backend_data = {"database_config": config_file_path} if backend == "db"\
+            else {"results_file": results_file_path}
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        retrieved_val = psm.retrieve(
+            result_identifier=res_id,
+            record_identifier=rec_id
+        )
+        assert str(retrieved_val) == str(val)
+
+
 class TestRemoval:
     @pytest.mark.parametrize(
         ["rec_id", "res_id", "val"],
         [("sample2", "number_of_things", 1)]
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_remove_basic_db(self, rec_id, res_id, val, config_file_path,
+    def test_remove_basic(self, rec_id, res_id, val, config_file_path,
                              results_file_path, schema_file_path, backend):
         args = dict(schema_path=schema_file_path, name="test")
         backend_data = {"database_config": config_file_path} if backend == "db"\
