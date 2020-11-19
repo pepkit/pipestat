@@ -318,9 +318,9 @@ class PipestatManager(dict):
         with self.db_cursor as cur:
             cur.execute(statement, (values, record_identifier))
 
-    def check_record_exists(self, record_identifier, result_identifier):
+    def check_result_exists(self, record_identifier, result_identifier):
         """
-        Check if the record has been reported
+        Check if the result has been reported
 
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to check
@@ -330,6 +330,17 @@ class PipestatManager(dict):
         if self.name in self.data and \
                 record_identifier in self.data[self.name] and \
                 result_identifier in self.data[self.name][record_identifier]:
+            return True
+        return False
+
+    def check_record_exists(self, record_identifier):
+        """
+        Check if the record exists
+
+        :param str record_identifier: unique identifier of the record
+        :return bool: whether the record exists
+        """
+        if self.name in self.data and record_identifier in self.data[self.name]:
             return True
         return False
 
@@ -351,7 +362,7 @@ class PipestatManager(dict):
             raise SchemaError(
                 f"'{result_identifier}' is not a known result. Results defined "
                 f"in the schema are: {list(known_results)}.")
-        if self.check_record_exists(record_identifier, result_identifier):
+        if self.check_result_exists(record_identifier, result_identifier):
             _LOGGER.warning(
                 f"'{result_identifier}' exists for '{record_identifier}'")
             if not force_overwrite:
@@ -430,7 +441,10 @@ class PipestatManager(dict):
         :return bool: whether the result has been removed
         """
         rm_record = True if result_identifier is None else False
-        if result_identifier and not self.check_record_exists(
+        if not self.check_record_exists(record_identifier):
+            _LOGGER.error(f"Record '{record_identifier}' not found")
+            return False
+        if result_identifier and not self.check_result_exists(
                 record_identifier, result_identifier):
             _LOGGER.error(f"'{result_identifier}' has not been reported for "
                           f"'{record_identifier}'")

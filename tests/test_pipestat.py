@@ -1,7 +1,8 @@
 import pytest
 import os
 from tempfile import mkdtemp
-from shutil import copyfile
+from yaml import dump
+from collections import Mapping
 
 from pipestat.exceptions import *
 from pipestat import PipestatManager
@@ -43,10 +44,34 @@ class TestPipestatManagerInstantiation:
                 schema_path=schema_file_path
             ), PipestatManager)
 
+    def test_missing_cfg_data(self, schema_file_path):
+        """ Object constructor raises exception if cfg is missing data """
+        tmp_pth = os.path.join(mkdtemp(), "res.yml")
+        with open(tmp_pth, 'w') as file:
+            dump({"database": {"host": "localhost"}}, file)
+        with pytest.raises(MissingConfigDataError):
+            PipestatManager(
+                name="test",
+                database_config=tmp_pth,
+                schema_path=schema_file_path
+            )
+
     def test_unknown_backend(self, schema_file_path):
         """ either db config or results file path needs to be provided """
         with pytest.raises(MissingConfigDataError):
             PipestatManager(name="test", schema_path=schema_file_path)
+
+    def test_create_results_file(self, schema_file_path):
+        """ Results file is created if a nonexistent path provided """
+        tmp_res_file = os.path.join(mkdtemp(), "res.yml")
+        print(f"Temporary results file: {tmp_res_file}")
+        assert not os.path.exists(tmp_res_file)
+        PipestatManager(
+            name="test",
+            results_file=tmp_res_file,
+            schema_path=schema_file_path
+        )
+        assert os.path.exists(tmp_res_file)
 
     @pytest.mark.parametrize("pth", [["/$HOME/path.yaml"], 1])
     def test_wrong_class_results_file(self, schema_file_path, pth):
@@ -68,15 +93,26 @@ class TestPipestatManagerInstantiation:
         )
         assert "test" in psm.data
 
+    def test_str_representation(
+            self, results_file_path, schema_file_path):
+        """ Test string representation identifies number of records """
+        psm = PipestatManager(
+            name="test",
+            results_file=results_file_path,
+            schema_path=schema_file_path
+        )
+        assert f"Records count: {len(psm.data)}" in str(psm)
+
 
 class TestReporting:
     @pytest.mark.parametrize(
         ["rec_id", "res_id", "val"],
         [("sample1", "name_of_something", "test_name"),
-         ("sample1", "number_of_things", 2),
-         ("sample2", "number_of_things", 1),
+         ("sample1", "number_of_things", 1),
+         ("sample2", "number_of_things", 2),
          ("sample2", "percentage_of_things", 10.1),
-         ("sample2", "name_of_something", "test_name")]
+         ("sample2", "name_of_something", "test_name"),
+         ("sample3", "name_of_something", "test_name")]
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_report_basic(self, rec_id, res_id, val, config_file_path,
@@ -90,6 +126,30 @@ class TestReporting:
             result_identifier=res_id,
             record_identifier=rec_id,
             value=val
+        )
+        assert rec_id in psm.data["test"]
+        assert res_id in psm.data["test"][rec_id]
+        if backend == "file":
+            is_in_file(results_file_path, str(val))
+
+    @pytest.mark.parametrize(
+        ["rec_id", "res_id", "val"],
+        [("sample1", "number_of_things", 2),
+         ("sample2", "number_of_things", 1)]
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_report_overwrite(self, rec_id, res_id, val, config_file_path,
+                          schema_file_path, results_file_path, backend):
+        args = dict(schema_path=schema_file_path, name="test")
+        backend_data = {"database_config": config_file_path} if backend == "db"\
+            else {"results_file": results_file_path}
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        psm.report(
+            result_identifier=res_id,
+            record_identifier=rec_id,
+            value=val,
+            force_overwrite=True
         )
         assert rec_id in psm.data["test"]
         assert res_id in psm.data["test"][rec_id]
@@ -120,6 +180,37 @@ class TestRetrieval:
         )
         assert str(retrieved_val) == str(val)
 
+    @pytest.mark.parametrize("rec_id", ["sample1", "sample2"])
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_retrieve_whole_record(
+            self, rec_id, config_file_path, results_file_path,
+            schema_file_path, backend):
+        args = dict(schema_path=schema_file_path, name="test")
+        backend_data = {"database_config": config_file_path} if backend == "db"\
+            else {"results_file": results_file_path}
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        assert isinstance(psm.retrieve(record_identifier=rec_id), Mapping)
+
+    @pytest.mark.parametrize(
+        ["rec_id", "res_id"],
+        [("nonexistent", "name_of_something"), ("sample1", "nonexistent")]
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_retrieve_nonexistent(
+            self, rec_id, res_id, config_file_path, results_file_path,
+            schema_file_path, backend):
+        args = dict(schema_path=schema_file_path, name="test")
+        backend_data = {"database_config": config_file_path} if backend == "db"\
+            else {"results_file": results_file_path}
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        with pytest.raises(PipestatDatabaseError):
+            psm.retrieve(
+                result_identifier=res_id,
+                record_identifier=rec_id
+            )
+
 
 class TestRemoval:
     @pytest.mark.parametrize(
@@ -142,7 +233,9 @@ class TestRemoval:
 
     @pytest.mark.parametrize("rec_id", ["sample1", "sample2"])
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_remove_record(self, rec_id, schema_file_path, config_file_path, results_file_path, backend):
+    def test_remove_record(
+            self, rec_id, schema_file_path, config_file_path,
+            results_file_path, backend):
         args = dict(schema_path=schema_file_path, name="test")
         backend_data = {"database_config": config_file_path} if backend == "db"\
             else {"results_file": results_file_path}
@@ -150,3 +243,53 @@ class TestRemoval:
         psm = PipestatManager(**args)
         psm.remove(record_identifier=rec_id)
         assert rec_id not in psm.data["test"]
+
+    @pytest.mark.parametrize(
+        ["rec_id", "res_id"],
+        [("sample2", "nonexistent"),
+         ("sample2", "bogus")]
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_remove_nonexistent_result(
+            self, rec_id, res_id, schema_file_path, config_file_path,
+            results_file_path, backend):
+        args = dict(schema_path=schema_file_path, name="test")
+        backend_data = {"database_config": config_file_path} if backend == "db"\
+            else {"results_file": results_file_path}
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        assert not psm.remove(
+            record_identifier=rec_id,
+            result_identifier=res_id
+        )
+
+    @pytest.mark.parametrize("rec_id", ["nonexistent", "bogus"])
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_remove_nonexistent_record(
+            self, rec_id, schema_file_path, config_file_path,
+            results_file_path, backend):
+        args = dict(schema_path=schema_file_path, name="test")
+        backend_data = {"database_config": config_file_path} if backend == "db"\
+            else {"results_file": results_file_path}
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        assert not psm.remove(record_identifier=rec_id)
+
+    @pytest.mark.parametrize(
+        ["rec_id", "res_id"],
+        [("sample3", "name_of_something")]
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_last_result_removal_removes_record(
+            self, rec_id, res_id, schema_file_path, config_file_path,
+            results_file_path, backend):
+        args = dict(schema_path=schema_file_path, name="test")
+        backend_data = {"database_config": config_file_path} if backend == "db"\
+            else {"results_file": results_file_path}
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        assert psm.remove(
+            record_identifier=rec_id,
+            result_identifier=res_id
+        )
+        assert rec_id not in psm.data
