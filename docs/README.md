@@ -1,7 +1,7 @@
 ![Run pytests](https://github.com/pepkit/pipestat/workflows/Run%20pytests/badge.svg)
 [![codecov](https://codecov.io/gh/pepkit/pipestat/branch/master/graph/badge.svg?token=O07MXSQZ32)](https://codecov.io/gh/pepkit/pipestat)
-<br></br>
-<img src="docs/img/pipestat_logo.svg" class="img-header"> 
+
+<img src="https://raw.githubusercontent.com/pepkit/pipestat/master/docs/img/pipestat_logo.svg?sanitize=true" alt="pipestat" height="70"/><br>
 
 # What is this?
 
@@ -13,13 +13,15 @@ Thanks to a schema-derived specifications, results produced by a pipeline can ea
 
 # Quick start
 
-## Install
+This is how to report and then retrieve the reported result with `pipestat` using CLI and Python API. The examples below use a YAML file as the backend. 
+
+## Install pipestat
 
 ```console
 pip install pipestat
 ```
 
-## Report a result
+## Report result
 
 From command line:
 
@@ -34,7 +36,7 @@ import pipestat
 psm = pipestat.PipestatManager(name="namespace", results_file="results.yaml", schema_path="schema.yaml")
 psm.report(record_identifier="record_id", result_identifier="result_name", value=1.1)
 ```
-
+ 
 ## Retrieve a result
 
 From command line:

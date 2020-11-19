@@ -30,7 +30,7 @@ h4 .content {
 # Package `pipestat` Documentation
 
 ## <a name="PipestatManager"></a> Class `PipestatManager`
-Pipestat provides methods for a standardized reporting of pipeline statistics. It formalizes a way for pipeline developers and downstream tools developers to communicate -- results produced by a pipeline can easily and reliably become an input for downstream analyses.
+pipestat standardizes reporting of pipeline results. It formalizes a way for pipeline developers and downstream tools developers to communicate -- results produced by a pipeline can easily and reliably become an input for downstream analyses. The ovject exposes API for interacting with the results can be backed by either a YAML-formatted file or a PostgreSQL database.
 
 
 ```python
@@ -200,6 +200,27 @@ Result schema mappings
 #### Returns:
 
 - `dict`:  schemas that formalize the structure of each resultin a canonical jsonschema way
+
+
+
+
+```python
+def retrieve(self, record_identifier, result_identifier=None)
+```
+
+Retrieve a result for a record.
+
+If no result ID specified, results for the entire record will
+be returned.
+#### Parameters:
+
+- `record_identifier` (`str`):  unique identifier of the record
+- `result_identifier` (`str`):  name of the result to be retrieved
+
+
+#### Returns:
+
+- `any | dict[any]`:  a single result or a mapping with all theresults reported for the record
 
 
 

@@ -109,7 +109,7 @@ def schema_to_columns(schema):
     :return list[str]: columns to inial ize database table with
     """
     columns = []
-    for colname, col_dict in schema[SCHEMA_PROP_KEY].items():
+    for colname, col_dict in schema.items():
         if col_dict[SCHEMA_TYPE_KEY] not in TABLE_COLS_BY_TYPE:
             _LOGGER.warning(f"'{col_dict[SCHEMA_TYPE_KEY]}' result type defined"
                             f" in schema is not supported")
@@ -140,7 +140,7 @@ def validate_type(value, schema, strict_type=False):
         if schema[SCHEMA_TYPE_KEY] != "object":
             value = CLASSES_BY_TYPE[schema[SCHEMA_TYPE_KEY]](value)
         else:
-            for prop, prop_dict in schema[SCHEMA_PROP_KEY].items():
+            for prop, prop_dict in schema.items():
                 try:
                     cls_fun = CLASSES_BY_TYPE[prop_dict[SCHEMA_TYPE_KEY]]
                     value[prop] = cls_fun(value[prop])

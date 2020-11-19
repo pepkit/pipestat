@@ -180,7 +180,7 @@ class PipestatManager(AttMap):
             data = cur.fetchall()
         _LOGGER.info(f"Reading data from database for '{self.name}' namespace")
         for record in data:
-            for result_id in list(self.schema[SCHEMA_PROP_KEY].keys()):
+            for result_id in list(self.schema.keys()):
                 record_id = record[RECORD_ID]
                 value = record[result_id]
                 if value is not None:
@@ -486,19 +486,17 @@ class PipestatManager(AttMap):
         """
         schema = deepcopy(self.schema)
         _LOGGER.debug(f"Validating schema: {schema}")
-        assert SCHEMA_PROP_KEY in schema, \
-            SchemaError(f"Schema is missing '{SCHEMA_PROP_KEY}' section")
-        assert isinstance(schema[SCHEMA_PROP_KEY], Mapping), \
-            SchemaError(f"'{SCHEMA_PROP_KEY}' section in the schama has to be a "
-                        f"{Mapping.__class__.__name__}")
+        assert isinstance(schema, Mapping), \
+            SchemaError(f"the scheama has to be a {Mapping.__class__.__name__}")
         self[RES_SCHEMAS_KEY] = {}
-        for k, v in schema[SCHEMA_PROP_KEY].items():
+        for k, v in schema.items():
             assert SCHEMA_TYPE_KEY in v, \
                 SchemaError(f"Result '{k}' is missing '{SCHEMA_TYPE_KEY}' key")
             if v[SCHEMA_TYPE_KEY] in CANONICAL_TYPES.keys():
-                schema[SCHEMA_PROP_KEY][k].update(CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]])
+                schema.setdefault(k, {})
+                schema[k].update(CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]])
             self[RES_SCHEMAS_KEY].setdefault(k, {})
-            self[RES_SCHEMAS_KEY][k] = schema[SCHEMA_PROP_KEY][k]
+            self[RES_SCHEMAS_KEY][k] = schema[k]
 
     def check_connection(self):
         """
@@ -579,7 +577,7 @@ def main():
     )
     if args.command == REPORT_CMD:
         value = args.value
-        result_metadata = psm.schema[SCHEMA_PROP_KEY][args.result_identifier]
+        result_metadata = psm.schema[args.result_identifier]
         if result_metadata[SCHEMA_TYPE_KEY] in ["object", "image", "file"] \
                 and os.path.exists(expandpath(value)):
             from json import load

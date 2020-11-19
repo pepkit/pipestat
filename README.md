@@ -13,7 +13,9 @@ Thanks to a schema-derived specifications, results produced by a pipeline can ea
 
 # Quick start
 
-## Install
+This is how to report and then retrieve the reported result with `pipestat` using CLI and Python API. The examples below use a YAML file as the backend. 
+
+## Install pipestat
 
 ```console
 pip install pipestat
