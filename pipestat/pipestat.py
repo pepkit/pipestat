@@ -8,7 +8,7 @@ from copy import deepcopy
 
 import sys
 import logmuse
-from attmap import AttMap, PathExAttMap as PXAM
+from attmap import AttMap, PathExAttMap as PXAM, AttMapLike
 from yacman import YacAttMap
 
 from .const import *
@@ -42,7 +42,7 @@ class LoggingCursor(psycopg2.extras.DictCursor):
             _LOGGER.debug(f"Executed query: {self.query}")
 
 
-class PipestatManager(AttMap):
+class PipestatManager(dict):
     """
     pipestat standardizes reporting of pipeline results. It formalizes a way
     for pipeline developers and downstream tools developers to communicate --
@@ -110,7 +110,7 @@ class PipestatManager(AttMap):
 
         :return str: Namespace the object writes the results to
         """
-        return self._name
+        return self[NAME_KEY] if NAME_KEY in self else None
 
     @property
     def schema(self):
@@ -119,7 +119,7 @@ class PipestatManager(AttMap):
 
         :return dict: schema that formalizes the results structure
         """
-        return getattr(self, SCHEMA_KEY, None)
+        return self[SCHEMA_KEY] if SCHEMA_KEY in self else None
 
     @property
     def result_schemas(self):
@@ -129,7 +129,7 @@ class PipestatManager(AttMap):
         :return dict: schemas that formalize the structure of each result
             in a canonical jsonschema way
         """
-        return getattr(self, RES_SCHEMAS_KEY, None)
+        return self[RES_SCHEMAS_KEY] if RES_SCHEMAS_KEY in self else None
 
     @property
     def file(self):
@@ -138,7 +138,7 @@ class PipestatManager(AttMap):
 
         :return str: file path that the object is reporting the results into
         """
-        return getattr(self, FILE_KEY, None)
+        return self[FILE_KEY] if FILE_KEY in self else None
 
     @property
     def data(self):
@@ -147,7 +147,7 @@ class PipestatManager(AttMap):
 
         :return yacman.YacAttMap: the object that stores the reported data
         """
-        return getattr(self, DATA_KEY, None)
+        return self[DATA_KEY] if DATA_KEY in self else None
 
     @property
     @contextmanager
@@ -357,7 +357,7 @@ class PipestatManager(AttMap):
             if not force_overwrite:
                 return False
         validate_type(value=value,
-                      schema=self.result_schemas[result_identifier].to_dict(),
+                      schema=self.result_schemas[result_identifier],
                       strict_type=strict_type)
         if self.file:
             self.data.make_writable()
@@ -410,7 +410,7 @@ class PipestatManager(AttMap):
             raise PipestatDatabaseError(
                 f"Record '{record_identifier}' not found")
         if result_identifier is None:
-            return self.data[self.name][record_identifier].to_dict()
+            return self.data[self.name][record_identifier]
         if result_identifier not in self.data[self.name][record_identifier]:
             raise PipestatDatabaseError(
                 f"Result '{result_identifier}' not found for record "
@@ -485,9 +485,9 @@ class PipestatManager(AttMap):
         :raises SchemaError: if any schema format issue is detected
         """
         schema = deepcopy(self.schema)
-        _LOGGER.debug(f"Validating schema: {schema}")
-        assert isinstance(schema, Mapping), \
-            SchemaError(f"the scheama has to be a {Mapping.__class__.__name__}")
+        _LOGGER.debug(f"Validating input schema")
+        assert isinstance(schema, dict), \
+            SchemaError(f"The schema has to be a {dict.__class__.__name__}")
         self[RES_SCHEMAS_KEY] = {}
         for k, v in schema.items():
             assert SCHEMA_TYPE_KEY in v, \
@@ -507,8 +507,8 @@ class PipestatManager(AttMap):
         if self.file is not None:
             raise PipestatDatabaseError(f"The {self.__class__.__name__} object "
                                         f"is not backed by a database")
-        if hasattr(self, DB_CONNECTION_KEY) and isinstance(
-                getattr(self, DB_CONNECTION_KEY), psycopg2.extensions.connection):
+        if DB_CONNECTION_KEY in self and isinstance(
+                self[DB_CONNECTION_KEY], psycopg2.extensions.connection):
             return True
         return False
 

@@ -1,0 +1,11 @@
+# Database config specification
+
+
+```yaml
+database:
+  name: pipestat-test
+  user: postgres
+  password: pipestat-password
+  host: localhost
+  port: 5432
+```
