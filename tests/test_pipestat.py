@@ -74,6 +74,24 @@ class TestPipestatManagerInstantiation:
         )
         assert os.path.exists(tmp_res_file)
 
+    def test_use_other_namespace_file(self, schema_file_path):
+        """ Results file can be used with just one namespace """
+        tmp_res_file = os.path.join(mkdtemp(), "res.yml")
+        print(f"Temporary results file: {tmp_res_file}")
+        assert not os.path.exists(tmp_res_file)
+        PipestatManager(
+            name="test",
+            results_file=tmp_res_file,
+            schema_path=schema_file_path
+        )
+        assert os.path.exists(tmp_res_file)
+        with pytest.raises(PipestatDatabaseError):
+            PipestatManager(
+                name="new_test",
+                results_file=tmp_res_file,
+                schema_path=schema_file_path
+            )
+
     @pytest.mark.parametrize("pth", [["/$HOME/path.yaml"], 1])
     def test_wrong_class_results_file(self, schema_file_path, pth):
         """ Input string that is not a file path raises an informative error """

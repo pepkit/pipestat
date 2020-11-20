@@ -214,11 +214,10 @@ class PipestatManager(dict):
 
     def _init_results_file(self):
         """
-        Initialize postgreSQL table based on the provided schema,
-        if it does not exist. Read the data stored in the database into the
-        memory otherwise.
+        Initialize YAML results file if it does not exist.
+        Read the data stored in the existing file into the memory otherwise.
 
-        :return bool: whether the table has been created
+        :return bool: whether the file has been created
         """
         if not os.path.exists(self.file):
             _LOGGER.info(f"Initializing results file '{self.file}'")
