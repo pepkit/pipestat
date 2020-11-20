@@ -78,27 +78,7 @@ def build_argparser(desc):
             "-d", "--data", action="store_true",
             help="Whether to display the data")
 
-    # sps[REPORT_CMD].add_argument(
-    #         "-s", "--strict-type", action="store_true",
-    #         help="whether the result should be casted to the class required by "
-    #              "the declared type and the effect of this operation verified")
-
     return parser
-
-
-def mk_list_of_str(x):
-    """
-    Make sure the input is a list of strings
-    :param str | list[str] | falsy x: input to covert
-    :return list[str]: converted input
-    :raise TypeError: if the argument cannot be converted
-    """
-    if not x or isinstance(x, list):
-        return x
-    if isinstance(x, str):
-        return [x]
-    raise TypeError(f"String or list of strings required as input. Got: "
-                    f"{x.__class__.__name__}")
 
 
 def schema_to_columns(schema):
@@ -169,14 +149,3 @@ def read_yaml_data(path, what):
     _LOGGER.debug(f"Reading {what} from '{path}'")
     with open(path, "r") as f:
         return path, safe_load(f)
-
-
-
-
-
-
-
-
-
-
-

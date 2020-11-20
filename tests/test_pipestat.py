@@ -3,6 +3,7 @@ import os
 from tempfile import mkdtemp
 from yaml import dump
 from collections import Mapping
+from jsonschema import ValidationError
 
 from pipestat.exceptions import *
 from pipestat import PipestatManager
@@ -155,6 +156,38 @@ class TestReporting:
         assert res_id in psm.data["test"][rec_id]
         if backend == "file":
             is_in_file(results_file_path, str(val))
+
+    @pytest.mark.parametrize(
+        ["rec_id", "res_id", "val", "success"],
+        [("sample1", "number_of_things", "2", True),
+         ("sample2", "number_of_things", [1, 2, 3], False)]
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_report_type_casting(
+            self, rec_id, res_id, val, config_file_path, schema_file_path,
+            results_file_path, backend, success):
+        args = dict(schema_path=schema_file_path, name="test")
+        backend_data = {"database_config": config_file_path} if backend == "db"\
+            else {"results_file": results_file_path}
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        if success:
+            psm.report(
+                result_identifier=res_id,
+                record_identifier=rec_id,
+                value=val,
+                strict_type=False,
+                force_overwrite=True
+            )
+        else:
+            with pytest.raises((ValidationError, TypeError)):
+                psm.report(
+                    result_identifier=res_id,
+                    record_identifier=rec_id,
+                    value=val,
+                    strict_type=False,
+                    force_overwrite=True
+                )
 
 
 class TestRetrieval:
