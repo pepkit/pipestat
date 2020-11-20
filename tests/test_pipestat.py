@@ -45,6 +45,17 @@ class TestPipestatManagerInstantiation:
                 schema_path=schema_file_path
             ), PipestatManager)
 
+    def test_schema_req_for_db(self, config_file_path):
+        """
+        Object constructor raises exception if schema is not provided
+        with database configuration file
+        """
+        with pytest.raises(SchemaNotFoundError):
+            PipestatManager(
+                name="test",
+                database_config=config_file_path
+            )
+
     def test_missing_cfg_data(self, schema_file_path):
         """ Object constructor raises exception if cfg is missing data """
         tmp_pth = os.path.join(mkdtemp(), "res.yml")
@@ -58,7 +69,7 @@ class TestPipestatManagerInstantiation:
             )
 
     def test_unknown_backend(self, schema_file_path):
-        """ either db config or results file path needs to be provided """
+        """ Either db config or results file path needs to be provided """
         with pytest.raises(MissingConfigDataError):
             PipestatManager(name="test", schema_path=schema_file_path)
 
@@ -120,10 +131,20 @@ class TestPipestatManagerInstantiation:
             results_file=results_file_path,
             schema_path=schema_file_path
         )
-        assert f"Records count: {len(psm.data)}" in str(psm)
+        assert f"Records count: {len(psm.data[psm.name])}" in str(psm)
 
 
 class TestReporting:
+    def test_report_requires_schema(self, results_file_path):
+        """ Report fails if schema not provided, even for a file backend """
+        psm = PipestatManager(name="test", results_file=results_file_path)
+        with pytest.raises(SchemaNotFoundError):
+            psm.report(
+                result_identifier="name_of_something",
+                record_identifier="sample1",
+                value="test_name"
+            )
+
     @pytest.mark.parametrize(
         ["rec_id", "res_id", "val"],
         [("sample1", "name_of_something", "test_name"),
