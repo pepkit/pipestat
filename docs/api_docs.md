@@ -35,7 +35,7 @@ pipestat standardizes reporting of pipeline results. It formalizes a way for pip
 
 
 ```python
-def __init__(self, name, schema_path, results_file=None, database_config=None)
+def __init__(self, name, schema_path=None, results_file=None, database_config=None)
 ```
 
 Initialize the object
