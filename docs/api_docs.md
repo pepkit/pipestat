@@ -62,10 +62,27 @@ Check whether a PostgreSQL connection has been established
 
 
 ```python
-def check_record_exists(self, record_identifier, result_identifier)
+def check_record_exists(self, record_identifier)
 ```
 
-Check if the record has been reported
+Check if the record exists
+#### Parameters:
+
+- `record_identifier` (`str`):  unique identifier of the record
+
+
+#### Returns:
+
+- `bool`:  whether the record exists
+
+
+
+
+```python
+def check_result_exists(self, record_identifier, result_identifier)
+```
+
+Check if the result has been reported
 #### Parameters:
 
 - `record_identifier` (`str`):  unique identifier of the record

@@ -33,21 +33,21 @@ def build_argparser(desc):
 
     # remove, report and inspect
     for cmd in [REMOVE_CMD, REPORT_CMD, INSPECT_CMD, RETRIEVE_CMD]:
-        db_group = sps[cmd].add_mutually_exclusive_group(required=True)
-        db_group.add_argument(
+        storage_group = sps[cmd].add_mutually_exclusive_group(required=True)
+        storage_group.add_argument(
             "-f", "--results-file", type=str, metavar="F",
             help=f"Path to the YAML file where the results will be stored. "
                  f"This file will be used as {PKG_NAME} backend and to restore"
                  f" the reported results across sesssions")
-        db_group.add_argument(
+        storage_group.add_argument(
             "-c", "--database-config", type=str, metavar="C",
             help=f"Path to the YAML file with PostgreSQL database "
                  f"configuration. Please refer to the documentation for the "
                  f"file format requirements.")
         sps[cmd].add_argument(
-            "-s", "--schema", required=True, metavar="S",
-            help="Path to the schema that defines the results that can be "
-                 "reported")
+            "-s", "--schema", required=True if cmd == REPORT_CMD else False,
+            type=str, metavar="S", help="Path to the schema that defines the "
+                                        "results that can be eported")
 
     # remove and report
     for cmd in [REMOVE_CMD, REPORT_CMD, RETRIEVE_CMD]:

@@ -50,7 +50,7 @@ class PipestatManager(dict):
     downstream analyses. The ovject exposes API for interacting with the results
     can be backed by either a YAML-formatted file or a PostgreSQL database.
     """
-    def __init__(self, name, schema_path, results_file=None, database_config=None):
+    def __init__(self, name, schema_path=None, results_file=None, database_config=None):
         """
         Initialize the object
 
@@ -72,8 +72,9 @@ class PipestatManager(dict):
         super(PipestatManager, self).__init__()
 
         self[NAME_KEY] = str(name)
-        _, self[SCHEMA_KEY] = read_yaml_data(schema_path, "schema")
-        self.validate_schema()
+        if schema_path:
+            _, self[SCHEMA_KEY] = read_yaml_data(schema_path, "schema")
+            self.validate_schema()
         if results_file:
             self[FILE_KEY] = expandpath(results_file)
             self._init_results_file()
@@ -96,7 +97,7 @@ class PipestatManager(dict):
         :return str: string representation of the object
         """
         res = f"{self.__class__.__name__} ({self.name})"
-        records_count = len(self[DATA_KEY]) if self.file \
+        records_count = len(self.data[self.name]) if self.file \
             else self._count_rows(table_name=self.name)
         res += "\nBackend: {}".format(
             f"file ({self.file})" if self.file else "PostgreSQL")
@@ -199,6 +200,8 @@ class PipestatManager(dict):
 
         :return bool: whether the table has been created
         """
+        if self.schema is None:
+            raise SchemaNotFoundError("initialize the database table")
         if self._check_table_exists(table_name=self.name):
             _LOGGER.debug(
                 f"Table '{self.name}' already exists in the database")
@@ -356,6 +359,8 @@ class PipestatManager(dict):
         :param bool force_overwrite: whether to overwrite the existing record
         :return bool: whether the result has been reported
         """
+        if self.schema is None:
+            raise SchemaNotFoundError("report results")
         known_results = self.result_schemas.keys()
         if result_identifier not in known_results:
             raise SchemaError(
@@ -582,6 +587,8 @@ def main():
     global _LOGGER
     _LOGGER = logmuse.logger_via_cli(args, make_root=True)
     _LOGGER.debug("Args namespace:\n{}".format(args))
+    if args.database_config and not args.schema:
+        parser.error("the following arguments are required: -s/--schema")
     psm = PipestatManager(
         name=args.namespace,
         schema_path=args.schema,

@@ -4,7 +4,8 @@ import abc
 from .const import *
 
 __all__ = ["InvalidTypeError", "IncompatibleClassError", "PipestatError",
-           "PipestatDatabaseError", "MissingConfigDataError", "SchemaError"]
+           "PipestatDatabaseError", "MissingConfigDataError", "SchemaError",
+           "SchemaNotFoundError"]
 
 
 class PipestatError(Exception):
@@ -16,6 +17,14 @@ class SchemaError(PipestatError):
     """ Schema error """
     def __init__(self, msg):
         super(SchemaError, self).__init__(msg)
+
+
+class SchemaNotFoundError(SchemaError):
+    """ Schema not found error """
+    def __init__(self, msg):
+        txt = f"Results schema not found. The schema is required to {msg}. " \
+              f"It needs to be supplied to the object constructor."
+        super(SchemaNotFoundError, self).__init__(txt)
 
 
 class MissingConfigDataError(PipestatError):
