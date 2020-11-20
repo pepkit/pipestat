@@ -462,6 +462,8 @@ class PipestatManager(dict):
             val_backup = \
                 self[DATA_KEY][self.name][record_identifier][result_identifier]
             del self[DATA_KEY][self.name][record_identifier][result_identifier]
+            _LOGGER.info(f"Removed result '{result_identifier}' for record "
+                         f"'{record_identifier}' from '{self.name}' namespace")
             if not self[DATA_KEY][self.name][record_identifier]:
                 _LOGGER.info(f"Last result removed for '{record_identifier}'. "
                              f"Removing the record")
@@ -614,8 +616,10 @@ def main():
         )
         sys.exit(0)
     if args.command == INSPECT_CMD:
+        print("\n")
         print(psm)
         if args.data:
+            print("\nData:")
             print(psm.data)
         sys.exit(0)
     if args.command == REMOVE_CMD:

@@ -34,7 +34,7 @@ pipestat standardizes reporting of pipeline results. It formalizes a way for pip
 
 
 ```python
-def __init__(self, name, schema_path, results_file=None, database_config=None)
+def __init__(self, name, schema_path=None, results_file=None, database_config=None)
 ```
 
 Initialize the object
@@ -61,10 +61,27 @@ Check whether a PostgreSQL connection has been established
 
 
 ```python
-def check_record_exists(self, record_identifier, result_identifier)
+def check_record_exists(self, record_identifier)
 ```
 
-Check if the record has been reported
+Check if the record exists
+#### Parameters:
+
+- `record_identifier` (`str`):  unique identifier of the record
+
+
+#### Returns:
+
+- `bool`:  whether the record exists
+
+
+
+
+```python
+def check_result_exists(self, record_identifier, result_identifier)
+```
+
+Check if the result has been reported
 #### Parameters:
 
 - `record_identifier` (`str`):  unique identifier of the record

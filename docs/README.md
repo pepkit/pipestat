@@ -42,14 +42,14 @@ psm.report(record_identifier="record_id", result_identifier="result_name", value
 From command line:
 
 ```console
-pipestat retrieve -f results.yaml -n namespace -r record_id -i result_name -s schema.yaml
+pipestat retrieve -f results.yaml -n namespace -r record_id -i result_name
 ```
 
 From Python:
 
 ```python
 import pipestat
-psm = pipestat.PipestatManager(name="namespace", results_file="results.yaml", schema_path="schema.yaml")
+psm = pipestat.PipestatManager(name="namespace", results_file="results.yaml")
 psm.retrieve(record_identifier="record_id", result_identifier="result_name")
 ```
  
