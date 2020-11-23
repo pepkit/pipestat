@@ -191,7 +191,7 @@ will be removed.
 
 
 ```python
-def report(self, record_identifier, result_identifier, value, force_overwrite=False, strict_type=True)
+def report(self, record_identifier, result_identifier, value, force_overwrite=False, strict_type=True, return_id=False)
 ```
 
 Report a result.

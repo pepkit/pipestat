@@ -290,13 +290,10 @@ class PipestatManager(dict):
         :param str record_identifier: unique identifier of the record, value to
             in 'record_identifier' column to look for to determine if the record
             already exists in the table
-        :param dict value: a mapping of pair of table column name and
-            respective value to be inserted to the database
+        :param dict value: a mapping of pair of table column names and
+            respective values to be inserted to the database
         :return int: id of the row just inserted
         """
-        # TODO: allow multi-value insertions
-        # placeholder = sql.SQL(','.join(['%s'] * len(value)))
-        # TODO: allow returning updated/inserted record ID
         if not self._check_record(condition_col=RECORD_ID,
                                   condition_val=record_identifier):
             with self.db_cursor as cur:
@@ -304,21 +301,24 @@ class PipestatManager(dict):
                     f"INSERT INTO {self.name} ({RECORD_ID}) VALUES (%s)",
                     (record_identifier, )
                 )
-        column = list(value.keys())
-        assert len(column) == 1, \
-            NotImplementedError("Can't report more than one column at once")
-        value = list(value.values())[0]
-        query = "UPDATE {table_name} SET {column}=%s " \
-                "WHERE {record_id_col}=%s"
-        statement = sql.SQL(query).format(
-            column=sql.Identifier(column[0]),
-            table_name=sql.Identifier(self.name),
-            record_id_col=sql.SQL(RECORD_ID)
+        # prep a list of SQL objects with column-named value placeholders
+        columns = sql.SQL(",").join([sql.SQL("{}=%({})s").format(
+            sql.Identifier(k), sql.SQL(k)) for k in list(value.keys())])
+        # construct the query template to execute
+        query = sql.SQL("UPDATE {n} SET {c} WHERE {id}=%({id})s RETURNING id").\
+            format(
+            n=sql.Identifier(self.name),
+            c=columns,
+            id=sql.SQL(RECORD_ID)
         )
-        # convert mappings to JSON for postgres
-        values = Json(value) if isinstance(value, Mapping) else value
+        # preprocess the values, dict -> Json
+        values = {k: Json(v) if isinstance(v, Mapping) else v
+                  for k, v in value.items()}
+        # add record_identifier column, which is specified outside of values
+        values.update({RECORD_ID: record_identifier})
         with self.db_cursor as cur:
-            cur.execute(statement, (values, record_identifier))
+            cur.execute(query, values)
+            return cur.fetchone()[0]
 
     def check_result_exists(self, record_identifier, result_identifier):
         """
@@ -356,6 +356,9 @@ class PipestatManager(dict):
             already exists
         :param any value: value to be reported
         :param str result_identifier: name of the result to be reported
+        :param bool strict_type: whether the type of the reported values should
+            remain as is. Pipestat would attempt to convert to the
+            schema-defined one otherwise
         :param bool force_overwrite: whether to overwrite the existing record
         :return bool: whether the result has been reported
         """
@@ -382,8 +385,8 @@ class PipestatManager(dict):
             self.data.make_readonly()
         if self.file is None:
             try:
-                self._report_postgres(value={result_identifier: value},
-                                      record_identifier=record_identifier)
+                id = self._report_postgres(value={result_identifier: value},
+                                           record_identifier=record_identifier)
             except Exception as e:
                 _LOGGER.error(f"Could not insert the result into the database. "
                               f"Exception: {e}")
