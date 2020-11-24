@@ -361,3 +361,61 @@ class TestRemoval:
             result_identifier=res_id
         )
         assert rec_id not in psm.data
+
+
+class TestNoRecordID:
+    @pytest.mark.parametrize("val",
+        [{"name_of_something": "test_name"},
+         {"number_of_things": 1},
+         {"percentage_of_things": 10.1}]
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_report(self, val, config_file_path, schema_file_path,
+                          results_file_path, backend):
+        REC_ID = "constant_record_id"
+        args = dict(schema_path=schema_file_path, name="test",
+                    record_identifier=REC_ID)
+        backend_data = {"database_config": config_file_path} if backend == "db"\
+            else {"results_file": results_file_path}
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        psm.report(values=val)
+        assert REC_ID in psm.data["test"]
+        assert list(val.keys())[0] in psm.data["test"][REC_ID]
+        if backend == "file":
+            is_in_file(results_file_path, str(list(val.values())[0]))
+
+    @pytest.mark.parametrize("val",
+        [{"name_of_something": "test_name"},
+         {"number_of_things": 1},
+         {"percentage_of_things": 10.1}]
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_retrieve(self, val, config_file_path, schema_file_path,
+                      results_file_path, backend):
+        REC_ID = "constant_record_id"
+        args = dict(schema_path=schema_file_path, name="test",
+                    record_identifier=REC_ID)
+        backend_data = {"database_config": config_file_path} if backend == "db"\
+            else {"results_file": results_file_path}
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        retrieved_val = psm.retrieve(result_identifier=list(val.keys())[0])
+        assert str(retrieved_val) == str(list(val.values())[0])
+
+    @pytest.mark.parametrize("val",
+        [{"name_of_something": "test_name"},
+         {"number_of_things": 1},
+         {"percentage_of_things": 10.1}]
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_remove(self, val, config_file_path, schema_file_path,
+                    results_file_path, backend):
+        REC_ID = "constant_record_id"
+        args = dict(schema_path=schema_file_path, name="test",
+                    record_identifier=REC_ID)
+        backend_data = {"database_config": config_file_path} if backend == "db"\
+            else {"results_file": results_file_path}
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        assert psm.remove(result_identifier=list(val.keys())[0])

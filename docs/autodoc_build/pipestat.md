@@ -203,23 +203,22 @@ will be removed.
 
 
 ```python
-def report(self, value, result_identifier=None, record_identifier=None, force_overwrite=False, strict_type=True, return_id=False)
+def report(self, values, record_identifier=None, force_overwrite=False, strict_type=True, return_id=False)
 ```
 
 Report a result.
 #### Parameters:
 
+- `values` (`dict[str, any]`):  dictionary of result-value pairs
 - `record_identifier` (`str`):  unique identifier of the record, value toin 'record_identifier' column to look for to determine if the record already exists
-- `value` (`any`):  value to be reported
-- `result_identifier` (`str`):  name of the result to be reported
-- `strict_type` (`bool`):  whether the type of the reported values shouldremain as is. Pipestat would attempt to convert to the schema-defined one otherwise
 - `force_overwrite` (`bool`):  whether to overwrite the existing record
+- `strict_type` (`bool`):  whether the type of the reported values shouldremain as is. Pipestat would attempt to convert to the schema-defined one otherwise
 - `return_id` (`bool`):  PostgreSQL IDs of the records that have beenupdated. Not available with results file as backend
 
 
 #### Returns:
 
-- `bool`:  whether the result has been reported
+- `bool | int`:  whether the result has been reported or the ID ofthe updated record in the table, if requested
 
 
 
