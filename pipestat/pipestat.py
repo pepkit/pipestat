@@ -8,7 +8,7 @@ from copy import deepcopy
 
 import sys
 import logmuse
-from attmap import AttMap, PathExAttMap as PXAM, AttMapLike
+from attmap import PathExAttMap as PXAM
 from yacman import YacAttMap
 
 from .const import *
@@ -385,23 +385,23 @@ class PipestatManager(dict):
             return True
         return False
 
-    def report(self, value, result_identifier=None, record_identifier=None,
-               force_overwrite=False, strict_type=True, return_id=False):
+    def report(self, values, record_identifier=None, force_overwrite=False,
+               strict_type=True, return_id=False):
         """
         Report a result.
 
+        :param dict[str, any] values: dictionary of result-value pairs
         :param str record_identifier: unique identifier of the record, value to
             in 'record_identifier' column to look for to determine if the record
             already exists
-        :param any value: value to be reported
-        :param str result_identifier: name of the result to be reported
+        :param bool force_overwrite: whether to overwrite the existing record
         :param bool strict_type: whether the type of the reported values should
             remain as is. Pipestat would attempt to convert to the
             schema-defined one otherwise
-        :param bool force_overwrite: whether to overwrite the existing record
         :param bool return_id: PostgreSQL IDs of the records that have been
             updated. Not available with results file as backend
-        :return bool: whether the result has been reported
+        :return bool | int: whether the result has been reported or the ID of
+            the updated record in the table, if requested
         """
         record_identifier = self._strict_record_id(record_identifier)
         if return_id and self.file is not None:
@@ -411,13 +411,7 @@ class PipestatManager(dict):
         if self.schema is None:
             raise SchemaNotFoundError("report results")
         known_results = self.result_schemas.keys()
-        if result_identifier is not None:
-            result_mapping = {result_identifier: value}
-        else:
-            result_mapping = value
-        result_identifiers = [result_identifier] \
-            if result_identifier is not None else list(result_mapping.keys())
-
+        result_identifiers = list(values.keys())
         for r in result_identifiers:
             if r not in known_results:
                 raise SchemaError(
@@ -432,13 +426,13 @@ class PipestatManager(dict):
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing}")
         for r in result_identifiers:
-            validate_type(value=result_mapping[r], schema=self.result_schemas[r],
+            validate_type(value=values[r], schema=self.result_schemas[r],
                           strict_type=strict_type)
         if self.file is not None:
             self.data.make_writable()
         self._report_data_element(
             record_identifier=record_identifier,
-            values=result_mapping
+            values=values
         )
         if self.file is not None:
             self.data.write()
@@ -447,7 +441,7 @@ class PipestatManager(dict):
             try:
                 updated_ids = self._report_postgres(
                     record_identifier=record_identifier,
-                    value=result_mapping
+                    value=values
                 )
             except Exception as e:
                 _LOGGER.error(f"Could not insert the result into the database. "
@@ -456,7 +450,7 @@ class PipestatManager(dict):
                     del self[DATA_KEY][self.name][record_identifier][r]
                 raise
         nl = "\n"
-        rep_strs = [f'{k}: {v}' for k, v in result_mapping.items()]
+        rep_strs = [f'{k}: {v}' for k, v in values.items()]
         _LOGGER.info(
             f"Reported records for '{record_identifier}' in '{self.name}' "
             f"namespace:{nl} - {(nl + ' - ').join(rep_strs)}")
@@ -486,7 +480,7 @@ class PipestatManager(dict):
 
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be retrieved
-        :return any | dict[any]: a single result or a mapping with all the
+        :return any | dict[str, any]: a single result or a mapping with all the
             results reported for the record
         """
         record_identifier = self._strict_record_id(record_identifier)
@@ -663,6 +657,7 @@ class PipestatManager(dict):
             f"constructor or as an argument to the method."
         )
 
+
 def main():
     """ Primary workflow """
     from inspect import getdoc
@@ -694,9 +689,8 @@ def main():
             with open(expandpath(value), "r") as json_file:
                 value = load(json_file)
         psm.report(
-            result_identifier=args.result_identifier,
             record_identifier=args.record_identifier,
-            value=value,
+            values={args.result_identifier: value},
             force_overwrite=args.overwrite,
             strict_type=not args.try_convert
         )

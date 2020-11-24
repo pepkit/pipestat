@@ -141,7 +141,7 @@ class TestReporting:
         with pytest.raises(SchemaNotFoundError):
             psm.report(
                 record_identifier="sample1",
-                value={"name_of_something": "test_name"}
+                values={"name_of_something": "test_name"}
             )
 
     @pytest.mark.parametrize(
@@ -163,7 +163,7 @@ class TestReporting:
         psm = PipestatManager(**args)
         psm.report(
             record_identifier=rec_id,
-            value=val
+            values=val
         )
         assert rec_id in psm.data["test"]
         assert list(val.keys())[0] in psm.data["test"][rec_id]
@@ -185,7 +185,7 @@ class TestReporting:
         psm = PipestatManager(**args)
         psm.report(
             record_identifier=rec_id,
-            value=val,
+            values=val,
             force_overwrite=True
         )
         assert rec_id in psm.data["test"]
@@ -211,7 +211,7 @@ class TestReporting:
         if success:
             psm.report(
                 record_identifier=rec_id,
-                value=val,
+                values=val,
                 strict_type=False,
                 force_overwrite=True
             )
@@ -219,7 +219,7 @@ class TestReporting:
             with pytest.raises((ValidationError, TypeError)):
                 psm.report(
                     record_identifier=rec_id,
-                    value=val,
+                    values=val,
                     strict_type=False,
                     force_overwrite=True
                 )
