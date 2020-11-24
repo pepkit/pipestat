@@ -42,6 +42,7 @@ RES_SCHEMAS_KEY = "_result_schemas"
 DATA_KEY = "_data"
 NAME_KEY = "_name"
 FILE_KEY = "_file"
+RECORD_ID_KEY = "_record_id"
 DB_CONNECTION_KEY = "_db_connnection"
 
 # schema keys

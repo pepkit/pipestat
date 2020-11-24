@@ -50,12 +50,16 @@ class PipestatManager(dict):
     downstream analyses. The ovject exposes API for interacting with the results
     can be backed by either a YAML-formatted file or a PostgreSQL database.
     """
-    def __init__(self, name, schema_path=None, results_file=None, database_config=None):
+    def __init__(self, name, record_identifier=None, schema_path=None,
+                 results_file=None, database_config=None):
         """
         Initialize the object
 
         :param str name: namespace to report into. This will be the DB table
             name if using DB as the object back-end
+        :param str record_identifier: record identifier to report for. This
+            creates a weak bound to the record, which can be overriden in
+            this object method calls
         :param str schema_path: path to the output schema that formalizes
             the results structure
         :param str results_file: YAML file to report into, if file is used as
@@ -72,6 +76,7 @@ class PipestatManager(dict):
         super(PipestatManager, self).__init__()
 
         self[NAME_KEY] = str(name)
+        self[RECORD_ID_KEY] = record_identifier
         if schema_path:
             _, self[SCHEMA_KEY] = read_yaml_data(schema_path, "schema")
             self.validate_schema()
@@ -111,7 +116,16 @@ class PipestatManager(dict):
 
         :return str: Namespace the object writes the results to
         """
-        return self[NAME_KEY] if NAME_KEY in self else None
+        return self._get_attr(NAME_KEY)
+
+    @property
+    def record_identifier(self):
+        """
+        Namespace the object writes the results to
+
+        :return str: Namespace the object writes the results to
+        """
+        return self._get_attr(RECORD_ID_KEY)
 
     @property
     def schema(self):
@@ -120,7 +134,7 @@ class PipestatManager(dict):
 
         :return dict: schema that formalizes the results structure
         """
-        return self[SCHEMA_KEY] if SCHEMA_KEY in self else None
+        return self._get_attr(SCHEMA_KEY)
 
     @property
     def result_schemas(self):
@@ -130,7 +144,7 @@ class PipestatManager(dict):
         :return dict: schemas that formalize the structure of each result
             in a canonical jsonschema way
         """
-        return self[RES_SCHEMAS_KEY] if RES_SCHEMAS_KEY in self else None
+        return self._get_attr(RES_SCHEMAS_KEY)
 
     @property
     def file(self):
@@ -139,7 +153,7 @@ class PipestatManager(dict):
 
         :return str: file path that the object is reporting the results into
         """
-        return self[FILE_KEY] if FILE_KEY in self else None
+        return self._get_attr(FILE_KEY)
 
     @property
     def data(self):
@@ -148,7 +162,7 @@ class PipestatManager(dict):
 
         :return yacman.YacAttMap: the object that stores the reported data
         """
-        return self[DATA_KEY] if DATA_KEY in self else None
+        return self._get_attr(DATA_KEY)
 
     @property
     @contextmanager
@@ -170,6 +184,15 @@ class PipestatManager(dict):
         finally:
             self.close_postgres_connection()
 
+    def _get_attr(self, attr):
+        """
+        Safely get the name of the selected attribute of this object
+
+        :param str attr: attr to select
+        :return:
+        """
+        return self[attr] if attr in self else None
+
     def _table_to_dict(self):
         """
         Create a dictionary from the database table data
@@ -181,16 +204,11 @@ class PipestatManager(dict):
             data = cur.fetchall()
         _LOGGER.info(f"Reading data from database for '{self.name}' namespace")
         for record in data:
-            for result_id in list(self.schema.keys()):
-                record_id = record[RECORD_ID]
-                value = record[result_id]
-                if value is not None:
-                    _LOGGER.debug(f"Saving result: {result_id}={value}")
-                    self._report_data_element(
-                        record_identifier=record_id,
-                        result_identifier=result_id,
-                        value=value
-                    )
+            record_id = record[RECORD_ID]
+            self._report_data_element(
+                record_identifier=record_id,
+                values=record
+            )
 
     def _init_postgres_table(self):
         """
@@ -320,7 +338,7 @@ class PipestatManager(dict):
             cur.execute(query, values)
             return cur.fetchone()[0]
 
-    def check_result_exists(self, record_identifier, result_identifier):
+    def check_result_exists(self, result_identifier,  record_identifier=None):
         """
         Check if the result has been reported
 
@@ -329,25 +347,45 @@ class PipestatManager(dict):
         :return bool: whether the specified result has been reported for the
             indicated record in current namespace
         """
+        record_identifier = self._strict_record_id(record_identifier)
         if self.name in self.data and \
                 record_identifier in self.data[self.name] and \
                 result_identifier in self.data[self.name][record_identifier]:
             return True
         return False
 
-    def check_record_exists(self, record_identifier):
+    def _check_which_results_exist(self, results, record_identifier=None):
+        """
+        Check which results have been reported
+
+        :param str record_identifier: unique identifier of the record
+        :param list[str] results: names of the results to check
+        :return bool: whether the specified result has been reported for the
+            indicated record in current namespace
+        """
+        record_identifier = self._strict_record_id(record_identifier)
+        existing = []
+        for r in results:
+            if self.name in self.data \
+                    and record_identifier in self.data[self.name] \
+                    and r in self.data[self.name][record_identifier]:
+                existing.append(r)
+        return existing
+
+    def check_record_exists(self, record_identifier=None):
         """
         Check if the record exists
 
         :param str record_identifier: unique identifier of the record
         :return bool: whether the record exists
         """
+        record_identifier = self._strict_record_id(record_identifier)
         if self.name in self.data and record_identifier in self.data[self.name]:
             return True
         return False
 
-    def report(self, record_identifier, result_identifier, value,
-               force_overwrite=False, strict_type=True):
+    def report(self, value, result_identifier=None, record_identifier=None,
+               force_overwrite=False, strict_type=True, return_id=False):
         """
         Report a result.
 
@@ -360,44 +398,67 @@ class PipestatManager(dict):
             remain as is. Pipestat would attempt to convert to the
             schema-defined one otherwise
         :param bool force_overwrite: whether to overwrite the existing record
+        :param bool return_id: PostgreSQL IDs of the records that have been
+            updated. Not available with results file as backend
         :return bool: whether the result has been reported
         """
+        record_identifier = self._strict_record_id(record_identifier)
+        if return_id and self.file is not None:
+            raise NotImplementedError(
+                "There is no way to return the updated object ID while using "
+                "results file as the object backend")
         if self.schema is None:
             raise SchemaNotFoundError("report results")
         known_results = self.result_schemas.keys()
-        if result_identifier not in known_results:
-            raise SchemaError(
-                f"'{result_identifier}' is not a known result. Results defined "
-                f"in the schema are: {list(known_results)}.")
-        if self.check_result_exists(record_identifier, result_identifier):
+        if result_identifier is not None:
+            result_mapping = {result_identifier: value}
+            result_identifiers = [result_identifier] \
+                if result_identifier is not None else list(result_mapping.keys())
+        else:
+            result_mapping = value
+
+        for r in result_identifiers:
+            if r not in known_results:
+                raise SchemaError(
+                    f"'{r}' is not a known result. Results defined in the "
+                    f"schema are: {list(known_results)}.")
+        existing = self._check_which_results_exist(
+            record_identifier=record_identifier, results=result_identifiers)
+        if existing:
             _LOGGER.warning(
-                f"'{result_identifier}' exists for '{record_identifier}'")
+                f"These results exist for '{record_identifier}': {existing}")
             if not force_overwrite:
                 return False
-        validate_type(value=value,
-                      schema=self.result_schemas[result_identifier],
-                      strict_type=strict_type)
-        if self.file:
+        for r in result_identifiers:
+            validate_type(value=value, schema=self.result_schemas[r],
+                          strict_type=strict_type)
+        if self.file is not None:
             self.data.make_writable()
-        self._report_data_element(record_identifier, result_identifier, value)
-        if self.file:
+        self._report_data_element(
+            record_identifier=record_identifier,
+            values=result_mapping
+        )
+        if self.file is not None:
             self.data.write()
             self.data.make_readonly()
-        if self.file is None:
+        else:
             try:
-                id = self._report_postgres(value={result_identifier: value},
-                                           record_identifier=record_identifier)
+                updated_ids = self._report_postgres(
+                    record_identifier=record_identifier,
+                    value=result_mapping
+                )
             except Exception as e:
                 _LOGGER.error(f"Could not insert the result into the database. "
                               f"Exception: {e}")
-                del self[DATA_KEY][self.name][record_identifier][result_identifier]
+                for r in result_identifiers:
+                    del self[DATA_KEY][self.name][record_identifier][r]
                 raise
-        _LOGGER.info(
-            f"Reported record for '{record_identifier}': {result_identifier}="
-            f"{value} in '{self.name}' namespace")
-        return True
+        nl = "\n"
+        _LOGGER.info(f"Reported records for '{record_identifier}' in '"
+                     f"{self.name}' namespace{nl}- :{nl.join(['{}: {}'.format(k,v) for k, v in result_mapping.items()])}")
+        return True if not return_id else updated_ids
 
-    def _report_data_element(self, record_identifier, result_identifier, value):
+    def _report_data_element(self, record_identifier, values):
         """
         Update the value of a result in a current namespace.
 
@@ -405,14 +466,14 @@ class PipestatManager(dict):
          hierarchical mapping structure if needed.
 
         :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to be reported
-        :param any value: value to be reported
+        :param any values: dict of results identifiers and values to be reported
         """
         self[DATA_KEY].setdefault(self.name, PXAM())
         self[DATA_KEY][self.name].setdefault(record_identifier, PXAM())
-        self[DATA_KEY][self.name][record_identifier][result_identifier] = value
+        for res_id, val in values.items():
+            self[DATA_KEY][self.name][record_identifier][res_id] = val
 
-    def retrieve(self, record_identifier, result_identifier=None):
+    def retrieve(self, record_identifier=None, result_identifier=None):
         """
         Retrieve a result for a record.
 
@@ -424,6 +485,7 @@ class PipestatManager(dict):
         :return any | dict[any]: a single result or a mapping with all the
             results reported for the record
         """
+        record_identifier = self._strict_record_id(record_identifier)
         if record_identifier not in self.data[self.name]:
             raise PipestatDatabaseError(
                 f"Record '{record_identifier}' not found")
@@ -435,7 +497,7 @@ class PipestatManager(dict):
                 f"'{record_identifier}'")
         return self.data[self.name][record_identifier][result_identifier]
 
-    def remove(self, record_identifier, result_identifier=None):
+    def remove(self, record_identifier=None, result_identifier=None):
         """
         Report a result.
 
@@ -447,12 +509,13 @@ class PipestatManager(dict):
              if the record should be removed.
         :return bool: whether the result has been removed
         """
+        record_identifier = self._strict_record_id(record_identifier)
         rm_record = True if result_identifier is None else False
         if not self.check_record_exists(record_identifier):
             _LOGGER.error(f"Record '{record_identifier}' not found")
             return False
         if result_identifier and not self.check_result_exists(
-                record_identifier, result_identifier):
+                result_identifier, record_identifier):
             _LOGGER.error(f"'{result_identifier}' has not been reported for "
                           f"'{record_identifier}'")
             return False
@@ -579,6 +642,22 @@ class PipestatManager(dict):
         _LOGGER.debug(f"Closed connection with PostgreSQL: "
                       f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}")
 
+    def _strict_record_id(self, forced_value=None):
+        """
+        Get record identifier from the outer source or stored with this object
+
+        :param str forced_value: return this value
+        :return str: record identifier
+        """
+        if forced_value is not None:
+            return forced_value
+        if self.record_identifier is not None:
+            return self.record_identifier
+        raise PipestatError(
+            f"You must provide the record identifier you want to perform "
+            f"the action on. Either in the {self.__class__.__name__} "
+            f"constructor or as an argument to the method."
+        )
 
 def main():
     """ Primary workflow """
