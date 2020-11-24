@@ -205,10 +205,12 @@ class PipestatManager(dict):
         _LOGGER.info(f"Reading data from database for '{self.name}' namespace")
         for record in data:
             record_id = record[RECORD_ID]
-            self._report_data_element(
-                record_identifier=record_id,
-                values=record
-            )
+            for res_id, val in record.items():
+                if val is not None:
+                    self._report_data_element(
+                        record_identifier=record_id,
+                        values={res_id: val}
+                    )
 
     def _init_postgres_table(self):
         """
@@ -354,21 +356,20 @@ class PipestatManager(dict):
             return True
         return False
 
-    def _check_which_results_exist(self, results, record_identifier=None):
+    def _check_which_results_exist(self, results, rid=None):
         """
         Check which results have been reported
 
-        :param str record_identifier: unique identifier of the record
+        :param str rid: unique identifier of the record
         :param list[str] results: names of the results to check
         :return bool: whether the specified result has been reported for the
             indicated record in current namespace
         """
-        record_identifier = self._strict_record_id(record_identifier)
+        rid = self._strict_record_id(rid)
         existing = []
         for r in results:
-            if self.name in self.data \
-                    and record_identifier in self.data[self.name] \
-                    and r in self.data[self.name][record_identifier]:
+            if self.name in self.data and rid in self.data[self.name] \
+                    and r in self.data[self.name][rid]:
                 existing.append(r)
         return existing
 
@@ -412,10 +413,10 @@ class PipestatManager(dict):
         known_results = self.result_schemas.keys()
         if result_identifier is not None:
             result_mapping = {result_identifier: value}
-            result_identifiers = [result_identifier] \
-                if result_identifier is not None else list(result_mapping.keys())
         else:
             result_mapping = value
+        result_identifiers = [result_identifier] \
+            if result_identifier is not None else list(result_mapping.keys())
 
         for r in result_identifiers:
             if r not in known_results:
@@ -423,14 +424,15 @@ class PipestatManager(dict):
                     f"'{r}' is not a known result. Results defined in the "
                     f"schema are: {list(known_results)}.")
         existing = self._check_which_results_exist(
-            record_identifier=record_identifier, results=result_identifiers)
+            rid=record_identifier, results=result_identifiers)
         if existing:
             _LOGGER.warning(
                 f"These results exist for '{record_identifier}': {existing}")
             if not force_overwrite:
                 return False
+            _LOGGER.info(f"Overwriting existing results: {existing}")
         for r in result_identifiers:
-            validate_type(value=value, schema=self.result_schemas[r],
+            validate_type(value=result_mapping[r], schema=self.result_schemas[r],
                           strict_type=strict_type)
         if self.file is not None:
             self.data.make_writable()
@@ -454,8 +456,10 @@ class PipestatManager(dict):
                     del self[DATA_KEY][self.name][record_identifier][r]
                 raise
         nl = "\n"
-        _LOGGER.info(f"Reported records for '{record_identifier}' in '"
-                     f"{self.name}' namespace{nl}- :{nl.join(['{}: {}'.format(k,v) for k, v in result_mapping.items()])}")
+        rep_strs = ['{}: {}'.format(k, v) for k, v in result_mapping.items()]
+        _LOGGER.info(
+            f"Reported records for '{record_identifier}' in '{self.name}' "
+            f"namespace:{nl} - {(nl + ' - ').join(rep_strs)}")
         return True if not return_id else updated_ids
 
     def _report_data_element(self, record_identifier, values):

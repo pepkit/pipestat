@@ -35,13 +35,14 @@ pipestat standardizes reporting of pipeline results. It formalizes a way for pip
 
 
 ```python
-def __init__(self, name, schema_path=None, results_file=None, database_config=None)
+def __init__(self, name, record_identifier=None, schema_path=None, results_file=None, database_config=None)
 ```
 
 Initialize the object
 #### Parameters:
 
 - `name` (`str`):  namespace to report into. This will be the DB tablename if using DB as the object back-end
+- `record_identifier` (`str`):  record identifier to report for. Thiscreates a weak bound to the record, which can be overriden in this object method calls
 - `schema_path` (`str`):  path to the output schema that formalizesthe results structure
 - `results_file` (`str`):  YAML file to report into, if file is used asthe object back-end
 - `database_config` (`str`):  DB login credentials to report into,if DB is used as the object back-end
@@ -62,7 +63,7 @@ Check whether a PostgreSQL connection has been established
 
 
 ```python
-def check_record_exists(self, record_identifier)
+def check_record_exists(self, record_identifier=None)
 ```
 
 Check if the record exists
@@ -79,7 +80,7 @@ Check if the record exists
 
 
 ```python
-def check_result_exists(self, record_identifier, result_identifier)
+def check_result_exists(self, result_identifier, record_identifier=None)
 ```
 
 Check if the result has been reported
@@ -170,7 +171,19 @@ Namespace the object writes the results to
 
 
 ```python
-def remove(self, record_identifier, result_identifier=None)
+def record_identifier(self)
+```
+
+Namespace the object writes the results to
+#### Returns:
+
+- `str`:  Namespace the object writes the results to
+
+
+
+
+```python
+def remove(self, record_identifier=None, result_identifier=None)
 ```
 
 Report a result.
@@ -191,7 +204,7 @@ will be removed.
 
 
 ```python
-def report(self, record_identifier, result_identifier, value, force_overwrite=False, strict_type=True, return_id=False)
+def report(self, value, result_identifier=None, record_identifier=None, force_overwrite=False, strict_type=True, return_id=False)
 ```
 
 Report a result.
@@ -200,7 +213,9 @@ Report a result.
 - `record_identifier` (`str`):  unique identifier of the record, value toin 'record_identifier' column to look for to determine if the record already exists
 - `value` (`any`):  value to be reported
 - `result_identifier` (`str`):  name of the result to be reported
+- `strict_type` (`bool`):  whether the type of the reported values shouldremain as is. Pipestat would attempt to convert to the schema-defined one otherwise
 - `force_overwrite` (`bool`):  whether to overwrite the existing record
+- `return_id` (`bool`):  PostgreSQL IDs of the records that have beenupdated. Not available with results file as backend
 
 
 #### Returns:
@@ -223,7 +238,7 @@ Result schema mappings
 
 
 ```python
-def retrieve(self, record_identifier, result_identifier=None)
+def retrieve(self, record_identifier=None, result_identifier=None)
 ```
 
 Retrieve a result for a record.
