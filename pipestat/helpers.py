@@ -120,13 +120,13 @@ def validate_type(value, schema, strict_type=False):
         if schema[SCHEMA_TYPE_KEY] != "object":
             value = CLASSES_BY_TYPE[schema[SCHEMA_TYPE_KEY]](value)
         else:
-            for prop, prop_dict in schema.items():
+            for prop, prop_dict in schema[SCHEMA_PROP_KEY].items():
                 try:
                     cls_fun = CLASSES_BY_TYPE[prop_dict[SCHEMA_TYPE_KEY]]
                     value[prop] = cls_fun(value[prop])
                 except Exception as e:
-                    _LOGGER.error(f"{str(e)}: Could not cast the result into "
-                                  f"required type: {str(cls_fun)}")
+                    _LOGGER.error(f"Could not cast the result into "
+                                  f"required type: {str(e)}")
                 else:
                     _LOGGER.debug(f"Casted the reported result into required "
                                   f"type: {str(cls_fun)}")

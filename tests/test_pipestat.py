@@ -140,22 +140,21 @@ class TestReporting:
         psm = PipestatManager(name="test", results_file=results_file_path)
         with pytest.raises(SchemaNotFoundError):
             psm.report(
-                result_identifier="name_of_something",
                 record_identifier="sample1",
-                value="test_name"
+                value={"name_of_something": "test_name"}
             )
 
     @pytest.mark.parametrize(
-        ["rec_id", "res_id", "val"],
-        [("sample1", "name_of_something", "test_name"),
-         ("sample1", "number_of_things", 1),
-         ("sample2", "number_of_things", 2),
-         ("sample2", "percentage_of_things", 10.1),
-         ("sample2", "name_of_something", "test_name"),
-         ("sample3", "name_of_something", "test_name")]
+        ["rec_id", "val"],
+        [("sample1", {"name_of_something": "test_name"}),
+         ("sample1", {"number_of_things": 1}),
+         ("sample2", {"number_of_things": 2}),
+         ("sample2", {"percentage_of_things": 10.1}),
+         ("sample2", {"name_of_something": "test_name"}),
+         ("sample3", {"name_of_something": "test_name"})]
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_report_basic(self, rec_id, res_id, val, config_file_path,
+    def test_report_basic(self, rec_id, val, config_file_path,
                           schema_file_path, results_file_path, backend):
         args = dict(schema_path=schema_file_path, name="test")
         backend_data = {"database_config": config_file_path} if backend == "db"\
@@ -163,22 +162,21 @@ class TestReporting:
         args.update(backend_data)
         psm = PipestatManager(**args)
         psm.report(
-            result_identifier=res_id,
             record_identifier=rec_id,
             value=val
         )
         assert rec_id in psm.data["test"]
-        assert res_id in psm.data["test"][rec_id]
+        assert list(val.keys())[0] in psm.data["test"][rec_id]
         if backend == "file":
-            is_in_file(results_file_path, str(val))
+            is_in_file(results_file_path, str(list(val.values())[0]))
 
     @pytest.mark.parametrize(
-        ["rec_id", "res_id", "val"],
-        [("sample1", "number_of_things", 2),
-         ("sample2", "number_of_things", 1)]
+        ["rec_id", "val"],
+        [("sample1", {"number_of_things": 2}),
+         ("sample2", {"number_of_things": 1})]
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_report_overwrite(self, rec_id, res_id, val, config_file_path,
+    def test_report_overwrite(self, rec_id, val, config_file_path,
                           schema_file_path, results_file_path, backend):
         args = dict(schema_path=schema_file_path, name="test")
         backend_data = {"database_config": config_file_path} if backend == "db"\
@@ -186,24 +184,24 @@ class TestReporting:
         args.update(backend_data)
         psm = PipestatManager(**args)
         psm.report(
-            result_identifier=res_id,
             record_identifier=rec_id,
             value=val,
             force_overwrite=True
         )
         assert rec_id in psm.data["test"]
-        assert res_id in psm.data["test"][rec_id]
+        assert list(val.keys())[0] in psm.data["test"][rec_id]
         if backend == "file":
-            is_in_file(results_file_path, str(val))
+            is_in_file(results_file_path, str(list(val.values())[0]))
 
     @pytest.mark.parametrize(
-        ["rec_id", "res_id", "val", "success"],
-        [("sample1", "number_of_things", "2", True),
-         ("sample2", "number_of_things", [1, 2, 3], False)]
+        ["rec_id", "val", "success"],
+        [("sample1", {"number_of_things": "2"}, True),
+         ("sample2", {"number_of_things": [1, 2, 3]}, False),
+         ("sample2", {"output_file": {"path": 1, "title": "abc"}}, True)]
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_report_type_casting(
-            self, rec_id, res_id, val, config_file_path, schema_file_path,
+            self, rec_id, val, config_file_path, schema_file_path,
             results_file_path, backend, success):
         args = dict(schema_path=schema_file_path, name="test")
         backend_data = {"database_config": config_file_path} if backend == "db"\
@@ -212,7 +210,6 @@ class TestReporting:
         psm = PipestatManager(**args)
         if success:
             psm.report(
-                result_identifier=res_id,
                 record_identifier=rec_id,
                 value=val,
                 strict_type=False,
@@ -221,7 +218,6 @@ class TestReporting:
         else:
             with pytest.raises((ValidationError, TypeError)):
                 psm.report(
-                    result_identifier=res_id,
                     record_identifier=rec_id,
                     value=val,
                     strict_type=False,
@@ -231,15 +227,15 @@ class TestReporting:
 
 class TestRetrieval:
     @pytest.mark.parametrize(
-        ["rec_id", "res_id", "val"],
-        [("sample1", "name_of_something", "test_name"),
-         ("sample1", "number_of_things", 2),
-         ("sample2", "number_of_things", 1),
-         ("sample2", "percentage_of_things", 10.1),
-         ("sample2", "name_of_something", "test_name")]
+        ["rec_id", "val"],
+        [("sample1", {"name_of_something": "test_name"}),
+         ("sample1", {"number_of_things": 2}),
+         ("sample2", {"number_of_things": 1}),
+         ("sample2", {"percentage_of_things": 10.1}),
+         ("sample2", {"name_of_something": "test_name"})]
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_retrieve_basic(self, rec_id, res_id, val, config_file_path,
+    def test_retrieve_basic(self, rec_id, val, config_file_path,
                             results_file_path, schema_file_path, backend):
         args = dict(schema_path=schema_file_path, name="test")
         backend_data = {"database_config": config_file_path} if backend == "db"\
@@ -247,10 +243,10 @@ class TestRetrieval:
         args.update(backend_data)
         psm = PipestatManager(**args)
         retrieved_val = psm.retrieve(
-            result_identifier=res_id,
-            record_identifier=rec_id
+            record_identifier=rec_id,
+            result_identifier=list(val.keys())[0]
         )
-        assert str(retrieved_val) == str(val)
+        assert str(retrieved_val) == str(list(val.values())[0])
 
     @pytest.mark.parametrize("rec_id", ["sample1", "sample2"])
     @pytest.mark.parametrize("backend", ["file", "db"])

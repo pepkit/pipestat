@@ -456,7 +456,7 @@ class PipestatManager(dict):
                     del self[DATA_KEY][self.name][record_identifier][r]
                 raise
         nl = "\n"
-        rep_strs = ['{}: {}'.format(k, v) for k, v in result_mapping.items()]
+        rep_strs = [f'{k}: {v}' for k, v in result_mapping.items()]
         _LOGGER.info(
             f"Reported records for '{record_identifier}' in '{self.name}' "
             f"namespace:{nl} - {(nl + ' - ').join(rep_strs)}")
