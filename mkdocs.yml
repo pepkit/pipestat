@@ -13,6 +13,7 @@ nav:
     - Use command line interface: cli.md
   - Reference:
     - Schema specification: schema.md
+    - Backends specification: backends.md
     - DB config specification: db_config.md
     - Python API: autodoc_build/pipestat.md
     - Support: https://github.com/pepkit/pipestat/issues
