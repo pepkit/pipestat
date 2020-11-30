@@ -578,7 +578,11 @@ class PipestatManager(dict):
                 SchemaError(f"Result '{k}' is missing '{SCHEMA_TYPE_KEY}' key")
             if v[SCHEMA_TYPE_KEY] in CANONICAL_TYPES.keys():
                 schema.setdefault(k, {})
-                schema[k].update(CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]])
+                schema[k].setdefault(SCHEMA_PROP_KEY, {})
+                schema[k][SCHEMA_PROP_KEY].update(CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]][SCHEMA_PROP_KEY])
+                schema[k].setdefault("required", [])
+                schema[k]["required"].extend(CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]]["required"])
+                schema[k][SCHEMA_TYPE_KEY] = CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]][SCHEMA_TYPE_KEY]
             self[RES_SCHEMAS_KEY].setdefault(k, {})
             self[RES_SCHEMAS_KEY][k] = schema[k]
 

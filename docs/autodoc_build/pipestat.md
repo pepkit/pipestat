@@ -251,7 +251,7 @@ be returned.
 
 #### Returns:
 
-- `any | dict[any]`:  a single result or a mapping with all theresults reported for the record
+- `any | dict[str, any]`:  a single result or a mapping with all theresults reported for the record
 
 
 
