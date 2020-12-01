@@ -51,7 +51,7 @@ class PipestatManager(dict):
     can be backed by either a YAML-formatted file or a PostgreSQL database.
     """
     def __init__(self, name, record_identifier=None, schema_path=None,
-                 results_file=None, database_config=None):
+                 results_file=None, database_config=None, database_only=False):
         """
         Initialize the object
 
@@ -77,6 +77,7 @@ class PipestatManager(dict):
 
         self[NAME_KEY] = str(name)
         self[RECORD_ID_KEY] = record_identifier
+        self[DB_ONLY_KEY] = database_only
         if schema_path:
             _, self[SCHEMA_KEY] = read_yaml_data(schema_path, "schema")
             self.validate_schema()
@@ -225,15 +226,27 @@ class PipestatManager(dict):
         if self._check_table_exists(table_name=self.name):
             _LOGGER.debug(
                 f"Table '{self.name}' already exists in the database")
-            self._table_to_dict()
+            if not self[DB_ONLY_KEY]:
+                self._table_to_dict()
             return False
         _LOGGER.info(
             f"Initializing '{self.name}' table in '{PKG_NAME}' database")
         columns = FIXED_COLUMNS + schema_to_columns(schema=self.schema)
-        with self.db_cursor as cur:
-            s = sql.SQL(f"CREATE TABLE {self.name} ({','.join(columns)})")
-            cur.execute(s)
+        self._create_table(table_name=self.name, columns=columns)
         return True
+
+    def _create_table(self, table_name, columns):
+        """
+        Create a table
+
+        :param str table_name: name of the table to create
+        :param str | list[str] columns: columns definition list,
+            for instance: ['name VARCHAR(50) NOT NULL']
+        """
+        columns = mk_list_of_str(columns)
+        with self.db_cursor as cur:
+            s = sql.SQL(f"CREATE TABLE {table_name} ({','.join(columns)})")
+            cur.execute(s)
 
     def _init_results_file(self):
         """
@@ -350,11 +363,8 @@ class PipestatManager(dict):
             indicated record in current namespace
         """
         record_identifier = self._strict_record_id(record_identifier)
-        if self.name in self.data and \
-                record_identifier in self.data[self.name] and \
-                result_identifier in self.data[self.name][record_identifier]:
-            return True
-        return False
+        return self._check_which_results_exist(
+            results=[result_identifier], rid=record_identifier)
 
     def _check_which_results_exist(self, results, rid=None):
         """
@@ -368,9 +378,19 @@ class PipestatManager(dict):
         rid = self._strict_record_id(rid)
         existing = []
         for r in results:
-            if self.name in self.data and rid in self.data[self.name] \
-                    and r in self.data[self.name][rid]:
-                existing.append(r)
+            if not self[DB_ONLY_KEY]:
+                if self.name in self.data and rid in self.data[self.name] \
+                        and r in self.data[self.name][rid]:
+                    existing.append(r)
+            else:
+                with self.db_cursor as cur:
+                    cur.execute(
+                        f"SELECT {r} FROM {self.name} WHERE {RECORD_ID}=%s",
+                        (rid, )
+                    )
+                    res = cur.fetchone()[0]
+                if res is not None:
+                    existing.append(r)
         return existing
 
     def check_record_exists(self, record_identifier=None):
@@ -381,6 +401,14 @@ class PipestatManager(dict):
         :return bool: whether the record exists
         """
         record_identifier = self._strict_record_id(record_identifier)
+        if self[DB_ONLY_KEY]:
+            with self.db_cursor as cur:
+                cur.execute(
+                    f"SELECT exists(SELECT 1 from {self.name} "
+                    f"WHERE {RECORD_ID}=%s)",
+                    (record_identifier, )
+                )
+                return cur.fetchone()
         if self.name in self.data and record_identifier in self.data[self.name]:
             return True
         return False
@@ -430,10 +458,11 @@ class PipestatManager(dict):
                           strict_type=strict_type)
         if self.file is not None:
             self.data.make_writable()
-        self._report_data_element(
-            record_identifier=record_identifier,
-            values=values
-        )
+        if not self[DB_ONLY_KEY]:
+            self._report_data_element(
+                record_identifier=record_identifier,
+                values=values
+            )
         if self.file is not None:
             self.data.write()
             self.data.make_readonly()
@@ -446,8 +475,9 @@ class PipestatManager(dict):
             except Exception as e:
                 _LOGGER.error(f"Could not insert the result into the database. "
                               f"Exception: {e}")
-                for r in result_identifiers:
-                    del self[DATA_KEY][self.name][record_identifier][r]
+                if not self[DB_ONLY_KEY]:
+                    for r in result_identifiers:
+                        del self[DATA_KEY][self.name][record_identifier][r]
                 raise
         nl = "\n"
         rep_strs = [f'{k}: {v}' for k, v in values.items()]
@@ -484,16 +514,30 @@ class PipestatManager(dict):
             results reported for the record
         """
         record_identifier = self._strict_record_id(record_identifier)
-        if record_identifier not in self.data[self.name]:
-            raise PipestatDatabaseError(
-                f"Record '{record_identifier}' not found")
-        if result_identifier is None:
-            return self.data[self.name][record_identifier]
-        if result_identifier not in self.data[self.name][record_identifier]:
-            raise PipestatDatabaseError(
-                f"Result '{result_identifier}' not found for record "
-                f"'{record_identifier}'")
-        return self.data[self.name][record_identifier][result_identifier]
+        if self[DB_ONLY_KEY]:
+            existing = self._check_which_results_exist(
+                results=[result_identifier],
+                rid=record_identifier
+            )
+            if not existing:
+                raise PipestatDatabaseError(
+                    f"Result '{result_identifier}' not found for record "
+                    f"'{record_identifier}'")
+            with self.db_cursor as cur:
+                cur.execute(f"SELECT {result_identifier} FROM {self.name} "
+                            f"WHERE {RECORD_ID}=%s", (record_identifier, ))
+                return cur.fetchone()[0]
+        else:
+            if record_identifier not in self.data[self.name]:
+                raise PipestatDatabaseError(
+                    f"Record '{record_identifier}' not found")
+            if result_identifier is None:
+                return self.data[self.name][record_identifier]
+            if result_identifier not in self.data[self.name][record_identifier]:
+                raise PipestatDatabaseError(
+                    f"Result '{result_identifier}' not found for record "
+                    f"'{record_identifier}'")
+            return self.data[self.name][record_identifier][result_identifier]
 
     def remove(self, record_identifier=None, result_identifier=None):
         """
@@ -519,20 +563,21 @@ class PipestatManager(dict):
             return False
         if self.file:
             self.data.make_writable()
-        if rm_record:
-            _LOGGER.info(f"Removing '{record_identifier}' record")
-            del self[DATA_KEY][self.name][record_identifier]
-        else:
-            val_backup = \
-                self[DATA_KEY][self.name][record_identifier][result_identifier]
-            del self[DATA_KEY][self.name][record_identifier][result_identifier]
-            _LOGGER.info(f"Removed result '{result_identifier}' for record "
-                         f"'{record_identifier}' from '{self.name}' namespace")
-            if not self[DATA_KEY][self.name][record_identifier]:
-                _LOGGER.info(f"Last result removed for '{record_identifier}'. "
-                             f"Removing the record")
+        if not self[DB_ONLY_KEY]:
+            if rm_record:
+                _LOGGER.info(f"Removing '{record_identifier}' record")
                 del self[DATA_KEY][self.name][record_identifier]
-                rm_record = True
+            else:
+                val_backup = \
+                    self[DATA_KEY][self.name][record_identifier][result_identifier]
+                del self[DATA_KEY][self.name][record_identifier][result_identifier]
+                _LOGGER.info(f"Removed result '{result_identifier}' for record "
+                             f"'{record_identifier}' from '{self.name}' namespace")
+                if not self[DATA_KEY][self.name][record_identifier]:
+                    _LOGGER.info(f"Last result removed for '{record_identifier}'. "
+                                 f"Removing the record")
+                    del self[DATA_KEY][self.name][record_identifier]
+                    rm_record = True
         if self.file:
             self.data.write()
             self.data.make_readonly()
@@ -558,7 +603,8 @@ class PipestatManager(dict):
             except Exception as e:
                 _LOGGER.error(f"Could not remove the result from the database. "
                               f"Exception: {e}")
-                self[DATA_KEY][self.name][record_identifier][result_identifier] = val_backup
+                if not self[DB_ONLY_KEY]:
+                    self[DATA_KEY][self.name][record_identifier][result_identifier] = val_backup
                 raise
         return True
 
@@ -571,7 +617,7 @@ class PipestatManager(dict):
         schema = deepcopy(self.schema)
         _LOGGER.debug(f"Validating input schema")
         assert isinstance(schema, dict), \
-            SchemaError(f"The schema has to be a {dict.__class__.__name__}")
+            SchemaError(f"The schema has to be a {dict().__class__.__name__}")
         self[RES_SCHEMAS_KEY] = {}
         for k, v in schema.items():
             assert SCHEMA_TYPE_KEY in v, \
@@ -702,7 +748,7 @@ def main():
     if args.command == INSPECT_CMD:
         print("\n")
         print(psm)
-        if args.data:
+        if args.data and not args.database_only:
             print("\nData:")
             print(psm.data)
         sys.exit(0)

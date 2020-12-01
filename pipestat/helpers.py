@@ -44,6 +44,10 @@ def build_argparser(desc):
             help=f"Path to the YAML file with PostgreSQL database "
                  f"configuration. Please refer to the documentation for the "
                  f"file format requirements.")
+        storage_group.add_argument(
+            "-o", "--database-only", action="store_true",
+            help="Whether the reported data should not be stored in the memory,"
+                 " only in the database.")
         sps[cmd].add_argument(
             "-s", "--schema", required=True if cmd == REPORT_CMD else False,
             type=str, metavar="S", help="Path to the schema that defines the "
@@ -149,3 +153,18 @@ def read_yaml_data(path, what):
     _LOGGER.debug(f"Reading {what} from '{path}'")
     with open(path, "r") as f:
         return path, safe_load(f)
+
+
+def mk_list_of_str(x):
+    """
+    Make sure the input is a list of strings
+    :param str | list[str] | falsy x: input to covert
+    :return list[str]: converted input
+    :raise TypeError: if the argument cannot be converted
+    """
+    if not x or isinstance(x, list):
+        return x
+    if isinstance(x, str):
+        return [x]
+    raise TypeError(f"String or list of strings required as input. Got: "
+                    f"{x.__class__.__name__}")

@@ -36,6 +36,7 @@ DB_CREDENTIALS = [CFG_HOST_KEY, CFG_PORT_KEY, CFG_PASSWORD_KEY, CFG_USER_KEY,
                   CFG_NAME_KEY]
 
 # object attribute names
+DB_ONLY_KEY = "_database_only"
 CONFIG_KEY = "_config"
 SCHEMA_KEY = "_schema"
 RES_SCHEMAS_KEY = "_result_schemas"
