@@ -106,12 +106,20 @@ class PipestatManager(dict):
         :return str: string representation of the object
         """
         res = f"{self.__class__.__name__} ({self.name})"
-        records_count = len(self.data[self.name]) if self.file \
-            else self._count_rows(table_name=self.name)
         res += "\nBackend: {}".format(
             f"file ({self.file})" if self.file else "PostgreSQL")
-        res += f"\nRecords count: {records_count}"
+        res += f"\nRecords count: {self.record_count}"
         return res
+
+    @property
+    def record_count(self):
+        """
+        Number of records reported
+
+        :return int: number of records reported
+        """
+        return len(self.data[self.name]) if self.file \
+            else self._count_rows(self.name)
 
     @property
     def name(self):
