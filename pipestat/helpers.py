@@ -1,12 +1,17 @@
 import logging
 import os
 import jsonschema
+
+from oyaml import safe_load
+from re import findall
+from psycopg2 import sql
+
+from ubiquerg import VersionInHelpParser, expandpath
+
 from .const import *
 from ._version import __version__
 from .exceptions import *
-from ubiquerg import VersionInHelpParser, expandpath
-from collections import Mapping
-from oyaml import safe_load
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -168,3 +173,43 @@ def mk_list_of_str(x):
         return [x]
     raise TypeError(f"String or list of strings required as input. Got: "
                     f"{x.__class__.__name__}")
+
+
+def preprocess_condition_pair(condition, condition_val):
+    """
+    Preprocess query condition and values to ensure sanity and compatibility
+
+    :param str condition: condition string
+    :param tuple condition_val: values to populate condition string with
+    :return (psycopg2.sql.SQL, tuple): condition pair
+    """
+
+    def _check_semicolon(x):
+        """
+        recursively check for semicolons in an object
+
+        :param aby x: object to inspect
+        :raises ValueError: if semicolon detected
+        """
+        if isinstance(x, str):
+            assert ";" not in x, ValueError(
+                f"semicolons are not permitted in condition values: '{str(x)}'")
+        if isinstance(x, list):
+            list(map(lambda v: _check_semicolon(v), x))
+
+    if condition:
+        if not isinstance(condition, str):
+            raise TypeError("Condition has to be a string")
+        else:
+            _check_semicolon(condition)
+            placeholders = findall("%s", condition)
+            condition = sql.SQL(condition)
+        if not condition_val:
+            raise ValueError("condition provided but condition_val missing")
+        assert isinstance(condition_val, list), \
+            TypeError("condition_val has to be a list")
+        condition_val = tuple(condition_val)
+        assert len(placeholders) == len(condition_val), ValueError(
+            f"Number of condition ({len(condition_val)}) values not equal "
+            f"number of placeholders in: {condition}")
+    return condition, condition_val

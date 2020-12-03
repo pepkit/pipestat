@@ -82,6 +82,9 @@ class PipestatManager(dict):
             _, self[SCHEMA_KEY] = read_yaml_data(schema_path, "schema")
             self.validate_schema()
         if results_file:
+            if self[DB_ONLY_KEY]:
+                raise ValueError("Running in database only mode does not make "
+                                 "sense with a YAML file as a backend.")
             self[FILE_KEY] = expandpath(results_file)
             self._init_results_file()
         elif database_config:
@@ -500,6 +503,42 @@ class PipestatManager(dict):
         self[DATA_KEY][self.name].setdefault(record_identifier, PXAM())
         for res_id, val in values.items():
             self[DATA_KEY][self.name][record_identifier][res_id] = val
+
+    def select(self, columns=None, condition=None, condition_val=None):
+        """
+        Get all the contents from the selected table, possibly restricted by
+        the provided condition.
+
+        :param str | list[str] columns: columns to select
+        :param str condition: condition to restrict the results
+            with, will be appended to the end of the SELECT statement and
+            safely populated with 'condition_val',
+            for example: `"id=%s"`
+        :param list condition_val: values to fill the placeholder
+            in 'condition' with
+        :return list[psycopg2.extras.DictRow]: all table contents
+        """
+        if self.file:
+            raise NotImplementedError(
+                "Selection is not supported on objects backed by results files."
+                " Use 'retrieve' method instead."
+            )
+        condition, condition_val = \
+            preprocess_condition_pair(condition, condition_val)
+        if not columns:
+            columns = sql.SQL("*")
+        else:
+            columns = sql.SQL(',').join(
+                [sql.Identifier(x) for x in mk_list_of_str(columns)])
+        statement = sql.SQL("SELECT {} FROM {}").format(
+            columns, sql.Identifier(self.name))
+        if condition:
+            statement += sql.SQL(" WHERE ")
+            statement += condition
+        with self.db_cursor as cur:
+            cur.execute(query=statement, vars=condition_val)
+            result = cur.fetchall()
+        return result
 
     def retrieve(self, record_identifier=None, result_identifier=None):
         """
