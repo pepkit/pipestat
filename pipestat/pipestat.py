@@ -398,7 +398,8 @@ class PipestatManager(dict):
                     except Exception:
                         continue
                     else:
-                        if cur.fetchone()[0] is not None:
+                        if cur.fetchone() is not None \
+                                and cur.fetchone()[0] is not None:
                             existing.append(r)
         return existing
 
