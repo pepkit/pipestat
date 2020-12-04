@@ -33,13 +33,8 @@ class LoggingCursor(psycopg2.extras.DictCursor):
         :return:
         """
         _LOGGER.debug(f"Executing query: {self.mogrify(query, vars)}")
-        try:
-            super(LoggingCursor, self).execute(query=query, vars=vars)
-        except Exception as e:
-            _LOGGER.error(f"{e.__class__.__name__}: {e}")
-            raise
-        else:
-            _LOGGER.debug(f"Executed query: {self.query}")
+        super(LoggingCursor, self).execute(query=query, vars=vars)
+        _LOGGER.debug(f"Executed query: {self.query}")
 
 
 class PipestatManager(dict):
@@ -356,7 +351,7 @@ class PipestatManager(dict):
             id=sql.SQL(RECORD_ID)
         )
         # preprocess the values, dict -> Json
-        values = {k: Json(v) if isinstance(v, Mapping) else v
+        values = {k: Json(v) if isinstance(v, dict) else v
                   for k, v in value.items()}
         # add record_identifier column, which is specified outside of values
         values.update({RECORD_ID: record_identifier})
@@ -395,13 +390,16 @@ class PipestatManager(dict):
                     existing.append(r)
             else:
                 with self.db_cursor as cur:
-                    cur.execute(
-                        f"SELECT {r} FROM {self.name} WHERE {RECORD_ID}=%s",
-                        (rid, )
-                    )
-                    res = cur.fetchone()[0]
-                if res is not None:
-                    existing.append(r)
+                    try:
+                        cur.execute(
+                            f"SELECT {r} FROM {self.name} WHERE {RECORD_ID}=%s",
+                            (rid, )
+                        )
+                    except Exception:
+                        continue
+                    else:
+                        if cur.fetchone()[0] is not None:
+                            existing.append(r)
         return existing
 
     def check_record_exists(self, record_identifier=None):
