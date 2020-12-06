@@ -83,7 +83,13 @@ class PipestatManager(dict):
             self[FILE_KEY] = expandpath(results_file)
             self._init_results_file()
         elif database_config:
-            _, self[CONFIG_KEY] = read_yaml_data(database_config, "DB config")
+            if isinstance(database_config, str):
+                _, self[CONFIG_KEY] = read_yaml_data(database_config, "DB config")
+            elif isinstance(database_config, dict):
+                self[CONFIG_KEY] = database_config
+            else:
+                raise TypeError("database_config has to be either path to the "
+                                "file to read or a dict")
             if not all([_check_cfg_key(self[CONFIG_KEY][CFG_DATABASE_KEY], key)
                         for key in DB_CREDENTIALS]):
                 raise MissingConfigDataError(
