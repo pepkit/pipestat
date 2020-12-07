@@ -419,3 +419,22 @@ class TestNoRecordID:
         args.update(backend_data)
         psm = PipestatManager(**args)
         assert psm.remove(result_identifier=list(val.keys())[0])
+
+
+class TestDatabaseOnly:
+    @pytest.mark.parametrize("val",
+        [{"name_of_something": "test_name"},
+         {"number_of_things": 1},
+         {"percentage_of_things": 10.1}]
+    )
+    def test_report(self, val, config_file_path, schema_file_path,
+                          results_file_path):
+        REC_ID = "constant_record_id"
+        psm = PipestatManager(schema_path=schema_file_path, name="test",
+                    record_identifier=REC_ID, database_only=True,
+                    database_config=config_file_path)
+        psm.report(values=val)
+        assert len(psm.data) == 0
+        val_name = list(val.keys())[0]
+        assert psm.select(
+            condition=val_name + "=%s", condition_val=[str(val[val_name])])

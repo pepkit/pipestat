@@ -50,7 +50,7 @@ def build_argparser(desc):
                  f"configuration. Please refer to the documentation for the "
                  f"file format requirements.")
         storage_group.add_argument(
-            "-o", "--database-only", action="store_true",
+            "-a", "--database-only", action="store_true",
             help="Whether the reported data should not be stored in the memory,"
                  " only in the database.")
         sps[cmd].add_argument(

@@ -404,8 +404,8 @@ class PipestatManager(dict):
                     except Exception:
                         continue
                     else:
-                        if cur.fetchone() is not None \
-                                and cur.fetchone()[0] is not None:
+                        res = cur.fetchone()
+                        if res is not None and res[0] is not None:
                             existing.append(r)
         return existing
 
