@@ -32,7 +32,7 @@ class TestPipestatManagerInstantiation:
         assert isinstance(
             PipestatManager(
                 name="test",
-                results_file=results_file_path,
+                results_file_path=results_file_path,
                 schema_path=schema_file_path
             ), PipestatManager)
 
@@ -80,7 +80,7 @@ class TestPipestatManagerInstantiation:
         assert not os.path.exists(tmp_res_file)
         PipestatManager(
             name="test",
-            results_file=tmp_res_file,
+            results_file_path=tmp_res_file,
             schema_path=schema_file_path
         )
         assert os.path.exists(tmp_res_file)
@@ -92,14 +92,14 @@ class TestPipestatManagerInstantiation:
         assert not os.path.exists(tmp_res_file)
         PipestatManager(
             name="test",
-            results_file=tmp_res_file,
+            results_file_path=tmp_res_file,
             schema_path=schema_file_path
         )
         assert os.path.exists(tmp_res_file)
         with pytest.raises(PipestatDatabaseError):
             PipestatManager(
                 name="new_test",
-                results_file=tmp_res_file,
+                results_file_path=tmp_res_file,
                 schema_path=schema_file_path
             )
 
@@ -109,7 +109,7 @@ class TestPipestatManagerInstantiation:
         with pytest.raises(TypeError):
             PipestatManager(
                 name="test",
-                results_file=pth,
+                results_file_path=pth,
                 schema_path=schema_file_path
             )
 
@@ -118,7 +118,7 @@ class TestPipestatManagerInstantiation:
         """ Contents of the results file are present after loading """
         psm = PipestatManager(
             name="test",
-            results_file=results_file_path,
+            results_file_path=results_file_path,
             schema_path=schema_file_path
         )
         assert "test" in psm.data
@@ -128,7 +128,7 @@ class TestPipestatManagerInstantiation:
         """ Test string representation identifies number of records """
         psm = PipestatManager(
             name="test",
-            results_file=results_file_path,
+            results_file_path=results_file_path,
             schema_path=schema_file_path
         )
         assert f"Records count: {len(psm.data[psm.name])}" in str(psm)
@@ -137,7 +137,7 @@ class TestPipestatManagerInstantiation:
 class TestReporting:
     def test_report_requires_schema(self, results_file_path):
         """ Report fails if schema not provided, even for a file backend """
-        psm = PipestatManager(name="test", results_file=results_file_path)
+        psm = PipestatManager(name="test", results_file_path=results_file_path)
         with pytest.raises(SchemaNotFoundError):
             psm.report(
                 record_identifier="sample1",

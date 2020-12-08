@@ -34,7 +34,7 @@ pipestat standardizes reporting of pipeline results. It formalizes a way for pip
 
 
 ```python
-def __init__(self, name, record_identifier=None, schema_path=None, results_file=None, database_config=None)
+def __init__(self, name, record_identifier=None, schema_path=None, results_file=None, database_config=None, database_only=False)
 ```
 
 Initialize the object
@@ -170,6 +170,18 @@ Namespace the object writes the results to
 
 
 ```python
+def record_count(self)
+```
+
+Number of records reported
+#### Returns:
+
+- `int`:  number of records reported
+
+
+
+
+```python
 def record_identifier(self)
 ```
 
@@ -264,6 +276,25 @@ Schema mapping
 #### Returns:
 
 - `dict`:  schema that formalizes the results structure
+
+
+
+
+```python
+def select(self, columns=None, condition=None, condition_val=None)
+```
+
+Get all the contents from the selected table, possibly restricted by the provided condition.
+#### Parameters:
+
+- `columns` (`str | list[str]`):  columns to select
+- `condition` (`str`):  condition to restrict the resultswith, will be appended to the end of the SELECT statement and safely populated with 'condition_val', for example: `"id=%s"`
+- `condition_val` (`list`):  values to fill the placeholderin 'condition' with
+
+
+#### Returns:
+
+- `list[psycopg2.extras.DictRow]`:  all table contents
 
 
 

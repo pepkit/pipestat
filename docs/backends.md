@@ -24,6 +24,6 @@ my_namespace:
 
 ## PostgreSQL database
 
-In case of PostgreSQL backend the name of the database that pipestat will try to connect to is configurable and defined in the [config file](db_config.md) in `database.name`. The namespace is indicated by the name of the table, record identifier by the *unique* `record_indentifier` column in that table and results as other columns in this row. 
+In case of PostgreSQL backend the name of the database that pipestat will try to connect to is configurable and defined in the [config file](config.md) in `database.name`. The namespace is indicated by the name of the table, record identifier by the *unique* `record_indentifier` column in that table and results as other columns in this row. 
 
 ![RDB hierarchy](img/db_hierarchy.svg)

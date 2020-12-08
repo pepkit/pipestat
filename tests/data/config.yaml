@@ -1,6 +1,22 @@
+#database:
+#  name: pipestat-test
+#  user: postgres
+#  password: pipestat-password
+#  host: localhost
+#  port: 5432
+#results_file:
+#  path: $HOME/Desktop/results.yaml
+#schema:
+#  path: $HOME/Desktop/schema.yaml
+
+
+name: test
+record_identifier: sample1
 database:
   name: pipestat-test
   user: postgres
   password: pipestat-password
   host: localhost
   port: 5432
+#results_file_path: db.yaml #$HOME/Desktop/results.yaml
+schema_path: sample_output_schema.yaml #$HOME/Desktop/sample_output_schema.yaml

@@ -39,14 +39,14 @@ class LoggingCursor(psycopg2.extras.DictCursor):
 
 class PipestatManager(dict):
     """
-    pipestat standardizes reporting of pipeline results. It formalizes a way
+    Pipestat standardizes reporting of pipeline results. It formalizes a way
     for pipeline developers and downstream tools developers to communicate --
     results produced by a pipeline can easily and reliably become an input for
-    downstream analyses. The ovject exposes API for interacting with the results
+    downstream analyses. The object exposes API for interacting with the results
     can be backed by either a YAML-formatted file or a PostgreSQL database.
     """
-    def __init__(self, name, record_identifier=None, schema_path=None,
-                 results_file=None, database_config=None, database_only=False):
+    def __init__(self, name=None, record_identifier=None, schema_path=None,
+                 results_file_path=None, database_only=False, config=None):
         """
         Initialize the object
 
@@ -57,10 +57,11 @@ class PipestatManager(dict):
             this object method calls
         :param str schema_path: path to the output schema that formalizes
             the results structure
-        :param str results_file: YAML file to report into, if file is used as
+        :param str results_file_path: YAML file to report into, if file is used as
             the object back-end
-        :param str database_config: DB login credentials to report into,
-            if DB is used as the object back-end
+        :param bool database_only: whether the reported data should not be
+            stored in the memory, but only in the database
+        :param str config: path to the configuration file
         """
         def _check_cfg_key(cfg, key):
             if key not in cfg:
@@ -68,32 +69,58 @@ class PipestatManager(dict):
                 return False
             return True
 
-        super(PipestatManager, self).__init__()
+        def _mk_abs_via_cfg(path, cfg_path):
+            if path is None:
+                return
+            path = expandpath(path)
+            if os.path.isabs(path):
+                return path
+            if cfg_path is None:
+                raise OSError(f"Could not make this path absolute: {path}")
+            joined = os.path.join(os.path.dirname(cfg_path), path)
+            if os.path.isabs(joined):
+                return joined
+            raise OSError(f"Could not make this path absolute: {path}")
 
-        self[NAME_KEY] = str(name)
-        self[RECORD_ID_KEY] = record_identifier
+        def _select_value(arg_name, arg_value, cfg, strict=True):
+            if arg_value is not None:
+                return arg_value
+            if arg_name not in cfg or cfg[arg_name] is None:
+                if strict:
+                    raise PipestatError(
+                        f"Value for the required '{arg_name}' argument could not be"
+                        f" determined. Provide it in the config or pass to the "
+                        f"object constructor.")
+                return
+            return cfg[arg_name]
+
+        super(PipestatManager, self).__init__()
+        self[CONFIG_KEY] = YacAttMap()
+        if config is not None:
+            config = os.path.abspath(expandpath(config))
+            self[CONFIG_KEY] = YacAttMap(filepath=config)
+
+        self[NAME_KEY] = _select_value("name", name, self[CONFIG_KEY])
+        self[RECORD_ID_KEY] = _select_value(
+            "record_identifier", record_identifier, self[CONFIG_KEY], False)
         self[DB_ONLY_KEY] = database_only
-        if schema_path:
-            _, self[SCHEMA_KEY] = read_yaml_data(schema_path, "schema")
-            self.validate_schema()
-        if results_file:
+        schema_path = _mk_abs_via_cfg(_select_value(
+            "schema_path", schema_path, self[CONFIG_KEY]), config)
+        _, self[SCHEMA_KEY] = read_yaml_data(schema_path, "schema")
+        self.validate_schema()
+        results_file_path = _mk_abs_via_cfg(_select_value(
+                "results_file_path", results_file_path, self[CONFIG_KEY], False), config)
+        if results_file_path:
             if self[DB_ONLY_KEY]:
                 raise ValueError("Running in database only mode does not make "
                                  "sense with a YAML file as a backend.")
-            self[FILE_KEY] = expandpath(results_file)
+            self[FILE_KEY] = results_file_path
             self._init_results_file()
-        elif database_config:
-            if isinstance(database_config, str):
-                _, self[CONFIG_KEY] = read_yaml_data(database_config, "DB config")
-            elif isinstance(database_config, dict):
-                self[CONFIG_KEY] = database_config
-            else:
-                raise TypeError("database_config has to be either path to the "
-                                "file to read or a dict")
+        elif CFG_DATABASE_KEY in self[CONFIG_KEY]:
             if not all([_check_cfg_key(self[CONFIG_KEY][CFG_DATABASE_KEY], key)
                         for key in DB_CREDENTIALS]):
-                raise MissingConfigDataError(
-                    "Must specify all database login credentials")
+                raise MissingConfigDataError("Must specify all database login "
+                                             "credentials or result_file_path")
             self[DATA_KEY] = YacAttMap()
             self._init_postgres_table()
         else:
@@ -709,24 +736,23 @@ class PipestatManager(dict):
             raise PipestatDatabaseError(f"Connection is already established: "
                                         f"{self[DB_CONNECTION_KEY].info.host}")
         try:
-            cfg_db = self[CONFIG_KEY][CFG_DATABASE_KEY]
             self[DB_CONNECTION_KEY] = psycopg2.connect(
-                dbname=cfg_db[CFG_NAME_KEY],
-                user=cfg_db[CFG_USER_KEY],
-                password=cfg_db[CFG_PASSWORD_KEY],
-                host=cfg_db[CFG_HOST_KEY],
-                port=cfg_db[CFG_PORT_KEY]
+                dbname=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_NAME_KEY],
+                user=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_USER_KEY],
+                password=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_PASSWORD_KEY],
+                host=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY],
+                port=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_PORT_KEY]
             )
         except psycopg2.Error as e:
             _LOGGER.error(f"Could not connect to: "
-                          f"{cfg_db[CFG_HOST_KEY]}")
+                          f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}")
             _LOGGER.info(f"Caught error: {e}")
             if suppress:
                 return False
             raise
         else:
             _LOGGER.debug(f"Established connection with PostgreSQL: "
-                          f"{cfg_db[CFG_HOST_KEY]}")
+                          f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}")
             return True
 
     def close_postgres_connection(self):
@@ -777,7 +803,7 @@ def main():
     psm = PipestatManager(
         name=args.namespace,
         schema_path=args.schema,
-        results_file=args.results_file,
+        results_file_path=args.results_file,
         database_config=args.database_config
     )
     if args.command == REPORT_CMD:

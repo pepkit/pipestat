@@ -31,11 +31,11 @@ h4 .content {
 # Package `pipestat` Documentation
 
 ## <a name="PipestatManager"></a> Class `PipestatManager`
-pipestat standardizes reporting of pipeline results. It formalizes a way for pipeline developers and downstream tools developers to communicate -- results produced by a pipeline can easily and reliably become an input for downstream analyses. The ovject exposes API for interacting with the results can be backed by either a YAML-formatted file or a PostgreSQL database.
+Pipestat standardizes reporting of pipeline results. It formalizes a way for pipeline developers and downstream tools developers to communicate -- results produced by a pipeline can easily and reliably become an input for downstream analyses. The object exposes API for interacting with the results can be backed by either a YAML-formatted file or a PostgreSQL database.
 
 
 ```python
-def __init__(self, name, record_identifier=None, schema_path=None, results_file=None, database_config=None, database_only=False)
+def __init__(self, name=None, record_identifier=None, schema_path=None, results_file_path=None, database_only=False, config=None)
 ```
 
 Initialize the object
@@ -44,8 +44,9 @@ Initialize the object
 - `name` (`str`):  namespace to report into. This will be the DB tablename if using DB as the object back-end
 - `record_identifier` (`str`):  record identifier to report for. Thiscreates a weak bound to the record, which can be overriden in this object method calls
 - `schema_path` (`str`):  path to the output schema that formalizesthe results structure
-- `results_file` (`str`):  YAML file to report into, if file is used asthe object back-end
-- `database_config` (`str`):  DB login credentials to report into,if DB is used as the object back-end
+- `results_file_path` (`str`):  YAML file to report into, if file is used asthe object back-end
+- `database_only` (`bool`):  whether the reported data should not bestored in the memory, but only in the database
+- `config` (`str`):  path to the configuration file
 
 
 

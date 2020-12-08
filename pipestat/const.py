@@ -22,7 +22,7 @@ TABLE_COLS_BY_TYPE = {
     "image": '{} JSONB'
 }
 
-DOC_URL = "TBA"
+DOC_URL = "http://pipestat.databio.org/en/latest/db_config/"
 
 # DB config keys
 CFG_DATABASE_KEY = "database"

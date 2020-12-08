@@ -19,7 +19,6 @@ _LOGGER = logging.getLogger(__name__)
 def build_argparser(desc):
     """
     Builds argument parser.
-
     :param str desc: additional description to print in help
     :return argparse.ArgumentParser
     """
