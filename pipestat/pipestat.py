@@ -61,7 +61,7 @@ class PipestatManager(dict):
             the object back-end
         :param bool database_only: whether the reported data should not be
             stored in the memory, but only in the database
-        :param str config: path to the configuration file
+        :param str | dict config: path to the configuration file
         """
         def _check_cfg_key(cfg, key):
             if key not in cfg:
@@ -97,8 +97,14 @@ class PipestatManager(dict):
         super(PipestatManager, self).__init__()
         self[CONFIG_KEY] = YacAttMap()
         if config is not None:
-            config = os.path.abspath(expandpath(config))
-            self[CONFIG_KEY] = YacAttMap(filepath=config)
+            if isinstance(config, str):
+                config = os.path.abspath(expandpath(config))
+                self[CONFIG_KEY] = YacAttMap(filepath=config)
+            elif isinstance(config, dict):
+                self[CONFIG_KEY] = YacAttMap(entries=config)
+            else:
+                raise TypeError("database_config has to be either path to the "
+                                "file to read or a dict")
 
         self[NAME_KEY] = _select_value("name", name, self[CONFIG_KEY])
         self[RECORD_ID_KEY] = _select_value(
