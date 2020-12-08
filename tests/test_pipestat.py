@@ -36,24 +36,19 @@ class TestPipestatManagerInstantiation:
                 schema_path=schema_file_path
             ), PipestatManager)
 
-    def test_obj_creation_db(self, schema_file_path, config_file_path):
+    def test_obj_creation_db(self, config_file_path):
         """ Object constructor works with database as backend"""
-        assert isinstance(
-            PipestatManager(
-                name="test",
-                database_config=config_file_path,
-                schema_path=schema_file_path
-            ), PipestatManager)
+        assert isinstance(PipestatManager(config=config_file_path),
+                          PipestatManager)
 
-    def test_schema_req_for_db(self, config_file_path):
+    def test_schema_req(self, results_file_path):
         """
         Object constructor raises exception if schema is not provided
-        with database configuration file
         """
-        with pytest.raises(SchemaNotFoundError):
+        with pytest.raises(PipestatError):
             PipestatManager(
                 name="test",
-                database_config=config_file_path
+                results_file_path=results_file_path
             )
 
     def test_missing_cfg_data(self, schema_file_path):
@@ -64,7 +59,7 @@ class TestPipestatManagerInstantiation:
         with pytest.raises(MissingConfigDataError):
             PipestatManager(
                 name="test",
-                database_config=tmp_pth,
+                config=tmp_pth,
                 schema_path=schema_file_path
             )
 
@@ -135,15 +130,6 @@ class TestPipestatManagerInstantiation:
 
 
 class TestReporting:
-    def test_report_requires_schema(self, results_file_path):
-        """ Report fails if schema not provided, even for a file backend """
-        psm = PipestatManager(name="test", results_file_path=results_file_path)
-        with pytest.raises(SchemaNotFoundError):
-            psm.report(
-                record_identifier="sample1",
-                values={"name_of_something": "test_name"}
-            )
-
     @pytest.mark.parametrize(
         ["rec_id", "val"],
         [("sample1", {"name_of_something": "test_name"}),
@@ -157,8 +143,8 @@ class TestReporting:
     def test_report_basic(self, rec_id, val, config_file_path,
                           schema_file_path, results_file_path, backend):
         args = dict(schema_path=schema_file_path, name="test")
-        backend_data = {"database_config": config_file_path} if backend == "db"\
-            else {"results_file": results_file_path}
+        backend_data = {"config": config_file_path} if backend == "db"\
+            else {"results_file_path": results_file_path}
         args.update(backend_data)
         psm = PipestatManager(**args)
         psm.report(
@@ -179,8 +165,8 @@ class TestReporting:
     def test_report_overwrite(self, rec_id, val, config_file_path,
                           schema_file_path, results_file_path, backend):
         args = dict(schema_path=schema_file_path, name="test")
-        backend_data = {"database_config": config_file_path} if backend == "db"\
-            else {"results_file": results_file_path}
+        backend_data = {"config": config_file_path} if backend == "db"\
+            else {"results_file_path": results_file_path}
         args.update(backend_data)
         psm = PipestatManager(**args)
         psm.report(
@@ -204,8 +190,8 @@ class TestReporting:
             self, rec_id, val, config_file_path, schema_file_path,
             results_file_path, backend, success):
         args = dict(schema_path=schema_file_path, name="test")
-        backend_data = {"database_config": config_file_path} if backend == "db"\
-            else {"results_file": results_file_path}
+        backend_data = {"config": config_file_path} if backend == "db"\
+            else {"results_file_path": results_file_path}
         args.update(backend_data)
         psm = PipestatManager(**args)
         if success:
@@ -238,8 +224,8 @@ class TestRetrieval:
     def test_retrieve_basic(self, rec_id, val, config_file_path,
                             results_file_path, schema_file_path, backend):
         args = dict(schema_path=schema_file_path, name="test")
-        backend_data = {"database_config": config_file_path} if backend == "db"\
-            else {"results_file": results_file_path}
+        backend_data = {"config": config_file_path} if backend == "db"\
+            else {"results_file_path": results_file_path}
         args.update(backend_data)
         psm = PipestatManager(**args)
         retrieved_val = psm.retrieve(
@@ -254,8 +240,8 @@ class TestRetrieval:
             self, rec_id, config_file_path, results_file_path,
             schema_file_path, backend):
         args = dict(schema_path=schema_file_path, name="test")
-        backend_data = {"database_config": config_file_path} if backend == "db"\
-            else {"results_file": results_file_path}
+        backend_data = {"config": config_file_path} if backend == "db"\
+            else {"results_file_path": results_file_path}
         args.update(backend_data)
         psm = PipestatManager(**args)
         assert isinstance(psm.retrieve(record_identifier=rec_id), Mapping)
@@ -269,8 +255,8 @@ class TestRetrieval:
             self, rec_id, res_id, config_file_path, results_file_path,
             schema_file_path, backend):
         args = dict(schema_path=schema_file_path, name="test")
-        backend_data = {"database_config": config_file_path} if backend == "db"\
-            else {"results_file": results_file_path}
+        backend_data = {"config": config_file_path} if backend == "db"\
+            else {"results_file_path": results_file_path}
         args.update(backend_data)
         psm = PipestatManager(**args)
         with pytest.raises(PipestatDatabaseError):
@@ -289,8 +275,8 @@ class TestRemoval:
     def test_remove_basic(self, rec_id, res_id, val, config_file_path,
                              results_file_path, schema_file_path, backend):
         args = dict(schema_path=schema_file_path, name="test")
-        backend_data = {"database_config": config_file_path} if backend == "db"\
-            else {"results_file": results_file_path}
+        backend_data = {"config": config_file_path} if backend == "db"\
+            else {"results_file_path": results_file_path}
         args.update(backend_data)
         psm = PipestatManager(**args)
         psm.remove(
@@ -305,8 +291,8 @@ class TestRemoval:
             self, rec_id, schema_file_path, config_file_path,
             results_file_path, backend):
         args = dict(schema_path=schema_file_path, name="test")
-        backend_data = {"database_config": config_file_path} if backend == "db"\
-            else {"results_file": results_file_path}
+        backend_data = {"config": config_file_path} if backend == "db"\
+            else {"results_file_path": results_file_path}
         args.update(backend_data)
         psm = PipestatManager(**args)
         psm.remove(record_identifier=rec_id)
@@ -322,8 +308,8 @@ class TestRemoval:
             self, rec_id, res_id, schema_file_path, config_file_path,
             results_file_path, backend):
         args = dict(schema_path=schema_file_path, name="test")
-        backend_data = {"database_config": config_file_path} if backend == "db"\
-            else {"results_file": results_file_path}
+        backend_data = {"config": config_file_path} if backend == "db"\
+            else {"results_file_path": results_file_path}
         args.update(backend_data)
         psm = PipestatManager(**args)
         assert not psm.remove(
@@ -337,8 +323,8 @@ class TestRemoval:
             self, rec_id, schema_file_path, config_file_path,
             results_file_path, backend):
         args = dict(schema_path=schema_file_path, name="test")
-        backend_data = {"database_config": config_file_path} if backend == "db"\
-            else {"results_file": results_file_path}
+        backend_data = {"config": config_file_path} if backend == "db"\
+            else {"results_file_path": results_file_path}
         args.update(backend_data)
         psm = PipestatManager(**args)
         assert not psm.remove(record_identifier=rec_id)
@@ -352,8 +338,8 @@ class TestRemoval:
             self, rec_id, res_id, schema_file_path, config_file_path,
             results_file_path, backend):
         args = dict(schema_path=schema_file_path, name="test")
-        backend_data = {"database_config": config_file_path} if backend == "db"\
-            else {"results_file": results_file_path}
+        backend_data = {"config": config_file_path} if backend == "db"\
+            else {"results_file_path": results_file_path}
         args.update(backend_data)
         psm = PipestatManager(**args)
         assert psm.remove(
@@ -375,8 +361,8 @@ class TestNoRecordID:
         REC_ID = "constant_record_id"
         args = dict(schema_path=schema_file_path, name="test",
                     record_identifier=REC_ID)
-        backend_data = {"database_config": config_file_path} if backend == "db"\
-            else {"results_file": results_file_path}
+        backend_data = {"config": config_file_path} if backend == "db"\
+            else {"results_file_path": results_file_path}
         args.update(backend_data)
         psm = PipestatManager(**args)
         psm.report(values=val)
@@ -396,8 +382,8 @@ class TestNoRecordID:
         REC_ID = "constant_record_id"
         args = dict(schema_path=schema_file_path, name="test",
                     record_identifier=REC_ID)
-        backend_data = {"database_config": config_file_path} if backend == "db"\
-            else {"results_file": results_file_path}
+        backend_data = {"config": config_file_path} if backend == "db"\
+            else {"results_file_path": results_file_path}
         args.update(backend_data)
         psm = PipestatManager(**args)
         retrieved_val = psm.retrieve(result_identifier=list(val.keys())[0])
@@ -414,8 +400,8 @@ class TestNoRecordID:
         REC_ID = "constant_record_id"
         args = dict(schema_path=schema_file_path, name="test",
                     record_identifier=REC_ID)
-        backend_data = {"database_config": config_file_path} if backend == "db"\
-            else {"results_file": results_file_path}
+        backend_data = {"config": config_file_path} if backend == "db"\
+            else {"results_file_path": results_file_path}
         args.update(backend_data)
         psm = PipestatManager(**args)
         assert psm.remove(result_identifier=list(val.keys())[0])
@@ -432,7 +418,7 @@ class TestDatabaseOnly:
         REC_ID = "constant_record_id"
         psm = PipestatManager(schema_path=schema_file_path, name="test",
                     record_identifier=REC_ID, database_only=True,
-                    database_config=config_file_path)
+                    config=config_file_path)
         psm.report(values=val)
         assert len(psm.data) == 0
         val_name = list(val.keys())[0]

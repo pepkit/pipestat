@@ -9,7 +9,7 @@ def data_path():
 
 @pytest.fixture
 def results_file_path(data_path):
-    return os.path.join(data_path, "db.yaml")
+    return os.path.join(data_path, "results_file.yaml")
 
 
 @pytest.fixture
