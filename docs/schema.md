@@ -1,21 +1,19 @@
 # Schema specification
 
-One of the *required* pipestat inputs is a schema file. This is the central piece of information that pipestat uses to operate.
+One of the *required* pipestat inputs is a schema file. **The schema specifies the results types and names that can be reported with pipestat.** As a pipeline developer, you create a schema to describe all of the important results to be recorded from your pipeline.
 
-**Schema is the source of results types specification that can be reported with pipestat.**
-
-Pipestat uses the input schema as a base for creating a collection of self-contained result-specific [jsonschema schemas](https://json-schema.org/) that are used to **validate** the reported results prior to inserting into the database or saving in the YAML results file, depending on the selected backend.
+Pipestat uses the schema as a base for creating a collection of self-contained result-specific [jsonschema schemas](https://json-schema.org/) that are used to **validate** the reported results prior to inserting into the database or saving in the YAML results file, depending on the selected backend.
 
 ## Components
 
-Each schema is a YAML-formatted file composed of a set of self-contained result definitions. The top level keys are the unique result identifiers. The result definitions are jsonschema schemas. For a minimal schema, only `type` attribute is required. `type` keyword indicates the required type of the result to be reported. Please refer to the jsonschema documentation to learn more about the types and other attributes. This is an example of such component:
+Each schema is a YAML-formatted file composed of a set of self-contained result definitions. The top level keys are the unique result identifiers. The result definitions are jsonschema schemas. For a minimal schema, only the `type` attribute is required, which indicates the required type of the result to be reported. Please refer to the jsonschema documentation to learn more about the types and other attributes. This is an example of such component:
 
 ```yaml
 result_identifier:
   type: <type>
 ``` 
 
-Importantly, pipestat extends jsonschema vocabulary by adding two additional types: `image` and `file`. These types require reporting objects with the following attributes:
+Here, `result_identifier` can be whatever name you want to use to identify this result. Importantly, pipestat extends the jsonschema vocabulary by adding two additional types: `image` and `file`. These types require reporting objects with the following attributes:
 
 - `file`: 
     - `path`: path to the reported file
@@ -38,7 +36,7 @@ properties:
 
 ## Basic example
 
-Here's a simple schema example that showcases most of the supported types in a basic for:
+Here's a simple schema example that showcases most of the supported types:
 
 
 ```yaml

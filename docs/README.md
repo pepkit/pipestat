@@ -5,15 +5,14 @@
 
 # What is this?
 
-Pipestat standardizes reporting of pipeline results. It formalizes a way for pipeline developers and downstream tools developers to communicate. 
+Pipestat standardizes reporting of pipeline results. It provides 1) a standard specification for how pipeline outputs should be stored; and 2) an implementation to easily write results to that format from within Python or from the command line.
 
 # How does it work?
 
-Thanks to a schema-derived specifications, results produced by a pipeline can easily and reliably become an input for downstream analyses. The package offers a Python API and command line interface for results reporting and management and can be backed by either a [YAML-formatted file](https://yaml.org/spec/1.2/spec.html) or a [PostgreSQL database](https://www.postgresql.org/). This way the reported results persist between multiple sessions and can be shared between multiple processes.
+A pipeline author defines all the outputs produced by a pipeline by writing a JSON-schema. The pipeline then uses pipestat to report pipeline outputs as the pipeline runs, either via the Python API or command line interface. The user configures results to be stored either in a [YAML-formatted file](https://yaml.org/spec/1.2/spec.html) or a [PostgreSQL database](https://www.postgresql.org/). The results are recorded according to the pipestat specification, in a standard, pipeline-agnostic way. This way, downstream software can use this specification to create universal tools for analyzing, monitoring, and visualizing pipeline results that will work with any pipeline or workflow.
+
 
 # Quick start
-
-This is how to report and then retrieve the reported result with `pipestat` using CLI and Python API. The examples below use a YAML file as the backend. 
 
 ## Install pipestat
 
@@ -33,7 +32,9 @@ From Python:
 
 ```python
 import pipestat
-psm = pipestat.PipestatManager(name="namespace", results_file_path="results.yaml", schema_path="schema.yaml")
+psm = pipestat.PipestatManager(name="namespace", \
+							   results_file_path="results.yaml", \
+							   schema_path="schema.yaml")
 psm.report(record_identifier="record_id", values={"result_name": 1.1})
 ```
  

@@ -12,9 +12,8 @@ nav:
     - Use Python API: python_api.md
     - Use command line interface: cli.md
   - Reference:
-    - Config specification: config.md
-    - Schema specification: schema.md
-    - Backends specification: backends.md
+    - Configuration format : config.md
+    - Pipestat specification: pipestat_specification.md
     - Python API: autodoc_build/pipestat.md
     - Support: https://github.com/pepkit/pipestat/issues
     - Contributing: contributing.md
