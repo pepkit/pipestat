@@ -3,4 +3,3 @@ markdown-include
 pydoc-markdown
 https://github.com/pepkit/pipestat/archive/master.zip
 https://github.com/databio/mkdocs-databio/archive/master.zip
-nbconvert==5.6.1
