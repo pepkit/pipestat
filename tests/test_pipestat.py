@@ -115,6 +115,18 @@ class TestPipestatManagerInstantiation:
                 results_file_path=results_file_path
             )
 
+    def test_schema_recursive_custom_type_conversion(
+            self, recursive_schema_file_path, results_file_path):
+        psm = PipestatManager(
+            name="test",
+            results_file_path=results_file_path,
+            schema_path=recursive_schema_file_path
+        )
+        assert "path" in psm.result_schemas[
+            "output_file_in_object"]["properties"]["prop1"]["properties"]
+        assert "thumbnail_path" in psm.result_schemas[
+            "output_file_in_object"]["properties"]["prop2"]["properties"]
+
     def test_missing_cfg_data(self, schema_file_path):
         """ Object constructor raises exception if cfg is missing data """
         tmp_pth = os.path.join(mkdtemp(), "res.yml")

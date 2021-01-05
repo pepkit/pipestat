@@ -1,0 +1,19 @@
+collection_of_images:
+  description: "This store collection of values"
+  type: array
+  items:
+    type: file
+output_file_in_object:
+  type: object
+  properties:
+    prop1:
+      type: file
+    prop2:
+      type: image
+  description: "Object output"
+output_file:
+  type: file
+  description: "This a path to the output file"
+output_image:
+  type: image
+  description: "This a path to the output image"
