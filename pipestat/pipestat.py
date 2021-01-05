@@ -699,23 +699,37 @@ class PipestatManager(dict):
 
         :raises SchemaError: if any schema format issue is detected
         """
+        def _recursively_replace_custom_types(s):
+            """
+            Replace the custom types in pipestat schema with canonical types
+
+            :param dict s: schema to replace types in
+            :return dict: schema with types replaced
+            """
+            for k, v in s.items():
+                assert SCHEMA_TYPE_KEY in v, \
+                    SchemaError(f"Result '{k}' is missing '{SCHEMA_TYPE_KEY}' key")
+                if v[SCHEMA_TYPE_KEY] == "object" and SCHEMA_PROP_KEY in s[k]:
+                    _recursively_replace_custom_types(s[k][SCHEMA_PROP_KEY])
+                if v[SCHEMA_TYPE_KEY] in CANONICAL_TYPES.keys():
+                    s.setdefault(k, {})
+                    s[k].setdefault(SCHEMA_PROP_KEY, {})
+                    s[k][SCHEMA_PROP_KEY].update(
+                        CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]][SCHEMA_PROP_KEY])
+                    s[k].setdefault("required", [])
+                    s[k]["required"].extend(
+                        CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]]["required"])
+                    s[k][SCHEMA_TYPE_KEY] = \
+                        CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]][SCHEMA_TYPE_KEY]
+            return s
+
         schema = deepcopy(self.schema)
         _LOGGER.debug(f"Validating input schema")
         assert isinstance(schema, dict), \
             SchemaError(f"The schema has to be a {dict().__class__.__name__}")
         self[RES_SCHEMAS_KEY] = {}
-        for k, v in schema.items():
-            assert SCHEMA_TYPE_KEY in v, \
-                SchemaError(f"Result '{k}' is missing '{SCHEMA_TYPE_KEY}' key")
-            if v[SCHEMA_TYPE_KEY] in CANONICAL_TYPES.keys():
-                schema.setdefault(k, {})
-                schema[k].setdefault(SCHEMA_PROP_KEY, {})
-                schema[k][SCHEMA_PROP_KEY].update(CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]][SCHEMA_PROP_KEY])
-                schema[k].setdefault("required", [])
-                schema[k]["required"].extend(CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]]["required"])
-                schema[k][SCHEMA_TYPE_KEY] = CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]][SCHEMA_TYPE_KEY]
-            self[RES_SCHEMAS_KEY].setdefault(k, {})
-            self[RES_SCHEMAS_KEY][k] = schema[k]
+        schema = _recursively_replace_custom_types(schema)
+        self[RES_SCHEMAS_KEY] = schema
 
     def check_connection(self):
         """
@@ -848,4 +862,3 @@ def main():
             record_identifier=args.record_identifier
         ))
         sys.exit(0)
-
