@@ -160,16 +160,16 @@ class PipestatManager(dict):
         """
         Namespace the object writes the results to
 
-        :return str: Namespace the object writes the results to
+        :return str: namespace the object writes the results to
         """
         return self._get_attr(NAME_KEY)
 
     @property
     def record_identifier(self):
         """
-        Namespace the object writes the results to
+        Unique identifier of the record
 
-        :return str: Namespace the object writes the results to
+        :return str: unique identifier of the record
         """
         return self._get_attr(RECORD_ID_KEY)
 
@@ -302,8 +302,9 @@ class PipestatManager(dict):
         """
         if not os.path.exists(self.file):
             _LOGGER.info(f"Initializing results file '{self.file}'")
-            data = YacAttMap(entries={self.name: PXAM()})
+            data = YacAttMap(entries={self.name: '{}'})
             data.write(filepath=self.file)
+            data.make_readonly()
             self[DATA_KEY] = data
             return True
         _LOGGER.info(f"Reading data from '{self.file}'")
@@ -468,7 +469,7 @@ class PipestatManager(dict):
         Report a result.
 
         :param dict[str, any] values: dictionary of result-value pairs
-        :param str record_identifier: unique identifier of the record, value to
+        :param str record_identifier: unique identifier of the record, value
             in 'record_identifier' column to look for to determine if the record
             already exists
         :param bool force_overwrite: whether to overwrite the existing record
