@@ -2,6 +2,6 @@ ubiquerg>=0.6.1
 logmuse>=0.2.5
 oyaml
 yacman>=0.7.0
-psycopg2
+psycopg2-binary
 attmap
 jsonschema
