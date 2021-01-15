@@ -34,7 +34,7 @@ class TestConnection:
             config=config_file_path,
             database_only=True,
             schema_path=schema_file_path,
-            name="test"
+            namespace="test"
         )
         assert not pm.check_connection()
         pm.establish_postgres_connection()
@@ -46,7 +46,7 @@ class TestConnection:
             config=config_file_path,
             database_only=True,
             schema_path=schema_file_path,
-            name="test"
+            namespace="test"
         )
         pm.establish_postgres_connection()
         with pytest.raises(PipestatDatabaseError):
@@ -59,7 +59,7 @@ class TestConnection:
             config=config_file_path,
             database_only=True,
             schema_path=schema_file_path,
-            name="test"
+            namespace="test"
         )
         pm[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY] = "bogus_host"
         if suppress:
@@ -73,7 +73,7 @@ class TestConnection:
             config=config_file_path,
             database_only=True,
             schema_path=schema_file_path,
-            name="test"
+            namespace="test"
         )
         pm.establish_postgres_connection()
         pm.close_postgres_connection()
@@ -84,7 +84,7 @@ class TestConnection:
             config=config_file_path,
             database_only=True,
             schema_path=schema_file_path,
-            name="test"
+            namespace="test"
         )
         with pytest.raises(PipestatDatabaseError):
             pm.close_postgres_connection()
@@ -95,7 +95,7 @@ class TestPipestatManagerInstantiation:
         """ Object constructor works with file as backend"""
         assert isinstance(
             PipestatManager(
-                name="test",
+                namespace="test",
                 results_file_path=results_file_path,
                 schema_path=schema_file_path
             ), PipestatManager)
@@ -111,14 +111,14 @@ class TestPipestatManagerInstantiation:
         """
         with pytest.raises(PipestatError):
             PipestatManager(
-                name="test",
+                namespace="test",
                 results_file_path=results_file_path
             )
 
     def test_schema_recursive_custom_type_conversion(
             self, recursive_schema_file_path, results_file_path):
         psm = PipestatManager(
-            name="test",
+            namespace="test",
             results_file_path=results_file_path,
             schema_path=recursive_schema_file_path
         )
@@ -134,7 +134,7 @@ class TestPipestatManagerInstantiation:
             dump({"database": {"host": "localhost"}}, file)
         with pytest.raises(MissingConfigDataError):
             PipestatManager(
-                name="test",
+                namespace="test",
                 config=tmp_pth,
                 schema_path=schema_file_path
             )
@@ -142,7 +142,7 @@ class TestPipestatManagerInstantiation:
     def test_unknown_backend(self, schema_file_path):
         """ Either db config or results file path needs to be provided """
         with pytest.raises(MissingConfigDataError):
-            PipestatManager(name="test", schema_path=schema_file_path)
+            PipestatManager(namespace="test", schema_path=schema_file_path)
 
     def test_create_results_file(self, schema_file_path):
         """ Results file is created if a nonexistent path provided """
@@ -150,7 +150,7 @@ class TestPipestatManagerInstantiation:
         print(f"Temporary results file: {tmp_res_file}")
         assert not os.path.exists(tmp_res_file)
         PipestatManager(
-            name="test",
+            namespace="test",
             results_file_path=tmp_res_file,
             schema_path=schema_file_path
         )
@@ -162,14 +162,14 @@ class TestPipestatManagerInstantiation:
         print(f"Temporary results file: {tmp_res_file}")
         assert not os.path.exists(tmp_res_file)
         PipestatManager(
-            name="test",
+            namespace="test",
             results_file_path=tmp_res_file,
             schema_path=schema_file_path
         )
         assert os.path.exists(tmp_res_file)
         with pytest.raises(PipestatDatabaseError):
             PipestatManager(
-                name="new_test",
+                namespace="new_test",
                 results_file_path=tmp_res_file,
                 schema_path=schema_file_path
             )
@@ -179,7 +179,7 @@ class TestPipestatManagerInstantiation:
         """ Input string that is not a file path raises an informative error """
         with pytest.raises(TypeError):
             PipestatManager(
-                name="test",
+                namespace="test",
                 results_file_path=pth,
                 schema_path=schema_file_path
             )
@@ -188,7 +188,7 @@ class TestPipestatManagerInstantiation:
             self, results_file_path, schema_file_path):
         """ Contents of the results file are present after loading """
         psm = PipestatManager(
-            name="test",
+            namespace="test",
             results_file_path=results_file_path,
             schema_path=schema_file_path
         )
@@ -198,7 +198,7 @@ class TestPipestatManagerInstantiation:
             self, results_file_path, schema_file_path):
         """ Test string representation identifies number of records """
         psm = PipestatManager(
-            name="test",
+            namespace="test",
             results_file_path=results_file_path,
             schema_path=schema_file_path
         )
@@ -218,7 +218,7 @@ class TestReporting:
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_report_basic(self, rec_id, val, config_file_path,
                           schema_file_path, results_file_path, backend):
-        args = dict(schema_path=schema_file_path, name="test")
+        args = dict(schema_path=schema_file_path, namespace="test")
         backend_data = {"config": config_file_path} if backend == "db"\
             else {"results_file_path": results_file_path}
         args.update(backend_data)
@@ -240,7 +240,7 @@ class TestReporting:
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_report_overwrite(self, rec_id, val, config_file_path,
                           schema_file_path, results_file_path, backend):
-        args = dict(schema_path=schema_file_path, name="test")
+        args = dict(schema_path=schema_file_path, namespace="test")
         backend_data = {"config": config_file_path} if backend == "db"\
             else {"results_file_path": results_file_path}
         args.update(backend_data)
@@ -265,7 +265,7 @@ class TestReporting:
     def test_report_type_casting(
             self, rec_id, val, config_file_path, schema_file_path,
             results_file_path, backend, success):
-        args = dict(schema_path=schema_file_path, name="test")
+        args = dict(schema_path=schema_file_path, namespace="test")
         backend_data = {"config": config_file_path} if backend == "db"\
             else {"results_file_path": results_file_path}
         args.update(backend_data)
@@ -299,7 +299,7 @@ class TestRetrieval:
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_retrieve_basic(self, rec_id, val, config_file_path,
                             results_file_path, schema_file_path, backend):
-        args = dict(schema_path=schema_file_path, name="test")
+        args = dict(schema_path=schema_file_path, namespace="test")
         backend_data = {"config": config_file_path} if backend == "db"\
             else {"results_file_path": results_file_path}
         args.update(backend_data)
@@ -315,7 +315,7 @@ class TestRetrieval:
     def test_retrieve_whole_record(
             self, rec_id, config_file_path, results_file_path,
             schema_file_path, backend):
-        args = dict(schema_path=schema_file_path, name="test")
+        args = dict(schema_path=schema_file_path, namespace="test")
         backend_data = {"config": config_file_path} if backend == "db"\
             else {"results_file_path": results_file_path}
         args.update(backend_data)
@@ -330,7 +330,7 @@ class TestRetrieval:
     def test_retrieve_nonexistent(
             self, rec_id, res_id, config_file_path, results_file_path,
             schema_file_path, backend):
-        args = dict(schema_path=schema_file_path, name="test")
+        args = dict(schema_path=schema_file_path, namespace="test")
         backend_data = {"config": config_file_path} if backend == "db"\
             else {"results_file_path": results_file_path}
         args.update(backend_data)
@@ -350,7 +350,7 @@ class TestRemoval:
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_remove_basic(self, rec_id, res_id, val, config_file_path,
                              results_file_path, schema_file_path, backend):
-        args = dict(schema_path=schema_file_path, name="test")
+        args = dict(schema_path=schema_file_path, namespace="test")
         backend_data = {"config": config_file_path} if backend == "db"\
             else {"results_file_path": results_file_path}
         args.update(backend_data)
@@ -366,7 +366,7 @@ class TestRemoval:
     def test_remove_record(
             self, rec_id, schema_file_path, config_file_path,
             results_file_path, backend):
-        args = dict(schema_path=schema_file_path, name="test")
+        args = dict(schema_path=schema_file_path, namespace="test")
         backend_data = {"config": config_file_path} if backend == "db"\
             else {"results_file_path": results_file_path}
         args.update(backend_data)
@@ -383,7 +383,7 @@ class TestRemoval:
     def test_remove_nonexistent_result(
             self, rec_id, res_id, schema_file_path, config_file_path,
             results_file_path, backend):
-        args = dict(schema_path=schema_file_path, name="test")
+        args = dict(schema_path=schema_file_path, namespace="test")
         backend_data = {"config": config_file_path} if backend == "db"\
             else {"results_file_path": results_file_path}
         args.update(backend_data)
@@ -398,7 +398,7 @@ class TestRemoval:
     def test_remove_nonexistent_record(
             self, rec_id, schema_file_path, config_file_path,
             results_file_path, backend):
-        args = dict(schema_path=schema_file_path, name="test")
+        args = dict(schema_path=schema_file_path, namespace="test")
         backend_data = {"config": config_file_path} if backend == "db"\
             else {"results_file_path": results_file_path}
         args.update(backend_data)
@@ -413,7 +413,7 @@ class TestRemoval:
     def test_last_result_removal_removes_record(
             self, rec_id, res_id, schema_file_path, config_file_path,
             results_file_path, backend):
-        args = dict(schema_path=schema_file_path, name="test")
+        args = dict(schema_path=schema_file_path, namespace="test")
         backend_data = {"config": config_file_path} if backend == "db"\
             else {"results_file_path": results_file_path}
         args.update(backend_data)
@@ -435,7 +435,7 @@ class TestNoRecordID:
     def test_report(self, val, config_file_path, schema_file_path,
                           results_file_path, backend):
         REC_ID = "constant_record_id"
-        args = dict(schema_path=schema_file_path, name="test",
+        args = dict(schema_path=schema_file_path, namespace="test",
                     record_identifier=REC_ID)
         backend_data = {"config": config_file_path} if backend == "db"\
             else {"results_file_path": results_file_path}
@@ -456,7 +456,7 @@ class TestNoRecordID:
     def test_retrieve(self, val, config_file_path, schema_file_path,
                       results_file_path, backend):
         REC_ID = "constant_record_id"
-        args = dict(schema_path=schema_file_path, name="test",
+        args = dict(schema_path=schema_file_path, namespace="test",
                     record_identifier=REC_ID)
         backend_data = {"config": config_file_path} if backend == "db"\
             else {"results_file_path": results_file_path}
@@ -474,7 +474,7 @@ class TestNoRecordID:
     def test_remove(self, val, config_file_path, schema_file_path,
                     results_file_path, backend):
         REC_ID = "constant_record_id"
-        args = dict(schema_path=schema_file_path, name="test",
+        args = dict(schema_path=schema_file_path, namespace="test",
                     record_identifier=REC_ID)
         backend_data = {"config": config_file_path} if backend == "db"\
             else {"results_file_path": results_file_path}
@@ -492,9 +492,9 @@ class TestDatabaseOnly:
     def test_report(self, val, config_file_path, schema_file_path,
                           results_file_path):
         REC_ID = "constant_record_id"
-        psm = PipestatManager(schema_path=schema_file_path, name="test",
-                    record_identifier=REC_ID, database_only=True,
-                    config=config_file_path)
+        psm = PipestatManager(schema_path=schema_file_path, namespace="test",
+                              record_identifier=REC_ID, database_only=True,
+                              config=config_file_path)
         psm.report(values=val)
         assert len(psm.data) == 0
         val_name = list(val.keys())[0]

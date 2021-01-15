@@ -32,9 +32,8 @@ From Python:
 
 ```python
 import pipestat
-psm = pipestat.PipestatManager(name="namespace", \
-							   results_file_path="results.yaml", \
-							   schema_path="schema.yaml")
+
+psm = pipestat.PipestatManager(namespace="namespace", results_file_path="results.yaml", schema_path="schema.yaml")
 psm.report(record_identifier="record_id", values={"result_name": 1.1})
 ```
  
@@ -50,7 +49,8 @@ From Python:
 
 ```python
 import pipestat
-psm = pipestat.PipestatManager(name="namespace", results_file_path="results.yaml")
+
+psm = pipestat.PipestatManager(namespace="namespace", results_file_path="results.yaml")
 psm.retrieve(record_identifier="record_id", result_identifier="result_name")
 ```
  

@@ -45,19 +45,21 @@ class PipestatManager(dict):
     downstream analyses. The object exposes API for interacting with the results
     can be backed by either a YAML-formatted file or a PostgreSQL database.
     """
-    def __init__(self, name=None, record_identifier=None, schema_path=None,
+    def __init__(self, namespace=None, record_identifier=None, schema_path=None,
                  results_file_path=None, database_only=False, config=None):
         """
         Initialize the object
 
-        :param str name: namespace to report into. This will be the DB table
+        :param str namespace: namespace to report into. This will be the DB
+        table
             name if using DB as the object back-end
         :param str record_identifier: record identifier to report for. This
             creates a weak bound to the record, which can be overriden in
             this object method calls
         :param str schema_path: path to the output schema that formalizes
             the results structure
-        :param str results_file_path: YAML file to report into, if file is used as
+        :param str results_file_path: YAML file to report into, if file is
+        used as
             the object back-end
         :param bool database_only: whether the reported data should not be
             stored in the memory, but only in the database
@@ -106,7 +108,7 @@ class PipestatManager(dict):
                 raise TypeError("database_config has to be either path to the "
                                 "file to read or a dict")
 
-        self[NAME_KEY] = _select_value("name", name, self[CONFIG_KEY])
+        self[NAME_KEY] = _select_value("name", namespace, self[CONFIG_KEY])
         self[RECORD_ID_KEY] = _select_value(
             "record_identifier", record_identifier, self[CONFIG_KEY], False)
         self[DB_ONLY_KEY] = database_only
@@ -822,7 +824,7 @@ def main():
     if args.database_config and not args.schema:
         parser.error("the following arguments are required: -s/--schema")
     psm = PipestatManager(
-        name=args.namespace,
+        namespace=args.namespace,
         schema_path=args.schema,
         results_file_path=args.results_file,
         database_config=args.database_config
