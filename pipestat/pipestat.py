@@ -51,19 +51,18 @@ class PipestatManager(dict):
         Initialize the object
 
         :param str namespace: namespace to report into. This will be the DB
-        table
-            name if using DB as the object back-end
+        table name if using DB as the object back-end
         :param str record_identifier: record identifier to report for. This
             creates a weak bound to the record, which can be overriden in
             this object method calls
         :param str schema_path: path to the output schema that formalizes
             the results structure
         :param str results_file_path: YAML file to report into, if file is
-        used as
-            the object back-end
+            used as the object back-end
         :param bool database_only: whether the reported data should not be
             stored in the memory, but only in the database
-        :param str | dict config: path to the configuration file
+        :param str | dict config: path to the configuration file or a mapping
+            with the config file content
         """
         def _check_cfg_key(cfg, key):
             if key not in cfg:
@@ -116,6 +115,7 @@ class PipestatManager(dict):
             "schema_path", schema_path, self[CONFIG_KEY]), config)
         _, self[SCHEMA_KEY] = read_yaml_data(schema_path, "schema")
         self.validate_schema()
+        self._schema_path = schema_path
         results_file_path = _mk_abs_via_cfg(_select_value(
                 "results_file_path", results_file_path, self[CONFIG_KEY], False), config)
         if results_file_path:
@@ -144,6 +144,7 @@ class PipestatManager(dict):
         res = f"{self.__class__.__name__} ({self.name})"
         res += "\nBackend: {}".format(
             f"file ({self.file})" if self.file else "PostgreSQL")
+        res += "\nSchema source: {}".format(self.schema_path)
         res += f"\nRecords count: {self.record_count}"
         return res
 
@@ -183,6 +184,15 @@ class PipestatManager(dict):
         :return dict: schema that formalizes the results structure
         """
         return self._get_attr(SCHEMA_KEY)
+
+    @property
+    def schema_path(self):
+        """
+        Schema path
+
+        :return str: path to the provided schema
+        """
+        return self._schema_path
 
     @property
     def result_schemas(self):
