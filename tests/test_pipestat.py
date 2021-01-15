@@ -202,7 +202,7 @@ class TestPipestatManagerInstantiation:
             results_file_path=results_file_path,
             schema_path=schema_file_path
         )
-        assert f"Records count: {len(psm.data[psm.name])}" in str(psm)
+        assert f"Records count: {len(psm.data[psm.namespace])}" in str(psm)
 
 
 class TestReporting:

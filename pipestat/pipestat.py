@@ -141,7 +141,7 @@ class PipestatManager(dict):
 
         :return str: string representation of the object
         """
-        res = f"{self.__class__.__name__} ({self.name})"
+        res = f"{self.__class__.__name__} ({self.namespace})"
         res += "\nBackend: {}".format(
             f"file ({self.file})" if self.file else "PostgreSQL")
         res += "\nSchema source: {}".format(self.schema_path)
@@ -155,11 +155,11 @@ class PipestatManager(dict):
 
         :return int: number of records reported
         """
-        return len(self.data[self.name]) if self.file \
-            else self._count_rows(self.name)
+        return len(self.data[self.namespace]) if self.file \
+            else self._count_rows(self.namespace)
 
     @property
-    def name(self):
+    def namespace(self):
         """
         Namespace the object writes the results to
 
@@ -258,9 +258,9 @@ class PipestatManager(dict):
         :return dict: database table data in a dict form
         """
         with self.db_cursor as cur:
-            cur.execute(f"SELECT * FROM {self.name}")
+            cur.execute(f"SELECT * FROM {self.namespace}")
             data = cur.fetchall()
-        _LOGGER.info(f"Reading data from database for '{self.name}' namespace")
+        _LOGGER.info(f"Reading data from database for '{self.namespace}' namespace")
         for record in data:
             record_id = record[RECORD_ID]
             for res_id, val in record.items():
@@ -280,16 +280,16 @@ class PipestatManager(dict):
         """
         if self.schema is None:
             raise SchemaNotFoundError("initialize the database table")
-        if self._check_table_exists(table_name=self.name):
+        if self._check_table_exists(table_name=self.namespace):
             _LOGGER.debug(
-                f"Table '{self.name}' already exists in the database")
+                f"Table '{self.namespace}' already exists in the database")
             if not self[DB_ONLY_KEY]:
                 self._table_to_dict()
             return False
         _LOGGER.info(
-            f"Initializing '{self.name}' table in '{PKG_NAME}' database")
+            f"Initializing '{self.namespace}' table in '{PKG_NAME}' database")
         columns = FIXED_COLUMNS + schema_to_columns(schema=self.schema)
-        self._create_table(table_name=self.name, columns=columns)
+        self._create_table(table_name=self.namespace, columns=columns)
         return True
 
     def _create_table(self, table_name, columns):
@@ -314,7 +314,7 @@ class PipestatManager(dict):
         """
         if not os.path.exists(self.file):
             _LOGGER.info(f"Initializing results file '{self.file}'")
-            data = YacAttMap(entries={self.name: '{}'})
+            data = YacAttMap(entries={self.namespace: '{}'})
             data.write(filepath=self.file)
             data.make_readonly()
             self[DATA_KEY] = data
@@ -322,7 +322,7 @@ class PipestatManager(dict):
         _LOGGER.info(f"Reading data from '{self.file}'")
         data = YacAttMap(filepath=self.file)
         filtered = list(filter(lambda x: not x.startswith("_"), data.keys()))
-        if filtered and self.name not in filtered:
+        if filtered and self.namespace not in filtered:
             raise PipestatDatabaseError(
                 f"'{self.file}' is already used to report results for "
                 f"other namespace: {filtered[0]}")
@@ -353,7 +353,7 @@ class PipestatManager(dict):
         :return bool: whether any record matches the provided condition
         """
         with self.db_cursor as cur:
-            statement = f"SELECT EXISTS(SELECT 1 from {self.name} " \
+            statement = f"SELECT EXISTS(SELECT 1 from {self.namespace} " \
                         f"WHERE {condition_col}=%s)"
             cur.execute(statement, (condition_val, ))
             return cur.fetchone()[0]
@@ -389,7 +389,7 @@ class PipestatManager(dict):
                                   condition_val=record_identifier):
             with self.db_cursor as cur:
                 cur.execute(
-                    f"INSERT INTO {self.name} ({RECORD_ID}) VALUES (%s)",
+                    f"INSERT INTO {self.namespace} ({RECORD_ID}) VALUES (%s)",
                     (record_identifier, )
                 )
         # prep a list of SQL objects with column-named value placeholders
@@ -398,7 +398,7 @@ class PipestatManager(dict):
         # construct the query template to execute
         query = sql.SQL("UPDATE {n} SET {c} WHERE {id}=%({id})s RETURNING id").\
             format(
-            n=sql.Identifier(self.name),
+            n=sql.Identifier(self.namespace),
             c=columns,
             id=sql.SQL(RECORD_ID)
         )
@@ -437,14 +437,14 @@ class PipestatManager(dict):
         existing = []
         for r in results:
             if not self[DB_ONLY_KEY]:
-                if self.name in self.data and rid in self.data[self.name] \
-                        and r in self.data[self.name][rid]:
+                if self.namespace in self.data and rid in self.data[self.namespace] \
+                        and r in self.data[self.namespace][rid]:
                     existing.append(r)
             else:
                 with self.db_cursor as cur:
                     try:
                         cur.execute(
-                            f"SELECT {r} FROM {self.name} WHERE {RECORD_ID}=%s",
+                            f"SELECT {r} FROM {self.namespace} WHERE {RECORD_ID}=%s",
                             (rid, )
                         )
                     except Exception:
@@ -466,12 +466,12 @@ class PipestatManager(dict):
         if self[DB_ONLY_KEY]:
             with self.db_cursor as cur:
                 cur.execute(
-                    f"SELECT exists(SELECT 1 from {self.name} "
+                    f"SELECT exists(SELECT 1 from {self.namespace} "
                     f"WHERE {RECORD_ID}=%s)",
                     (record_identifier, )
                 )
                 return cur.fetchone()
-        if self.name in self.data and record_identifier in self.data[self.name]:
+        if self.namespace in self.data and record_identifier in self.data[self.namespace]:
             return True
         return False
 
@@ -539,12 +539,12 @@ class PipestatManager(dict):
                               f"Exception: {e}")
                 if not self[DB_ONLY_KEY]:
                     for r in result_identifiers:
-                        del self[DATA_KEY][self.name][record_identifier][r]
+                        del self[DATA_KEY][self.namespace][record_identifier][r]
                 raise
         nl = "\n"
         rep_strs = [f'{k}: {v}' for k, v in values.items()]
         _LOGGER.info(
-            f"Reported records for '{record_identifier}' in '{self.name}' "
+            f"Reported records for '{record_identifier}' in '{self.namespace}' "
             f"namespace:{nl} - {(nl + ' - ').join(rep_strs)}")
         return True if not return_id else updated_ids
 
@@ -558,10 +558,10 @@ class PipestatManager(dict):
         :param str record_identifier: unique identifier of the record
         :param any values: dict of results identifiers and values to be reported
         """
-        self[DATA_KEY].setdefault(self.name, PXAM())
-        self[DATA_KEY][self.name].setdefault(record_identifier, PXAM())
+        self[DATA_KEY].setdefault(self.namespace, PXAM())
+        self[DATA_KEY][self.namespace].setdefault(record_identifier, PXAM())
         for res_id, val in values.items():
-            self[DATA_KEY][self.name][record_identifier][res_id] = val
+            self[DATA_KEY][self.namespace][record_identifier][res_id] = val
 
     def select(self, columns=None, condition=None, condition_val=None):
         """
@@ -590,7 +590,7 @@ class PipestatManager(dict):
             columns = sql.SQL(',').join(
                 [sql.Identifier(x) for x in mk_list_of_str(columns)])
         statement = sql.SQL("SELECT {} FROM {}").format(
-            columns, sql.Identifier(self.name))
+            columns, sql.Identifier(self.namespace))
         if condition:
             statement += sql.SQL(" WHERE ")
             statement += condition
@@ -622,20 +622,20 @@ class PipestatManager(dict):
                     f"Result '{result_identifier}' not found for record "
                     f"'{record_identifier}'")
             with self.db_cursor as cur:
-                cur.execute(f"SELECT {result_identifier} FROM {self.name} "
+                cur.execute(f"SELECT {result_identifier} FROM {self.namespace} "
                             f"WHERE {RECORD_ID}=%s", (record_identifier, ))
                 return cur.fetchone()[0]
         else:
-            if record_identifier not in self.data[self.name]:
+            if record_identifier not in self.data[self.namespace]:
                 raise PipestatDatabaseError(
                     f"Record '{record_identifier}' not found")
             if result_identifier is None:
-                return self.data[self.name][record_identifier]
-            if result_identifier not in self.data[self.name][record_identifier]:
+                return self.data[self.namespace][record_identifier]
+            if result_identifier not in self.data[self.namespace][record_identifier]:
                 raise PipestatDatabaseError(
                     f"Result '{result_identifier}' not found for record "
                     f"'{record_identifier}'")
-            return self.data[self.name][record_identifier][result_identifier]
+            return self.data[self.namespace][record_identifier][result_identifier]
 
     def remove(self, record_identifier=None, result_identifier=None):
         """
@@ -664,17 +664,17 @@ class PipestatManager(dict):
         if not self[DB_ONLY_KEY]:
             if rm_record:
                 _LOGGER.info(f"Removing '{record_identifier}' record")
-                del self[DATA_KEY][self.name][record_identifier]
+                del self[DATA_KEY][self.namespace][record_identifier]
             else:
                 val_backup = \
-                    self[DATA_KEY][self.name][record_identifier][result_identifier]
-                del self[DATA_KEY][self.name][record_identifier][result_identifier]
+                    self[DATA_KEY][self.namespace][record_identifier][result_identifier]
+                del self[DATA_KEY][self.namespace][record_identifier][result_identifier]
                 _LOGGER.info(f"Removed result '{result_identifier}' for record "
-                             f"'{record_identifier}' from '{self.name}' namespace")
-                if not self[DATA_KEY][self.name][record_identifier]:
+                             f"'{record_identifier}' from '{self.namespace}' namespace")
+                if not self[DATA_KEY][self.namespace][record_identifier]:
                     _LOGGER.info(f"Last result removed for '{record_identifier}'. "
                                  f"Removing the record")
-                    del self[DATA_KEY][self.name][record_identifier]
+                    del self[DATA_KEY][self.namespace][record_identifier]
                     rm_record = True
         if self.file:
             self.data.write()
@@ -683,26 +683,26 @@ class PipestatManager(dict):
             if rm_record:
                 try:
                     with self.db_cursor as cur:
-                        cur.execute(f"DELETE FROM {self.name} WHERE "
+                        cur.execute(f"DELETE FROM {self.namespace} WHERE "
                                     f"{RECORD_ID}='{record_identifier}'")
                 except Exception as e:
                     _LOGGER.error(f"Could not remove the result from the "
                                   f"database. Exception: {e}")
-                    self[DATA_KEY][self.name].setdefault(
+                    self[DATA_KEY][self.namespace].setdefault(
                         record_identifier, PXAM())
                     raise
                 return True
             try:
                 with self.db_cursor as cur:
                     cur.execute(
-                        f"UPDATE {self.name} SET {result_identifier}=null "
+                        f"UPDATE {self.namespace} SET {result_identifier}=null "
                         f"WHERE {RECORD_ID}='{record_identifier}'"
                     )
             except Exception as e:
                 _LOGGER.error(f"Could not remove the result from the database. "
                               f"Exception: {e}")
                 if not self[DB_ONLY_KEY]:
-                    self[DATA_KEY][self.name][record_identifier][result_identifier] = val_backup
+                    self[DATA_KEY][self.namespace][record_identifier][result_identifier] = val_backup
                 raise
         return True
 
