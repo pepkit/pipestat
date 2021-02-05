@@ -122,7 +122,7 @@ class PipestatManager(dict):
         self.validate_schema()
         self._schema_path = schema_path
         self[HIGHLIGHTED_KEY] = _select_value(
-            "highlight_results", highlight_results, self[CONFIG_KEY])
+            "highlight_results", highlight_results, self[CONFIG_KEY], False)
         self.assert_results_defined(results=self[HIGHLIGHTED_KEY])
         assert isinstance(self[HIGHLIGHTED_KEY], list), \
             TypeError(f"highlighted results specification "
