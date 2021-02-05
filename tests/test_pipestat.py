@@ -341,6 +341,24 @@ class TestRetrieval:
                 record_identifier=rec_id
             )
 
+    @pytest.mark.parametrize(
+        ["rec_id", "res_id"],
+        [("sample2", "number_of_things")]
+    )
+    @pytest.mark.parametrize("backend", ["db"])
+    @pytest.mark.parametrize("limit", [1, 2, 3, 15555])
+    def test_retrieve_limit(
+            self, rec_id, res_id, config_file_path, results_file_path,
+            schema_file_path, backend, limit):
+        args = dict(schema_path=schema_file_path, namespace="test")
+        backend_data = {"config": config_file_path} if backend == "db"\
+            else {"results_file_path": results_file_path}
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        result = psm.retrieve(
+            result_identifier=res_id, record_identifier=rec_id, limit=limit)
+        assert len(result) <= limit
+
 
 class TestRemoval:
     @pytest.mark.parametrize(

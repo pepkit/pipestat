@@ -101,6 +101,7 @@ class PipestatManager(dict):
             if isinstance(config, str):
                 config = os.path.abspath(expandpath(config))
                 self[CONFIG_KEY] = YacAttMap(filepath=config)
+                self._config_path = config
             elif isinstance(config, dict):
                 self[CONFIG_KEY] = YacAttMap(entries=config)
             else:
@@ -195,6 +196,16 @@ class PipestatManager(dict):
         return self._schema_path
 
     @property
+    def config_path(self):
+        """
+        Config path. None if the config was not provided or if provided
+        as a mapping of the config contents
+
+        :return str: path to the provided config
+        """
+        return getattr(self, "_config_path", None)
+
+    @property
     def result_schemas(self):
         """
         Result schema mappings
@@ -260,7 +271,7 @@ class PipestatManager(dict):
         with self.db_cursor as cur:
             cur.execute(f"SELECT * FROM {self.namespace}")
             data = cur.fetchall()
-        _LOGGER.info(f"Reading data from database for '{self.namespace}' namespace")
+        _LOGGER.debug(f"Reading data from database for '{self.namespace}' namespace")
         for record in data:
             record_id = record[RECORD_ID]
             for res_id, val in record.items():
@@ -319,7 +330,7 @@ class PipestatManager(dict):
             data.make_readonly()
             self[DATA_KEY] = data
             return True
-        _LOGGER.info(f"Reading data from '{self.file}'")
+        _LOGGER.debug(f"Reading data from '{self.file}'")
         data = YacAttMap(filepath=self.file)
         filtered = list(filter(lambda x: not x.startswith("_"), data.keys()))
         if filtered and self.namespace not in filtered:
@@ -563,7 +574,7 @@ class PipestatManager(dict):
         for res_id, val in values.items():
             self[DATA_KEY][self.namespace][record_identifier][res_id] = val
 
-    def select(self, columns=None, condition=None, condition_val=None):
+    def select(self, columns=None, condition=None, condition_val=None, limit=None):
         """
         Get all the contents from the selected table, possibly restricted by
         the provided condition.
@@ -594,12 +605,16 @@ class PipestatManager(dict):
         if condition:
             statement += sql.SQL(" WHERE ")
             statement += condition
+        if limit:
+            assert isinstance(limit, int), \
+                TypeError(f"Provided limit ({limit}) must be an int")
+            statement += sql.SQL(f" LIMIT {limit}")
         with self.db_cursor as cur:
             cur.execute(query=statement, vars=condition_val)
             result = cur.fetchall()
         return result
 
-    def retrieve(self, record_identifier=None, result_identifier=None):
+    def retrieve(self, record_identifier=None, result_identifier=None, limit=None):
         """
         Retrieve a result for a record.
 
@@ -622,8 +637,12 @@ class PipestatManager(dict):
                     f"Result '{result_identifier}' not found for record "
                     f"'{record_identifier}'")
             with self.db_cursor as cur:
-                cur.execute(f"SELECT {result_identifier} FROM {self.namespace} "
-                            f"WHERE {RECORD_ID}=%s", (record_identifier, ))
+                query = sql.SQL(f"SELECT {result_identifier} FROM {self.namespace} WHERE {RECORD_ID}=%s")
+                if limit:
+                    assert isinstance(limit, int), \
+                        TypeError(f"Provided limit ({limit}) must be an int")
+                    query += sql.SQL(f" LIMIT {limit}")
+                cur.execute(query, (record_identifier, ))
                 return cur.fetchone()[0]
         else:
             if record_identifier not in self.data[self.namespace]:
