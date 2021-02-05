@@ -125,9 +125,9 @@ class PipestatManager(dict):
             "highlight_results", highlight_results, self[CONFIG_KEY], False)
         if self[HIGHLIGHTED_KEY]:
             self.assert_results_defined(results=self[HIGHLIGHTED_KEY])
-        assert isinstance(self[HIGHLIGHTED_KEY], list), \
-            TypeError(f"highlighted results specification "
-                      f"({self[HIGHLIGHTED_KEY]}) has to be a list")
+            assert isinstance(self[HIGHLIGHTED_KEY], list), \
+                TypeError(f"highlighted results specification "
+                          f"({self[HIGHLIGHTED_KEY]}) has to be a list")
         results_file_path = _mk_abs_via_cfg(_select_value(
                 "results_file_path", results_file_path, self[CONFIG_KEY], False), config)
         if results_file_path:
