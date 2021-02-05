@@ -46,7 +46,8 @@ class PipestatManager(dict):
     can be backed by either a YAML-formatted file or a PostgreSQL database.
     """
     def __init__(self, namespace=None, record_identifier=None, schema_path=None,
-                 results_file_path=None, database_only=False, config=None):
+                 results_file_path=None, database_only=False, config=None,
+                 highlight_results=None):
         """
         Initialize the object
 
@@ -63,6 +64,9 @@ class PipestatManager(dict):
             stored in the memory, but only in the database
         :param str | dict config: path to the configuration file or a mapping
             with the config file content
+        :param list[str] highlight_results: a collection of result_identifiers
+            to be treated in a special way, for example displayed differently
+            in the reporting software that uses PipestatManager
         """
         def _check_cfg_key(cfg, key):
             if key not in cfg:
@@ -117,6 +121,12 @@ class PipestatManager(dict):
         _, self[SCHEMA_KEY] = read_yaml_data(schema_path, "schema")
         self.validate_schema()
         self._schema_path = schema_path
+        self[HIGHLIGHTED_KEY] = _select_value(
+            "highlight_results", highlight_results, self[CONFIG_KEY])
+        self.assert_results_defined(results=self[HIGHLIGHTED_KEY])
+        assert isinstance(self[HIGHLIGHTED_KEY], list), \
+            TypeError(f"highlighted results specification "
+                      f"({self[HIGHLIGHTED_KEY]}) has to be a list")
         results_file_path = _mk_abs_via_cfg(_select_value(
                 "results_file_path", results_file_path, self[CONFIG_KEY], False), config)
         if results_file_path:
@@ -148,6 +158,15 @@ class PipestatManager(dict):
         res += "\nSchema source: {}".format(self.schema_path)
         res += f"\nRecords count: {self.record_count}"
         return res
+
+    @property
+    def highlighted_results(self):
+        """
+        Highlighted results
+
+        :return list[str]: a collection of highlighted results
+        """
+        return self._get_attr(HIGHLIGHTED_KEY)
 
     @property
     def record_count(self):
@@ -504,6 +523,8 @@ class PipestatManager(dict):
         :return bool | int: whether the result has been reported or the ID of
             the updated record in the table, if requested
         """
+
+
         record_identifier = self._strict_record_id(record_identifier)
         if return_id and self.file is not None:
             raise NotImplementedError(
@@ -511,13 +532,8 @@ class PipestatManager(dict):
                 "results file as the object backend")
         if self.schema is None:
             raise SchemaNotFoundError("report results")
-        known_results = self.result_schemas.keys()
         result_identifiers = list(values.keys())
-        for r in result_identifiers:
-            if r not in known_results:
-                raise SchemaError(
-                    f"'{r}' is not a known result. Results defined in the "
-                    f"schema are: {list(known_results)}.")
+        self.assert_results_defined(results=result_identifiers)
         existing = self._check_which_results_exist(
             rid=record_identifier, results=result_identifiers)
         if existing:
@@ -767,6 +783,20 @@ class PipestatManager(dict):
         self[RES_SCHEMAS_KEY] = {}
         schema = _recursively_replace_custom_types(schema)
         self[RES_SCHEMAS_KEY] = schema
+
+    def assert_results_defined(self, results):
+        """
+        Assert provided list of results is defined in the schema
+
+        :param list[str] results: list of results to
+            check for existence in the schema
+        :raises SchemaError: if any of the results is not defined in the schema
+        """
+        known_results = self.result_schemas.keys()
+        for r in results:
+            assert r in known_results, SchemaError(
+                f"'{r}' is not a known result. Results defined in the "
+                f"schema are: {list(known_results)}.")
 
     def check_connection(self):
         """

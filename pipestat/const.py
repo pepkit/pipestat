@@ -45,6 +45,7 @@ NAME_KEY = "_name"
 FILE_KEY = "_file"
 RECORD_ID_KEY = "_record_id"
 DB_CONNECTION_KEY = "_db_connnection"
+HIGHLIGHTED_KEY = "_highlighted"
 
 # schema keys
 SCHEMA_PROP_KEY = "properties"
