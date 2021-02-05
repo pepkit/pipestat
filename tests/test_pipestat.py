@@ -513,6 +513,6 @@ class TestDatabaseOnly:
         args = dict(schema_path=schema_file_path, namespace="test", config=config_file_path)
         psm = PipestatManager(**args)
         result = psm.select(
-            condition=f"{RECORD_ID}=%s", condition_val=rec_id, columns=[res_id],
+            condition=f"{RECORD_ID}=%s", condition_val=[rec_id], columns=[res_id],
             limit=limit)
         assert len(result) <= limit
