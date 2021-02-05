@@ -5,12 +5,12 @@ from psycopg2.extensions import connection
 from logging import getLogger
 from contextlib import contextmanager
 from copy import deepcopy
+from jsonschema import validate
 
 import sys
 import logmuse
 from attmap import PathExAttMap as PXAM
 from yacman import YacAttMap
-
 from .const import *
 from .exceptions import *
 from .helpers import *
@@ -111,6 +111,9 @@ class PipestatManager(dict):
             else:
                 raise TypeError("database_config has to be either path to the "
                                 "file to read or a dict")
+            cfg = self[CONFIG_KEY].to_dict()
+            _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
+            validate(cfg, cfg_schema)
 
         self[NAME_KEY] = _select_value("name", namespace, self[CONFIG_KEY])
         self[RECORD_ID_KEY] = _select_value(

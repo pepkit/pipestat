@@ -1,3 +1,6 @@
+import os
+
+
 PKG_NAME = "pipestat"
 LOCK_PREFIX = "lock."
 REPORT_CMD = "report"
@@ -88,3 +91,6 @@ CLASSES_BY_TYPE = {
     "array": list,
     "boolean": bool
 }
+
+CFG_SCHEMA = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                 "schemas", "pipestat_config_schema.yaml")
