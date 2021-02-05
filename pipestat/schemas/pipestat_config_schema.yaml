@@ -1,0 +1,39 @@
+description: "Pipestat configuration file schema; docs: http://pipestat.databio.org/en/latest/config/"
+properties:
+  name: 
+    type: string
+    pattern: "^\\S*$"
+    description: "Namespace identifier with no whitespace"
+  record_identifier:
+    type: string
+    pattern: "^\\S*$"
+    description: "Record identifier with no whitespace"
+  schema_path:
+    type: string
+    description: "Path to a pipestat schema file"
+  results_file_path:
+    type: string
+    description: "Path to a results file for this namespace"
+  database:
+    type: object
+    properties:
+      name:
+        type: string
+        description: "DB name"
+      user:
+        type: string
+        description: "DB user"
+      password:
+        type: string
+        description: "DB password"
+      host:
+        type: string
+        description: "DB host"
+      port:
+        type: integer
+        description: "DB port"
+  highlight_results:
+    type: array
+    items:
+      type: string
+    description: "Array of result identifiers that should be highlighted"
