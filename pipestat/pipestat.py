@@ -574,7 +574,8 @@ class PipestatManager(dict):
         for res_id, val in values.items():
             self[DATA_KEY][self.namespace][record_identifier][res_id] = val
 
-    def select(self, columns=None, condition=None, condition_val=None, limit=None):
+    def select(self, columns=None, condition=None, condition_val=None,
+               limit=None):
         """
         Get all the contents from the selected table, possibly restricted by
         the provided condition.
@@ -586,6 +587,7 @@ class PipestatManager(dict):
             for example: `"id=%s"`
         :param list condition_val: values to fill the placeholder
             in 'condition' with
+        :param int limit: max number of results to be returned
         :return list[psycopg2.extras.DictRow]: all table contents
         """
         if self.file:
@@ -614,7 +616,8 @@ class PipestatManager(dict):
             result = cur.fetchall()
         return result
 
-    def retrieve(self, record_identifier=None, result_identifier=None, limit=None):
+    def retrieve(self, record_identifier=None, result_identifier=None,
+                 limit=None):
         """
         Retrieve a result for a record.
 
@@ -623,6 +626,7 @@ class PipestatManager(dict):
 
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be retrieved
+        :param int limit: max number of results to be returned
         :return any | dict[str, any]: a single result or a mapping with all the
             results reported for the record
         """
@@ -637,7 +641,8 @@ class PipestatManager(dict):
                     f"Result '{result_identifier}' not found for record "
                     f"'{record_identifier}'")
             with self.db_cursor as cur:
-                query = sql.SQL(f"SELECT {result_identifier} FROM {self.namespace} WHERE {RECORD_ID}=%s")
+                query = sql.SQL(f"SELECT {result_identifier} "
+                                f"FROM {self.namespace} WHERE {RECORD_ID}=%s")
                 if limit:
                     assert isinstance(limit, int), \
                         TypeError(f"Provided limit ({limit}) must be an int")

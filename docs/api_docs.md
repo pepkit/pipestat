@@ -35,18 +35,18 @@ Pipestat standardizes reporting of pipeline results. It formalizes a way for pip
 
 
 ```python
-def __init__(self, name=None, record_identifier=None, schema_path=None, results_file_path=None, database_only=False, config=None)
+def __init__(self, namespace=None, record_identifier=None, schema_path=None, results_file_path=None, database_only=False, config=None)
 ```
 
 Initialize the object
 #### Parameters:
 
-- `name` (`str`):  namespace to report into. This will be the DB tablename if using DB as the object back-end
+- `namespace` (`str`):  namespace to report into. This will be the DBtable name if using DB as the object back-end
 - `record_identifier` (`str`):  record identifier to report for. Thiscreates a weak bound to the record, which can be overriden in this object method calls
 - `schema_path` (`str`):  path to the output schema that formalizesthe results structure
-- `results_file_path` (`str`):  YAML file to report into, if file is used asthe object back-end
+- `results_file_path` (`str`):  YAML file to report into, if file isused as the object back-end
 - `database_only` (`bool`):  whether the reported data should not bestored in the memory, but only in the database
-- `config` (`str`):  path to the configuration file
+- `config` (`str | dict`):  path to the configuration file or a mappingwith the config file content
 
 
 
@@ -107,6 +107,18 @@ Close connection and remove client bound
 
 
 ```python
+def config_path(self)
+```
+
+Config path. None if the config was not provided or if provided as a mapping of the config contents
+#### Returns:
+
+- `str`:  path to the provided config
+
+
+
+
+```python
 def data(self)
 ```
 
@@ -160,13 +172,13 @@ File path that the object is reporting the results into
 
 
 ```python
-def name(self)
+def namespace(self)
 ```
 
 Namespace the object writes the results to
 #### Returns:
 
-- `str`:  Namespace the object writes the results to
+- `str`:  namespace the object writes the results to
 
 
 
@@ -187,10 +199,10 @@ Number of records reported
 def record_identifier(self)
 ```
 
-Namespace the object writes the results to
+Unique identifier of the record
 #### Returns:
 
-- `str`:  Namespace the object writes the results to
+- `str`:  unique identifier of the record
 
 
 
@@ -224,7 +236,7 @@ Report a result.
 #### Parameters:
 
 - `values` (`dict[str, any]`):  dictionary of result-value pairs
-- `record_identifier` (`str`):  unique identifier of the record, value toin 'record_identifier' column to look for to determine if the record already exists
+- `record_identifier` (`str`):  unique identifier of the record, valuein 'record_identifier' column to look for to determine if the record already exists
 - `force_overwrite` (`bool`):  whether to overwrite the existing record
 - `strict_type` (`bool`):  whether the type of the reported values shouldremain as is. Pipestat would attempt to convert to the schema-defined one otherwise
 - `return_id` (`bool`):  PostgreSQL IDs of the records that have beenupdated. Not available with results file as backend
@@ -250,7 +262,7 @@ Result schema mappings
 
 
 ```python
-def retrieve(self, record_identifier=None, result_identifier=None)
+def retrieve(self, record_identifier=None, result_identifier=None, limit=None)
 ```
 
 Retrieve a result for a record.
@@ -261,6 +273,7 @@ be returned.
 
 - `record_identifier` (`str`):  unique identifier of the record
 - `result_identifier` (`str`):  name of the result to be retrieved
+- `limit` (`int`):  max number of results to be returned
 
 
 #### Returns:
@@ -283,7 +296,19 @@ Schema mapping
 
 
 ```python
-def select(self, columns=None, condition=None, condition_val=None)
+def schema_path(self)
+```
+
+Schema path
+#### Returns:
+
+- `str`:  path to the provided schema
+
+
+
+
+```python
+def select(self, columns=None, condition=None, condition_val=None, limit=None)
 ```
 
 Get all the contents from the selected table, possibly restricted by the provided condition.
@@ -292,6 +317,7 @@ Get all the contents from the selected table, possibly restricted by the provide
 - `columns` (`str | list[str]`):  columns to select
 - `condition` (`str`):  condition to restrict the resultswith, will be appended to the end of the SELECT statement and safely populated with 'condition_val', for example: `"id=%s"`
 - `condition_val` (`list`):  values to fill the placeholderin 'condition' with
+- `limit` (`int`):  max number of results to be returned
 
 
 #### Returns:
