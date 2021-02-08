@@ -46,8 +46,7 @@ class PipestatManager(dict):
     can be backed by either a YAML-formatted file or a PostgreSQL database.
     """
     def __init__(self, namespace=None, record_identifier=None, schema_path=None,
-                 results_file_path=None, database_only=False, config=None,
-                 highlight_results=None):
+                 results_file_path=None, database_only=False, config=None):
         """
         Initialize the object
 
@@ -64,9 +63,6 @@ class PipestatManager(dict):
             stored in the memory, but only in the database
         :param str | dict config: path to the configuration file or a mapping
             with the config file content
-        :param list[str] highlight_results: a collection of result_identifiers
-            to be treated in a special way, for example displayed differently
-            in the reporting software that uses PipestatManager
         """
         def _check_cfg_key(cfg, key):
             if key not in cfg:
@@ -111,9 +107,10 @@ class PipestatManager(dict):
             else:
                 raise TypeError("database_config has to be either path to the "
                                 "file to read or a dict")
-            cfg = self[CONFIG_KEY].to_dict()
-            _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
-            validate(cfg, cfg_schema)
+            # TODO: uncomment below when this gets released: https://github.com/pepkit/attmap/pull/75
+            # cfg = self[CONFIG_KEY].to_dict(expand=True)
+            # _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
+            # validate(cfg, cfg_schema)
 
         self[NAME_KEY] = _select_value("name", namespace, self[CONFIG_KEY])
         self[RECORD_ID_KEY] = _select_value(
@@ -124,10 +121,12 @@ class PipestatManager(dict):
         _, self[SCHEMA_KEY] = read_yaml_data(schema_path, "schema")
         self.validate_schema()
         self._schema_path = schema_path
-        self[HIGHLIGHTED_KEY] = _select_value(
-            "highlight_results", highlight_results, self[CONFIG_KEY], False)
+        # the conditional in the list comprehension below needs to be a
+        # literal "== True" so that if evaluates to False if 'highlight'
+        # value is just "truthy", not True
+        self[HIGHLIGHTED_KEY] = [k for k, v in self.schema.items()
+                                 if "highlight" in v and v["highlight"] == True]
         if self[HIGHLIGHTED_KEY]:
-            self.assert_results_defined(results=self[HIGHLIGHTED_KEY])
             assert isinstance(self[HIGHLIGHTED_KEY], list), \
                 TypeError(f"highlighted results specification "
                           f"({self[HIGHLIGHTED_KEY]}) has to be a list")
@@ -170,7 +169,7 @@ class PipestatManager(dict):
 
         :return list[str]: a collection of highlighted results
         """
-        return self._get_attr(HIGHLIGHTED_KEY)
+        return self._get_attr(HIGHLIGHTED_KEY) or []
 
     @property
     def record_count(self):
