@@ -620,9 +620,8 @@ class PipestatManager(dict):
             raise PipestatError(
                 f"'{status_identifier}' is not a defined status identifier. "
                 f"These are allowed: {known_status_identifiers}")
-
+        prev_status = self.get_status(r_id)
         if self.file is not None:
-            prev_status = self.get_status(r_id)
             flag_path = self.get_status_flag_path(status_identifier, r_id)
             create_lock(flag_path)
             with open(flag_path, "w") as f:
@@ -642,6 +641,9 @@ class PipestatManager(dict):
                 _LOGGER.error(f"Could not insert into the status table. "
                               f"Exception: {e}")
                 raise
+        if prev_status:
+            _LOGGER.debug(
+                f"Changed status from '{prev_status}' to '{status_identifier}'")
 
     def check_result_exists(self, result_identifier,  record_identifier=None):
         """
