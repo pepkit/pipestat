@@ -1,0 +1,15 @@
+running:
+  description: "the pipeline is running"
+  color: "#0000FF" # blue
+completed:
+  description: "the pipeline has completed"
+  color: "#008000" # green
+failed:
+  description: "the pipeline has failed"
+  color: "#DC143C" # red
+waiting:
+  description: "the pipeline is waiting"
+  color: "#FFFACD" # yellow
+partial:
+  description: "the pipeline stopped before completion point"
+  color: "#A9A9A9" # grey
