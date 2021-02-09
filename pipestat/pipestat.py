@@ -10,6 +10,7 @@ from jsonschema import validate
 import sys
 import logmuse
 from attmap import PathExAttMap as PXAM
+from ubiquerg import create_file_racefree, create_lock, remove_lock
 from yacman import YacAttMap
 from .const import *
 from .exceptions import *
@@ -46,7 +47,8 @@ class PipestatManager(dict):
     can be backed by either a YAML-formatted file or a PostgreSQL database.
     """
     def __init__(self, namespace=None, record_identifier=None, schema_path=None,
-                 results_file_path=None, database_only=False, config=None):
+                 results_file_path=None, database_only=False, config=None,
+                 status_schema_path=None, flag_file_dir=None):
         """
         Initialize the object
 
@@ -97,6 +99,7 @@ class PipestatManager(dict):
 
         super(PipestatManager, self).__init__()
         self[CONFIG_KEY] = YacAttMap()
+        # read config or config data
         if config is not None:
             if isinstance(config, str):
                 config = os.path.abspath(expandpath(config))
@@ -107,6 +110,7 @@ class PipestatManager(dict):
             else:
                 raise TypeError("database_config has to be either path to the "
                                 "file to read or a dict")
+            # validate config
             # TODO: uncomment below when this gets released: https://github.com/pepkit/attmap/pull/75
             # cfg = self[CONFIG_KEY].to_dict(expand=True)
             # _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
@@ -116,11 +120,21 @@ class PipestatManager(dict):
         self[RECORD_ID_KEY] = _select_value(
             "record_identifier", record_identifier, self[CONFIG_KEY], False)
         self[DB_ONLY_KEY] = database_only
+        # read results schema
         schema_path = _mk_abs_via_cfg(_select_value(
             "schema_path", schema_path, self[CONFIG_KEY]), config)
         _, self[SCHEMA_KEY] = read_yaml_data(schema_path, "schema")
         self.validate_schema()
         self._schema_path = schema_path
+        # read status schema
+        status_schema_path = _mk_abs_via_cfg(_select_value(
+            "status_schema_path", status_schema_path,
+            self[CONFIG_KEY], False), config) or STATUS_SCHEMA
+        _, self[STATUS_SCHEMA_KEY] = read_yaml_data(
+            status_schema_path, "status schema")
+        # get status file directory
+        _select_value("status_file_dir", None, self[CONFIG_KEY], False)
+        # determine the highlighted results
         # the conditional in the list comprehension below needs to be a
         # literal "== True" so that if evaluates to False if 'highlight'
         # value is just "truthy", not True
@@ -130,6 +144,7 @@ class PipestatManager(dict):
             assert isinstance(self[HIGHLIGHTED_KEY], list), \
                 TypeError(f"highlighted results specification "
                           f"({self[HIGHLIGHTED_KEY]}) has to be a list")
+        # determine results file
         results_file_path = _mk_abs_via_cfg(_select_value(
                 "results_file_path", results_file_path, self[CONFIG_KEY], False), config)
         if results_file_path:
@@ -138,6 +153,9 @@ class PipestatManager(dict):
                                  "sense with a YAML file as a backend.")
             self[FILE_KEY] = results_file_path
             self._init_results_file()
+            self[STATUS_FILE_DIR] = _mk_abs_via_cfg(
+                _select_value("flag_file_dir", flag_file_dir, self[CONFIG_KEY]),
+                self.config_path)
         elif CFG_DATABASE_KEY in self[CONFIG_KEY]:
             if not all([_check_cfg_key(self[CONFIG_KEY][CFG_DATABASE_KEY], key)
                         for key in DB_CREDENTIALS]):
@@ -145,6 +163,7 @@ class PipestatManager(dict):
                                              "credentials or result_file_path")
             self[DATA_KEY] = YacAttMap()
             self._init_postgres_table()
+            self._init_status_table()
         else:
             raise MissingConfigDataError("Must specify either database login "
                                          "credentials or a YAML file path")
@@ -170,6 +189,27 @@ class PipestatManager(dict):
         :return list[str]: a collection of highlighted results
         """
         return self._get_attr(HIGHLIGHTED_KEY) or []
+
+    def _get_flag_file(self, record_identifier=None):
+        """
+
+        :param record_identifier:
+        :return:
+        """
+        from glob import glob
+        r_id = self._strict_record_id(record_identifier)
+        if self.file is None:
+            return
+        if self.file is not None:
+            regex = os.path.join(self[STATUS_FILE_DIR], f"{self.namespace}_{r_id}_*.flag")
+            file_list = glob(regex)
+            if len(file_list) > 1:
+                _LOGGER.warning("Multiple flag files found")
+            elif len(file_list) == 1:
+                return file_list[0]
+            else:
+                _LOGGER.debug("No flag files found")
+                return
 
     @property
     def record_count(self):
@@ -207,6 +247,15 @@ class PipestatManager(dict):
         :return dict: schema that formalizes the results structure
         """
         return self._get_attr(SCHEMA_KEY)
+
+    @property
+    def status_schema(self):
+        """
+        Status schema mapping
+
+        :return dict: schema that formalizes the pipeline status structure
+        """
+        return self._get_attr(STATUS_SCHEMA_KEY)
 
     @property
     def schema_path(self):
@@ -255,6 +304,7 @@ class PipestatManager(dict):
         """
         return self._get_attr(DATA_KEY)
 
+
     @property
     @contextmanager
     def db_cursor(self):
@@ -274,6 +324,29 @@ class PipestatManager(dict):
             raise
         finally:
             self.close_postgres_connection()
+
+    def get_status(self, record_identifier=None):
+        """
+        Get the current pipeline status
+
+        :return:
+        :rtype:
+        """
+        r_id = self._strict_record_id(record_identifier)
+        if self.file is None:
+            with self.db_cursor as cur:
+                query = sql.SQL(f"SELECT {STATUS} "
+                                f"FROM {f'{self.namespace}_{STATUS}'} "
+                                f"WHERE {RECORD_ID}=%s")
+                cur.execute(query, (r_id, ))
+                return cur.fetchone()[0]
+        else:
+            flag_file = self._get_flag_file(record_identifier=r_id)
+            if flag_file is not None:
+                with open(flag_file, "r") as f:
+                    status = f.read()
+                return status
+            return
 
     def _get_attr(self, attr):
         """
@@ -305,7 +378,7 @@ class PipestatManager(dict):
 
     def _init_postgres_table(self):
         """
-        Initialize postgreSQL table based on the provided schema,
+        Initialize a PostgreSQL table based on the provided schema,
         if it does not exist. Read the data stored in the database into the
         memory otherwise.
 
@@ -324,6 +397,26 @@ class PipestatManager(dict):
         columns = FIXED_COLUMNS + schema_to_columns(schema=self.schema)
         self._create_table(table_name=self.namespace, columns=columns)
         return True
+
+    def _create_status_type(self):
+        with self.db_cursor as cur:
+            s = sql.SQL(f"SELECT exists (SELECT 1 FROM pg_type WHERE typname = '{STATUS}');")
+            cur.execute(s)
+            if cur.fetchone()[0]:
+                return
+        with self.db_cursor as cur:
+            status_strs = [f"'{st_id}'" for st_id in self.status_schema.keys()]
+            status_str = ", ".join(status_strs)
+            s = sql.SQL(f"CREATE TYPE {STATUS} as enum({status_str}) IF NOT EXISTS;")
+            cur.execute(s)
+
+    def _init_status_table(self):
+        status_table_name = f"{self.namespace}_{STATUS}"
+        self._create_status_type()
+        if not self._check_table_exists(table_name=status_table_name):
+            _LOGGER.info(f"Initializing '{status_table_name}' table in "
+                         f"'{PKG_NAME}' database")
+            self._create_table(status_table_name, STATUS_TABLE_COLUMNS)
 
     def _create_table(self, table_name, columns):
         """
@@ -377,7 +470,7 @@ class PipestatManager(dict):
             )
             return cur.fetchone()[0]
 
-    def _check_record(self, condition_col, condition_val):
+    def _check_record(self, condition_col, condition_val, table_name):
         """
         Check if the record matching the condition is in the table
 
@@ -386,7 +479,7 @@ class PipestatManager(dict):
         :return bool: whether any record matches the provided condition
         """
         with self.db_cursor as cur:
-            statement = f"SELECT EXISTS(SELECT 1 from {self.namespace} " \
+            statement = f"SELECT EXISTS(SELECT 1 from {table_name} " \
                         f"WHERE {condition_col}=%s)"
             cur.execute(statement, (condition_val, ))
             return cur.fetchone()[0]
@@ -404,7 +497,7 @@ class PipestatManager(dict):
             cur.execute(statement)
             return cur.fetchall()[0][0]
 
-    def _report_postgres(self, value, record_identifier):
+    def _report_postgres(self, value, record_identifier, table_name=None):
         """
         Check if record with this record identifier in table, create new record
          if not (INSERT), update the record if yes (UPDATE).
@@ -418,11 +511,13 @@ class PipestatManager(dict):
             respective values to be inserted to the database
         :return int: id of the row just inserted
         """
+        table_name = table_name or self.namespace
         if not self._check_record(condition_col=RECORD_ID,
-                                  condition_val=record_identifier):
+                                  condition_val=record_identifier,
+                                  table_name=table_name):
             with self.db_cursor as cur:
                 cur.execute(
-                    f"INSERT INTO {self.namespace} ({RECORD_ID}) VALUES (%s)",
+                    f"INSERT INTO {table_name} ({RECORD_ID}) VALUES (%s)",
                     (record_identifier, )
                 )
         # prep a list of SQL objects with column-named value placeholders
@@ -431,7 +526,7 @@ class PipestatManager(dict):
         # construct the query template to execute
         query = sql.SQL("UPDATE {n} SET {c} WHERE {id}=%({id})s RETURNING id").\
             format(
-            n=sql.Identifier(self.namespace),
+            n=sql.Identifier(table_name),
             c=columns,
             id=sql.SQL(RECORD_ID)
         )
@@ -443,6 +538,65 @@ class PipestatManager(dict):
         with self.db_cursor as cur:
             cur.execute(query, values)
             return cur.fetchone()[0]
+
+    def get_status_flag_path(self, status_identifier, record_identifier=None):
+        """
+        Get the path to the status file flag
+
+        :param str status_identifier: one of the defined status IDs in schema
+        :param str record_identifier: unique record ID, optional if
+            specified in the object constructor
+        :return str: absolute path to the flag file or None if object is
+            backed by a DB
+        """
+        if self.file is None:
+            # DB as the backend
+            return
+        r_id = self._strict_record_id(record_identifier)
+        return os.path.join(self[STATUS_FILE_DIR],
+                            f"{self.namespace}_{r_id}_{status_identifier}.flag")
+
+    def set_status(self, status_identifier, record_identifier=None):
+        """
+        Set pipeline run status.
+
+        The status identifier needs to match one of identifiers specified in
+        the status schema. A basic, ready to use, status schema is shipped with
+         this package.
+
+        :param str status_identifier: status to set, one of statuses defined
+            in the status schema
+        :param str record_identifier: record identifier to set the
+            pipeline status for
+        """
+        r_id = self._strict_record_id(record_identifier)
+        known_status_identifiers = self.status_schema.keys()
+        if status_identifier not in known_status_identifiers:
+            raise PipestatError(
+                f"'{status_identifier}' is not a defined status identifier. "
+                f"These are allowed: {known_status_identifiers}")
+
+        if self.file is not None:
+            prev_status = self.get_status(r_id)
+            flag_path = self.get_status_flag_path(status_identifier, r_id)
+            create_lock(flag_path)
+            with open(flag_path, "w") as f:
+                f.write(status_identifier)
+            remove_lock(flag_path)
+            if prev_status:
+                prev_flag_path = self.get_status_flag_path(prev_status, r_id)
+                os.remove(prev_flag_path)
+        else:
+            try:
+                self._report_postgres(
+                    value={STATUS: status_identifier},
+                    record_identifier=r_id,
+                    table_name=f"{self.namespace}_{STATUS}"
+                )
+            except Exception as e:
+                _LOGGER.error(f"Could not insert into the status table. "
+                              f"Exception: {e}")
+                raise
 
     def check_result_exists(self, result_identifier,  record_identifier=None):
         """
@@ -526,8 +680,6 @@ class PipestatManager(dict):
         :return bool | int: whether the result has been reported or the ID of
             the updated record in the table, if requested
         """
-
-
         record_identifier = self._strict_record_id(record_identifier)
         if return_id and self.file is not None:
             raise NotImplementedError(
@@ -783,6 +935,9 @@ class PipestatManager(dict):
         _LOGGER.debug(f"Validating input schema")
         assert isinstance(schema, dict), \
             SchemaError(f"The schema has to be a {dict().__class__.__name__}")
+        for col_name in RESERVED_COLNAMES:
+            assert col_name not in schema.keys(), \
+                PipestatError(f"'{col_name}' is an identifier reserved by pipestat")
         self[RES_SCHEMAS_KEY] = {}
         schema = _recursively_replace_custom_types(schema)
         self[RES_SCHEMAS_KEY] = schema

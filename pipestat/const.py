@@ -42,6 +42,9 @@ DB_CREDENTIALS = [CFG_HOST_KEY, CFG_PORT_KEY, CFG_PASSWORD_KEY, CFG_USER_KEY,
 DB_ONLY_KEY = "_database_only"
 CONFIG_KEY = "_config"
 SCHEMA_KEY = "_schema"
+STATUS_KEY = "_status"
+STATUS_SCHEMA_KEY = "_status_schema"
+STATUS_FILE_DIR = "_status_file_dir"
 RES_SCHEMAS_KEY = "_result_schemas"
 DATA_KEY = "_data"
 NAME_KEY = "_name"
@@ -57,9 +60,16 @@ SCHEMA_TYPE_KEY = "type"
 # DB column names
 ID = "id"
 RECORD_ID = "record_identifier"
+STATUS = "status"
+
+RESERVED_COLNAMES = [ID, RECORD_ID]
 
 FIXED_COLUMNS = [f"{ID} BIGSERIAL PRIMARY KEY",
                  f"{RECORD_ID} TEXT UNIQUE NOT NULL"]
+
+STATUS_TABLE_COLUMNS = [f"{ID} BIGSERIAL PRIMARY KEY",
+                        f"{RECORD_ID} TEXT UNIQUE NOT NULL",
+                        f"{STATUS} {STATUS}"]  # custom type 'status'
 
 CANONICAL_TYPES = {
     "image": {
@@ -92,5 +102,5 @@ CLASSES_BY_TYPE = {
     "boolean": bool
 }
 
-CFG_SCHEMA = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                 "schemas", "pipestat_config_schema.yaml")
+CFG_SCHEMA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schemas", "pipestat_config_schema.yaml")
+STATUS_SCHEMA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schemas", "status_schema.yaml")
