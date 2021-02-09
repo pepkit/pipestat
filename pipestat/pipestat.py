@@ -130,7 +130,7 @@ class PipestatManager(dict):
         status_schema_path = _mk_abs_via_cfg(_select_value(
             "status_schema_path", status_schema_path,
             self[CONFIG_KEY], False), config) or STATUS_SCHEMA
-        _, self[STATUS_SCHEMA_KEY] = read_yaml_data(
+        self[STATUS_SCHEMA_SOURCE_KEY], self[STATUS_SCHEMA_KEY] = read_yaml_data(
             status_schema_path, "status schema")
         # get status file directory
         _select_value("status_file_dir", None, self[CONFIG_KEY], False)
@@ -259,6 +259,16 @@ class PipestatManager(dict):
         :return dict: schema that formalizes the pipeline status structure
         """
         return self._get_attr(STATUS_SCHEMA_KEY)
+
+    @property
+    def status_schema_source(self):
+        """
+        Status schema source
+
+        :return dict: source of the schema that formalizes
+            the pipeline status structure
+        """
+        return self._get_attr(STATUS_SCHEMA_SOURCE_KEY)
 
     @property
     def schema_path(self):
