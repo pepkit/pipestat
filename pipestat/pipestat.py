@@ -153,9 +153,10 @@ class PipestatManager(dict):
                                  "sense with a YAML file as a backend.")
             self[FILE_KEY] = results_file_path
             self._init_results_file()
-            self[STATUS_FILE_DIR] = _mk_abs_via_cfg(
-                _select_value("flag_file_dir", flag_file_dir, self[CONFIG_KEY]),
-                self.config_path)
+            flag_file_dir = _select_value(
+                "flag_file_dir", flag_file_dir, self[CONFIG_KEY], False) \
+                            or os.path.dirname(self.file)
+            self[STATUS_FILE_DIR] = _mk_abs_via_cfg(flag_file_dir, self.config_path)
         elif CFG_DATABASE_KEY in self[CONFIG_KEY]:
             if not all([_check_cfg_key(self[CONFIG_KEY][CFG_DATABASE_KEY], key)
                         for key in DB_CREDENTIALS]):
@@ -192,9 +193,10 @@ class PipestatManager(dict):
 
     def _get_flag_file(self, record_identifier=None):
         """
+        Get path to the status flag file for the specified record
 
-        :param record_identifier:
-        :return:
+        :param str record_identifier: unique record identifier
+        :return str: path to the status flag file
         """
         from glob import glob
         r_id = self._strict_record_id(record_identifier)
@@ -205,6 +207,7 @@ class PipestatManager(dict):
             file_list = glob(regex)
             if len(file_list) > 1:
                 _LOGGER.warning("Multiple flag files found")
+                return file_list
             elif len(file_list) == 1:
                 return file_list[0]
             else:
@@ -304,7 +307,6 @@ class PipestatManager(dict):
         """
         return self._get_attr(DATA_KEY)
 
-
     @property
     @contextmanager
     def db_cursor(self):
@@ -329,8 +331,7 @@ class PipestatManager(dict):
         """
         Get the current pipeline status
 
-        :return:
-        :rtype:
+        :return str: status identifier, like 'running'
         """
         r_id = self._strict_record_id(record_identifier)
         if self.file is None:
@@ -339,13 +340,17 @@ class PipestatManager(dict):
                                 f"FROM {f'{self.namespace}_{STATUS}'} "
                                 f"WHERE {RECORD_ID}=%s")
                 cur.execute(query, (r_id, ))
-                return cur.fetchone()[0]
+                result = cur.fetchone()
+            return result[0] if result is not None else None
         else:
             flag_file = self._get_flag_file(record_identifier=r_id)
             if flag_file is not None:
                 with open(flag_file, "r") as f:
                     status = f.read()
                 return status
+            _LOGGER.debug(
+                f"Could not determine status for '{r_id}' record. "
+                f"No flags found in: {self[STATUS_FILE_DIR]}")
             return
 
     def _get_attr(self, attr):
@@ -538,6 +543,46 @@ class PipestatManager(dict):
         with self.db_cursor as cur:
             cur.execute(query, values)
             return cur.fetchone()[0]
+
+    def clear_status(self, record_identifier=None, flag_names=None):
+        """
+        Remove status flags
+
+        :param str record_identifier: name of the record to remove flags for
+        :param Iterable[str] flag_names: Names of flags to remove, optional; if
+            unspecified, all schema-defined flag names will be used.
+        :return list[str]: Collection of names of flags removed
+        """
+        r_id = self._strict_record_id(record_identifier)
+        if self.file is not None:
+            flag_names = flag_names or list(self.status_schema.keys())
+            if isinstance(flag_names, str):
+                flag_names = [flag_names]
+            removed = []
+            for f in flag_names:
+                path_flag_file = self.get_status_flag_path(
+                    status_identifier=f, record_identifier=r_id)
+                try:
+                    os.remove(path_flag_file)
+                except:
+                    pass
+                else:
+                    _LOGGER.info(f"Removed existing flag: {path_flag_file}")
+                    removed.append(f)
+            return removed
+        else:
+            removed = self.get_status(r_id)
+            status_table_name = f'{self.namespace}_{STATUS}'
+            with self.db_cursor as cur:
+                try:
+                    cur.execute(f"DELETE FROM {status_table_name} WHERE "
+                                f"{RECORD_ID}='{r_id}'")
+                except Exception as e:
+                    _LOGGER.error(f"Could not remove the status from the "
+                                  f"database. Exception: {e}")
+                    return []
+                else:
+                    return [removed]
 
     def get_status_flag_path(self, status_identifier, record_identifier=None):
         """
@@ -842,7 +887,7 @@ class PipestatManager(dict):
 
     def remove(self, record_identifier=None, result_identifier=None):
         """
-        Report a result.
+        Remove a result.
 
         If no result ID specified or last result is removed, the entire record
         will be removed.
