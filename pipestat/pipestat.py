@@ -803,29 +803,37 @@ class PipestatManager(dict):
         """
         record_identifier = self._strict_record_id(record_identifier)
         if self[DB_ONLY_KEY]:
-            existing = self._check_which_results_exist(
-                results=[result_identifier],
-                rid=record_identifier
-            )
-            if not existing:
-                raise PipestatDatabaseError(
-                    f"Result '{result_identifier}' not found for record "
-                    f"'{record_identifier}'")
+            if result_identifier is not None:
+                existing = self._check_which_results_exist(
+                    results=[result_identifier],
+                    rid=record_identifier
+                )
+                if not existing:
+                    raise PipestatDatabaseError(
+                        f"Result '{result_identifier}' not found for record "
+                        f"'{record_identifier}'")
             with self.db_cursor as cur:
-                query = sql.SQL(f"SELECT {result_identifier} "
+                query = sql.SQL(f"SELECT {result_identifier or '*'} "
                                 f"FROM {self.namespace} WHERE {RECORD_ID}=%s")
                 if limit:
                     assert isinstance(limit, int), \
                         TypeError(f"Provided limit ({limit}) must be an int")
                     query += sql.SQL(f" LIMIT {limit}")
                 cur.execute(query, (record_identifier, ))
-                return cur.fetchone()[0]
+                result = cur.fetchall()
+            if len(result) > 0:
+                if result_identifier is None:
+                    return {k: v for k, v in dict(result[0]).items()
+                            if v is not None}
+                return dict(result[0])[result_identifier]
+            raise PipestatDatabaseError(
+                f"Record '{record_identifier}' not found")
         else:
             if record_identifier not in self.data[self.namespace]:
                 raise PipestatDatabaseError(
                     f"Record '{record_identifier}' not found")
             if result_identifier is None:
-                return self.data[self.namespace][record_identifier]
+                return self.data[self.namespace][record_identifier].to_dict()
             if result_identifier not in self.data[self.namespace][record_identifier]:
                 raise PipestatDatabaseError(
                     f"Result '{result_identifier}' not found for record "
