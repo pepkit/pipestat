@@ -422,7 +422,7 @@ class PipestatManager(dict):
         with self.db_cursor as cur:
             status_strs = [f"'{st_id}'" for st_id in self.status_schema.keys()]
             status_str = ", ".join(status_strs)
-            s = sql.SQL(f"CREATE TYPE {STATUS} as enum({status_str}) IF NOT EXISTS;")
+            s = sql.SQL(f"CREATE TYPE {STATUS} as enum({status_str});")
             cur.execute(s)
 
     def _init_status_table(self):
