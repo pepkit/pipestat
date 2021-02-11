@@ -79,6 +79,9 @@ class PipestatManager(dict):
             if os.path.isabs(path):
                 return path
             if cfg_path is None:
+                rel_to_cwd = os.path.join(os.getcwd(), path)
+                if os.path.exists(rel_to_cwd):
+                    return rel_to_cwd
                 raise OSError(f"Could not make this path absolute: {path}")
             joined = os.path.join(os.path.dirname(cfg_path), path)
             if os.path.isabs(joined):
