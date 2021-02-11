@@ -123,7 +123,54 @@ output_object:
   description: "Object output with required array of integers and optional boolean"
 ``` 
 
+## Results highlighting
 
+The pipestat specification allows to highlight results by adding `highlight: true` attribute under result identifier in the schema file. In the example below the `log_file` result will be highlighted. 
+
+```yaml
+number_of_things:
+  type: integer
+  description: "Number of things"
+percentage_of_things:
+  type: number
+  description: "Percentage of things"
+log_file:
+  type: file
+  descripton: "Path to the log file"
+  highlight: true
+```
+
+The highlighted results can be later retrieved by pipestat clients via `PipestatManager.highlighted_results` property, which simply returns a list of result identifiers.
+
+# Status schema
+
+Apart from results reporting pipestat provides a robust pipeline status management system, which can be used to report pipeline status from within the pipeline and monitor pipeline's status in other software. Status schema file defines the possible pipeline status identifiers and provides other metadata, like `description` or `color` for display purposes.
+
+Here's an example of the pipestat status schema, which at the same time is the default status schema shipped with the pipestat Python package:
+
+
+```yaml
+running:
+  description: "the pipeline is running"
+  color: [30, 144, 255] # dodgerblue
+completed:
+  description: "the pipeline has completed"
+  color: [50, 205, 50] # limegreen
+failed:
+  description: "the pipeline has failed"
+  color: [220, 20, 60] # crimson
+waiting:
+  description: "the pipeline is waiting"
+  color: [240, 230, 140] # khaki
+partial:
+  description: "the pipeline stopped before completion point"
+  color: [169, 169, 169] # darkgray
+```
+
+As depicted above the top-level attributes are the status identifiers. Within each section two attributes are required:
+
+- `description` (`str`) a freeform text exhaustively describing the status code.
+- `color` (`list[str]`) an array of integers of length 3 which specifies the desired color associated with the status in RGB color model.
 
 # Backends
 
