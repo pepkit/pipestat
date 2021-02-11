@@ -9,6 +9,7 @@ from psycopg2 import Error as psycopg2Error
 from pipestat.exceptions import *
 from pipestat.const import *
 from pipestat import PipestatManager
+from pipestat.helpers import read_yaml_data
 
 
 def is_in_file(fs, s, reverse=False):
@@ -516,3 +517,64 @@ class TestDatabaseOnly:
             condition=f"{RECORD_ID}=%s", condition_val=[rec_id], columns=[res_id],
             limit=limit)
         assert len(result) <= limit
+
+
+class TestHighlighting:
+    def test_highlighting_works(
+            self, highlight_schema_file_path, results_file_path):
+        """ the highlighted results are sourced from the schema and only ones
+        that are indicated with 'highlight: true` are respected """
+        _, s = read_yaml_data(highlight_schema_file_path, "schema")
+        schema_highlighted_results = \
+            [k for k, v in s.items() if
+             ("highlight" in v and v["highlight"] == True)]
+        psm = PipestatManager(
+            namespace="test",
+            results_file_path=results_file_path,
+            schema_path=highlight_schema_file_path
+        )
+        assert psm.highlighted_results == schema_highlighted_results
+
+
+class TestStatus:
+    def test_status_file_defult_location(
+            self, schema_file_path, results_file_path):
+        """ status file location is set to the results file dir
+        if not specified """
+        psm = PipestatManager(
+            namespace="test",
+            results_file_path=results_file_path,
+            schema_path=schema_file_path
+        )
+        assert psm[STATUS_FILE_DIR] == os.path.dirname(psm.file)
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.parametrize("status_id", ["running", "failed", "completed"])
+    def test_status_not_configured(
+            self, schema_file_path, config_file_path, results_file_path,
+            backend, status_id):
+        """ status management works even in case it has not been configured"""
+        args = dict(schema_path=schema_file_path, namespace="test")
+        backend_data = {"config": config_file_path} if backend == "db"\
+            else {"results_file_path": results_file_path}
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        psm.set_status(record_identifier="sample1", status_identifier=status_id)
+        assert psm.get_status(record_identifier="sample1") == status_id
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.parametrize("status_id", ["running_custom", "failed_custom", "completed_custom"])
+    def test_custom_status_schema(
+            self, schema_file_path, config_file_path, results_file_path,
+            backend, status_id, custom_status_schema):
+        """ status management works even in case it has not been configured"""
+        args = dict(schema_path=schema_file_path, namespace="test",
+                    status_schema_path=custom_status_schema)
+        backend_data = {"config": config_file_path} if backend == "db"\
+            else {"results_file_path": results_file_path}
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        psm.set_status(record_identifier="sample1", status_identifier=status_id)
+        assert psm.get_status(record_identifier="sample1") == status_id
+
+

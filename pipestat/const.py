@@ -70,8 +70,8 @@ FIXED_COLUMNS = [f"{ID} BIGSERIAL PRIMARY KEY",
 
 STATUS_TABLE_COLUMNS = [f"{ID} BIGSERIAL PRIMARY KEY",
                         f"{RECORD_ID} TEXT UNIQUE NOT NULL",
-                        f"{STATUS} {STATUS}"]  # custom type 'status'
-
+                        f"{STATUS} TEXT"]
+                        # f"{STATUS} {STATUS}"]  # custom type 'status'
 CANONICAL_TYPES = {
     "image": {
         "type": "object",

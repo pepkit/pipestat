@@ -413,21 +413,21 @@ class PipestatManager(dict):
         self._create_table(table_name=self.namespace, columns=columns)
         return True
 
-    def _create_status_type(self):
-        with self.db_cursor as cur:
-            s = sql.SQL(f"SELECT exists (SELECT 1 FROM pg_type WHERE typname = '{STATUS}');")
-            cur.execute(s)
-            if cur.fetchone()[0]:
-                return
-        with self.db_cursor as cur:
-            status_strs = [f"'{st_id}'" for st_id in self.status_schema.keys()]
-            status_str = ", ".join(status_strs)
-            s = sql.SQL(f"CREATE TYPE {STATUS} as enum({status_str});")
-            cur.execute(s)
+    # def _create_status_type(self):
+    #     with self.db_cursor as cur:
+    #         s = sql.SQL(f"SELECT exists (SELECT 1 FROM pg_type WHERE typname = '{STATUS}');")
+    #         cur.execute(s)
+    #         if cur.fetchone()[0]:
+    #             return
+    #     with self.db_cursor as cur:
+    #         status_strs = [f"'{st_id}'" for st_id in self.status_schema.keys()]
+    #         status_str = ", ".join(status_strs)
+    #         s = sql.SQL(f"CREATE TYPE {STATUS} as enum({status_str});")
+    #         cur.execute(s)
 
     def _init_status_table(self):
         status_table_name = f"{self.namespace}_{STATUS}"
-        self._create_status_type()
+        # self._create_status_type()
         if not self._check_table_exists(table_name=status_table_name):
             _LOGGER.info(f"Initializing '{status_table_name}' table in "
                          f"'{PKG_NAME}' database")

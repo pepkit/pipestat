@@ -1,0 +1,9 @@
+running_custom:
+  description: "the pipeline is running"
+  color: [30, 144, 255] # dodgerblue
+completed_custom:
+  description: "the pipeline has completed"
+  color: [50, 205, 50] # limegreen
+failed_custom:
+  description: "the pipeline has failed"
+  color: [220, 20, 60] # crimson

@@ -18,6 +18,16 @@ def schema_file_path(data_path):
 
 
 @pytest.fixture
+def highlight_schema_file_path(data_path):
+    return os.path.join(data_path, "sample_output_schema_highlight.yaml")
+
+
+@pytest.fixture
+def custom_status_schema(data_path):
+    return os.path.join(data_path, "custom_status_schema.yaml")
+
+
+@pytest.fixture
 def recursive_schema_file_path(data_path):
     return os.path.join(data_path, "sample_output_schema_recursive.yaml")
 
