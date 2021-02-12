@@ -1,6 +1,7 @@
 import logging
 import os
 import jsonschema
+import argparse
 
 from oyaml import safe_load
 from re import findall
@@ -27,10 +28,19 @@ def build_argparser(desc):
     parser = VersionInHelpParser(version=__version__, description=banner,
                                  epilog=additional_description)
     subparsers = parser.add_subparsers(dest="command")
+
+    def add_subparser(cmd):
+        message = SUBPARSER_MSGS[cmd]
+        return subparsers.add_parser(
+            cmd, description=message, help=message,
+            formatter_class=lambda prog: argparse.HelpFormatter(
+                prog, max_help_position=40, width=90)
+        )
+
     sps = {}
     # common arguments
-    for cmd, desc in SUBPARSER_MSGS.items():
-        sps[cmd] = subparsers.add_parser(cmd, description=desc, help=desc)
+    for cmd in SUBPARSER_MSGS.keys():
+        sps[cmd] = add_subparser(cmd)
         sps[cmd].add_argument(
                 "-n", "--namespace", required=True, type=str, metavar="N",
                 help="Name of the pipeline to report result for")
