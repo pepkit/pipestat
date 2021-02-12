@@ -40,11 +40,13 @@ class LoggingCursor(psycopg2.extras.DictCursor):
 
 class PipestatManager(dict):
     """
-    Pipestat standardizes reporting of pipeline results. It formalizes a way
-    for pipeline developers and downstream tools developers to communicate --
-    results produced by a pipeline can easily and reliably become an input for
-    downstream analyses. The object exposes API for interacting with the results
-    can be backed by either a YAML-formatted file or a PostgreSQL database.
+    Pipestat standardizes reporting of pipeline results and
+    pipeline status management. It formalizes a way for pipeline developers
+    and downstream tools developers to communicate -- results produced by a
+    pipeline can easily and reliably become an input for downstream analyses.
+    The object exposes API for interacting with the results and
+    pipeline status and can be backed by either a YAML-formatted file
+    or a PostgreSQL database.
     """
     def __init__(self, namespace=None, record_identifier=None, schema_path=None,
                  results_file_path=None, database_only=False, config=None,
@@ -183,6 +185,9 @@ class PipestatManager(dict):
             f"file ({self.file})" if self.file else "PostgreSQL")
         res += "\nSchema source: {}".format(self.schema_path)
         res += f"\nRecords count: {self.record_count}"
+        if self.highlighted_results:
+            res += \
+                f"\nHighlighted results: {', '.join(self.highlighted_results)}"
         return res
 
     @property
@@ -1117,7 +1122,10 @@ def main():
         namespace=args.namespace,
         schema_path=args.schema,
         results_file_path=args.results_file,
-        database_config=args.database_config
+        config=args.database_config,
+        database_only=args.database_only,
+        status_schema_path=args.status_schema,
+        flag_file_dir=args.flag_dir
     )
     if args.command == REPORT_CMD:
         value = args.value
@@ -1135,23 +1143,20 @@ def main():
             force_overwrite=args.overwrite,
             strict_type=not args.try_convert
         )
-        sys.exit(0)
     if args.command == INSPECT_CMD:
         print("\n")
         print(psm)
         if args.data and not args.database_only:
             print("\nData:")
             print(psm.data)
-        sys.exit(0)
     if args.command == REMOVE_CMD:
         psm.remove(
             result_identifier=args.result_identifier,
             record_identifier=args.record_identifier
         )
-        sys.exit(0)
     if args.command == RETRIEVE_CMD:
         print(psm.retrieve(
             result_identifier=args.result_identifier,
             record_identifier=args.record_identifier
         ))
-        sys.exit(0)
+    sys.exit(0)
