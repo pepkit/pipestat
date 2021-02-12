@@ -31,11 +31,11 @@ h4 .content {
 # Package `pipestat` Documentation
 
 ## <a name="PipestatManager"></a> Class `PipestatManager`
-Pipestat standardizes reporting of pipeline results. It formalizes a way for pipeline developers and downstream tools developers to communicate -- results produced by a pipeline can easily and reliably become an input for downstream analyses. The object exposes API for interacting with the results can be backed by either a YAML-formatted file or a PostgreSQL database.
+Pipestat standardizes reporting of pipeline results and pipeline status management. It formalizes a way for pipeline developers and downstream tools developers to communicate -- results produced by a pipeline can easily and reliably become an input for downstream analyses. The object exposes API for interacting with the results and pipeline status and can be backed by either a YAML-formatted file or a PostgreSQL database.
 
 
 ```python
-def __init__(self, namespace=None, record_identifier=None, schema_path=None, results_file_path=None, database_only=False, config=None)
+def __init__(self, namespace=None, record_identifier=None, schema_path=None, results_file_path=None, database_only=False, config=None, status_schema_path=None, flag_file_dir=None)
 ```
 
 Initialize the object
@@ -47,6 +47,23 @@ Initialize the object
 - `results_file_path` (`str`):  YAML file to report into, if file isused as the object back-end
 - `database_only` (`bool`):  whether the reported data should not bestored in the memory, but only in the database
 - `config` (`str | dict`):  path to the configuration file or a mappingwith the config file content
+
+
+
+
+```python
+def assert_results_defined(self, results)
+```
+
+Assert provided list of results is defined in the schema
+#### Parameters:
+
+- `results` (`list[str]`):  list of results tocheck for existence in the schema
+
+
+#### Raises:
+
+- `SchemaError`:  if any of the results is not defined in the schema
 
 
 
@@ -94,6 +111,24 @@ Check if the result has been reported
 #### Returns:
 
 - `bool`:  whether the specified result has been reported for theindicated record in current namespace
+
+
+
+
+```python
+def clear_status(self, record_identifier=None, flag_names=None)
+```
+
+Remove status flags
+#### Parameters:
+
+- `record_identifier` (`str`):  name of the record to remove flags for
+- `flag_names` (`Iterable[str]`):  Names of flags to remove, optional; ifunspecified, all schema-defined flag names will be used.
+
+
+#### Returns:
+
+- `list[str]`:  Collection of names of flags removed
 
 
 
@@ -172,6 +207,48 @@ File path that the object is reporting the results into
 
 
 ```python
+def get_status(self, record_identifier=None)
+```
+
+Get the current pipeline status
+#### Returns:
+
+- `str`:  status identifier, like 'running'
+
+
+
+
+```python
+def get_status_flag_path(self, status_identifier, record_identifier=None)
+```
+
+Get the path to the status file flag
+#### Parameters:
+
+- `status_identifier` (`str`):  one of the defined status IDs in schema
+- `record_identifier` (`str`):  unique record ID, optional ifspecified in the object constructor
+
+
+#### Returns:
+
+- `str`:  absolute path to the flag file or None if object isbacked by a DB
+
+
+
+
+```python
+def highlighted_results(self)
+```
+
+Highlighted results
+#### Returns:
+
+- `list[str]`:  a collection of highlighted results
+
+
+
+
+```python
 def namespace(self)
 ```
 
@@ -211,7 +288,7 @@ Unique identifier of the record
 def remove(self, record_identifier=None, result_identifier=None)
 ```
 
-Report a result.
+Remove a result.
 
 If no result ID specified or last result is removed, the entire record
 will be removed.
@@ -323,6 +400,47 @@ Get all the contents from the selected table, possibly restricted by the provide
 #### Returns:
 
 - `list[psycopg2.extras.DictRow]`:  all table contents
+
+
+
+
+```python
+def set_status(self, status_identifier, record_identifier=None)
+```
+
+Set pipeline run status.
+
+The status identifier needs to match one of identifiers specified in
+the status schema. A basic, ready to use, status schema is shipped with
+ this package.
+#### Parameters:
+
+- `status_identifier` (`str`):  status to set, one of statuses definedin the status schema
+- `record_identifier` (`str`):  record identifier to set thepipeline status for
+
+
+
+
+```python
+def status_schema(self)
+```
+
+Status schema mapping
+#### Returns:
+
+- `dict`:  schema that formalizes the pipeline status structure
+
+
+
+
+```python
+def status_schema_source(self)
+```
+
+Status schema source
+#### Returns:
+
+- `dict`:  source of the schema that formalizesthe pipeline status structure
 
 
 
