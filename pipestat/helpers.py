@@ -55,7 +55,15 @@ def build_argparser(desc):
         sps[cmd].add_argument(
             "-s", "--schema", required=True if cmd == REPORT_CMD else False,
             type=str, metavar="S", help="Path to the schema that defines the "
-                                        "results that can be eported")
+                                        "results that can be reported")
+        sps[cmd].add_argument(
+            "--status-schema", required=False, type=str, metavar="ST",
+            help=f"Path to the status schema. "
+                 f"Default will be used if not provided: {STATUS_SCHEMA}")
+        sps[cmd].add_argument(
+            "--flag-dir", required=False, type=str, metavar="FD",
+            help=f"Path to the flag directory in case YAML file is "
+                 f"the pipestat backend.")
 
     # remove and report
     for cmd in [REMOVE_CMD, REPORT_CMD, RETRIEVE_CMD]:
