@@ -13,6 +13,7 @@ nav:
     - Use command line interface: cli.md
   - Reference:
     - Configuration format : config.md
+    - Environment variables: env_vars.md
     - Pipestat specification: pipestat_specification.md
     - Python API: autodoc_build/pipestat.md
     - Support: https://github.com/pepkit/pipestat/issues
