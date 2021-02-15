@@ -30,7 +30,7 @@ h4 .content {
 # Package `pipestat` Documentation
 
 ## <a name="PipestatManager"></a> Class `PipestatManager`
-Pipestat standardizes reporting of pipeline results. It formalizes a way for pipeline developers and downstream tools developers to communicate -- results produced by a pipeline can easily and reliably become an input for downstream analyses. The object exposes API for interacting with the results can be backed by either a YAML-formatted file or a PostgreSQL database.
+Pipestat standardizes reporting of pipeline results and pipeline status management. It formalizes a way for pipeline developers and downstream tools developers to communicate -- results produced by a pipeline can easily and reliably become an input for downstream analyses. The object exposes API for interacting with the results and pipeline status and can be backed by either a YAML-formatted file or a PostgreSQL database.
 
 
 ```python
@@ -46,6 +46,7 @@ Initialize the object
 - `results_file_path` (`str`):  YAML file to report into, if file isused as the object back-end
 - `database_only` (`bool`):  whether the reported data should not bestored in the memory, but only in the database
 - `config` (`str | dict`):  path to the configuration file or a mappingwith the config file content
+- `status_schema_path` (`str`):  path to the status schema that formalizesthe status flags structure
 
 
 

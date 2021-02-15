@@ -65,6 +65,8 @@ class PipestatManager(dict):
             stored in the memory, but only in the database
         :param str | dict config: path to the configuration file or a mapping
             with the config file content
+        :param str status_schema_path: path to the status schema that formalizes
+            the status flags structure
         """
         def _check_cfg_key(cfg, key):
             if key not in cfg:

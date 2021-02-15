@@ -47,6 +47,7 @@ Initialize the object
 - `results_file_path` (`str`):  YAML file to report into, if file isused as the object back-end
 - `database_only` (`bool`):  whether the reported data should not bestored in the memory, but only in the database
 - `config` (`str | dict`):  path to the configuration file or a mappingwith the config file content
+- `status_schema_path` (`str`):  path to the status schema that formalizesthe status flags structure
 
 
 
