@@ -17,6 +17,16 @@ from .exceptions import *
 _LOGGER = logging.getLogger(__name__)
 
 
+def _env_txt(arg_name):
+    """
+    Check if env var set and produce text
+    """
+    arg_val = os.environ.get(ENV_VARS[arg_name])
+    txt = f"If not provided '{ENV_VARS[arg_name]}' env var will be used. "
+    return txt + ("Currently not set" if arg_val is None else
+                  f"Currently set to: {arg_val}")
+
+
 def build_argparser(desc):
     """
     Builds argument parser.
@@ -42,36 +52,32 @@ def build_argparser(desc):
     for cmd in SUBPARSER_MSGS.keys():
         sps[cmd] = add_subparser(cmd)
         sps[cmd].add_argument(
-                "-n", "--namespace", required=True, type=str, metavar="N",
-                help="Name of the pipeline to report result for")
+                "-n", "--namespace", type=str, metavar="N",
+                help=f"Name of the pipeline to report result for. {_env_txt('namespace')}")
 
     # remove, report and inspect
     for cmd in [REMOVE_CMD, REPORT_CMD, INSPECT_CMD, RETRIEVE_CMD]:
-        storage_group = sps[cmd].add_mutually_exclusive_group(required=True)
-        storage_group.add_argument(
+        sps[cmd].add_argument(
             "-f", "--results-file", type=str, metavar="F",
             help=f"Path to the YAML file where the results will be stored. "
                  f"This file will be used as {PKG_NAME} backend and to restore"
-                 f" the reported results across sesssions")
-        storage_group.add_argument(
-            "-c", "--database-config", type=str, metavar="C",
-            help=f"Path to the YAML file with PostgreSQL database "
-                 f"configuration. Please refer to the documentation for the "
-                 f"file format requirements.")
-        storage_group.add_argument(
+                 f" the reported results across sessions")
+        sps[cmd].add_argument(
+            "-c", "--config", type=str, metavar="C",
+            help=f"Path to the YAML configuration file. {_env_txt('config')}")
+        sps[cmd].add_argument(
             "-a", "--database-only", action="store_true",
             help="Whether the reported data should not be stored in the memory,"
                  " only in the database.")
         sps[cmd].add_argument(
-            "-s", "--schema", required=True if cmd == REPORT_CMD else False,
-            type=str, metavar="S", help="Path to the schema that defines the "
-                                        "results that can be reported")
+            "-s", "--schema", type=str, metavar="S",
+            help=f"Path to the schema that defines the results that can be reported. {_env_txt('schema')}")
         sps[cmd].add_argument(
-            "--status-schema", required=False, type=str, metavar="ST",
+            "--status-schema", type=str, metavar="ST",
             help=f"Path to the status schema. "
                  f"Default will be used if not provided: {STATUS_SCHEMA}")
         sps[cmd].add_argument(
-            "--flag-dir", required=False, type=str, metavar="FD",
+            "--flag-dir", type=str, metavar="FD",
             help=f"Path to the flag directory in case YAML file is "
                  f"the pipestat backend.")
 
@@ -81,8 +87,8 @@ def build_argparser(desc):
             "-i", "--result-identifier", required=True, type=str, metavar="I",
             help="ID of the result to report; needs to be defined in the schema")
         sps[cmd].add_argument(
-            "-r", "--record-identifier", required=True, type=str, metavar="R",
-            help="ID of the record to report the result for")
+            "-r", "--record-identifier", type=str, metavar="R",
+            help=F"ID of the record to report the result for. {_env_txt('schema')}")
 
     # report
     sps[REPORT_CMD].add_argument(

@@ -1,16 +1,14 @@
 import psycopg2
-from psycopg2 import sql
 from psycopg2.extras import DictCursor, Json
 from psycopg2.extensions import connection
 from logging import getLogger
 from contextlib import contextmanager
 from copy import deepcopy
-from jsonschema import validate
 
 import sys
 import logmuse
 from attmap import PathExAttMap as PXAM
-from ubiquerg import create_file_racefree, create_lock, remove_lock
+from ubiquerg import create_lock, remove_lock
 from yacman import YacAttMap
 from .const import *
 from .exceptions import *
@@ -90,10 +88,16 @@ class PipestatManager(dict):
                 return joined
             raise OSError(f"Could not make this path absolute: {path}")
 
-        def _select_value(arg_name, arg_value, cfg, strict=True):
+        def _select_value(arg_name, arg_value, cfg, strict=True, env_var=None):
             if arg_value is not None:
                 return arg_value
             if arg_name not in cfg or cfg[arg_name] is None:
+                if env_var is not None:
+                    arg = os.getenv(env_var, None)
+                    if arg is not None:
+                        _LOGGER.debug(
+                            f"Value '{arg}' sourced from '{env_var}' env var")
+                        return expandpath(arg)
                 if strict:
                     raise PipestatError(
                         f"Value for the required '{arg_name}' argument could not be"
@@ -105,6 +109,7 @@ class PipestatManager(dict):
         super(PipestatManager, self).__init__()
         self[CONFIG_KEY] = YacAttMap()
         # read config or config data
+        config = config or os.getenv(ENV_VARS["config"])
         if config is not None:
             if isinstance(config, str):
                 config = os.path.abspath(expandpath(config))
@@ -121,20 +126,22 @@ class PipestatManager(dict):
             # _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
             # validate(cfg, cfg_schema)
 
-        self[NAME_KEY] = _select_value("name", namespace, self[CONFIG_KEY])
+        self[NAME_KEY] = _select_value("namespace", namespace, self[CONFIG_KEY], env_var=ENV_VARS["namespace"])
         self[RECORD_ID_KEY] = _select_value(
-            "record_identifier", record_identifier, self[CONFIG_KEY], False)
+            "record_identifier", record_identifier, self[CONFIG_KEY], False, ENV_VARS["record_identifier"])
         self[DB_ONLY_KEY] = database_only
         # read results schema
-        schema_path = _mk_abs_via_cfg(_select_value(
-            "schema_path", schema_path, self[CONFIG_KEY]), config)
+        schema_path = _mk_abs_via_cfg(
+            _select_value("schema_path", schema_path, self[CONFIG_KEY],
+                          env_var=ENV_VARS["schema"]),
+            config)
         _, self[SCHEMA_KEY] = read_yaml_data(schema_path, "schema")
         self.validate_schema()
         self._schema_path = schema_path
         # read status schema
         status_schema_path = _mk_abs_via_cfg(_select_value(
             "status_schema_path", status_schema_path,
-            self[CONFIG_KEY], False), config) or STATUS_SCHEMA
+            self[CONFIG_KEY], False, env_var=ENV_VARS["status_schema"]), config) or STATUS_SCHEMA
         self[STATUS_SCHEMA_SOURCE_KEY], self[STATUS_SCHEMA_KEY] = read_yaml_data(
             status_schema_path, "status schema")
         # get status file directory
@@ -150,8 +157,10 @@ class PipestatManager(dict):
                 TypeError(f"highlighted results specification "
                           f"({self[HIGHLIGHTED_KEY]}) has to be a list")
         # determine results file
-        results_file_path = _mk_abs_via_cfg(_select_value(
-                "results_file_path", results_file_path, self[CONFIG_KEY], False), config)
+        results_file_path = _mk_abs_via_cfg(
+            _select_value("results_file_path", results_file_path,
+                          self[CONFIG_KEY], False, ENV_VARS["results_file"]),
+            config)
         if results_file_path:
             if self[DB_ONLY_KEY]:
                 raise ValueError("Running in database only mode does not make "
@@ -1116,13 +1125,13 @@ def main():
     global _LOGGER
     _LOGGER = logmuse.logger_via_cli(args, make_root=True)
     _LOGGER.debug("Args namespace:\n{}".format(args))
-    if args.database_config and not args.schema:
+    if args.config and not args.schema:
         parser.error("the following arguments are required: -s/--schema")
     psm = PipestatManager(
         namespace=args.namespace,
         schema_path=args.schema,
         results_file_path=args.results_file,
-        config=args.database_config,
+        config=args.config,
         database_only=args.database_only,
         status_schema_path=args.status_schema,
         flag_file_dir=args.flag_dir

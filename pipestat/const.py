@@ -92,6 +92,15 @@ CANONICAL_TYPES = {
     }
 }
 
+ENV_VARS = {
+    "namespace": "PIPESTAT_NAMESPACE",
+    "config": "PIPESTAT_CONFIG",
+    "results_file": "PIPESTAT_RESULTS_FILE",
+    "schema": "PIPESTAT_RESULTS_SCHEMA",
+    "status_schema": "PIPESTAT_SATUS_SCHEMA",
+    "record_identifier": "PIPESTAT_RECORD_ID",
+}
+
 CLASSES_BY_TYPE = {
     "number": float,
     "integer": int,
