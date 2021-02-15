@@ -20,12 +20,21 @@ A pipeline author defines all the outputs produced by a pipeline by writing a JS
 pip install pipestat
 ```
 
+## Set envirnment variables (optional)
+
+```console
+export PIPESTAT_RESULTS_SCHEMA=output_schema.yaml
+export PIPESTAT_RECORD_ID=my_record
+export PIPESTAT_RESULTS_FILE=results_file.yaml
+export PIPESTAT_NAMESPACE=my_namespace
+```
+
 ## Report result
 
 From command line:
 
 ```console
-pipestat report -f results.yaml -n namespace -r record_id -i result_name -v 1.1 -s schema.yaml
+pipestat report -i result_name -v 1.1
 ```
 
 From Python:
@@ -33,8 +42,8 @@ From Python:
 ```python
 import pipestat
 
-psm = pipestat.PipestatManager(namespace="namespace", results_file_path="results.yaml", schema_path="schema.yaml")
-psm.report(record_identifier="record_id", values={"result_name": 1.1})
+psm = pipestat.PipestatManager()
+psm.report(values={"result_name": 1.1})
 ```
  
 ## Retrieve a result
@@ -42,7 +51,7 @@ psm.report(record_identifier="record_id", values={"result_name": 1.1})
 From command line:
 
 ```console
-pipestat retrieve -f results.yaml -n namespace -r record_id -i result_name
+pipestat retrieve -i result_name
 ```
 
 From Python:
@@ -50,8 +59,8 @@ From Python:
 ```python
 import pipestat
 
-psm = pipestat.PipestatManager(namespace="namespace", results_file_path="results.yaml")
-psm.retrieve(record_identifier="record_id", result_identifier="result_name")
+psm = pipestat.PipestatManager()
+psm.retrieve(result_identifier="result_name")
 ```
  
 
