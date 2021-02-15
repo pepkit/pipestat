@@ -170,7 +170,7 @@ partial:
 As depicted above the top-level attributes are the status identifiers. Within each section two attributes are required:
 
 - `description` (`str`) a freeform text exhaustively describing the status code.
-- `color` (`list[str]`) an array of integers of length 3 which specifies the desired color associated with the status in RGB color model.
+- `color` (`list[int]`) an array of integers of length 3 which specifies the desired color associated with the status in RGB color model.
 
 # Backends
 

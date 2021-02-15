@@ -146,8 +146,6 @@ class PipestatManager(dict):
             self[CONFIG_KEY], False, env_var=ENV_VARS["status_schema"]), config) or STATUS_SCHEMA
         self[STATUS_SCHEMA_SOURCE_KEY], self[STATUS_SCHEMA_KEY] = read_yaml_data(
             status_schema_path, "status schema")
-        # get status file directory
-        _select_value("status_file_dir", None, self[CONFIG_KEY], False)
         # determine the highlighted results
         # the conditional in the list comprehension below needs to be a
         # literal "== True" so that if evaluates to False if 'highlight'
@@ -194,21 +192,13 @@ class PipestatManager(dict):
         res = f"{self.__class__.__name__} ({self.namespace})"
         res += "\nBackend: {}".format(
             f"file ({self.file})" if self.file else "PostgreSQL")
-        res += "\nSchema source: {}".format(self.schema_path)
+        res += f"\nResults schema source: {self.schema_path}"
+        res += f"\nStatus schema source: {self.status_schema_source}"
         res += f"\nRecords count: {self.record_count}"
         if self.highlighted_results:
             res += \
                 f"\nHighlighted results: {', '.join(self.highlighted_results)}"
         return res
-
-    @property
-    def highlighted_results(self):
-        """
-        Highlighted results
-
-        :return list[str]: a collection of highlighted results
-        """
-        return self._get_attr(HIGHLIGHTED_KEY) or []
 
     def _get_flag_file(self, record_identifier=None):
         """
@@ -232,6 +222,15 @@ class PipestatManager(dict):
             else:
                 _LOGGER.debug("No flag files found")
                 return
+
+    @property
+    def highlighted_results(self):
+        """
+        Highlighted results
+
+        :return list[str]: a collection of highlighted results
+        """
+        return self._get_attr(HIGHLIGHTED_KEY) or []
 
     @property
     def record_count(self):
@@ -651,14 +650,14 @@ class PipestatManager(dict):
                 f"These are allowed: {known_status_identifiers}")
         prev_status = self.get_status(r_id)
         if self.file is not None:
+            if prev_status:
+                prev_flag_path = self.get_status_flag_path(prev_status, r_id)
+                os.remove(prev_flag_path)
             flag_path = self.get_status_flag_path(status_identifier, r_id)
             create_lock(flag_path)
             with open(flag_path, "w") as f:
                 f.write(status_identifier)
             remove_lock(flag_path)
-            if prev_status:
-                prev_flag_path = self.get_status_flag_path(prev_status, r_id)
-                os.remove(prev_flag_path)
         else:
             try:
                 self._report_postgres(
@@ -1170,4 +1169,12 @@ def main():
             result_identifier=args.result_identifier,
             record_identifier=args.record_identifier
         ))
+    if args.command == STATUS_CMD:
+        if args.subcommand == STATUS_GET_CMD:
+            print(psm.get_status(record_identifier=args.record_identifier))
+        if args.subcommand == STATUS_SET_CMD:
+            psm.set_status(
+                status_identifier=args.status_identifier,
+                record_identifier=args.record_identifier
+            )
     sys.exit(0)

@@ -20,7 +20,7 @@ A pipeline author defines all the outputs produced by a pipeline by writing a JS
 pip install pipestat
 ```
 
-## Set envirnment variables (optional)
+## Set environment variables (optional)
 
 ```console
 export PIPESTAT_RESULTS_SCHEMA=output_schema.yaml
@@ -29,7 +29,7 @@ export PIPESTAT_RESULTS_FILE=results_file.yaml
 export PIPESTAT_NAMESPACE=my_namespace
 ```
 
-## Report result
+## Report a result
 
 From command line:
 

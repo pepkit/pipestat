@@ -7,11 +7,21 @@ REPORT_CMD = "report"
 INSPECT_CMD = "inspect"
 REMOVE_CMD = "remove"
 RETRIEVE_CMD = "retrieve"
+STATUS_CMD = "status"
 SUBPARSER_MSGS = {
     REPORT_CMD: "Report a result.",
     INSPECT_CMD: "Inspect a database.",
     REMOVE_CMD: "Remove a result.",
-    RETRIEVE_CMD: "Retrieve a result."
+    RETRIEVE_CMD: "Retrieve a result.",
+    STATUS_CMD: "Manage pipeline status."
+}
+
+STATUS_GET_CMD = "get"
+STATUS_SET_CMD = "set"
+
+STATUS_SUBPARSER_MESSAGES = {
+    STATUS_SET_CMD: "Set status.",
+    STATUS_GET_CMD: "Get status."
 }
 
 TABLE_COLS_BY_TYPE = {
