@@ -281,3 +281,23 @@ def preprocess_condition_pair(condition, condition_val):
             f"Number of condition ({len(condition_val)}) values not equal "
             f"number of placeholders in: {condition}")
     return condition, condition_val
+
+
+def paginate_query(query, offset, limit):
+    """
+    Apply offset and limit to the query string
+
+    :param sql.SQL query: query string to apply limit and offset to
+    :param int offset: offset to apply; no. of records to skip
+    :param int limit: limit to apply; max no. of records to return
+    :return sql.SQL: a possibly paginated query
+    """
+    if offset is not None:
+        assert isinstance(offset, int), \
+            TypeError(f"Provided offset ({offset}) must be an int")
+        query += sql.SQL(f" OFFSET {offset}")
+    if limit is not None:
+        assert isinstance(limit, int), \
+            TypeError(f"Provided limit ({limit}) must be an int")
+        query += sql.SQL(f" LIMIT {limit}")
+    return query

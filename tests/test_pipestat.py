@@ -509,7 +509,7 @@ class TestDatabaseOnly:
     )
     @pytest.mark.parametrize("backend", ["db"])
     @pytest.mark.parametrize("limit", [1, 2, 3, 15555])
-    def test_retrieve_limit(
+    def test_select_limit(
             self, rec_id, res_id, config_file_path, results_file_path,
             schema_file_path, backend, limit):
         args = dict(schema_path=schema_file_path, namespace="test", config=config_file_path)
@@ -518,6 +518,31 @@ class TestDatabaseOnly:
             condition=f"{RECORD_ID}=%s", condition_val=[rec_id], columns=[res_id],
             limit=limit)
         assert len(result) <= limit
+
+    @pytest.mark.parametrize("backend", ["db"])
+    @pytest.mark.parametrize("offset", [0, 1, 2, 3, 15555])
+    def test_select_offset(self, config_file_path, results_file_path,
+                             schema_file_path, backend, offset):
+        args = dict(schema_path=schema_file_path, namespace="test",
+                    config=config_file_path)
+        psm = PipestatManager(**args)
+        result = psm.select(offset=offset)
+        print(result)
+        assert len(result) == max((psm.record_count - offset), 0)
+
+    @pytest.mark.parametrize("backend", ["db"])
+    @pytest.mark.parametrize(
+        ["offset", "limit"],
+        [(0, 0), (0, 1), (0, 2), (0, 11111), (1, 1), (1, 0)]
+    )
+    def test_select_pagination(self, config_file_path, results_file_path,
+                             schema_file_path, backend, offset, limit):
+        args = dict(schema_path=schema_file_path, namespace="test",
+                    config=config_file_path)
+        psm = PipestatManager(**args)
+        result = psm.select(offset=offset, limit=limit)
+        print(result)
+        assert len(result) == min(max((psm.record_count - offset), 0), limit)
 
 
 class TestHighlighting:
