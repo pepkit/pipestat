@@ -340,7 +340,7 @@ Result schema mappings
 
 
 ```python
-def retrieve(self, record_identifier=None, result_identifier=None, limit=None)
+def retrieve(self, record_identifier=None, result_identifier=None, offset=None, limit=None)
 ```
 
 Retrieve a result for a record.
@@ -351,7 +351,8 @@ be returned.
 
 - `record_identifier` (`str`):  unique identifier of the record
 - `result_identifier` (`str`):  name of the result to be retrieved
-- `limit` (`int`):  max number of results to be returned
+- `offset` (`int`):  number of records to be skipped
+- `limit` (`int`):  max number of records to be returned
 
 
 #### Returns:
@@ -386,7 +387,7 @@ Schema path
 
 
 ```python
-def select(self, columns=None, condition=None, condition_val=None, limit=None)
+def select(self, columns=None, condition=None, condition_val=None, offset=None, limit=None)
 ```
 
 Get all the contents from the selected table, possibly restricted by the provided condition.
@@ -395,7 +396,8 @@ Get all the contents from the selected table, possibly restricted by the provide
 - `columns` (`str | list[str]`):  columns to select
 - `condition` (`str`):  condition to restrict the resultswith, will be appended to the end of the SELECT statement and safely populated with 'condition_val', for example: `"id=%s"`
 - `condition_val` (`list`):  values to fill the placeholderin 'condition' with
-- `limit` (`int`):  max number of results to be returned
+- `offset` (`int`):  number of records to be skipped
+- `limit` (`int`):  max number of records to be returned
 
 
 #### Returns:
