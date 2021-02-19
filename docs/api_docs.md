@@ -340,7 +340,7 @@ Result schema mappings
 
 
 ```python
-def retrieve(self, record_identifier=None, result_identifier=None, offset=None, limit=None)
+def retrieve(self, record_identifier=None, result_identifier=None)
 ```
 
 Retrieve a result for a record.
@@ -351,8 +351,6 @@ be returned.
 
 - `record_identifier` (`str`):  unique identifier of the record
 - `result_identifier` (`str`):  name of the result to be retrieved
-- `offset` (`int`):  number of records to be skipped
-- `limit` (`int`):  max number of records to be returned
 
 
 #### Returns:

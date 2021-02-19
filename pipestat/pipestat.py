@@ -860,8 +860,7 @@ class PipestatManager(dict):
             result = cur.fetchall()
         return result
 
-    def retrieve(self, record_identifier=None, result_identifier=None,
-                 offset=None, limit=None):
+    def retrieve(self, record_identifier=None, result_identifier=None):
         """
         Retrieve a result for a record.
 
@@ -870,8 +869,6 @@ class PipestatManager(dict):
 
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be retrieved
-        :param int offset: number of records to be skipped
-        :param int limit: max number of records to be returned
         :return any | dict[str, any]: a single result or a mapping with all the
             results reported for the record
         """
@@ -889,7 +886,6 @@ class PipestatManager(dict):
             with self.db_cursor as cur:
                 query = sql.SQL(f"SELECT {result_identifier or '*'} "
                                 f"FROM {self.namespace} WHERE {RECORD_ID}=%s")
-                query = paginate_query(query, offset, limit)
                 cur.execute(query, (record_identifier, ))
                 result = cur.fetchall()
             if len(result) > 0:
