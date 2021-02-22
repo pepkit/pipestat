@@ -13,7 +13,7 @@ SUBPARSER_MSGS = {
     INSPECT_CMD: "Inspect a database.",
     REMOVE_CMD: "Remove a result.",
     RETRIEVE_CMD: "Retrieve a result.",
-    STATUS_CMD: "Manage pipeline status."
+    STATUS_CMD: "Manage pipeline status.",
 }
 
 STATUS_GET_CMD = "get"
@@ -21,18 +21,18 @@ STATUS_SET_CMD = "set"
 
 STATUS_SUBPARSER_MESSAGES = {
     STATUS_SET_CMD: "Set status.",
-    STATUS_GET_CMD: "Get status."
+    STATUS_GET_CMD: "Get status.",
 }
 
 TABLE_COLS_BY_TYPE = {
-    "integer": '{} INT',
-    "number": '{} NUMERIC',
+    "integer": "{} INT",
+    "number": "{} NUMERIC",
     "string": "{} TEXT",
-    "boolean": '{} BOOLEAN',
-    "object": '{} JSONB',
-    "array": '{} TEXT[]',
-    "file": '{} JSONB',
-    "image": '{} JSONB'
+    "boolean": "{} BOOLEAN",
+    "object": "{} JSONB",
+    "array": "{} TEXT[]",
+    "file": "{} JSONB",
+    "image": "{} JSONB",
 }
 
 DOC_URL = "http://pipestat.databio.org/en/latest/db_config/"
@@ -45,8 +45,13 @@ CFG_PORT_KEY = "port"
 CFG_PASSWORD_KEY = "password"
 CFG_USER_KEY = "user"
 
-DB_CREDENTIALS = [CFG_HOST_KEY, CFG_PORT_KEY, CFG_PASSWORD_KEY, CFG_USER_KEY,
-                  CFG_NAME_KEY]
+DB_CREDENTIALS = [
+    CFG_HOST_KEY,
+    CFG_PORT_KEY,
+    CFG_PASSWORD_KEY,
+    CFG_USER_KEY,
+    CFG_NAME_KEY,
+]
 
 # object attribute names
 DB_ONLY_KEY = "_database_only"
@@ -75,13 +80,14 @@ STATUS = "status"
 
 RESERVED_COLNAMES = [ID, RECORD_ID]
 
-FIXED_COLUMNS = [f"{ID} BIGSERIAL PRIMARY KEY",
-                 f"{RECORD_ID} TEXT UNIQUE NOT NULL"]
+FIXED_COLUMNS = [f"{ID} BIGSERIAL PRIMARY KEY", f"{RECORD_ID} TEXT UNIQUE NOT NULL"]
 
-STATUS_TABLE_COLUMNS = [f"{ID} BIGSERIAL PRIMARY KEY",
-                        f"{RECORD_ID} TEXT UNIQUE NOT NULL",
-                        f"{STATUS} TEXT"]
-                        # f"{STATUS} {STATUS}"]  # custom type 'status'
+STATUS_TABLE_COLUMNS = [
+    f"{ID} BIGSERIAL PRIMARY KEY",
+    f"{RECORD_ID} TEXT UNIQUE NOT NULL",
+    f"{STATUS} TEXT",
+]
+# f"{STATUS} {STATUS}"]  # custom type 'status'
 CANONICAL_TYPES = {
     "image": {
         "type": "object",
@@ -90,7 +96,7 @@ CANONICAL_TYPES = {
             "thumbnail_path": {"type": "string"},
             "title": {"type": "string"},
         },
-        "required": ["path", "thumbnail_path", "title"]
+        "required": ["path", "thumbnail_path", "title"],
     },
     "file": {
         "type": "object",
@@ -98,8 +104,8 @@ CANONICAL_TYPES = {
             "path": {"type": "string"},
             "title": {"type": "string"},
         },
-        "required": ["path", "title"]
-    }
+        "required": ["path", "title"],
+    },
 }
 
 ENV_VARS = {
@@ -119,8 +125,12 @@ CLASSES_BY_TYPE = {
     "file": dict,
     "string": str,
     "array": list,
-    "boolean": bool
+    "boolean": bool,
 }
 
-CFG_SCHEMA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schemas", "pipestat_config_schema.yaml")
-STATUS_SCHEMA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schemas", "status_schema.yaml")
+CFG_SCHEMA = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "schemas", "pipestat_config_schema.yaml"
+)
+STATUS_SCHEMA = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "schemas", "status_schema.yaml"
+)
