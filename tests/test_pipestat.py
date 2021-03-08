@@ -108,6 +108,7 @@ class TestPipestatManagerInstantiation:
         """ Object constructor works with database as backend"""
         assert isinstance(PipestatManager(config=config_file_path), PipestatManager)
 
+    @pytest.mark.xfail(reason="schema is no longer required to init the object")
     def test_schema_req(self, results_file_path):
         """
         Object constructor raises exception if schema is not provided
@@ -243,6 +244,45 @@ class TestReporting:
         assert list(val.keys())[0] in psm.data["test"][rec_id]
         if backend == "file":
             is_in_file(results_file_path, str(list(val.values())[0]))
+
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("sample3", {"name_of_something": "test_name"}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_report_requires_schema(
+        self,
+        rec_id,
+        val,
+        config_no_schema_file_path,
+        results_file_path,
+        backend,
+    ):
+        """
+        If schema is not provided at object instantiation stage, SchemaNotFondError
+        is raised if report method is called with file as a backend.
+
+        In case of the DB as a backend, the error is raised at object
+        instantiation stage since there is no way to init relational DB table
+        with no columns predefined
+        """
+        args = dict(namespace="test")
+        backend_data = (
+            {"config": config_no_schema_file_path}
+            if backend == "db"
+            else {"results_file_path": results_file_path}
+        )
+        args.update(backend_data)
+        if backend == "db":
+            with pytest.raises(SchemaNotFoundError):
+                psm = PipestatManager(**args)
+        else:
+            psm = PipestatManager(**args)
+        if backend == "file":
+            with pytest.raises(SchemaNotFoundError):
+                psm.report(record_identifier=rec_id, values=val)
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],
