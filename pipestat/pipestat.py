@@ -46,9 +46,18 @@ class PipestatManager(dict):
     pipeline status and can be backed by either a YAML-formatted file
     or a PostgreSQL database.
     """
-    def __init__(self, namespace=None, record_identifier=None, schema_path=None,
-                 results_file_path=None, database_only=False, config=None,
-                 status_schema_path=None, flag_file_dir=None):
+
+    def __init__(
+        self,
+        namespace=None,
+        record_identifier=None,
+        schema_path=None,
+        results_file_path=None,
+        database_only=False,
+        config=None,
+        status_schema_path=None,
+        flag_file_dir=None,
+    ):
         """
         Initialize the object
 
@@ -68,6 +77,7 @@ class PipestatManager(dict):
         :param str status_schema_path: path to the status schema that formalizes
             the status flags structure
         """
+
         def _check_cfg_key(cfg, key):
             if key not in cfg:
                 _LOGGER.warning(f"Key '{key}' not found in config")
@@ -97,14 +107,14 @@ class PipestatManager(dict):
                 if env_var is not None:
                     arg = os.getenv(env_var, None)
                     if arg is not None:
-                        _LOGGER.debug(
-                            f"Value '{arg}' sourced from '{env_var}' env var")
+                        _LOGGER.debug(f"Value '{arg}' sourced from '{env_var}' env var")
                         return expandpath(arg)
                 if strict:
                     raise PipestatError(
                         f"Value for the required '{arg_name}' argument could not be"
                         f" determined. Provide it in the config or pass to the "
-                        f"object constructor.")
+                        f"object constructor."
+                    )
                 return
             return cfg[arg_name]
 
@@ -120,68 +130,111 @@ class PipestatManager(dict):
             elif isinstance(config, dict):
                 self[CONFIG_KEY] = YacAttMap(entries=config)
             else:
-                raise TypeError("database_config has to be either path to the "
-                                "file to read or a dict")
+                raise TypeError(
+                    "database_config has to be either path to the "
+                    "file to read or a dict"
+                )
             # validate config
             # TODO: uncomment below when this gets released: https://github.com/pepkit/attmap/pull/75
             # cfg = self[CONFIG_KEY].to_dict(expand=True)
             # _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
             # validate(cfg, cfg_schema)
 
-        self[NAME_KEY] = _select_value("namespace", namespace, self[CONFIG_KEY], env_var=ENV_VARS["namespace"])
+        self[NAME_KEY] = _select_value(
+            "namespace", namespace, self[CONFIG_KEY], env_var=ENV_VARS["namespace"]
+        )
         self[RECORD_ID_KEY] = _select_value(
-            "record_identifier", record_identifier, self[CONFIG_KEY], False, ENV_VARS["record_identifier"])
+            "record_identifier",
+            record_identifier,
+            self[CONFIG_KEY],
+            False,
+            ENV_VARS["record_identifier"],
+        )
         self[DB_ONLY_KEY] = database_only
         # read results schema
-        schema_path = _mk_abs_via_cfg(
-            _select_value("schema_path", schema_path, self[CONFIG_KEY],
-                          env_var=ENV_VARS["schema"]),
-            config)
-        _, self[SCHEMA_KEY] = read_yaml_data(schema_path, "schema")
-        self.validate_schema()
-        self._schema_path = schema_path
+        self._schema_path = _select_value(
+            "schema_path",
+            schema_path,
+            self[CONFIG_KEY],
+            False,
+            env_var=ENV_VARS["schema"],
+        )
+        if self._schema_path is not None:
+            _, self[SCHEMA_KEY] = read_yaml_data(
+                _mk_abs_via_cfg(self._schema_path, config), "schema"
+            )
+            self.validate_schema()
+            # determine the highlighted results
+            # the conditional in the list comprehension below needs to be a
+            # literal "== True" so that if evaluates to False if 'highlight'
+            # value is just "truthy", not True
+            self[HIGHLIGHTED_KEY] = [
+                k
+                for k, v in self.schema.items()
+                if "highlight" in v and v["highlight"] == True
+            ]
+            if self[HIGHLIGHTED_KEY]:
+                assert isinstance(self[HIGHLIGHTED_KEY], list), TypeError(
+                    f"highlighted results specification "
+                    f"({self[HIGHLIGHTED_KEY]}) has to be a list"
+                )
         # read status schema
-        status_schema_path = _mk_abs_via_cfg(_select_value(
-            "status_schema_path", status_schema_path,
-            self[CONFIG_KEY], False, env_var=ENV_VARS["status_schema"]), config) or STATUS_SCHEMA
+        status_schema_path = (
+            _mk_abs_via_cfg(
+                _select_value(
+                    "status_schema_path",
+                    status_schema_path,
+                    self[CONFIG_KEY],
+                    False,
+                    env_var=ENV_VARS["status_schema"],
+                ),
+                config,
+            )
+            or STATUS_SCHEMA
+        )
         self[STATUS_SCHEMA_SOURCE_KEY], self[STATUS_SCHEMA_KEY] = read_yaml_data(
-            status_schema_path, "status schema")
-        # determine the highlighted results
-        # the conditional in the list comprehension below needs to be a
-        # literal "== True" so that if evaluates to False if 'highlight'
-        # value is just "truthy", not True
-        self[HIGHLIGHTED_KEY] = [k for k, v in self.schema.items()
-                                 if "highlight" in v and v["highlight"] == True]
-        if self[HIGHLIGHTED_KEY]:
-            assert isinstance(self[HIGHLIGHTED_KEY], list), \
-                TypeError(f"highlighted results specification "
-                          f"({self[HIGHLIGHTED_KEY]}) has to be a list")
+            status_schema_path, "status schema"
+        )
         # determine results file
         results_file_path = _mk_abs_via_cfg(
-            _select_value("results_file_path", results_file_path,
-                          self[CONFIG_KEY], False, ENV_VARS["results_file"]),
-            config)
+            _select_value(
+                "results_file_path",
+                results_file_path,
+                self[CONFIG_KEY],
+                False,
+                ENV_VARS["results_file"],
+            ),
+            config,
+        )
         if results_file_path:
             if self[DB_ONLY_KEY]:
-                raise ValueError("Running in database only mode does not make "
-                                 "sense with a YAML file as a backend.")
+                raise ValueError(
+                    "Running in database only mode does not make "
+                    "sense with a YAML file as a backend."
+                )
             self[FILE_KEY] = results_file_path
             self._init_results_file()
             flag_file_dir = _select_value(
-                "flag_file_dir", flag_file_dir, self[CONFIG_KEY], False) \
-                            or os.path.dirname(self.file)
+                "flag_file_dir", flag_file_dir, self[CONFIG_KEY], False
+            ) or os.path.dirname(self.file)
             self[STATUS_FILE_DIR] = _mk_abs_via_cfg(flag_file_dir, self.config_path)
         elif CFG_DATABASE_KEY in self[CONFIG_KEY]:
-            if not all([_check_cfg_key(self[CONFIG_KEY][CFG_DATABASE_KEY], key)
-                        for key in DB_CREDENTIALS]):
-                raise MissingConfigDataError("Must specify all database login "
-                                             "credentials or result_file_path")
+            if not all(
+                [
+                    _check_cfg_key(self[CONFIG_KEY][CFG_DATABASE_KEY], key)
+                    for key in DB_CREDENTIALS
+                ]
+            ):
+                raise MissingConfigDataError(
+                    "Must specify all database login " "credentials or result_file_path"
+                )
             self[DATA_KEY] = YacAttMap()
             self._init_postgres_table()
             self._init_status_table()
         else:
-            raise MissingConfigDataError("Must specify either database login "
-                                         "credentials or a YAML file path")
+            raise MissingConfigDataError(
+                "Must specify either database login " "credentials or a YAML file path"
+            )
 
     def __str__(self):
         """
@@ -191,13 +244,13 @@ class PipestatManager(dict):
         """
         res = f"{self.__class__.__name__} ({self.namespace})"
         res += "\nBackend: {}".format(
-            f"file ({self.file})" if self.file else "PostgreSQL")
+            f"file ({self.file})" if self.file else "PostgreSQL"
+        )
         res += f"\nResults schema source: {self.schema_path}"
         res += f"\nStatus schema source: {self.status_schema_source}"
         res += f"\nRecords count: {self.record_count}"
         if self.highlighted_results:
-            res += \
-                f"\nHighlighted results: {', '.join(self.highlighted_results)}"
+            res += f"\nHighlighted results: {', '.join(self.highlighted_results)}"
         return res
 
     def _get_flag_file(self, record_identifier=None):
@@ -208,11 +261,14 @@ class PipestatManager(dict):
         :return str: path to the status flag file
         """
         from glob import glob
+
         r_id = self._strict_record_id(record_identifier)
         if self.file is None:
             return
         if self.file is not None:
-            regex = os.path.join(self[STATUS_FILE_DIR], f"{self.namespace}_{r_id}_*.flag")
+            regex = os.path.join(
+                self[STATUS_FILE_DIR], f"{self.namespace}_{r_id}_*.flag"
+            )
             file_list = glob(regex)
             if len(file_list) > 1:
                 _LOGGER.warning("Multiple flag files found")
@@ -239,8 +295,11 @@ class PipestatManager(dict):
 
         :return int: number of records reported
         """
-        return len(self.data[self.namespace]) if self.file \
+        return (
+            len(self.data[self.namespace])
+            if self.file
             else self._count_rows(self.namespace)
+        )
 
     @property
     def namespace(self):
@@ -347,8 +406,9 @@ class PipestatManager(dict):
         try:
             if not self.check_connection():
                 self.establish_postgres_connection()
-            with self[DB_CONNECTION_KEY] as c, \
-                    c.cursor(cursor_factory=LoggingCursor) as cur:
+            with self[DB_CONNECTION_KEY] as c, c.cursor(
+                cursor_factory=LoggingCursor
+            ) as cur:
                 yield cur
         except Exception:
             raise
@@ -364,10 +424,12 @@ class PipestatManager(dict):
         r_id = self._strict_record_id(record_identifier)
         if self.file is None:
             with self.db_cursor as cur:
-                query = sql.SQL(f"SELECT {STATUS} "
-                                f"FROM {f'{self.namespace}_{STATUS}'} "
-                                f"WHERE {RECORD_ID}=%s")
-                cur.execute(query, (r_id, ))
+                query = sql.SQL(
+                    f"SELECT {STATUS} "
+                    f"FROM {f'{self.namespace}_{STATUS}'} "
+                    f"WHERE {RECORD_ID}=%s"
+                )
+                cur.execute(query, (r_id,))
                 result = cur.fetchone()
             return result[0] if result is not None else None
         else:
@@ -378,7 +440,8 @@ class PipestatManager(dict):
                 return status
             _LOGGER.debug(
                 f"Could not determine status for '{r_id}' record. "
-                f"No flags found in: {self[STATUS_FILE_DIR]}")
+                f"No flags found in: {self[STATUS_FILE_DIR]}"
+            )
             return
 
     def _get_attr(self, attr):
@@ -405,8 +468,7 @@ class PipestatManager(dict):
             for res_id, val in record.items():
                 if val is not None:
                     self._report_data_element(
-                        record_identifier=record_id,
-                        values={res_id: val}
+                        record_identifier=record_id, values={res_id: val}
                     )
 
     def _init_postgres_table(self):
@@ -420,13 +482,11 @@ class PipestatManager(dict):
         if self.schema is None:
             raise SchemaNotFoundError("initialize the database table")
         if self._check_table_exists(table_name=self.namespace):
-            _LOGGER.debug(
-                f"Table '{self.namespace}' already exists in the database")
+            _LOGGER.debug(f"Table '{self.namespace}' already exists in the database")
             if not self[DB_ONLY_KEY]:
                 self._table_to_dict()
             return False
-        _LOGGER.info(
-            f"Initializing '{self.namespace}' table in '{PKG_NAME}' database")
+        _LOGGER.info(f"Initializing '{self.namespace}' table in '{PKG_NAME}' database")
         columns = FIXED_COLUMNS + schema_to_columns(schema=self.schema)
         self._create_table(table_name=self.namespace, columns=columns)
         return True
@@ -447,8 +507,9 @@ class PipestatManager(dict):
         status_table_name = f"{self.namespace}_{STATUS}"
         # self._create_status_type()
         if not self._check_table_exists(table_name=status_table_name):
-            _LOGGER.info(f"Initializing '{status_table_name}' table in "
-                         f"'{PKG_NAME}' database")
+            _LOGGER.info(
+                f"Initializing '{status_table_name}' table in " f"'{PKG_NAME}' database"
+            )
             self._create_table(status_table_name, STATUS_TABLE_COLUMNS)
 
     def _create_table(self, table_name, columns):
@@ -473,7 +534,7 @@ class PipestatManager(dict):
         """
         if not os.path.exists(self.file):
             _LOGGER.info(f"Initializing results file '{self.file}'")
-            data = YacAttMap(entries={self.namespace: '{}'})
+            data = YacAttMap(entries={self.namespace: "{}"})
             data.write(filepath=self.file)
             data.make_readonly()
             self[DATA_KEY] = data
@@ -484,7 +545,8 @@ class PipestatManager(dict):
         if filtered and self.namespace not in filtered:
             raise PipestatDatabaseError(
                 f"'{self.file}' is already used to report results for "
-                f"other namespace: {filtered[0]}")
+                f"other namespace: {filtered[0]}"
+            )
         self[DATA_KEY] = data
         return False
 
@@ -499,7 +561,7 @@ class PipestatManager(dict):
             cur.execute(
                 "SELECT EXISTS(SELECT * FROM information_schema.tables "
                 "WHERE table_name=%s)",
-                (table_name, )
+                (table_name,),
             )
             return cur.fetchone()[0]
 
@@ -512,9 +574,11 @@ class PipestatManager(dict):
         :return bool: whether any record matches the provided condition
         """
         with self.db_cursor as cur:
-            statement = f"SELECT EXISTS(SELECT 1 from {table_name} " \
-                        f"WHERE {condition_col}=%s)"
-            cur.execute(statement, (condition_val, ))
+            statement = (
+                f"SELECT EXISTS(SELECT 1 from {table_name} "
+                f"WHERE {condition_col}=%s)"
+            )
+            cur.execute(statement, (condition_val,))
             return cur.fetchone()[0]
 
     def _count_rows(self, table_name):
@@ -526,7 +590,8 @@ class PipestatManager(dict):
         """
         with self.db_cursor as cur:
             statement = sql.SQL("SELECT COUNT(*) FROM {}").format(
-                sql.Identifier(table_name))
+                sql.Identifier(table_name)
+            )
             cur.execute(statement)
             return cur.fetchall()[0][0]
 
@@ -545,27 +610,29 @@ class PipestatManager(dict):
         :return int: id of the row just inserted
         """
         table_name = table_name or self.namespace
-        if not self._check_record(condition_col=RECORD_ID,
-                                  condition_val=record_identifier,
-                                  table_name=table_name):
+        if not self._check_record(
+            condition_col=RECORD_ID,
+            condition_val=record_identifier,
+            table_name=table_name,
+        ):
             with self.db_cursor as cur:
                 cur.execute(
                     f"INSERT INTO {table_name} ({RECORD_ID}) VALUES (%s)",
-                    (record_identifier, )
+                    (record_identifier,),
                 )
         # prep a list of SQL objects with column-named value placeholders
-        columns = sql.SQL(",").join([sql.SQL("{}=%({})s").format(
-            sql.Identifier(k), sql.SQL(k)) for k in list(value.keys())])
+        columns = sql.SQL(",").join(
+            [
+                sql.SQL("{}=%({})s").format(sql.Identifier(k), sql.SQL(k))
+                for k in list(value.keys())
+            ]
+        )
         # construct the query template to execute
-        query = sql.SQL("UPDATE {n} SET {c} WHERE {id}=%({id})s RETURNING id").\
-            format(
-            n=sql.Identifier(table_name),
-            c=columns,
-            id=sql.SQL(RECORD_ID)
+        query = sql.SQL("UPDATE {n} SET {c} WHERE {id}=%({id})s RETURNING id").format(
+            n=sql.Identifier(table_name), c=columns, id=sql.SQL(RECORD_ID)
         )
         # preprocess the values, dict -> Json
-        values = {k: Json(v) if isinstance(v, dict) else v
-                  for k, v in value.items()}
+        values = {k: Json(v) if isinstance(v, dict) else v for k, v in value.items()}
         # add record_identifier column, which is specified outside of values
         values.update({RECORD_ID: record_identifier})
         with self.db_cursor as cur:
@@ -589,7 +656,8 @@ class PipestatManager(dict):
             removed = []
             for f in flag_names:
                 path_flag_file = self.get_status_flag_path(
-                    status_identifier=f, record_identifier=r_id)
+                    status_identifier=f, record_identifier=r_id
+                )
                 try:
                     os.remove(path_flag_file)
                 except:
@@ -600,14 +668,18 @@ class PipestatManager(dict):
             return removed
         else:
             removed = self.get_status(r_id)
-            status_table_name = f'{self.namespace}_{STATUS}'
+            status_table_name = f"{self.namespace}_{STATUS}"
             with self.db_cursor as cur:
                 try:
-                    cur.execute(f"DELETE FROM {status_table_name} WHERE "
-                                f"{RECORD_ID}='{r_id}'")
+                    cur.execute(
+                        f"DELETE FROM {status_table_name} WHERE "
+                        f"{RECORD_ID}='{r_id}'"
+                    )
                 except Exception as e:
-                    _LOGGER.error(f"Could not remove the status from the "
-                                  f"database. Exception: {e}")
+                    _LOGGER.error(
+                        f"Could not remove the status from the "
+                        f"database. Exception: {e}"
+                    )
                     return []
                 else:
                     return [removed]
@@ -626,8 +698,9 @@ class PipestatManager(dict):
             # DB as the backend
             return
         r_id = self._strict_record_id(record_identifier)
-        return os.path.join(self[STATUS_FILE_DIR],
-                            f"{self.namespace}_{r_id}_{status_identifier}.flag")
+        return os.path.join(
+            self[STATUS_FILE_DIR], f"{self.namespace}_{r_id}_{status_identifier}.flag"
+        )
 
     def set_status(self, status_identifier, record_identifier=None):
         """
@@ -647,7 +720,8 @@ class PipestatManager(dict):
         if status_identifier not in known_status_identifiers:
             raise PipestatError(
                 f"'{status_identifier}' is not a defined status identifier. "
-                f"These are allowed: {known_status_identifiers}")
+                f"These are allowed: {known_status_identifiers}"
+            )
         prev_status = self.get_status(r_id)
         if self.file is not None:
             if prev_status:
@@ -663,17 +737,19 @@ class PipestatManager(dict):
                 self._report_postgres(
                     value={STATUS: status_identifier},
                     record_identifier=r_id,
-                    table_name=f"{self.namespace}_{STATUS}"
+                    table_name=f"{self.namespace}_{STATUS}",
                 )
             except Exception as e:
-                _LOGGER.error(f"Could not insert into the status table. "
-                              f"Exception: {e}")
+                _LOGGER.error(
+                    f"Could not insert into the status table. " f"Exception: {e}"
+                )
                 raise
         if prev_status:
             _LOGGER.debug(
-                f"Changed status from '{prev_status}' to '{status_identifier}'")
+                f"Changed status from '{prev_status}' to '{status_identifier}'"
+            )
 
-    def check_result_exists(self, result_identifier,  record_identifier=None):
+    def check_result_exists(self, result_identifier, record_identifier=None):
         """
         Check if the result has been reported
 
@@ -684,7 +760,8 @@ class PipestatManager(dict):
         """
         record_identifier = self._strict_record_id(record_identifier)
         return self._check_which_results_exist(
-            results=[result_identifier], rid=record_identifier)
+            results=[result_identifier], rid=record_identifier
+        )
 
     def _check_which_results_exist(self, results, rid=None):
         """
@@ -699,15 +776,18 @@ class PipestatManager(dict):
         existing = []
         for r in results:
             if not self[DB_ONLY_KEY]:
-                if self.namespace in self.data and rid in self.data[self.namespace] \
-                        and r in self.data[self.namespace][rid]:
+                if (
+                    self.namespace in self.data
+                    and rid in self.data[self.namespace]
+                    and r in self.data[self.namespace][rid]
+                ):
                     existing.append(r)
             else:
                 with self.db_cursor as cur:
                     try:
                         cur.execute(
                             f"SELECT {r} FROM {self.namespace} WHERE {RECORD_ID}=%s",
-                            (rid, )
+                            (rid,),
                         )
                     except Exception:
                         continue
@@ -730,15 +810,24 @@ class PipestatManager(dict):
                 cur.execute(
                     f"SELECT exists(SELECT 1 from {self.namespace} "
                     f"WHERE {RECORD_ID}=%s)",
-                    (record_identifier, )
+                    (record_identifier,),
                 )
                 return cur.fetchone()
-        if self.namespace in self.data and record_identifier in self.data[self.namespace]:
+        if (
+            self.namespace in self.data
+            and record_identifier in self.data[self.namespace]
+        ):
             return True
         return False
 
-    def report(self, values, record_identifier=None, force_overwrite=False,
-               strict_type=True, return_id=False):
+    def report(
+        self,
+        values,
+        record_identifier=None,
+        force_overwrite=False,
+        strict_type=True,
+        return_id=False,
+    ):
         """
         Report a result.
 
@@ -759,28 +848,31 @@ class PipestatManager(dict):
         if return_id and self.file is not None:
             raise NotImplementedError(
                 "There is no way to return the updated object ID while using "
-                "results file as the object backend")
+                "results file as the object backend"
+            )
         if self.schema is None:
             raise SchemaNotFoundError("report results")
         result_identifiers = list(values.keys())
         self.assert_results_defined(results=result_identifiers)
         existing = self._check_which_results_exist(
-            rid=record_identifier, results=result_identifiers)
+            rid=record_identifier, results=result_identifiers
+        )
         if existing:
             _LOGGER.warning(
-                f"These results exist for '{record_identifier}': {existing}")
+                f"These results exist for '{record_identifier}': {existing}"
+            )
             if not force_overwrite:
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing}")
         for r in result_identifiers:
-            validate_type(value=values[r], schema=self.result_schemas[r],
-                          strict_type=strict_type)
+            validate_type(
+                value=values[r], schema=self.result_schemas[r], strict_type=strict_type
+            )
         if self.file is not None:
             self.data.make_writable()
         if not self[DB_ONLY_KEY]:
             self._report_data_element(
-                record_identifier=record_identifier,
-                values=values
+                record_identifier=record_identifier, values=values
             )
         if self.file is not None:
             self.data.write()
@@ -788,21 +880,22 @@ class PipestatManager(dict):
         else:
             try:
                 updated_ids = self._report_postgres(
-                    record_identifier=record_identifier,
-                    value=values
+                    record_identifier=record_identifier, value=values
                 )
             except Exception as e:
-                _LOGGER.error(f"Could not insert the result into the database. "
-                              f"Exception: {e}")
+                _LOGGER.error(
+                    f"Could not insert the result into the database. " f"Exception: {e}"
+                )
                 if not self[DB_ONLY_KEY]:
                     for r in result_identifiers:
                         del self[DATA_KEY][self.namespace][record_identifier][r]
                 raise
         nl = "\n"
-        rep_strs = [f'{k}: {v}' for k, v in values.items()]
+        rep_strs = [f"{k}: {v}" for k, v in values.items()]
         _LOGGER.info(
             f"Reported records for '{record_identifier}' in '{self.namespace}' "
-            f"namespace:{nl} - {(nl + ' - ').join(rep_strs)}")
+            f"namespace:{nl} - {(nl + ' - ').join(rep_strs)}"
+        )
         return True if not return_id else updated_ids
 
     def _report_data_element(self, record_identifier, values):
@@ -820,8 +913,9 @@ class PipestatManager(dict):
         for res_id, val in values.items():
             self[DATA_KEY][self.namespace][record_identifier][res_id] = val
 
-    def select(self, columns=None, condition=None, condition_val=None,
-               offset=None, limit=None):
+    def select(
+        self, columns=None, condition=None, condition_val=None, offset=None, limit=None
+    ):
         """
         Get all the contents from the selected table, possibly restricted by
         the provided condition.
@@ -842,15 +936,16 @@ class PipestatManager(dict):
                 "Selection is not supported on objects backed by results files."
                 " Use 'retrieve' method instead."
             )
-        condition, condition_val = \
-            preprocess_condition_pair(condition, condition_val)
+        condition, condition_val = preprocess_condition_pair(condition, condition_val)
         if not columns:
             columns = sql.SQL("*")
         else:
-            columns = sql.SQL(',').join(
-                [sql.Identifier(x) for x in mk_list_of_str(columns)])
+            columns = sql.SQL(",").join(
+                [sql.Identifier(x) for x in mk_list_of_str(columns)]
+            )
         statement = sql.SQL("SELECT {} FROM {}").format(
-            columns, sql.Identifier(self.namespace))
+            columns, sql.Identifier(self.namespace)
+        )
         if condition:
             statement += sql.SQL(" WHERE ")
             statement += condition
@@ -876,35 +971,35 @@ class PipestatManager(dict):
         if self[DB_ONLY_KEY]:
             if result_identifier is not None:
                 existing = self._check_which_results_exist(
-                    results=[result_identifier],
-                    rid=record_identifier
+                    results=[result_identifier], rid=record_identifier
                 )
                 if not existing:
                     raise PipestatDatabaseError(
                         f"Result '{result_identifier}' not found for record "
-                        f"'{record_identifier}'")
+                        f"'{record_identifier}'"
+                    )
             with self.db_cursor as cur:
-                query = sql.SQL(f"SELECT {result_identifier or '*'} "
-                                f"FROM {self.namespace} WHERE {RECORD_ID}=%s")
-                cur.execute(query, (record_identifier, ))
+                query = sql.SQL(
+                    f"SELECT {result_identifier or '*'} "
+                    f"FROM {self.namespace} WHERE {RECORD_ID}=%s"
+                )
+                cur.execute(query, (record_identifier,))
                 result = cur.fetchall()
             if len(result) > 0:
                 if result_identifier is None:
-                    return {k: v for k, v in dict(result[0]).items()
-                            if v is not None}
+                    return {k: v for k, v in dict(result[0]).items() if v is not None}
                 return dict(result[0])[result_identifier]
-            raise PipestatDatabaseError(
-                f"Record '{record_identifier}' not found")
+            raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
         else:
             if record_identifier not in self.data[self.namespace]:
-                raise PipestatDatabaseError(
-                    f"Record '{record_identifier}' not found")
+                raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
             if result_identifier is None:
                 return self.data[self.namespace][record_identifier].to_dict()
             if result_identifier not in self.data[self.namespace][record_identifier]:
                 raise PipestatDatabaseError(
                     f"Result '{result_identifier}' not found for record "
-                    f"'{record_identifier}'")
+                    f"'{record_identifier}'"
+                )
             return self.data[self.namespace][record_identifier][result_identifier]
 
     def remove(self, record_identifier=None, result_identifier=None):
@@ -925,9 +1020,12 @@ class PipestatManager(dict):
             _LOGGER.error(f"Record '{record_identifier}' not found")
             return False
         if result_identifier and not self.check_result_exists(
-                result_identifier, record_identifier):
-            _LOGGER.error(f"'{result_identifier}' has not been reported for "
-                          f"'{record_identifier}'")
+            result_identifier, record_identifier
+        ):
+            _LOGGER.error(
+                f"'{result_identifier}' has not been reported for "
+                f"'{record_identifier}'"
+            )
             return False
         if self.file:
             self.data.make_writable()
@@ -936,14 +1034,19 @@ class PipestatManager(dict):
                 _LOGGER.info(f"Removing '{record_identifier}' record")
                 del self[DATA_KEY][self.namespace][record_identifier]
             else:
-                val_backup = \
-                    self[DATA_KEY][self.namespace][record_identifier][result_identifier]
+                val_backup = self[DATA_KEY][self.namespace][record_identifier][
+                    result_identifier
+                ]
                 del self[DATA_KEY][self.namespace][record_identifier][result_identifier]
-                _LOGGER.info(f"Removed result '{result_identifier}' for record "
-                             f"'{record_identifier}' from '{self.namespace}' namespace")
+                _LOGGER.info(
+                    f"Removed result '{result_identifier}' for record "
+                    f"'{record_identifier}' from '{self.namespace}' namespace"
+                )
                 if not self[DATA_KEY][self.namespace][record_identifier]:
-                    _LOGGER.info(f"Last result removed for '{record_identifier}'. "
-                                 f"Removing the record")
+                    _LOGGER.info(
+                        f"Last result removed for '{record_identifier}'. "
+                        f"Removing the record"
+                    )
                     del self[DATA_KEY][self.namespace][record_identifier]
                     rm_record = True
         if self.file:
@@ -953,13 +1056,16 @@ class PipestatManager(dict):
             if rm_record:
                 try:
                     with self.db_cursor as cur:
-                        cur.execute(f"DELETE FROM {self.namespace} WHERE "
-                                    f"{RECORD_ID}='{record_identifier}'")
+                        cur.execute(
+                            f"DELETE FROM {self.namespace} WHERE "
+                            f"{RECORD_ID}='{record_identifier}'"
+                        )
                 except Exception as e:
-                    _LOGGER.error(f"Could not remove the result from the "
-                                  f"database. Exception: {e}")
-                    self[DATA_KEY][self.namespace].setdefault(
-                        record_identifier, PXAM())
+                    _LOGGER.error(
+                        f"Could not remove the result from the "
+                        f"database. Exception: {e}"
+                    )
+                    self[DATA_KEY][self.namespace].setdefault(record_identifier, PXAM())
                     raise
                 return True
             try:
@@ -969,10 +1075,13 @@ class PipestatManager(dict):
                         f"WHERE {RECORD_ID}='{record_identifier}'"
                     )
             except Exception as e:
-                _LOGGER.error(f"Could not remove the result from the database. "
-                              f"Exception: {e}")
+                _LOGGER.error(
+                    f"Could not remove the result from the database. " f"Exception: {e}"
+                )
                 if not self[DB_ONLY_KEY]:
-                    self[DATA_KEY][self.namespace][record_identifier][result_identifier] = val_backup
+                    self[DATA_KEY][self.namespace][record_identifier][
+                        result_identifier
+                    ] = val_backup
                 raise
         return True
 
@@ -982,6 +1091,7 @@ class PipestatManager(dict):
 
         :raises SchemaError: if any schema format issue is detected
         """
+
         def _recursively_replace_custom_types(s):
             """
             Replace the custom types in pipestat schema with canonical types
@@ -990,29 +1100,35 @@ class PipestatManager(dict):
             :return dict: schema with types replaced
             """
             for k, v in s.items():
-                assert SCHEMA_TYPE_KEY in v, \
-                    SchemaError(f"Result '{k}' is missing '{SCHEMA_TYPE_KEY}' key")
+                assert SCHEMA_TYPE_KEY in v, SchemaError(
+                    f"Result '{k}' is missing '{SCHEMA_TYPE_KEY}' key"
+                )
                 if v[SCHEMA_TYPE_KEY] == "object" and SCHEMA_PROP_KEY in s[k]:
                     _recursively_replace_custom_types(s[k][SCHEMA_PROP_KEY])
                 if v[SCHEMA_TYPE_KEY] in CANONICAL_TYPES.keys():
                     s.setdefault(k, {})
                     s[k].setdefault(SCHEMA_PROP_KEY, {})
                     s[k][SCHEMA_PROP_KEY].update(
-                        CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]][SCHEMA_PROP_KEY])
+                        CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]][SCHEMA_PROP_KEY]
+                    )
                     s[k].setdefault("required", [])
                     s[k]["required"].extend(
-                        CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]]["required"])
-                    s[k][SCHEMA_TYPE_KEY] = \
-                        CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]][SCHEMA_TYPE_KEY]
+                        CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]]["required"]
+                    )
+                    s[k][SCHEMA_TYPE_KEY] = CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]][
+                        SCHEMA_TYPE_KEY
+                    ]
             return s
 
         schema = deepcopy(self.schema)
         _LOGGER.debug(f"Validating input schema")
-        assert isinstance(schema, dict), \
-            SchemaError(f"The schema has to be a {dict().__class__.__name__}")
+        assert isinstance(schema, dict), SchemaError(
+            f"The schema has to be a {dict().__class__.__name__}"
+        )
         for col_name in RESERVED_COLNAMES:
-            assert col_name not in schema.keys(), \
-                PipestatError(f"'{col_name}' is an identifier reserved by pipestat")
+            assert col_name not in schema.keys(), PipestatError(
+                f"'{col_name}' is an identifier reserved by pipestat"
+            )
         self[RES_SCHEMAS_KEY] = {}
         schema = _recursively_replace_custom_types(schema)
         self[RES_SCHEMAS_KEY] = schema
@@ -1029,7 +1145,8 @@ class PipestatManager(dict):
         for r in results:
             assert r in known_results, SchemaError(
                 f"'{r}' is not a known result. Results defined in the "
-                f"schema are: {list(known_results)}.")
+                f"schema are: {list(known_results)}."
+            )
 
     def check_connection(self):
         """
@@ -1038,10 +1155,12 @@ class PipestatManager(dict):
         :return bool: whether the connection has been established
         """
         if self.file is not None:
-            raise PipestatDatabaseError(f"The {self.__class__.__name__} object "
-                                        f"is not backed by a database")
+            raise PipestatDatabaseError(
+                f"The {self.__class__.__name__} object " f"is not backed by a database"
+            )
         if DB_CONNECTION_KEY in self and isinstance(
-                self[DB_CONNECTION_KEY], psycopg2.extensions.connection):
+            self[DB_CONNECTION_KEY], psycopg2.extensions.connection
+        ):
             return True
         return False
 
@@ -1053,26 +1172,32 @@ class PipestatManager(dict):
         :return bool: whether the connection has been established successfully
         """
         if self.check_connection():
-            raise PipestatDatabaseError(f"Connection is already established: "
-                                        f"{self[DB_CONNECTION_KEY].info.host}")
+            raise PipestatDatabaseError(
+                f"Connection is already established: "
+                f"{self[DB_CONNECTION_KEY].info.host}"
+            )
         try:
             self[DB_CONNECTION_KEY] = psycopg2.connect(
                 dbname=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_NAME_KEY],
                 user=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_USER_KEY],
                 password=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_PASSWORD_KEY],
                 host=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY],
-                port=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_PORT_KEY]
+                port=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_PORT_KEY],
             )
         except psycopg2.Error as e:
-            _LOGGER.error(f"Could not connect to: "
-                          f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}")
+            _LOGGER.error(
+                f"Could not connect to: "
+                f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}"
+            )
             _LOGGER.info(f"Caught error: {e}")
             if suppress:
                 return False
             raise
         else:
-            _LOGGER.debug(f"Established connection with PostgreSQL: "
-                          f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}")
+            _LOGGER.debug(
+                f"Established connection with PostgreSQL: "
+                f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}"
+            )
             return True
 
     def close_postgres_connection(self):
@@ -1082,11 +1207,14 @@ class PipestatManager(dict):
         if not self.check_connection():
             raise PipestatDatabaseError(
                 f"The connection has not been established: "
-                f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}")
+                f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}"
+            )
         self[DB_CONNECTION_KEY].close()
         del self[DB_CONNECTION_KEY]
-        _LOGGER.debug(f"Closed connection with PostgreSQL: "
-                      f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}")
+        _LOGGER.debug(
+            f"Closed connection with PostgreSQL: "
+            f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}"
+        )
 
     def _strict_record_id(self, forced_value=None):
         """
@@ -1109,8 +1237,8 @@ class PipestatManager(dict):
 def main():
     """ Primary workflow """
     from inspect import getdoc
-    parser = logmuse.add_logging_options(
-        build_argparser(getdoc(PipestatManager)))
+
+    parser = logmuse.add_logging_options(build_argparser(getdoc(PipestatManager)))
     args = parser.parse_args()
     if args.command is None:
         parser.print_help(sys.stderr)
@@ -1127,23 +1255,32 @@ def main():
         config=args.config,
         database_only=args.database_only,
         status_schema_path=args.status_schema,
-        flag_file_dir=args.flag_dir
+        flag_file_dir=args.flag_dir,
     )
     if args.command == REPORT_CMD:
         value = args.value
         result_metadata = psm.schema[args.result_identifier]
-        if result_metadata[SCHEMA_TYPE_KEY] in ["object", "image", "file"] \
-                and os.path.exists(expandpath(value)):
+        if (
+            result_metadata[SCHEMA_TYPE_KEY]
+            in [
+                "object",
+                "image",
+                "file",
+            ]
+            and os.path.exists(expandpath(value))
+        ):
             from json import load
-            _LOGGER.info(f"Reading JSON file with object type value: "
-                         f"{expandpath(value)}")
+
+            _LOGGER.info(
+                f"Reading JSON file with object type value: {expandpath(value)}"
+            )
             with open(expandpath(value), "r") as json_file:
                 value = load(json_file)
         psm.report(
             record_identifier=args.record_identifier,
             values={args.result_identifier: value},
             force_overwrite=args.overwrite,
-            strict_type=not args.try_convert
+            strict_type=not args.try_convert,
         )
     if args.command == INSPECT_CMD:
         print("\n")
@@ -1154,19 +1291,21 @@ def main():
     if args.command == REMOVE_CMD:
         psm.remove(
             result_identifier=args.result_identifier,
-            record_identifier=args.record_identifier
+            record_identifier=args.record_identifier,
         )
     if args.command == RETRIEVE_CMD:
-        print(psm.retrieve(
-            result_identifier=args.result_identifier,
-            record_identifier=args.record_identifier
-        ))
+        print(
+            psm.retrieve(
+                result_identifier=args.result_identifier,
+                record_identifier=args.record_identifier,
+            )
+        )
     if args.command == STATUS_CMD:
         if args.subcommand == STATUS_GET_CMD:
             print(psm.get_status(record_identifier=args.record_identifier))
         if args.subcommand == STATUS_SET_CMD:
             psm.set_status(
                 status_identifier=args.status_identifier,
-                record_identifier=args.record_identifier
+                record_identifier=args.record_identifier,
             )
     sys.exit(0)
