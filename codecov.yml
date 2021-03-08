@@ -2,3 +2,4 @@ ignore:
   - "pipestat/argparser.py"
   - "pipestat/cli.py"
   - "pipestat/__main__.py"
+  - "pipestat/setup.py"
