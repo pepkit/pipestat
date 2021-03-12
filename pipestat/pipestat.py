@@ -90,7 +90,7 @@ class PipestatManager(dict):
         ) -> Optional[str]:
             if path is None:
                 return path
-            assert isinstance(path, str), "Path is expected to be a str"
+            assert isinstance(path, str), TypeError("Path is expected to be a str")
             if os.path.isabs(path):
                 return path
             if cfg_path is None:
@@ -444,9 +444,9 @@ class PipestatManager(dict):
         else:
             flag_file = self._get_flag_file(record_identifier=r_id)
             if flag_file is not None:
-                assert isinstance(
-                    flag_file, str
-                ), "Flag file path is expected to be a str, were multiple flags found?"
+                assert isinstance(flag_file, str), TypeError(
+                    "Flag file path is expected to be a str, were multiple flags found?"
+                )
                 with open(flag_file, "r") as f:
                     status = f.read()
                 return status
