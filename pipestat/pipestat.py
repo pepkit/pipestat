@@ -1,18 +1,18 @@
-import psycopg2
-from psycopg2.extras import DictCursor, Json
-from psycopg2.extensions import connection
-from logging import getLogger
 from contextlib import contextmanager
 from copy import deepcopy
+from logging import getLogger
 
-
+import psycopg2
 from attmap import PathExAttMap as PXAM
+from psycopg2.extensions import connection
+from psycopg2.extras import DictCursor, Json
 from ubiquerg import create_lock, remove_lock
 from yacman import YacAttMap
+
+from .argparser import build_argparser
 from .const import *
 from .exceptions import *
 from .helpers import *
-from .argparser import build_argparser
 
 _LOGGER = getLogger(PKG_NAME)
 

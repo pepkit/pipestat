@@ -1,6 +1,7 @@
 """ Package exception types """
 
 import abc
+
 from .const import *
 
 __all__ = [

@@ -1,15 +1,16 @@
+import os
+from collections import Mapping
+from tempfile import mkdtemp
+
 import pytest
 from _pytest.monkeypatch import monkeypatch
-import os
-from tempfile import mkdtemp
-from yaml import dump
-from collections import Mapping
 from jsonschema import ValidationError
 from psycopg2 import Error as psycopg2Error
+from yaml import dump
 
-from pipestat.exceptions import *
-from pipestat.const import *
 from pipestat import PipestatManager
+from pipestat.const import *
+from pipestat.exceptions import *
 from pipestat.helpers import read_yaml_data
 
 

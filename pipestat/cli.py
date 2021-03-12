@@ -1,11 +1,11 @@
 import sys
-import logmuse
-
-from ubiquerg import expandpath
 from logging import getLogger
 
-from .const import *
+import logmuse
+from ubiquerg import expandpath
+
 from .argparser import build_argparser
+from .const import *
 from .pipestat import PipestatManager
 
 _LOGGER = getLogger(PKG_NAME)

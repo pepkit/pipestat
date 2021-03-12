@@ -1,5 +1,7 @@
 import argparse
+
 from ubiquerg import VersionInHelpParser
+
 from ._version import __version__
 from .const import *
 

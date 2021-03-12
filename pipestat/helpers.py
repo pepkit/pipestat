@@ -1,14 +1,12 @@
 import logging
-import jsonschema
-
-from oyaml import safe_load
 from re import findall
-from psycopg2 import sql
 
+import jsonschema
+from oyaml import safe_load
+from psycopg2 import sql
 from ubiquerg import expandpath
 
 from .const import *
-
 
 _LOGGER = logging.getLogger(__name__)
 

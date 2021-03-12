@@ -1,8 +1,9 @@
 #! /usr/bin/env python
 
 import os
-from setuptools import setup
 import sys
+
+from setuptools import setup
 
 PACKAGE = "pipestat"
 
