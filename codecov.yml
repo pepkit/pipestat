@@ -1,5 +1,5 @@
 ignore:
-  - "pipestat/argparser.py"
-  - "pipestat/cli.py"
-  - "pipestat/__main__.py"
-  - "pipestat/setup.py"
+  - "*/argparser.py"
+  - "*/cli.py"
+  - "*/__main__.py"
+  - "setup.py"
