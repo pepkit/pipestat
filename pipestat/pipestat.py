@@ -403,8 +403,8 @@ class PipestatManager(dict):
         """
         return self._get_attr(DATA_KEY)
 
-    @contextmanager
     @property
+    @contextmanager
     def db_cursor(self):
         """
         Establish connection and get a PostgreSQL database cursor,
