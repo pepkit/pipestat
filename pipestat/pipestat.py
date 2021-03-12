@@ -9,7 +9,6 @@ from psycopg2.extras import DictCursor, Json
 from ubiquerg import create_lock, remove_lock
 from yacman import YacAttMap
 
-from .argparser import build_argparser
 from .const import *
 from .exceptions import *
 from .helpers import *
