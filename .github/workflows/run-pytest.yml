@@ -10,7 +10,7 @@ jobs:
   pytest:
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.6, 3.7, 3.8, 3.9]
         os: [ubuntu-latest] # can't use macOS when using service containers or container jobs
     runs-on: ${{ matrix.os }}
     services:

@@ -1,4 +1,5 @@
 import os
+
 import pytest
 
 
@@ -35,3 +36,8 @@ def recursive_schema_file_path(data_path):
 @pytest.fixture
 def config_file_path(data_path):
     return os.path.join(data_path, "config.yaml")
+
+
+@pytest.fixture
+def config_no_schema_file_path(data_path):
+    return os.path.join(data_path, "config_no_schema.yaml")

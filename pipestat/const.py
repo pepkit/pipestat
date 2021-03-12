@@ -1,6 +1,5 @@
 import os
 
-
 PKG_NAME = "pipestat"
 LOCK_PREFIX = "lock."
 REPORT_CMD = "report"

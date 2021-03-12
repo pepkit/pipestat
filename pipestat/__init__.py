@@ -1,9 +1,10 @@
 # Project configuration, particularly for logging.
 
 import logmuse
+
 from ._version import __version__
-from .pipestat import *
 from .helpers import *
+from .pipestat import *
 
 __classes__ = ["PipestatManager"]
 __all__ = __classes__
