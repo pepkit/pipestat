@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from copy import deepcopy
 from logging import getLogger
-from typing import Any, Union, List, Dict, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import psycopg2
 from attmap import PathExAttMap as PXAM
@@ -95,7 +95,9 @@ class PipestatManager(dict):
                 return path
             if cfg_path is None:
                 rel_to_cwd = os.path.join(os.getcwd(), path)
-                if os.path.exists(rel_to_cwd):
+                if os.path.exists(rel_to_cwd) or os.access(
+                    os.path.dirname(rel_to_cwd), os.W_OK
+                ):
                     return rel_to_cwd
                 raise OSError(f"Could not make this path absolute: {path}")
             joined = os.path.join(os.path.dirname(cfg_path), path)
