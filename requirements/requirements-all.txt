@@ -1,7 +1,7 @@
-ubiquerg>=0.6.1
-logmuse>=0.2.5
-oyaml
-yacman>=0.7.0
-psycopg2-binary
 attmap
 jsonschema
+logmuse>=0.2.5
+oyaml
+psycopg2-binary
+ubiquerg>=0.6.1
+yacman>=0.8.0

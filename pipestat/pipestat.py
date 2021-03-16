@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import psycopg2
 from attmap import PathExAttMap as PXAM
+from jsonschema import validate
 from psycopg2.extensions import connection
 from psycopg2.extras import DictCursor, Json
 from ubiquerg import create_lock, remove_lock
@@ -147,10 +148,9 @@ class PipestatManager(dict):
                     "file to read or a dict"
                 )
             # validate config
-            # TODO: uncomment below when this gets released: https://github.com/pepkit/attmap/pull/75
-            # cfg = self[CONFIG_KEY].to_dict(expand=True)
-            # _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
-            # validate(cfg, cfg_schema)
+            cfg = self[CONFIG_KEY].to_dict(expand=True)
+            _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
+            validate(cfg, cfg_schema)
 
         self[NAME_KEY] = _select_value(
             "namespace", namespace, self[CONFIG_KEY], env_var=ENV_VARS["namespace"]
