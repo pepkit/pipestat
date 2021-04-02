@@ -186,7 +186,7 @@ class TestPipestatManagerInstantiation:
     @pytest.mark.parametrize("pth", [["/$HOME/path.yaml"], 1])
     def test_wrong_class_results_file(self, schema_file_path, pth):
         """ Input string that is not a file path raises an informative error """
-        with pytest.raises(TypeError):
+        with pytest.raises((TypeError, AssertionError)):
             PipestatManager(
                 namespace="test", results_file_path=pth, schema_path=schema_file_path
             )

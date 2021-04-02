@@ -1,9 +1,11 @@
 from contextlib import contextmanager
 from copy import deepcopy
 from logging import getLogger
+from typing import Any, Dict, List, Optional, Union
 
 import psycopg2
 from attmap import PathExAttMap as PXAM
+from jsonschema import validate
 from psycopg2.extensions import connection
 from psycopg2.extras import DictCursor, Json
 from ubiquerg import create_lock, remove_lock
@@ -48,14 +50,14 @@ class PipestatManager(dict):
 
     def __init__(
         self,
-        namespace=None,
-        record_identifier=None,
-        schema_path=None,
-        results_file_path=None,
-        database_only=False,
-        config=None,
-        status_schema_path=None,
-        flag_file_dir=None,
+        namespace: str = None,
+        record_identifier: str = None,
+        schema_path: str = None,
+        results_file_path: str = None,
+        database_only: bool = False,
+        config: Union[str, dict] = None,
+        status_schema_path: str = None,
+        flag_file_dir: str = None,
     ):
         """
         Initialize the object
@@ -77,21 +79,26 @@ class PipestatManager(dict):
             the status flags structure
         """
 
-        def _check_cfg_key(cfg, key):
+        def _check_cfg_key(cfg: dict, key: str) -> bool:
             if key not in cfg:
                 _LOGGER.warning(f"Key '{key}' not found in config")
                 return False
             return True
 
-        def _mk_abs_via_cfg(path, cfg_path):
+        def _mk_abs_via_cfg(
+            path: Optional[str],
+            cfg_path: Optional[str],
+        ) -> Optional[str]:
             if path is None:
-                return
-            path = expandpath(path)
+                return path
+            assert isinstance(path, str), TypeError("Path is expected to be a str")
             if os.path.isabs(path):
                 return path
             if cfg_path is None:
                 rel_to_cwd = os.path.join(os.getcwd(), path)
-                if os.path.exists(rel_to_cwd):
+                if os.path.exists(rel_to_cwd) or os.access(
+                    os.path.dirname(rel_to_cwd), os.W_OK
+                ):
                     return rel_to_cwd
                 raise OSError(f"Could not make this path absolute: {path}")
             joined = os.path.join(os.path.dirname(cfg_path), path)
@@ -99,7 +106,13 @@ class PipestatManager(dict):
                 return joined
             raise OSError(f"Could not make this path absolute: {path}")
 
-        def _select_value(arg_name, arg_value, cfg, strict=True, env_var=None):
+        def _select_value(
+            arg_name: str,
+            arg_value: Any,
+            cfg: dict,
+            strict: bool = True,
+            env_var: str = None,
+        ) -> Any:
             if arg_value is not None:
                 return arg_value
             if arg_name not in cfg or cfg[arg_name] is None:
@@ -128,16 +141,16 @@ class PipestatManager(dict):
                 self._config_path = config
             elif isinstance(config, dict):
                 self[CONFIG_KEY] = YacAttMap(entries=config)
+                self._config_path = None
             else:
                 raise TypeError(
                     "database_config has to be either path to the "
                     "file to read or a dict"
                 )
             # validate config
-            # TODO: uncomment below when this gets released: https://github.com/pepkit/attmap/pull/75
-            # cfg = self[CONFIG_KEY].to_dict(expand=True)
-            # _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
-            # validate(cfg, cfg_schema)
+            cfg = self[CONFIG_KEY].to_dict(expand=True)
+            _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
+            validate(cfg, cfg_schema)
 
         self[NAME_KEY] = _select_value(
             "namespace", namespace, self[CONFIG_KEY], env_var=ENV_VARS["namespace"]
@@ -160,17 +173,14 @@ class PipestatManager(dict):
         )
         if self._schema_path is not None:
             _, self[SCHEMA_KEY] = read_yaml_data(
-                _mk_abs_via_cfg(self._schema_path, config), "schema"
+                _mk_abs_via_cfg(self._schema_path, self.config_path), "schema"
             )
             self.validate_schema()
             # determine the highlighted results
-            # the conditional in the list comprehension below needs to be a
-            # literal "== True" so that if evaluates to False if 'highlight'
-            # value is just "truthy", not True
             self[HIGHLIGHTED_KEY] = [
                 k
                 for k, v in self.schema.items()
-                if "highlight" in v and v["highlight"] == True
+                if "highlight" in v and v["highlight"] is True
             ]
             if self[HIGHLIGHTED_KEY]:
                 assert isinstance(self[HIGHLIGHTED_KEY], list), TypeError(
@@ -187,7 +197,7 @@ class PipestatManager(dict):
                     False,
                     env_var=ENV_VARS["status_schema"],
                 ),
-                config,
+                self.config_path,
             )
             or STATUS_SCHEMA
         )
@@ -203,7 +213,7 @@ class PipestatManager(dict):
                 False,
                 ENV_VARS["results_file"],
             ),
-            config,
+            self.config_path,
         )
         if results_file_path:
             if self[DB_ONLY_KEY]:
@@ -252,12 +262,14 @@ class PipestatManager(dict):
             res += f"\nHighlighted results: {', '.join(self.highlighted_results)}"
         return res
 
-    def _get_flag_file(self, record_identifier=None):
+    def _get_flag_file(
+        self, record_identifier: str = None
+    ) -> Union[str, List[str], None]:
         """
         Get path to the status flag file for the specified record
 
         :param str record_identifier: unique record identifier
-        :return str: path to the status flag file
+        :return str | list[str] | None: path to the status flag file
         """
         from glob import glob
 
@@ -276,19 +288,19 @@ class PipestatManager(dict):
                 return file_list[0]
             else:
                 _LOGGER.debug("No flag files found")
-                return
+                return None
 
     @property
-    def highlighted_results(self):
+    def highlighted_results(self) -> List[str]:
         """
         Highlighted results
 
-        :return list[str]: a collection of highlighted results
+        :return List[str]: a collection of highlighted results
         """
         return self._get_attr(HIGHLIGHTED_KEY) or []
 
     @property
-    def record_count(self):
+    def record_count(self) -> int:
         """
         Number of records reported
 
@@ -301,7 +313,7 @@ class PipestatManager(dict):
         )
 
     @property
-    def namespace(self):
+    def namespace(self) -> str:
         """
         Namespace the object writes the results to
 
@@ -310,7 +322,7 @@ class PipestatManager(dict):
         return self._get_attr(NAME_KEY)
 
     @property
-    def record_identifier(self):
+    def record_identifier(self) -> str:
         """
         Unique identifier of the record
 
@@ -319,7 +331,7 @@ class PipestatManager(dict):
         return self._get_attr(RECORD_ID_KEY)
 
     @property
-    def schema(self):
+    def schema(self) -> Dict:
         """
         Schema mapping
 
@@ -328,7 +340,7 @@ class PipestatManager(dict):
         return self._get_attr(SCHEMA_KEY)
 
     @property
-    def status_schema(self):
+    def status_schema(self) -> Dict:
         """
         Status schema mapping
 
@@ -337,7 +349,7 @@ class PipestatManager(dict):
         return self._get_attr(STATUS_SCHEMA_KEY)
 
     @property
-    def status_schema_source(self):
+    def status_schema_source(self) -> Dict:
         """
         Status schema source
 
@@ -347,7 +359,7 @@ class PipestatManager(dict):
         return self._get_attr(STATUS_SCHEMA_SOURCE_KEY)
 
     @property
-    def schema_path(self):
+    def schema_path(self) -> str:
         """
         Schema path
 
@@ -356,7 +368,7 @@ class PipestatManager(dict):
         return self._schema_path
 
     @property
-    def config_path(self):
+    def config_path(self) -> str:
         """
         Config path. None if the config was not provided or if provided
         as a mapping of the config contents
@@ -366,7 +378,7 @@ class PipestatManager(dict):
         return getattr(self, "_config_path", None)
 
     @property
-    def result_schemas(self):
+    def result_schemas(self) -> Dict:
         """
         Result schema mappings
 
@@ -376,7 +388,7 @@ class PipestatManager(dict):
         return self._get_attr(RES_SCHEMAS_KEY)
 
     @property
-    def file(self):
+    def file(self) -> str:
         """
         File path that the object is reporting the results into
 
@@ -385,7 +397,7 @@ class PipestatManager(dict):
         return self._get_attr(FILE_KEY)
 
     @property
-    def data(self):
+    def data(self) -> YacAttMap:
         """
         Data object
 
@@ -414,7 +426,7 @@ class PipestatManager(dict):
         finally:
             self.close_postgres_connection()
 
-    def get_status(self, record_identifier=None):
+    def get_status(self, record_identifier: str = None) -> Optional[str]:
         """
         Get the current pipeline status
 
@@ -434,6 +446,9 @@ class PipestatManager(dict):
         else:
             flag_file = self._get_flag_file(record_identifier=r_id)
             if flag_file is not None:
+                assert isinstance(flag_file, str), TypeError(
+                    "Flag file path is expected to be a str, were multiple flags found?"
+                )
                 with open(flag_file, "r") as f:
                     status = f.read()
                 return status
@@ -441,9 +456,9 @@ class PipestatManager(dict):
                 f"Could not determine status for '{r_id}' record. "
                 f"No flags found in: {self[STATUS_FILE_DIR]}"
             )
-            return
+            return None
 
-    def _get_attr(self, attr):
+    def _get_attr(self, attr: str) -> Any:
         """
         Safely get the name of the selected attribute of this object
 
@@ -452,11 +467,9 @@ class PipestatManager(dict):
         """
         return self[attr] if attr in self else None
 
-    def _table_to_dict(self):
+    def _table_to_dict(self) -> None:
         """
         Create a dictionary from the database table data
-
-        :return dict: database table data in a dict form
         """
         with self.db_cursor as cur:
             cur.execute(f"SELECT * FROM {self.namespace}")
@@ -470,7 +483,7 @@ class PipestatManager(dict):
                         record_identifier=record_id, values={res_id: val}
                     )
 
-    def _init_postgres_table(self):
+    def _init_postgres_table(self) -> bool:
         """
         Initialize a PostgreSQL table based on the provided schema,
         if it does not exist. Read the data stored in the database into the
@@ -511,12 +524,12 @@ class PipestatManager(dict):
             )
             self._create_table(status_table_name, STATUS_TABLE_COLUMNS)
 
-    def _create_table(self, table_name, columns):
+    def _create_table(self, table_name: str, columns: List[str]):
         """
         Create a table
 
         :param str table_name: name of the table to create
-        :param str | list[str] columns: columns definition list,
+        :param str | List[str] columns: columns definition list,
             for instance: ['name VARCHAR(50) NOT NULL']
         """
         columns = mk_list_of_str(columns)
@@ -524,7 +537,7 @@ class PipestatManager(dict):
             s = sql.SQL(f"CREATE TABLE {table_name} ({','.join(columns)})")
             cur.execute(s)
 
-    def _init_results_file(self):
+    def _init_results_file(self) -> bool:
         """
         Initialize YAML results file if it does not exist.
         Read the data stored in the existing file into the memory otherwise.
@@ -549,7 +562,7 @@ class PipestatManager(dict):
         self[DATA_KEY] = data
         return False
 
-    def _check_table_exists(self, table_name):
+    def _check_table_exists(self, table_name: str) -> bool:
         """
         Check if the specified table exists
 
@@ -564,12 +577,15 @@ class PipestatManager(dict):
             )
             return cur.fetchone()[0]
 
-    def _check_record(self, condition_col, condition_val, table_name):
+    def _check_record(
+        self, condition_col: str, condition_val: str, table_name: str
+    ) -> bool:
         """
         Check if the record matching the condition is in the table
 
         :param str condition_col: column to base the check on
         :param str condition_val: value in the selected column
+        :param str table_name: name of the table ot check the record in
         :return bool: whether any record matches the provided condition
         """
         with self.db_cursor as cur:
@@ -580,7 +596,7 @@ class PipestatManager(dict):
             cur.execute(statement, (condition_val,))
             return cur.fetchone()[0]
 
-    def _count_rows(self, table_name):
+    def _count_rows(self, table_name: str) -> int:
         """
         Count rows in a selected table
 
@@ -594,7 +610,9 @@ class PipestatManager(dict):
             cur.execute(statement)
             return cur.fetchall()[0][0]
 
-    def _report_postgres(self, value, record_identifier, table_name=None):
+    def _report_postgres(
+        self, value: Dict[str, Any], record_identifier: str, table_name: str = None
+    ) -> int:
         """
         Check if record with this record identifier in table, create new record
          if not (INSERT), update the record if yes (UPDATE).
@@ -638,14 +656,16 @@ class PipestatManager(dict):
             cur.execute(query, values)
             return cur.fetchone()[0]
 
-    def clear_status(self, record_identifier=None, flag_names=None):
+    def clear_status(
+        self, record_identifier: str = None, flag_names: List[str] = None
+    ) -> List[str]:
         """
         Remove status flags
 
         :param str record_identifier: name of the record to remove flags for
         :param Iterable[str] flag_names: Names of flags to remove, optional; if
             unspecified, all schema-defined flag names will be used.
-        :return list[str]: Collection of names of flags removed
+        :return List[str]: Collection of names of flags removed
         """
         r_id = self._strict_record_id(record_identifier)
         if self.file is not None:
@@ -683,7 +703,9 @@ class PipestatManager(dict):
                 else:
                     return [removed]
 
-    def get_status_flag_path(self, status_identifier, record_identifier=None):
+    def get_status_flag_path(
+        self, status_identifier: str, record_identifier=None
+    ) -> str:
         """
         Get the path to the status file flag
 
@@ -701,7 +723,7 @@ class PipestatManager(dict):
             self[STATUS_FILE_DIR], f"{self.namespace}_{r_id}_{status_identifier}.flag"
         )
 
-    def set_status(self, status_identifier, record_identifier=None):
+    def set_status(self, status_identifier: str, record_identifier: str = None) -> None:
         """
         Set pipeline run status.
 
@@ -762,13 +784,15 @@ class PipestatManager(dict):
             results=[result_identifier], rid=record_identifier
         )
 
-    def _check_which_results_exist(self, results, rid=None):
+    def _check_which_results_exist(
+        self, results: List[str], rid: str = None
+    ) -> List[str]:
         """
         Check which results have been reported
 
         :param str rid: unique identifier of the record
-        :param list[str] results: names of the results to check
-        :return bool: whether the specified result has been reported for the
+        :param List[str] results: names of the results to check
+        :return List[str]: whether the specified result has been reported for the
             indicated record in current namespace
         """
         rid = self._strict_record_id(rid)
@@ -796,7 +820,7 @@ class PipestatManager(dict):
                             existing.append(r)
         return existing
 
-    def check_record_exists(self, record_identifier=None):
+    def check_record_exists(self, record_identifier: str = None) -> bool:
         """
         Check if the record exists
 
@@ -821,16 +845,16 @@ class PipestatManager(dict):
 
     def report(
         self,
-        values,
-        record_identifier=None,
-        force_overwrite=False,
-        strict_type=True,
-        return_id=False,
-    ):
+        values: Dict[str, Any],
+        record_identifier: str = None,
+        force_overwrite: bool = False,
+        strict_type: bool = True,
+        return_id: bool = False,
+    ) -> Union[bool, int]:
         """
         Report a result.
 
-        :param dict[str, any] values: dictionary of result-value pairs
+        :param Dict[str, any] values: dictionary of result-value pairs
         :param str record_identifier: unique identifier of the record, value
             in 'record_identifier' column to look for to determine if the record
             already exists
@@ -849,6 +873,7 @@ class PipestatManager(dict):
                 "There is no way to return the updated object ID while using "
                 "results file as the object backend"
             )
+        updated_ids = False
         if self.schema is None:
             raise SchemaNotFoundError("report results")
         result_identifiers = list(values.keys())
@@ -897,7 +922,9 @@ class PipestatManager(dict):
         )
         return True if not return_id else updated_ids
 
-    def _report_data_element(self, record_identifier, values):
+    def _report_data_element(
+        self, record_identifier: str, values: Dict[str, Any]
+    ) -> None:
         """
         Update the value of a result in a current namespace.
 
@@ -905,7 +932,8 @@ class PipestatManager(dict):
          hierarchical mapping structure if needed.
 
         :param str record_identifier: unique identifier of the record
-        :param any values: dict of results identifiers and values to be reported
+        :param Dict[str,Any] values: dict of results identifiers and values
+            to be reported
         """
         self[DATA_KEY].setdefault(self.namespace, PXAM())
         self[DATA_KEY][self.namespace].setdefault(record_identifier, PXAM())
@@ -913,13 +941,18 @@ class PipestatManager(dict):
             self[DATA_KEY][self.namespace][record_identifier][res_id] = val
 
     def select(
-        self, columns=None, condition=None, condition_val=None, offset=None, limit=None
-    ):
+        self,
+        columns: Union[str, List[str]] = None,
+        condition: str = None,
+        condition_val: str = None,
+        offset: int = None,
+        limit: int = None,
+    ) -> List[psycopg2.extras.DictRow]:
         """
         Get all the contents from the selected table, possibly restricted by
         the provided condition.
 
-        :param str | list[str] columns: columns to select
+        :param str | List[str] columns: columns to select
         :param str condition: condition to restrict the results
             with, will be appended to the end of the SELECT statement and
             safely populated with 'condition_val',
@@ -928,7 +961,7 @@ class PipestatManager(dict):
             in 'condition' with
         :param int offset: number of records to be skipped
         :param int limit: max number of records to be returned
-        :return list[psycopg2.extras.DictRow]: all table contents
+        :return List[psycopg2.extras.DictRow]: all table contents
         """
         if self.file:
             raise NotImplementedError(
@@ -954,7 +987,9 @@ class PipestatManager(dict):
             result = cur.fetchall()
         return result
 
-    def retrieve(self, record_identifier=None, result_identifier=None):
+    def retrieve(
+        self, record_identifier: str = None, result_identifier: str = None
+    ) -> Union[Any, Dict[str, Any]]:
         """
         Retrieve a result for a record.
 
@@ -963,7 +998,7 @@ class PipestatManager(dict):
 
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be retrieved
-        :return any | dict[str, any]: a single result or a mapping with all the
+        :return any | Dict[str, any]: a single result or a mapping with all the
             results reported for the record
         """
         record_identifier = self._strict_record_id(record_identifier)
@@ -1001,7 +1036,9 @@ class PipestatManager(dict):
                 )
             return self.data[self.namespace][record_identifier][result_identifier]
 
-    def remove(self, record_identifier=None, result_identifier=None):
+    def remove(
+        self, record_identifier: str = None, result_identifier: str = None
+    ) -> bool:
         """
         Remove a result.
 
@@ -1084,14 +1121,14 @@ class PipestatManager(dict):
                 raise
         return True
 
-    def validate_schema(self):
+    def validate_schema(self) -> None:
         """
         Check schema for any possible issues
 
         :raises SchemaError: if any schema format issue is detected
         """
 
-        def _recursively_replace_custom_types(s):
+        def _recursively_replace_custom_types(s: dict) -> Dict:
             """
             Replace the custom types in pipestat schema with canonical types
 
@@ -1132,11 +1169,11 @@ class PipestatManager(dict):
         schema = _recursively_replace_custom_types(schema)
         self[RES_SCHEMAS_KEY] = schema
 
-    def assert_results_defined(self, results):
+    def assert_results_defined(self, results: List[str]) -> None:
         """
         Assert provided list of results is defined in the schema
 
-        :param list[str] results: list of results to
+        :param List[str] results: list of results to
             check for existence in the schema
         :raises SchemaError: if any of the results is not defined in the schema
         """
@@ -1147,7 +1184,7 @@ class PipestatManager(dict):
                 f"schema are: {list(known_results)}."
             )
 
-    def check_connection(self):
+    def check_connection(self) -> bool:
         """
         Check whether a PostgreSQL connection has been established
 
@@ -1163,7 +1200,7 @@ class PipestatManager(dict):
             return True
         return False
 
-    def establish_postgres_connection(self, suppress=False):
+    def establish_postgres_connection(self, suppress: bool = False) -> bool:
         """
         Establish PostgreSQL connection using the config data
 
@@ -1199,7 +1236,7 @@ class PipestatManager(dict):
             )
             return True
 
-    def close_postgres_connection(self):
+    def close_postgres_connection(self) -> None:
         """
         Close connection and remove client bound
         """
@@ -1215,7 +1252,7 @@ class PipestatManager(dict):
             f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}"
         )
 
-    def _strict_record_id(self, forced_value=None):
+    def _strict_record_id(self, forced_value: str = None) -> str:
         """
         Get record identifier from the outer source or stored with this object
 
