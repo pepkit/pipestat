@@ -1,6 +1,6 @@
 description: "Pipestat configuration file schema; docs: http://pipestat.databio.org/en/latest/config/"
 properties:
-  name: 
+  name:
     type: string
     pattern: "^\\S*$"
     description: "Namespace identifier with no whitespace"
@@ -17,6 +17,10 @@ properties:
   database:
     type: object
     properties:
+      dialect:
+        type: string
+        enum: ["sqlite", "mysql", "postgresql", "oracle", "mssql"]
+        description: "Dialect names include the identifying name of the SQLAlchemy dialect, a name such as sqlite, mysql, postgresql, oracle, or mssql"
       name:
         type: string
         description: "DB name"

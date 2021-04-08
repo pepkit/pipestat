@@ -449,9 +449,7 @@ class PipestatManagerORM(dict):
             raise PipestatDatabaseError(
                 f"Could not determine database URL. Caught error: {str(e)}"
             )
-        import urllib.parse
-
-        parsed_creds = {k: urllib.parse.quote_plus(str(v)) for k, v in creds.items()}
+        parsed_creds = {k: quote_plus(str(v)) for k, v in creds.items()}
         return "{dialect}://{user}:{passwd}@{host}:{port}/{name}".format(**parsed_creds)
 
     def validate_schema(self) -> None:
