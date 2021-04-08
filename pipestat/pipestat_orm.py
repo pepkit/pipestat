@@ -221,7 +221,7 @@ class PipestatManagerORM(dict):
                 )
             self[DATA_KEY] = YacAttMap()
             self._init_postgres_table()
-            # self._init_status_table()
+            self._init_status_table()
         else:
             raise MissingConfigDataError(
                 "Must specify either database login " "credentials or a YAML file path"
@@ -395,7 +395,7 @@ class PipestatManagerORM(dict):
         attr_dict = dict(__tablename__=tn, id=Column(Integer, primary_key=True))
         for result_id, result_metadata in schema.items():
             col_type = SQL_CLASSES_BY_TYPE[result_metadata[SCHEMA_TYPE_KEY]]
-            _LOGGER.info(f"Adding object: {result_id} of type: {str(col_type)}")
+            _LOGGER.debug(f"Adding object: {result_id} of type: {str(col_type)}")
             attr_dict.update({result_id: Column(col_type)})
         _LOGGER.debug(f"Creating '{tn}' ORM with args: {attr_dict}")
         Base = declarative_base()
@@ -521,13 +521,13 @@ class PipestatManagerORM(dict):
 
     def _init_status_table(self):
         status_table_name = f"{self.namespace}_{STATUS}"
-        # self._create_status_type()
         if not self._check_table_exists(table_name=status_table_name):
             _LOGGER.info(
                 f"Initializing '{status_table_name}' table in " f"'{PKG_NAME}' database"
             )
             self._create_table_orm(
-                table_name=status_table_name, schema=self.status_schema
+                table_name=status_table_name,
+                schema=get_status_table_schema(status_schema=self.status_schema),
             )
 
     def _get_attr(self, attr: str) -> Any:

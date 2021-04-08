@@ -1,5 +1,6 @@
 import logging
 from re import findall
+from typing import Any, Dict
 
 import jsonschema
 from oyaml import safe_load
@@ -9,6 +10,23 @@ from ubiquerg import expandpath
 from .const import *
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def get_status_table_schema(status_schema: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Update and return a status_table_schema based on user-provided status schema
+
+    :param Dict[str, Any] status_schema: status schema provided by the user
+    :return Dict[str, Any]: status_schema status table scheme
+        to use as a base for status table generation
+    """
+    defined_status_codes = list(status_schema.keys())
+    _, status_table_schema = read_yaml_data(
+        path=STATUS_TABLE_SCHEMA, what="status table schema"
+    )
+    status_table_schema["status"].update({"enum": defined_status_codes})
+    _LOGGER.debug(f"Updated status table schema: {status_table_schema}")
+    return status_table_schema
 
 
 def schema_to_columns(schema):

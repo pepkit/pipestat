@@ -149,3 +149,7 @@ CFG_SCHEMA = os.path.join(
 STATUS_SCHEMA = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "schemas", "status_schema.yaml"
 )
+
+STATUS_TABLE_SCHEMA = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "schemas", "status_table_schema.yaml"
+)
