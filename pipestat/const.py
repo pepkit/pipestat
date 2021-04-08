@@ -1,5 +1,7 @@
 import os
 
+from sqlalchemy.types import ARRAY, JSON, Boolean, Float, Integer, String
+
 PKG_NAME = "pipestat"
 LOCK_PREFIX = "lock."
 REPORT_CMD = "report"
@@ -43,6 +45,7 @@ CFG_HOST_KEY = "host"
 CFG_PORT_KEY = "port"
 CFG_PASSWORD_KEY = "password"
 CFG_USER_KEY = "user"
+CFG_DIALECT_KEY = "dialect"  # sqlite, mysql, postgresql, oracle, or mssql
 
 DB_CREDENTIALS = [
     CFG_HOST_KEY,
@@ -66,6 +69,8 @@ NAME_KEY = "_name"
 FILE_KEY = "_file"
 RECORD_ID_KEY = "_record_id"
 DB_CONNECTION_KEY = "_db_connnection"
+DB_SESSION_KEY = "_db_session"
+DB_ENGINE_KEY = "_db_engine"
 HIGHLIGHTED_KEY = "_highlighted"
 
 # schema keys
@@ -125,6 +130,17 @@ CLASSES_BY_TYPE = {
     "string": str,
     "array": list,
     "boolean": bool,
+}
+
+SQL_CLASSES_BY_TYPE = {
+    "number": Float,
+    "integer": Integer,
+    "object": JSON,
+    "image": JSON,
+    "file": JSON,
+    "string": String,
+    "array": ARRAY(String),
+    "boolean": Boolean,
 }
 
 CFG_SCHEMA = os.path.join(
