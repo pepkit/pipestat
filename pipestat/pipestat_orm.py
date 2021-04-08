@@ -27,7 +27,7 @@ class PipestatManagerORM(dict):
     pipeline can easily and reliably become an input for downstream analyses.
     The object exposes API for interacting with the results and
     pipeline status and can be backed by either a YAML-formatted file
-    or a PostgreSQL database.
+    or a database.
     """
 
     def __init__(
@@ -219,8 +219,10 @@ class PipestatManagerORM(dict):
                 raise MissingConfigDataError(
                     "Must specify all database login " "credentials or result_file_path"
                 )
+            self[DB_ORMS_KEY] = {}
+            self[DB_BASE_KEY] = declarative_base()
             self[DATA_KEY] = YacAttMap()
-            self._init_postgres_table()
+            self._init_db_table()
             self._init_status_table()
         else:
             raise MissingConfigDataError(
@@ -378,7 +380,7 @@ class PipestatManagerORM(dict):
         operations, no commit afterwards.
         """
         if not self.is_db_connected():
-            self.establish_postgres_connection_orm()
+            self.establish_db_connection_orm()
         with self[DB_SESSION_KEY]() as session:
             _LOGGER.debug("Created session")
             yield session
@@ -391,20 +393,33 @@ class PipestatManagerORM(dict):
         :param str table_name: name of the table to create
         :param Dict[str, Any] schema: schema to base table creation on
         """
+
+        def _auto_repr(x: Any) -> str:
+            """
+            Auto-generated __repr__ fun
+
+            :param Any x:
+            :return str: string object representation
+            """
+            attr_strs = [
+                f"{k}={str(v)}" for k, v in x.__dict__.items() if not k.startswith("_")
+            ]
+            return "<{}: {}>".format(x.__class__.__name__, ", ".join(attr_strs))
+
         tn = table_name or self.namespace
         attr_dict = dict(__tablename__=tn, id=Column(Integer, primary_key=True))
         for result_id, result_metadata in schema.items():
             col_type = SQL_CLASSES_BY_TYPE[result_metadata[SCHEMA_TYPE_KEY]]
             _LOGGER.debug(f"Adding object: {result_id} of type: {str(col_type)}")
             attr_dict.update({result_id: Column(col_type)})
+        attr_dict.update({"__repr__": _auto_repr})
         _LOGGER.debug(f"Creating '{tn}' ORM with args: {attr_dict}")
-        Base = declarative_base()
-        type(tn, (Base,), attr_dict)
-        Base.metadata.create_all(bind=self[DB_ENGINE_KEY])
+        self[DB_ORMS_KEY][tn] = type(tn.capitalize(), (self[DB_BASE_KEY],), attr_dict)
+        self[DB_BASE_KEY].metadata.create_all(bind=self[DB_ENGINE_KEY])
 
-    def establish_postgres_connection_orm(self) -> bool:
+    def establish_db_connection_orm(self) -> bool:
         """
-        Establish PostgreSQL connection using the config data
+        Establish DB connection using the config data
 
         :return bool: whether the connection has been established successfully
         """
@@ -417,7 +432,7 @@ class PipestatManagerORM(dict):
 
     def is_db_connected(self) -> bool:
         """
-        Check whether a PostgreSQL connection has been established
+        Check whether a DB connection has been established
 
         :return bool: whether the connection has been established
         """
@@ -500,9 +515,9 @@ class PipestatManagerORM(dict):
         schema = _recursively_replace_custom_types(schema)
         self[RES_SCHEMAS_KEY] = schema
 
-    def _init_postgres_table(self) -> bool:
+    def _init_db_table(self) -> bool:
         """
-        Initialize a PostgreSQL table based on the provided schema,
+        Initialize a database table based on the provided schema,
         if it does not exist. Read the data stored in the database into the
         memory otherwise.
 
@@ -510,25 +525,29 @@ class PipestatManagerORM(dict):
         """
         if self.schema is None:
             raise SchemaNotFoundError("initialize the database table")
-        if self._check_table_exists(table_name=self.namespace):
-            _LOGGER.debug(f"Table '{self.namespace}' already exists in the database")
-            if not self[DB_ONLY_KEY]:
-                self._table_to_dict()
-            return False
+        if not self.is_db_connected():
+            self.establish_db_connection_orm()
+        # if self._check_table_exists(table_name=self.namespace):
+        #     _LOGGER.debug(f"Table '{self.namespace}' already exists in the database")
+        #     if not self[DB_ONLY_KEY]:
+        #         self._table_to_dict()
+        #     # return False
         _LOGGER.info(f"Initializing '{self.namespace}' table in '{PKG_NAME}' database")
         self._create_table_orm(table_name=self.namespace, schema=self.result_schemas)
         return True
 
     def _init_status_table(self):
         status_table_name = f"{self.namespace}_{STATUS}"
-        if not self._check_table_exists(table_name=status_table_name):
-            _LOGGER.info(
-                f"Initializing '{status_table_name}' table in " f"'{PKG_NAME}' database"
-            )
-            self._create_table_orm(
-                table_name=status_table_name,
-                schema=get_status_table_schema(status_schema=self.status_schema),
-            )
+        if not self.is_db_connected():
+            self.establish_db_connection_orm()
+        # if not self._check_table_exists(table_name=status_table_name):
+        _LOGGER.debug(
+            f"Initializing '{status_table_name}' table in " f"'{PKG_NAME}' database"
+        )
+        self._create_table_orm(
+            table_name=status_table_name,
+            schema=get_status_table_schema(status_schema=self.status_schema),
+        )
 
     def _get_attr(self, attr: str) -> Any:
         """
@@ -550,3 +569,13 @@ class PipestatManagerORM(dict):
 
         with self.session as s:
             return inspect(s.bind).has_table(table_name=table_name)
+
+    def _count_rows(self, table_name: str) -> int:
+        """
+        Count rows in a selected table
+
+        :param str table_name: table to count rows for
+        :return int: number of rows in the selected table
+        """
+        with self.session as s:
+            return s.query(self[DB_ORMS_KEY][table_name].id).count()
