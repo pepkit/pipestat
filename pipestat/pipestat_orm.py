@@ -386,6 +386,23 @@ class PipestatManagerORM(dict):
             yield session
             _LOGGER.debug("Ending session")
 
+    def _strict_record_id(self, forced_value: str = None) -> str:
+        """
+        Get record identifier from the outer source or stored with this object
+
+        :param str forced_value: return this value
+        :return str: record identifier
+        """
+        if forced_value is not None:
+            return forced_value
+        if self.record_identifier is not None:
+            return self.record_identifier
+        raise PipestatError(
+            f"You must provide the record identifier you want to perform "
+            f"the action on. Either in the {self.__class__.__name__} "
+            f"constructor or as an argument to the method."
+        )
+
     def _create_table_orm(self, table_name: str, schema: Dict[str, Any]):
         """
         Create a table
@@ -610,7 +627,7 @@ class PipestatManagerORM(dict):
         """
         Check if the specified record exists in the table
 
-        :param ste record_identifier: record to check for
+        :param str record_identifier: record to check for
         :param str table_name: table name to check
         :return bool: whether the record exists in the table
         """
@@ -622,29 +639,37 @@ class PipestatManagerORM(dict):
                 is not None
             )
 
-    def _report(
-        self, value: Dict[str, Any], record_identifier: str, table_name: str = None
+    def _report_db(
+        self, values: Dict[str, Any], record_identifier: str, table_name: str = None
     ) -> int:
         """
+        Report a result to a database
 
-
-        :param value:
-        :param record_identifier:
-        :param table_name:
-        :return:
+        :param Dict[str, Any] values: values to report
+        :param str record_identifier: record to report the result for
+        :param str table_name: name of the table to report the result in
+        :return :
         """
+        record_identifier = self._strict_record_id(record_identifier)
         ORMClass = self._get_orm(table_name)
-        value.update({RECORD_ID: record_identifier})
+        values.update({RECORD_ID: record_identifier})
         if not self.check_record_exists(
             record_identifier=record_identifier, table_name=table_name
         ):
-            x = ORMClass(**value)
+            new_record = ORMClass(**values)
             with self.session as s:
-                s.add(x)
+                s.add(new_record)
                 s.commit()
+                returned_id = new_record.id
         else:
             with self.session as s:
-                s.query(ORMClass).filter(
-                    getattr(ORMClass, RECORD_ID) == record_identifier
-                ).update(value)
+                record_to_update = (
+                    s.query(ORMClass)
+                    .filter(getattr(ORMClass, RECORD_ID) == record_identifier)
+                    .first()
+                )
+                for k, v in values.items():
+                    setattr(record_to_update, k, v)
                 s.commit()
+                returned_id = record_to_update.id
+        return returned_id
