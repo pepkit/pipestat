@@ -1,6 +1,3 @@
-record_identifier:
-  type: string
-  description: "record identifier"
 status:
   # this is updated with an 'enum' based on the status_schema provided by the user
   type: string

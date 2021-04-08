@@ -8,7 +8,7 @@ from attmap import PathExAttMap as PXAM
 from jsonschema import validate
 from sqlalchemy import Column, Float, ForeignKey, Integer, String, Table, create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import DeclarativeMeta, relationship, sessionmaker
 from ubiquerg import create_lock, remove_lock
 from yacman import YacAttMap
 
@@ -398,7 +398,7 @@ class PipestatManagerORM(dict):
             """
             Auto-generated __repr__ fun
 
-            :param Any x:
+            :param Any x: object to generate __repr__ method for
             :return str: string object representation
             """
             attr_strs = [
@@ -407,7 +407,11 @@ class PipestatManagerORM(dict):
             return "<{}: {}>".format(x.__class__.__name__, ", ".join(attr_strs))
 
         tn = table_name or self.namespace
-        attr_dict = dict(__tablename__=tn, id=Column(Integer, primary_key=True))
+        attr_dict = dict(
+            __tablename__=tn,
+            id=Column(Integer, primary_key=True),
+            record_identifier=Column(String, unique=True),
+        )
         for result_id, result_metadata in schema.items():
             col_type = SQL_CLASSES_BY_TYPE[result_metadata[SCHEMA_TYPE_KEY]]
             _LOGGER.debug(f"Adding object: {result_id} of type: {str(col_type)}")
@@ -579,3 +583,68 @@ class PipestatManagerORM(dict):
         """
         with self.session as s:
             return s.query(self[DB_ORMS_KEY][table_name].id).count()
+
+    def _get_orm(self, table_name: str = None) -> Any:
+        """
+        Get an object relational mapper class
+
+        :param str table_name: table name to get a class for
+        :return Any: Object relational mapper class
+        """
+        if DB_ORMS_KEY not in self:
+            raise PipestatDatabaseError("Object relational mapper classes not defined")
+        tn = f"{table_name or self.namespace}"
+        if tn not in self[DB_ORMS_KEY]:
+            raise PipestatDatabaseError(
+                f"No object relational mapper class defined for table: {tn}"
+            )
+        if not isinstance(self[DB_ORMS_KEY][tn], DeclarativeMeta):
+            raise PipestatDatabaseError(
+                f"Object relational mapper class for table '{tn}' is invalid"
+            )
+        return self[DB_ORMS_KEY][tn]
+
+    def check_record_exists(
+        self, record_identifier: str, table_name: str = None
+    ) -> bool:
+        """
+        Check if the specified record exists in the table
+
+        :param ste record_identifier: record to check for
+        :param str table_name: table name to check
+        :return bool: whether the record exists in the table
+        """
+        with self.session as s:
+            return (
+                s.query(self._get_orm(table_name).id)
+                .filter_by(record_identifier=record_identifier)
+                .first()
+                is not None
+            )
+
+    def _report(
+        self, value: Dict[str, Any], record_identifier: str, table_name: str = None
+    ) -> int:
+        """
+
+
+        :param value:
+        :param record_identifier:
+        :param table_name:
+        :return:
+        """
+        ORMClass = self._get_orm(table_name)
+        value.update({RECORD_ID: record_identifier})
+        if not self.check_record_exists(
+            record_identifier=record_identifier, table_name=table_name
+        ):
+            x = ORMClass(**value)
+            with self.session as s:
+                s.add(x)
+                s.commit()
+        else:
+            with self.session as s:
+                s.query(ORMClass).filter(
+                    getattr(ORMClass, RECORD_ID) == record_identifier
+                ).update(value)
+                s.commit()
