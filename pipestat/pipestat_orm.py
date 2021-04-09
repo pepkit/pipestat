@@ -373,6 +373,29 @@ class PipestatManagerORM(dict):
         return self._get_attr(DATA_KEY)
 
     @property
+    def db_url(self) -> str:
+        """
+        Database URL, generated based on config credentials
+
+        :return str: database URL
+        """
+        try:
+            creds = dict(
+                name=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_NAME_KEY],
+                user=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_USER_KEY],
+                passwd=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_PASSWORD_KEY],
+                host=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY],
+                port=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_PORT_KEY],
+                dialect=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_DIALECT_KEY],
+            )
+        except (KeyError, AttributeError) as e:
+            raise PipestatDatabaseError(
+                f"Could not determine database URL. Caught error: {str(e)}"
+            )
+        parsed_creds = {k: quote_plus(str(v)) for k, v in creds.items()}
+        return "{dialect}://{user}:{passwd}@{host}:{port}/{name}".format(**parsed_creds)
+
+    @property
     @contextmanager
     def session(self):
         """
@@ -465,28 +488,126 @@ class PipestatManagerORM(dict):
             return True
         return False
 
-    @property
-    def db_url(self) -> str:
+    def set_status(self, status_identifier: str, record_identifier: str = None) -> None:
         """
-        Database URL, generated based on config credentials
+        Set pipeline run status.
 
-        :return str: database URL
+        The status identifier needs to match one of identifiers specified in
+        the status schema. A basic, ready to use, status schema is shipped with
+         this package.
+
+        :param str status_identifier: status to set, one of statuses defined
+            in the status schema
+        :param str record_identifier: record identifier to set the
+            pipeline status for
         """
-        try:
-            creds = dict(
-                name=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_NAME_KEY],
-                user=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_USER_KEY],
-                passwd=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_PASSWORD_KEY],
-                host=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY],
-                port=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_PORT_KEY],
-                dialect=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_DIALECT_KEY],
+        r_id = self._strict_record_id(record_identifier)
+        known_status_identifiers = self.status_schema.keys()
+        if status_identifier not in known_status_identifiers:
+            raise PipestatError(
+                f"'{status_identifier}' is not a defined status identifier. "
+                f"These are allowed: {known_status_identifiers}"
             )
-        except (KeyError, AttributeError) as e:
-            raise PipestatDatabaseError(
-                f"Could not determine database URL. Caught error: {str(e)}"
+        prev_status = self.get_status(r_id)
+        if self.file is not None:
+            if prev_status:
+                prev_flag_path = self.get_status_flag_path(prev_status, r_id)
+                os.remove(prev_flag_path)
+            flag_path = self.get_status_flag_path(status_identifier, r_id)
+            create_lock(flag_path)
+            with open(flag_path, "w") as f:
+                f.write(status_identifier)
+            remove_lock(flag_path)
+        else:
+            try:
+                self._report_db(
+                    values={STATUS: status_identifier},
+                    record_identifier=r_id,
+                    table_name=f"{self.namespace}_{STATUS}",
+                )
+            except Exception as e:
+                _LOGGER.error(f"Could not insert into the status table. Exception: {e}")
+                raise
+        if prev_status:
+            _LOGGER.debug(
+                f"Changed status from '{prev_status}' to '{status_identifier}'"
             )
-        parsed_creds = {k: quote_plus(str(v)) for k, v in creds.items()}
-        return "{dialect}://{user}:{passwd}@{host}:{port}/{name}".format(**parsed_creds)
+
+    def get_status(self, record_identifier: str = None) -> Optional[str]:
+        """
+        Get the current pipeline status
+
+        :return str: status identifier, like 'running'
+        """
+        r_id = self._strict_record_id(record_identifier)
+        if self.file is None:
+            try:
+                result = self._retrieve_db(
+                    result_identifier=STATUS,
+                    record_identifier=r_id,
+                    table_name=f"{self.namespace}_{STATUS}",
+                )
+            except PipestatDatabaseError:
+                return None
+            return result[STATUS]
+        else:
+            flag_file = self._get_flag_file(record_identifier=r_id)
+            if flag_file is not None:
+                assert isinstance(flag_file, str), TypeError(
+                    "Flag file path is expected to be a str, were multiple flags found?"
+                )
+                with open(flag_file, "r") as f:
+                    status = f.read()
+                return status
+            _LOGGER.debug(
+                f"Could not determine status for '{r_id}' record. "
+                f"No flags found in: {self[STATUS_FILE_DIR]}"
+            )
+            return None
+
+    def clear_status(
+        self, record_identifier: str = None, flag_names: List[str] = None
+    ) -> List[str]:
+        """
+        Remove status flags
+
+        :param str record_identifier: name of the record to remove flags for
+        :param Iterable[str] flag_names: Names of flags to remove, optional; if
+            unspecified, all schema-defined flag names will be used.
+        :return List[str]: Collection of names of flags removed
+        """
+        r_id = self._strict_record_id(record_identifier)
+        if self.file is not None:
+            flag_names = flag_names or list(self.status_schema.keys())
+            if isinstance(flag_names, str):
+                flag_names = [flag_names]
+            removed = []
+            for f in flag_names:
+                path_flag_file = self.get_status_flag_path(
+                    status_identifier=f, record_identifier=r_id
+                )
+                try:
+                    os.remove(path_flag_file)
+                except:
+                    pass
+                else:
+                    _LOGGER.info(f"Removed existing flag: {path_flag_file}")
+                    removed.append(f)
+            return removed
+        else:
+            removed = self.get_status(r_id)
+            try:
+                self._remove_db(
+                    record_identifier=r_id,
+                    table_name=f"{self.namespace}_{STATUS}",
+                )
+            except Exception as e:
+                _LOGGER.error(
+                    f"Could not remove the status from the database. Exception: {e}"
+                )
+                return []
+            else:
+                return [removed]
 
     def validate_schema(self) -> None:
         """
