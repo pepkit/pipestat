@@ -639,7 +639,7 @@ class PipestatManagerORM(dict):
                 is not None
             )
 
-    def check_results_exist(
+    def check_which_results_exist(
         self, results: List[str], rid: str = None, table_name: str = None
     ) -> List[str]:
         """
@@ -659,6 +659,26 @@ class PipestatManagerORM(dict):
                 .first()
             )
         return [r for r in results if getattr(record, r, None) is not None]
+
+    def check_result_exists(
+        self,
+        result_identifier: str,
+        record_identifier: str = None,
+        table_name: str = None,
+    ) -> bool:
+        """
+        Check if the result has been reported
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to check
+        :param str table_name: name of the table to search for results in
+        :return bool: whether the specified result has been reported for the
+            indicated record in current namespace
+        """
+        record_identifier = self._strict_record_id(record_identifier)
+        return self.check_which_results_exist(
+            results=[result_identifier], rid=record_identifier, table_name=table_name
+        )
 
     def _retrieve_db(
         self,
@@ -681,7 +701,7 @@ class PipestatManagerORM(dict):
         table_name = table_name or self.namespace
         record_identifier = self._strict_record_id(record_identifier)
         if result_identifier is not None:
-            existing = self.check_results_exist(
+            existing = self.check_which_results_exist(
                 results=[result_identifier],
                 rid=record_identifier,
                 table_name=table_name,
@@ -743,3 +763,53 @@ class PipestatManagerORM(dict):
                 s.commit()
                 returned_id = record_to_update.id
         return returned_id
+
+    def _remove_db(
+        self,
+        record_identifier: str = None,
+        result_identifier: str = None,
+        table_name: str = None,
+    ) -> bool:
+        """
+        Remove a result.
+
+        If no result ID specified or last result is removed, the entire record
+        will be removed.
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to be removed or None
+             if the record should be removed.
+        :param str table_name: name of the table to report the result in
+        :return bool: whether the result has been removed
+        :raise PipestatDatabaseError: if either record or result specified are not found
+        """
+        table_name = table_name or self.namespace
+        record_identifier = self._strict_record_id(record_identifier)
+        ORMClass = self._get_orm(table_name=table_name)
+        if self.check_record_exists(
+            record_identifier=record_identifier, table_name=table_name
+        ):
+            with self.session as s:
+                record = (
+                    s.query(ORMClass)
+                    .filter(getattr(ORMClass, RECORD_ID) == record_identifier)
+                    .first()
+                )
+                if result_identifier is None:
+                    # delete row
+                    record.delete()
+                else:
+                    # set the value to None
+                    if not self.check_result_exists(
+                        record_identifier=record_identifier,
+                        result_identifier=result_identifier,
+                        table_name=table_name,
+                    ):
+                        raise PipestatDatabaseError(
+                            f"Result '{result_identifier}' not found for record "
+                            f"'{record_identifier}'"
+                        )
+                    setattr(record, result_identifier, None)
+                s.commit()
+        else:
+            raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
