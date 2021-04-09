@@ -639,6 +639,25 @@ class PipestatManagerORM(dict):
                 is not None
             )
 
+    def check_results_exist(
+        self, results: List[str], rid: str = None, table_name: str = None
+    ) -> List[str]:
+        """
+        Check if the specified record exists in the table
+
+        :param str rid: record to check for
+        :param List[str] results: results identifiers to check for
+        :return List[str]: results identifiers that exist
+        """
+        table_name = table_name or self.namespace
+        with self.session as s:
+            record = (
+                s.query(self._get_orm(table_name))
+                .filter_by(record_identifier=rid)
+                .first()
+            )
+        return [r for r in results if getattr(record, r, None) is not None]
+
     def _report_db(
         self, values: Dict[str, Any], record_identifier: str, table_name: str = None
     ) -> int:
@@ -648,7 +667,7 @@ class PipestatManagerORM(dict):
         :param Dict[str, Any] values: values to report
         :param str record_identifier: record to report the result for
         :param str table_name: name of the table to report the result in
-        :return :
+        :return int: updated/inserted row
         """
         record_identifier = self._strict_record_id(record_identifier)
         ORMClass = self._get_orm(table_name)
@@ -668,8 +687,8 @@ class PipestatManagerORM(dict):
                     .filter(getattr(ORMClass, RECORD_ID) == record_identifier)
                     .first()
                 )
-                for k, v in values.items():
-                    setattr(record_to_update, k, v)
+                for result_id, result_value in values.items():
+                    setattr(record_to_update, result_id, result_value)
                 s.commit()
                 returned_id = record_to_update.id
         return returned_id
