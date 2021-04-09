@@ -643,13 +643,15 @@ class PipestatManagerORM(dict):
         self, results: List[str], rid: str = None, table_name: str = None
     ) -> List[str]:
         """
-        Check if the specified record exists in the table
+        Check if the specified results exist in the table
 
         :param str rid: record to check for
         :param List[str] results: results identifiers to check for
+        :param str table_name: name of the table to search for results in
         :return List[str]: results identifiers that exist
         """
         table_name = table_name or self.namespace
+        rid = self._strict_record_id(rid)
         with self.session as s:
             record = (
                 s.query(self._get_orm(table_name))
@@ -657,6 +659,55 @@ class PipestatManagerORM(dict):
                 .first()
             )
         return [r for r in results if getattr(record, r, None) is not None]
+
+    def _retrieve_db(
+        self,
+        result_identifier: str = None,
+        record_identifier: str = None,
+        table_name: str = None,
+    ) -> Dict[str, Any]:
+        """
+        Retrieve a result for a record.
+
+        If no result ID specified, results for the entire record will
+        be returned.
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to be retrieved
+        :param str table_name: name of the table to search for results in
+        :return Dict[str, any]: a single result or a mapping with all the results
+            reported for the record
+        """
+        table_name = table_name or self.namespace
+        record_identifier = self._strict_record_id(record_identifier)
+        if result_identifier is not None:
+            existing = self.check_results_exist(
+                results=[result_identifier],
+                rid=record_identifier,
+                table_name=table_name,
+            )
+            if not existing:
+                raise PipestatDatabaseError(
+                    f"Result '{result_identifier}' not found for record "
+                    f"'{record_identifier}'"
+                )
+
+        with self.session as s:
+            record = (
+                s.query(self._get_orm(table_name))
+                .filter_by(record_identifier=record_identifier)
+                .first()
+            )
+
+        if record is not None:
+            if result_identifier is not None:
+                return {result_identifier: getattr(record, result_identifier)}
+            return {
+                column: getattr(record, column)
+                for column in [c.name for c in record.__table__.columns]
+                if getattr(record, column, None) is not None
+            }
+        raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
 
     def _report_db(
         self, values: Dict[str, Any], record_identifier: str, table_name: str = None
