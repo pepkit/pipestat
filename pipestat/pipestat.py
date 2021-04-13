@@ -2,12 +2,13 @@ from contextlib import contextmanager
 from copy import deepcopy
 from logging import getLogger
 from typing import Any, Dict, List, Optional, Union
+from urllib.parse import quote_plus
 
-import psycopg2
 from attmap import PathExAttMap as PXAM
 from jsonschema import validate
-from psycopg2.extensions import connection
-from psycopg2.extras import DictCursor, Json
+from sqlalchemy import Column, Float, ForeignKey, Integer, String, Table, create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeMeta, relationship, sessionmaker
 from ubiquerg import create_lock, remove_lock
 from yacman import YacAttMap
 
@@ -18,25 +19,6 @@ from .helpers import *
 _LOGGER = getLogger(PKG_NAME)
 
 
-class LoggingCursor(psycopg2.extras.DictCursor):
-    """
-    Logging db cursor
-    """
-
-    def execute(self, query, vars=None):
-        """
-        Execute a database operation (query or command) and issue a debug
-        and info level log messages
-
-        :param query:
-        :param vars:
-        :return:
-        """
-        _LOGGER.debug(f"Executing query: {self.mogrify(query, vars)}")
-        super(LoggingCursor, self).execute(query=query, vars=vars)
-        _LOGGER.debug(f"Executed query: {self.query}")
-
-
 class PipestatManager(dict):
     """
     Pipestat standardizes reporting of pipeline results and
@@ -45,7 +27,7 @@ class PipestatManager(dict):
     pipeline can easily and reliably become an input for downstream analyses.
     The object exposes API for interacting with the results and
     pipeline status and can be backed by either a YAML-formatted file
-    or a PostgreSQL database.
+    or a database.
     """
 
     def __init__(
@@ -237,30 +219,15 @@ class PipestatManager(dict):
                 raise MissingConfigDataError(
                     "Must specify all database login " "credentials or result_file_path"
                 )
+            self[DB_ORMS_KEY] = {}
+            self[DB_BASE_KEY] = declarative_base()
             self[DATA_KEY] = YacAttMap()
-            self._init_postgres_table()
+            self._init_db_table()
             self._init_status_table()
         else:
             raise MissingConfigDataError(
                 "Must specify either database login " "credentials or a YAML file path"
             )
-
-    def __str__(self):
-        """
-        Generate string representation of the object
-
-        :return str: string representation of the object
-        """
-        res = f"{self.__class__.__name__} ({self.namespace})"
-        res += "\nBackend: {}".format(
-            f"file ({self.file})" if self.file else "PostgreSQL"
-        )
-        res += f"\nResults schema source: {self.schema_path}"
-        res += f"\nStatus schema source: {self.status_schema_source}"
-        res += f"\nRecords count: {self.record_count}"
-        if self.highlighted_results:
-            res += f"\nHighlighted results: {', '.join(self.highlighted_results)}"
-        return res
 
     def _get_flag_file(
         self, record_identifier: str = None
@@ -291,15 +258,6 @@ class PipestatManager(dict):
                 return None
 
     @property
-    def highlighted_results(self) -> List[str]:
-        """
-        Highlighted results
-
-        :return List[str]: a collection of highlighted results
-        """
-        return self._get_attr(HIGHLIGHTED_KEY) or []
-
-    @property
     def record_count(self) -> int:
         """
         Number of records reported
@@ -311,6 +269,15 @@ class PipestatManager(dict):
             if self.file
             else self._count_rows(self.namespace)
         )
+
+    @property
+    def highlighted_results(self) -> List[str]:
+        """
+        Highlighted results
+
+        :return List[str]: a collection of highlighted results
+        """
+        return self._get_attr(HIGHLIGHTED_KEY) or []
 
     @property
     def namespace(self) -> str:
@@ -406,322 +373,125 @@ class PipestatManager(dict):
         return self._get_attr(DATA_KEY)
 
     @property
-    @contextmanager
-    def db_cursor(self):
+    def db_url(self) -> str:
         """
-        Establish connection and get a PostgreSQL database cursor,
-        commit and close the connection afterwards
+        Database URL, generated based on config credentials
 
-        :return LoggingCursor: Database cursor object
+        :return str: database URL
+        :raise PipestatDatabaseError: if the object is not backed by a database
         """
+        if self.file is not None:
+            raise PipestatDatabaseError(
+                "Can't determine database URL if the object is backed by a file"
+            )
         try:
-            if not self.check_connection():
-                self.establish_postgres_connection()
-            with self[DB_CONNECTION_KEY] as c, c.cursor(
-                cursor_factory=LoggingCursor
-            ) as cur:
-                yield cur
-        except Exception:
-            raise
-        finally:
-            self.close_postgres_connection()
-
-    def get_status(self, record_identifier: str = None) -> Optional[str]:
-        """
-        Get the current pipeline status
-
-        :return str: status identifier, like 'running'
-        """
-        r_id = self._strict_record_id(record_identifier)
-        if self.file is None:
-            with self.db_cursor as cur:
-                query = sql.SQL(
-                    f"SELECT {STATUS} "
-                    f"FROM {f'{self.namespace}_{STATUS}'} "
-                    f"WHERE {RECORD_ID}=%s"
-                )
-                cur.execute(query, (r_id,))
-                result = cur.fetchone()
-            return result[0] if result is not None else None
-        else:
-            flag_file = self._get_flag_file(record_identifier=r_id)
-            if flag_file is not None:
-                assert isinstance(flag_file, str), TypeError(
-                    "Flag file path is expected to be a str, were multiple flags found?"
-                )
-                with open(flag_file, "r") as f:
-                    status = f.read()
-                return status
-            _LOGGER.debug(
-                f"Could not determine status for '{r_id}' record. "
-                f"No flags found in: {self[STATUS_FILE_DIR]}"
+            creds = dict(
+                name=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_NAME_KEY],
+                user=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_USER_KEY],
+                passwd=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_PASSWORD_KEY],
+                host=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY],
+                port=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_PORT_KEY],
+                dialect=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_DIALECT_KEY],
             )
-            return None
-
-    def _get_attr(self, attr: str) -> Any:
-        """
-        Safely get the name of the selected attribute of this object
-
-        :param str attr: attr to select
-        :return:
-        """
-        return self[attr] if attr in self else None
-
-    def _table_to_dict(self) -> None:
-        """
-        Create a dictionary from the database table data
-        """
-        with self.db_cursor as cur:
-            cur.execute(f"SELECT * FROM {self.namespace}")
-            data = cur.fetchall()
-        _LOGGER.debug(f"Reading data from database for '{self.namespace}' namespace")
-        for record in data:
-            record_id = record[RECORD_ID]
-            for res_id, val in record.items():
-                if val is not None:
-                    self._report_data_element(
-                        record_identifier=record_id, values={res_id: val}
-                    )
-
-    def _init_postgres_table(self) -> bool:
-        """
-        Initialize a PostgreSQL table based on the provided schema,
-        if it does not exist. Read the data stored in the database into the
-        memory otherwise.
-
-        :return bool: whether the table has been created
-        """
-        if self.schema is None:
-            raise SchemaNotFoundError("initialize the database table")
-        if self._check_table_exists(table_name=self.namespace):
-            _LOGGER.debug(f"Table '{self.namespace}' already exists in the database")
-            if not self[DB_ONLY_KEY]:
-                self._table_to_dict()
-            return False
-        _LOGGER.info(f"Initializing '{self.namespace}' table in '{PKG_NAME}' database")
-        columns = FIXED_COLUMNS + schema_to_columns(schema=self.schema)
-        self._create_table(table_name=self.namespace, columns=columns)
-        return True
-
-    # def _create_status_type(self):
-    #     with self.db_cursor as cur:
-    #         s = sql.SQL(f"SELECT exists (SELECT 1 FROM pg_type WHERE typname = '{STATUS}');")
-    #         cur.execute(s)
-    #         if cur.fetchone()[0]:
-    #             return
-    #     with self.db_cursor as cur:
-    #         status_strs = [f"'{st_id}'" for st_id in self.status_schema.keys()]
-    #         status_str = ", ".join(status_strs)
-    #         s = sql.SQL(f"CREATE TYPE {STATUS} as enum({status_str});")
-    #         cur.execute(s)
-
-    def _init_status_table(self):
-        status_table_name = f"{self.namespace}_{STATUS}"
-        # self._create_status_type()
-        if not self._check_table_exists(table_name=status_table_name):
-            _LOGGER.info(
-                f"Initializing '{status_table_name}' table in " f"'{PKG_NAME}' database"
+        except (KeyError, AttributeError) as e:
+            raise PipestatDatabaseError(
+                f"Could not determine database URL. Caught error: {str(e)}"
             )
-            self._create_table(status_table_name, STATUS_TABLE_COLUMNS)
+        parsed_creds = {k: quote_plus(str(v)) for k, v in creds.items()}
+        return "{dialect}://{user}:{passwd}@{host}:{port}/{name}".format(**parsed_creds)
 
-    def _create_table(self, table_name: str, columns: List[str]):
+    @property
+    @contextmanager
+    def session(self):
+        """
+        Provide a transactional scope around a series of query
+        operations, no commit afterwards.
+        """
+        if not self.is_db_connected():
+            self.establish_db_connection_orm()
+        with self[DB_SESSION_KEY]() as session:
+            _LOGGER.debug("Created session")
+            yield session
+            _LOGGER.debug("Ending session")
+
+    def _strict_record_id(self, forced_value: str = None) -> str:
+        """
+        Get record identifier from the outer source or stored with this object
+
+        :param str forced_value: return this value
+        :return str: record identifier
+        """
+        if forced_value is not None:
+            return forced_value
+        if self.record_identifier is not None:
+            return self.record_identifier
+        raise PipestatError(
+            f"You must provide the record identifier you want to perform "
+            f"the action on. Either in the {self.__class__.__name__} "
+            f"constructor or as an argument to the method."
+        )
+
+    def _create_table_orm(self, table_name: str, schema: Dict[str, Any]):
         """
         Create a table
 
         :param str table_name: name of the table to create
-        :param str | List[str] columns: columns definition list,
-            for instance: ['name VARCHAR(50) NOT NULL']
+        :param Dict[str, Any] schema: schema to base table creation on
         """
-        columns = mk_list_of_str(columns)
-        with self.db_cursor as cur:
-            s = sql.SQL(f"CREATE TABLE {table_name} ({','.join(columns)})")
-            cur.execute(s)
 
-    def _init_results_file(self) -> bool:
-        """
-        Initialize YAML results file if it does not exist.
-        Read the data stored in the existing file into the memory otherwise.
+        def _auto_repr(x: Any) -> str:
+            """
+            Auto-generated __repr__ fun
 
-        :return bool: whether the file has been created
-        """
-        if not os.path.exists(self.file):
-            _LOGGER.info(f"Initializing results file '{self.file}'")
-            data = YacAttMap(entries={self.namespace: "{}"})
-            data.write(filepath=self.file)
-            data.make_readonly()
-            self[DATA_KEY] = data
-            return True
-        _LOGGER.debug(f"Reading data from '{self.file}'")
-        data = YacAttMap(filepath=self.file)
-        filtered = list(filter(lambda x: not x.startswith("_"), data.keys()))
-        if filtered and self.namespace not in filtered:
-            raise PipestatDatabaseError(
-                f"'{self.file}' is already used to report results for "
-                f"other namespace: {filtered[0]}"
-            )
-        self[DATA_KEY] = data
-        return False
-
-    def _check_table_exists(self, table_name: str) -> bool:
-        """
-        Check if the specified table exists
-
-        :param str table_name: table name to be checked
-        :return bool: whether the specified table exists
-        """
-        with self.db_cursor as cur:
-            cur.execute(
-                "SELECT EXISTS(SELECT * FROM information_schema.tables "
-                "WHERE table_name=%s)",
-                (table_name,),
-            )
-            return cur.fetchone()[0]
-
-    def _check_record(
-        self, condition_col: str, condition_val: str, table_name: str
-    ) -> bool:
-        """
-        Check if the record matching the condition is in the table
-
-        :param str condition_col: column to base the check on
-        :param str condition_val: value in the selected column
-        :param str table_name: name of the table ot check the record in
-        :return bool: whether any record matches the provided condition
-        """
-        with self.db_cursor as cur:
-            statement = (
-                f"SELECT EXISTS(SELECT 1 from {table_name} "
-                f"WHERE {condition_col}=%s)"
-            )
-            cur.execute(statement, (condition_val,))
-            return cur.fetchone()[0]
-
-    def _count_rows(self, table_name: str) -> int:
-        """
-        Count rows in a selected table
-
-        :param str table_name: table to count rows for
-        :return int: number of rows in the selected table
-        """
-        with self.db_cursor as cur:
-            statement = sql.SQL("SELECT COUNT(*) FROM {}").format(
-                sql.Identifier(table_name)
-            )
-            cur.execute(statement)
-            return cur.fetchall()[0][0]
-
-    def _report_postgres(
-        self, value: Dict[str, Any], record_identifier: str, table_name: str = None
-    ) -> int:
-        """
-        Check if record with this record identifier in table, create new record
-         if not (INSERT), update the record if yes (UPDATE).
-
-        Currently supports just one column at a time.
-
-        :param str record_identifier: unique identifier of the record, value to
-            in 'record_identifier' column to look for to determine if the record
-            already exists in the table
-        :param dict value: a mapping of pair of table column names and
-            respective values to be inserted to the database
-        :return int: id of the row just inserted
-        """
-        table_name = table_name or self.namespace
-        if not self._check_record(
-            condition_col=RECORD_ID,
-            condition_val=record_identifier,
-            table_name=table_name,
-        ):
-            with self.db_cursor as cur:
-                cur.execute(
-                    f"INSERT INTO {table_name} ({RECORD_ID}) VALUES (%s)",
-                    (record_identifier,),
-                )
-        # prep a list of SQL objects with column-named value placeholders
-        columns = sql.SQL(",").join(
-            [
-                sql.SQL("{}=%({})s").format(sql.Identifier(k), sql.SQL(k))
-                for k in list(value.keys())
+            :param Any x: object to generate __repr__ method for
+            :return str: string object representation
+            """
+            attr_strs = [
+                f"{k}={str(v)}" for k, v in x.__dict__.items() if not k.startswith("_")
             ]
-        )
-        # construct the query template to execute
-        query = sql.SQL("UPDATE {n} SET {c} WHERE {id}=%({id})s RETURNING id").format(
-            n=sql.Identifier(table_name), c=columns, id=sql.SQL(RECORD_ID)
-        )
-        # preprocess the values, dict -> Json
-        values = {k: Json(v) if isinstance(v, dict) else v for k, v in value.items()}
-        # add record_identifier column, which is specified outside of values
-        values.update({RECORD_ID: record_identifier})
-        with self.db_cursor as cur:
-            cur.execute(query, values)
-            return cur.fetchone()[0]
+            return "<{}: {}>".format(x.__class__.__name__, ", ".join(attr_strs))
 
-    def clear_status(
-        self, record_identifier: str = None, flag_names: List[str] = None
-    ) -> List[str]:
-        """
-        Remove status flags
+        tn = table_name or self.namespace
+        attr_dict = dict(
+            __tablename__=tn,
+            id=Column(Integer, primary_key=True),
+            record_identifier=Column(String, unique=True),
+        )
+        for result_id, result_metadata in schema.items():
+            col_type = SQL_CLASSES_BY_TYPE[result_metadata[SCHEMA_TYPE_KEY]]
+            _LOGGER.debug(f"Adding object: {result_id} of type: {str(col_type)}")
+            attr_dict.update({result_id: Column(col_type)})
+        attr_dict.update({"__repr__": _auto_repr})
+        _LOGGER.debug(f"Creating '{tn}' ORM with args: {attr_dict}")
+        self[DB_ORMS_KEY][tn] = type(tn.capitalize(), (self[DB_BASE_KEY],), attr_dict)
+        self[DB_BASE_KEY].metadata.create_all(bind=self[DB_ENGINE_KEY])
 
-        :param str record_identifier: name of the record to remove flags for
-        :param Iterable[str] flag_names: Names of flags to remove, optional; if
-            unspecified, all schema-defined flag names will be used.
-        :return List[str]: Collection of names of flags removed
+    def establish_db_connection_orm(self) -> bool:
         """
-        r_id = self._strict_record_id(record_identifier)
+        Establish DB connection using the config data
+
+        :return bool: whether the connection has been established successfully
+        """
+        if self.is_db_connected():
+            raise PipestatDatabaseError("Connection is already established")
+
+        self[DB_ENGINE_KEY] = create_engine(self.db_url, echo=True)
+        self[DB_SESSION_KEY] = sessionmaker(bind=self[DB_ENGINE_KEY])
+        return True
+
+    def is_db_connected(self) -> bool:
+        """
+        Check whether a DB connection has been established
+
+        :return bool: whether the connection has been established
+        """
         if self.file is not None:
-            flag_names = flag_names or list(self.status_schema.keys())
-            if isinstance(flag_names, str):
-                flag_names = [flag_names]
-            removed = []
-            for f in flag_names:
-                path_flag_file = self.get_status_flag_path(
-                    status_identifier=f, record_identifier=r_id
-                )
-                try:
-                    os.remove(path_flag_file)
-                except:
-                    pass
-                else:
-                    _LOGGER.info(f"Removed existing flag: {path_flag_file}")
-                    removed.append(f)
-            return removed
-        else:
-            removed = self.get_status(r_id)
-            status_table_name = f"{self.namespace}_{STATUS}"
-            with self.db_cursor as cur:
-                try:
-                    cur.execute(
-                        f"DELETE FROM {status_table_name} WHERE "
-                        f"{RECORD_ID}='{r_id}'"
-                    )
-                except Exception as e:
-                    _LOGGER.error(
-                        f"Could not remove the status from the "
-                        f"database. Exception: {e}"
-                    )
-                    return []
-                else:
-                    return [removed]
-
-    def get_status_flag_path(
-        self, status_identifier: str, record_identifier=None
-    ) -> str:
-        """
-        Get the path to the status file flag
-
-        :param str status_identifier: one of the defined status IDs in schema
-        :param str record_identifier: unique record ID, optional if
-            specified in the object constructor
-        :return str: absolute path to the flag file or None if object is
-            backed by a DB
-        """
-        if self.file is None:
-            # DB as the backend
-            return
-        r_id = self._strict_record_id(record_identifier)
-        return os.path.join(
-            self[STATUS_FILE_DIR], f"{self.namespace}_{r_id}_{status_identifier}.flag"
-        )
+            raise PipestatDatabaseError(
+                f"The {self.__class__.__name__} object is not backed by a database"
+            )
+        if DB_SESSION_KEY in self and isinstance(self[DB_SESSION_KEY], sessionmaker):
+            return True
+        return False
 
     def set_status(self, status_identifier: str, record_identifier: str = None) -> None:
         """
@@ -745,381 +515,163 @@ class PipestatManager(dict):
             )
         prev_status = self.get_status(r_id)
         if self.file is not None:
-            if prev_status:
-                prev_flag_path = self.get_status_flag_path(prev_status, r_id)
-                os.remove(prev_flag_path)
-            flag_path = self.get_status_flag_path(status_identifier, r_id)
-            create_lock(flag_path)
-            with open(flag_path, "w") as f:
-                f.write(status_identifier)
-            remove_lock(flag_path)
+            self._set_status_file(
+                status_identifier=status_identifier,
+                record_identifier=r_id,
+                prev_status=prev_status,
+            )
         else:
-            try:
-                self._report_postgres(
-                    value={STATUS: status_identifier},
-                    record_identifier=r_id,
-                    table_name=f"{self.namespace}_{STATUS}",
-                )
-            except Exception as e:
-                _LOGGER.error(
-                    f"Could not insert into the status table. " f"Exception: {e}"
-                )
-                raise
+            self._set_status_db(
+                status_identifier=status_identifier,
+                record_identifier=r_id,
+            )
         if prev_status:
             _LOGGER.debug(
                 f"Changed status from '{prev_status}' to '{status_identifier}'"
             )
 
-    def check_result_exists(self, result_identifier, record_identifier=None):
+    def get_status_flag_path(
+        self, status_identifier: str, record_identifier=None
+    ) -> str:
         """
-        Check if the result has been reported
+        Get the path to the status file flag
 
-        :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to check
-        :return bool: whether the specified result has been reported for the
-            indicated record in current namespace
+        :param str status_identifier: one of the defined status IDs in schema
+        :param str record_identifier: unique record ID, optional if
+            specified in the object constructor
+        :return str: absolute path to the flag file or None if object is
+            backed by a DB
         """
-        record_identifier = self._strict_record_id(record_identifier)
-        return self._check_which_results_exist(
-            results=[result_identifier], rid=record_identifier
-        )
-
-    def _check_which_results_exist(
-        self, results: List[str], rid: str = None
-    ) -> List[str]:
-        """
-        Check which results have been reported
-
-        :param str rid: unique identifier of the record
-        :param List[str] results: names of the results to check
-        :return List[str]: whether the specified result has been reported for the
-            indicated record in current namespace
-        """
-        rid = self._strict_record_id(rid)
-        existing = []
-        for r in results:
-            if not self[DB_ONLY_KEY]:
-                if (
-                    self.namespace in self.data
-                    and rid in self.data[self.namespace]
-                    and r in self.data[self.namespace][rid]
-                ):
-                    existing.append(r)
-            else:
-                with self.db_cursor as cur:
-                    try:
-                        cur.execute(
-                            f"SELECT {r} FROM {self.namespace} WHERE {RECORD_ID}=%s",
-                            (rid,),
-                        )
-                    except Exception:
-                        continue
-                    else:
-                        res = cur.fetchone()
-                        if res is not None and res[0] is not None:
-                            existing.append(r)
-        return existing
-
-    def check_record_exists(self, record_identifier: str = None) -> bool:
-        """
-        Check if the record exists
-
-        :param str record_identifier: unique identifier of the record
-        :return bool: whether the record exists
-        """
-        record_identifier = self._strict_record_id(record_identifier)
-        if self[DB_ONLY_KEY]:
-            with self.db_cursor as cur:
-                cur.execute(
-                    f"SELECT exists(SELECT 1 from {self.namespace} "
-                    f"WHERE {RECORD_ID}=%s)",
-                    (record_identifier,),
-                )
-                return cur.fetchone()
-        if (
-            self.namespace in self.data
-            and record_identifier in self.data[self.namespace]
-        ):
-            return True
-        return False
-
-    def report(
-        self,
-        values: Dict[str, Any],
-        record_identifier: str = None,
-        force_overwrite: bool = False,
-        strict_type: bool = True,
-        return_id: bool = False,
-    ) -> Union[bool, int]:
-        """
-        Report a result.
-
-        :param Dict[str, any] values: dictionary of result-value pairs
-        :param str record_identifier: unique identifier of the record, value
-            in 'record_identifier' column to look for to determine if the record
-            already exists
-        :param bool force_overwrite: whether to overwrite the existing record
-        :param bool strict_type: whether the type of the reported values should
-            remain as is. Pipestat would attempt to convert to the
-            schema-defined one otherwise
-        :param bool return_id: PostgreSQL IDs of the records that have been
-            updated. Not available with results file as backend
-        :return bool | int: whether the result has been reported or the ID of
-            the updated record in the table, if requested
-        """
-        record_identifier = self._strict_record_id(record_identifier)
-        if return_id and self.file is not None:
-            raise NotImplementedError(
-                "There is no way to return the updated object ID while using "
-                "results file as the object backend"
-            )
-        updated_ids = False
-        if self.schema is None:
-            raise SchemaNotFoundError("report results")
-        result_identifiers = list(values.keys())
-        self.assert_results_defined(results=result_identifiers)
-        existing = self._check_which_results_exist(
-            rid=record_identifier, results=result_identifiers
-        )
-        if existing:
-            _LOGGER.warning(
-                f"These results exist for '{record_identifier}': {existing}"
-            )
-            if not force_overwrite:
-                return False
-            _LOGGER.info(f"Overwriting existing results: {existing}")
-        for r in result_identifiers:
-            validate_type(
-                value=values[r], schema=self.result_schemas[r], strict_type=strict_type
-            )
-        if self.file is not None:
-            self.data.make_writable()
-        if not self[DB_ONLY_KEY]:
-            self._report_data_element(
-                record_identifier=record_identifier, values=values
-            )
-        if self.file is not None:
-            self.data.write()
-            self.data.make_readonly()
-        else:
-            try:
-                updated_ids = self._report_postgres(
-                    record_identifier=record_identifier, value=values
-                )
-            except Exception as e:
-                _LOGGER.error(
-                    f"Could not insert the result into the database. " f"Exception: {e}"
-                )
-                if not self[DB_ONLY_KEY]:
-                    for r in result_identifiers:
-                        del self[DATA_KEY][self.namespace][record_identifier][r]
-                raise
-        nl = "\n"
-        rep_strs = [f"{k}: {v}" for k, v in values.items()]
-        _LOGGER.info(
-            f"Reported records for '{record_identifier}' in '{self.namespace}' "
-            f"namespace:{nl} - {(nl + ' - ').join(rep_strs)}"
-        )
-        return True if not return_id else updated_ids
-
-    def _report_data_element(
-        self, record_identifier: str, values: Dict[str, Any]
-    ) -> None:
-        """
-        Update the value of a result in a current namespace.
-
-        This method overwrites any existing data and creates the required
-         hierarchical mapping structure if needed.
-
-        :param str record_identifier: unique identifier of the record
-        :param Dict[str,Any] values: dict of results identifiers and values
-            to be reported
-        """
-        self[DATA_KEY].setdefault(self.namespace, PXAM())
-        self[DATA_KEY][self.namespace].setdefault(record_identifier, PXAM())
-        for res_id, val in values.items():
-            self[DATA_KEY][self.namespace][record_identifier][res_id] = val
-
-    def select(
-        self,
-        columns: Union[str, List[str]] = None,
-        condition: str = None,
-        condition_val: str = None,
-        offset: int = None,
-        limit: int = None,
-    ) -> List[psycopg2.extras.DictRow]:
-        """
-        Get all the contents from the selected table, possibly restricted by
-        the provided condition.
-
-        :param str | List[str] columns: columns to select
-        :param str condition: condition to restrict the results
-            with, will be appended to the end of the SELECT statement and
-            safely populated with 'condition_val',
-            for example: `"id=%s"`
-        :param list condition_val: values to fill the placeholder
-            in 'condition' with
-        :param int offset: number of records to be skipped
-        :param int limit: max number of records to be returned
-        :return List[psycopg2.extras.DictRow]: all table contents
-        """
-        if self.file:
-            raise NotImplementedError(
-                "Selection is not supported on objects backed by results files."
-                " Use 'retrieve' method instead."
-            )
-        condition, condition_val = preprocess_condition_pair(condition, condition_val)
-        if not columns:
-            columns = sql.SQL("*")
-        else:
-            columns = sql.SQL(",").join(
-                [sql.Identifier(x) for x in mk_list_of_str(columns)]
-            )
-        statement = sql.SQL("SELECT {} FROM {}").format(
-            columns, sql.Identifier(self.namespace)
-        )
-        if condition:
-            statement += sql.SQL(" WHERE ")
-            statement += condition
-        statement = paginate_query(statement, offset, limit)
-        with self.db_cursor as cur:
-            cur.execute(query=statement, vars=condition_val)
-            result = cur.fetchall()
-        return result
-
-    def retrieve(
-        self, record_identifier: str = None, result_identifier: str = None
-    ) -> Union[Any, Dict[str, Any]]:
-        """
-        Retrieve a result for a record.
-
-        If no result ID specified, results for the entire record will
-        be returned.
-
-        :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to be retrieved
-        :return any | Dict[str, any]: a single result or a mapping with all the
-            results reported for the record
-        """
-        record_identifier = self._strict_record_id(record_identifier)
-        if self[DB_ONLY_KEY]:
-            if result_identifier is not None:
-                existing = self._check_which_results_exist(
-                    results=[result_identifier], rid=record_identifier
-                )
-                if not existing:
-                    raise PipestatDatabaseError(
-                        f"Result '{result_identifier}' not found for record "
-                        f"'{record_identifier}'"
-                    )
-            with self.db_cursor as cur:
-                query = sql.SQL(
-                    f"SELECT {result_identifier or '*'} "
-                    f"FROM {self.namespace} WHERE {RECORD_ID}=%s"
-                )
-                cur.execute(query, (record_identifier,))
-                result = cur.fetchall()
-            if len(result) > 0:
-                if result_identifier is None:
-                    return {k: v for k, v in dict(result[0]).items() if v is not None}
-                return dict(result[0])[result_identifier]
-            raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
-        else:
-            if record_identifier not in self.data[self.namespace]:
-                raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
-            if result_identifier is None:
-                return self.data[self.namespace][record_identifier].to_dict()
-            if result_identifier not in self.data[self.namespace][record_identifier]:
-                raise PipestatDatabaseError(
-                    f"Result '{result_identifier}' not found for record "
-                    f"'{record_identifier}'"
-                )
-            return self.data[self.namespace][record_identifier][result_identifier]
-
-    def remove(
-        self, record_identifier: str = None, result_identifier: str = None
-    ) -> bool:
-        """
-        Remove a result.
-
-        If no result ID specified or last result is removed, the entire record
-        will be removed.
-
-        :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to be removed or None
-             if the record should be removed.
-        :return bool: whether the result has been removed
-        """
-        record_identifier = self._strict_record_id(record_identifier)
-        rm_record = True if result_identifier is None else False
-        if not self.check_record_exists(record_identifier):
-            _LOGGER.error(f"Record '{record_identifier}' not found")
-            return False
-        if result_identifier and not self.check_result_exists(
-            result_identifier, record_identifier
-        ):
-            _LOGGER.error(
-                f"'{result_identifier}' has not been reported for "
-                f"'{record_identifier}'"
-            )
-            return False
-        if self.file:
-            self.data.make_writable()
-        if not self[DB_ONLY_KEY]:
-            if rm_record:
-                _LOGGER.info(f"Removing '{record_identifier}' record")
-                del self[DATA_KEY][self.namespace][record_identifier]
-            else:
-                val_backup = self[DATA_KEY][self.namespace][record_identifier][
-                    result_identifier
-                ]
-                del self[DATA_KEY][self.namespace][record_identifier][result_identifier]
-                _LOGGER.info(
-                    f"Removed result '{result_identifier}' for record "
-                    f"'{record_identifier}' from '{self.namespace}' namespace"
-                )
-                if not self[DATA_KEY][self.namespace][record_identifier]:
-                    _LOGGER.info(
-                        f"Last result removed for '{record_identifier}'. "
-                        f"Removing the record"
-                    )
-                    del self[DATA_KEY][self.namespace][record_identifier]
-                    rm_record = True
-        if self.file:
-            self.data.write()
-            self.data.make_readonly()
         if self.file is None:
-            if rm_record:
-                try:
-                    with self.db_cursor as cur:
-                        cur.execute(
-                            f"DELETE FROM {self.namespace} WHERE "
-                            f"{RECORD_ID}='{record_identifier}'"
-                        )
-                except Exception as e:
-                    _LOGGER.error(
-                        f"Could not remove the result from the "
-                        f"database. Exception: {e}"
-                    )
-                    self[DATA_KEY][self.namespace].setdefault(record_identifier, PXAM())
-                    raise
-                return True
+            # DB as the backend
+            return
+        r_id = self._strict_record_id(record_identifier)
+        return os.path.join(
+            self[STATUS_FILE_DIR], f"{self.namespace}_{r_id}_{status_identifier}.flag"
+        )
+
+    def _set_status_file(
+        self,
+        status_identifier: str,
+        record_identifier: str,
+        prev_status: Optional[str] = None,
+    ) -> None:
+        if prev_status is not None:
+            prev_flag_path = self.get_status_flag_path(prev_status, record_identifier)
+            os.remove(prev_flag_path)
+        flag_path = self.get_status_flag_path(status_identifier, record_identifier)
+        create_lock(flag_path)
+        with open(flag_path, "w") as f:
+            f.write(status_identifier)
+        remove_lock(flag_path)
+
+    def _set_status_db(
+        self,
+        status_identifier: str,
+        record_identifier: str,
+    ) -> None:
+        try:
+            self._report_db(
+                values={STATUS: status_identifier},
+                record_identifier=record_identifier,
+                table_name=f"{self.namespace}_{STATUS}",
+            )
+        except Exception as e:
+            _LOGGER.error(f"Could not insert into the status table. Exception: {e}")
+            raise
+
+    def get_status(self, record_identifier: str = None) -> Optional[str]:
+        """
+        Get the current pipeline status
+
+        :return str: status identifier, like 'running'
+        """
+        r_id = self._strict_record_id(record_identifier)
+        if self.file is None:
+            return self._get_status_db(record_identifier=r_id)
+        else:
+            return self._get_status_file(record_identifier=r_id)
+
+    def _get_status_file(self, record_identifier: str) -> Optional[str]:
+        r_id = self._strict_record_id(record_identifier)
+        flag_file = self._get_flag_file(record_identifier=record_identifier)
+        if flag_file is not None:
+            assert isinstance(flag_file, str), TypeError(
+                "Flag file path is expected to be a str, were multiple flags found?"
+            )
+            with open(flag_file, "r") as f:
+                status = f.read()
+            return status
+        _LOGGER.debug(
+            f"Could not determine status for '{r_id}' record. "
+            f"No flags found in: {self[STATUS_FILE_DIR]}"
+        )
+        return None
+
+    def _get_status_db(self, record_identifier: str) -> Optional[str]:
+        try:
+            result = self._retrieve_db(
+                result_identifier=STATUS,
+                record_identifier=record_identifier,
+                table_name=f"{self.namespace}_{STATUS}",
+            )
+        except PipestatDatabaseError:
+            return None
+        return result[STATUS]
+
+    def clear_status(
+        self, record_identifier: str = None, flag_names: List[str] = None
+    ) -> List[Union[str, None]]:
+        """
+        Remove status flags
+
+        :param str record_identifier: name of the record to remove flags for
+        :param Iterable[str] flag_names: Names of flags to remove, optional; if
+            unspecified, all schema-defined flag names will be used.
+        :return List[str]: Collection of names of flags removed
+        """
+        r_id = self._strict_record_id(record_identifier)
+        if self.file is not None:
+            return self._clear_status_file(
+                record_identifier=r_id, flag_names=flag_names
+            )
+        else:
+            return self._clear_status_db(record_identifier=r_id)
+
+    def _clear_status_file(
+        self, record_identifier: str = None, flag_names: List[str] = None
+    ) -> List[Union[str, None]]:
+        flag_names = flag_names or list(self.status_schema.keys())
+        if isinstance(flag_names, str):
+            flag_names = [flag_names]
+        removed = []
+        for f in flag_names:
+            path_flag_file = self.get_status_flag_path(
+                status_identifier=f, record_identifier=record_identifier
+            )
             try:
-                with self.db_cursor as cur:
-                    cur.execute(
-                        f"UPDATE {self.namespace} SET {result_identifier}=null "
-                        f"WHERE {RECORD_ID}='{record_identifier}'"
-                    )
-            except Exception as e:
-                _LOGGER.error(
-                    f"Could not remove the result from the database. " f"Exception: {e}"
-                )
-                if not self[DB_ONLY_KEY]:
-                    self[DATA_KEY][self.namespace][record_identifier][
-                        result_identifier
-                    ] = val_backup
-                raise
-        return True
+                os.remove(path_flag_file)
+            except:
+                pass
+            else:
+                _LOGGER.info(f"Removed existing flag: {path_flag_file}")
+                removed.append(f)
+        return removed
+
+    def _clear_status_db(self, record_identifier: str = None) -> List[Union[str, None]]:
+        removed = self.get_status(record_identifier)
+        try:
+            self._remove_db(
+                record_identifier=record_identifier,
+                table_name=f"{self.namespace}_{STATUS}",
+            )
+        except Exception as e:
+            _LOGGER.error(
+                f"Could not remove the status from the database. Exception: {e}"
+            )
+            return []
+        else:
+            return [removed]
 
     def validate_schema(self) -> None:
         """
@@ -1169,6 +721,291 @@ class PipestatManager(dict):
         schema = _recursively_replace_custom_types(schema)
         self[RES_SCHEMAS_KEY] = schema
 
+    def _init_results_file(self) -> bool:
+        """
+        Initialize YAML results file if it does not exist.
+        Read the data stored in the existing file into the memory otherwise.
+
+        :return bool: whether the file has been created
+        """
+        if not os.path.exists(self.file):
+            _LOGGER.info(f"Initializing results file '{self.file}'")
+            data = YacAttMap(entries={self.namespace: "{}"})
+            data.write(filepath=self.file)
+            data.make_readonly()
+            self[DATA_KEY] = data
+            return True
+        _LOGGER.debug(f"Reading data from '{self.file}'")
+        data = YacAttMap(filepath=self.file)
+        filtered = list(filter(lambda x: not x.startswith("_"), data.keys()))
+        if filtered and self.namespace not in filtered:
+            raise PipestatDatabaseError(
+                f"'{self.file}' is already used to report results for "
+                f"other namespace: {filtered[0]}"
+            )
+        self[DATA_KEY] = data
+        return False
+
+    def _init_db_table(self) -> bool:
+        """
+        Initialize a database table based on the provided schema,
+        if it does not exist. Read the data stored in the database into the
+        memory otherwise.
+
+        :return bool: whether the table has been created
+        """
+        if self.schema is None:
+            raise SchemaNotFoundError("initialize the database table")
+        if not self.is_db_connected():
+            self.establish_db_connection_orm()
+        # if self._check_table_exists(table_name=self.namespace):
+        #     _LOGGER.debug(f"Table '{self.namespace}' already exists in the database")
+        #     if not self[DB_ONLY_KEY]:
+        #         self._table_to_dict()
+        #     # return False
+        _LOGGER.info(f"Initializing '{self.namespace}' table in '{PKG_NAME}' database")
+        self._create_table_orm(table_name=self.namespace, schema=self.result_schemas)
+        return True
+
+    def _init_status_table(self):
+        status_table_name = f"{self.namespace}_{STATUS}"
+        if not self.is_db_connected():
+            self.establish_db_connection_orm()
+        # if not self._check_table_exists(table_name=status_table_name):
+        _LOGGER.debug(
+            f"Initializing '{status_table_name}' table in " f"'{PKG_NAME}' database"
+        )
+        self._create_table_orm(
+            table_name=status_table_name,
+            schema=get_status_table_schema(status_schema=self.status_schema),
+        )
+
+    def _get_attr(self, attr: str) -> Any:
+        """
+        Safely get the name of the selected attribute of this object
+
+        :param str attr: attr to select
+        :return:
+        """
+        return self[attr] if attr in self else None
+
+    def _check_table_exists(self, table_name: str) -> bool:
+        """
+        Check if the specified table exists
+
+        :param str table_name: table name to be checked
+        :return bool: whether the specified table exists
+        """
+        from sqlalchemy import inspect
+
+        with self.session as s:
+            return inspect(s.bind).has_table(table_name=table_name)
+
+    def _count_rows(self, table_name: str) -> int:
+        """
+        Count rows in a selected table
+
+        :param str table_name: table to count rows for
+        :return int: number of rows in the selected table
+        """
+        with self.session as s:
+            return s.query(self[DB_ORMS_KEY][table_name].id).count()
+
+    def _get_orm(self, table_name: str = None) -> Any:
+        """
+        Get an object relational mapper class
+
+        :param str table_name: table name to get a class for
+        :return Any: Object relational mapper class
+        """
+        if DB_ORMS_KEY not in self:
+            raise PipestatDatabaseError("Object relational mapper classes not defined")
+        tn = f"{table_name or self.namespace}"
+        if tn not in self[DB_ORMS_KEY]:
+            raise PipestatDatabaseError(
+                f"No object relational mapper class defined for table: {tn}"
+            )
+        if not isinstance(self[DB_ORMS_KEY][tn], DeclarativeMeta):
+            raise PipestatDatabaseError(
+                f"Object relational mapper class for table '{tn}' is invalid"
+            )
+        return self[DB_ORMS_KEY][tn]
+
+    def check_record_exists(
+        self, record_identifier: str, table_name: str = None
+    ) -> bool:
+        """
+        Check if the specified record exists in the table
+
+        :param str record_identifier: record to check for
+        :param str table_name: table name to check
+        :return bool: whether the record exists in the table
+        """
+        if self.file is None:
+            with self.session as s:
+                return (
+                    s.query(self._get_orm(table_name).id)
+                    .filter_by(record_identifier=record_identifier)
+                    .first()
+                    is not None
+                )
+        else:
+            if (
+                self.namespace in self.data
+                and record_identifier in self.data[table_name]
+            ):
+                return True
+            return False
+
+    def check_which_results_exist(
+        self, results: List[str], rid: str = None
+    ) -> List[str]:
+        """
+        Check which results have been reported
+
+        :param str rid: unique identifier of the record
+        :param List[str] results: names of the results to check
+        :return List[str]: whether the specified result has been reported for the
+            indicated record in current namespace
+        """
+        rid = self._strict_record_id(rid)
+        if self.file is None:
+            existing = self._check_which_results_exist_db(results=results, rid=rid)
+        else:
+            existing = []
+            for r in results:
+                if (
+                    self.namespace in self.data
+                    and rid in self.data[self.namespace]
+                    and r in self.data[self.namespace][rid]
+                ):
+                    existing.append(r)
+        return existing
+
+    def _check_which_results_exist_db(
+        self, results: List[str], rid: str = None, table_name: str = None
+    ) -> List[str]:
+        """
+        Check if the specified results exist in the table
+
+        :param str rid: record to check for
+        :param List[str] results: results identifiers to check for
+        :param str table_name: name of the table to search for results in
+        :return List[str]: results identifiers that exist
+        """
+        table_name = table_name or self.namespace
+        rid = self._strict_record_id(rid)
+        with self.session as s:
+            record = (
+                s.query(self._get_orm(table_name))
+                .filter_by(record_identifier=rid)
+                .first()
+            )
+        return [r for r in results if getattr(record, r, None) is not None]
+
+    def check_result_exists(
+        self,
+        result_identifier: str,
+        record_identifier: str = None,
+    ) -> bool:
+        """
+        Check if the result has been reported
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to check
+        :return bool: whether the specified result has been reported for the
+            indicated record in current namespace
+        """
+        record_identifier = self._strict_record_id(record_identifier)
+        return (
+            len(
+                self.check_which_results_exist(
+                    results=[result_identifier],
+                    rid=record_identifier,
+                )
+            )
+            > 0
+        )
+
+    def retrieve(
+        self, record_identifier: str = None, result_identifier: str = None
+    ) -> Union[Any, Dict[str, Any]]:
+        """
+        Retrieve a result for a record.
+
+        If no result ID specified, results for the entire record will
+        be returned.
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to be retrieved
+        :return any | Dict[str, any]: a single result or a mapping with all the
+            results reported for the record
+        """
+        r_id = self._strict_record_id(record_identifier)
+        if self.file is None:
+            return self._retrieve_db(
+                result_identifier=result_identifier, record_identifier=r_id
+            )
+        else:
+            if r_id not in self.data[self.namespace]:
+                raise PipestatDatabaseError(f"Record '{r_id}' not found")
+            if result_identifier is None:
+                return self.data[self.namespace][r_id].to_dict()
+            if result_identifier not in self.data[self.namespace][r_id]:
+                raise PipestatDatabaseError(
+                    f"Result '{result_identifier}' not found for record '{r_id}'"
+                )
+            return self.data[self.namespace][r_id][result_identifier]
+
+    def _retrieve_db(
+        self,
+        result_identifier: str = None,
+        record_identifier: str = None,
+        table_name: str = None,
+    ) -> Dict[str, Any]:
+        """
+        Retrieve a result for a record.
+
+        If no result ID specified, results for the entire record will
+        be returned.
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to be retrieved
+        :param str table_name: name of the table to search for results in
+        :return Dict[str, any]: a single result or a mapping with all the results
+            reported for the record
+        """
+        table_name = table_name or self.namespace
+        record_identifier = self._strict_record_id(record_identifier)
+        if result_identifier is not None:
+            existing = self.check_which_results_exist(
+                results=[result_identifier],
+                rid=record_identifier,
+                table_name=table_name,
+            )
+            if not existing:
+                raise PipestatDatabaseError(
+                    f"Result '{result_identifier}' not found for record "
+                    f"'{record_identifier}'"
+                )
+
+        with self.session as s:
+            record = (
+                s.query(self._get_orm(table_name))
+                .filter_by(record_identifier=record_identifier)
+                .first()
+            )
+
+        if record is not None:
+            if result_identifier is not None:
+                return {result_identifier: getattr(record, result_identifier)}
+            return {
+                column: getattr(record, column)
+                for column in [c.name for c in record.__table__.columns]
+                if getattr(record, column, None) is not None
+            }
+        raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
+
     def assert_results_defined(self, results: List[str]) -> None:
         """
         Assert provided list of results is defined in the schema
@@ -1184,87 +1021,247 @@ class PipestatManager(dict):
                 f"schema are: {list(known_results)}."
             )
 
-    def check_connection(self) -> bool:
+    def report(
+        self,
+        values: Dict[str, Any],
+        record_identifier: str = None,
+        force_overwrite: bool = False,
+        strict_type: bool = True,
+        return_id: bool = False,
+    ) -> Union[bool, int]:
         """
-        Check whether a PostgreSQL connection has been established
+        Report a result.
 
-        :return bool: whether the connection has been established
+        :param Dict[str, any] values: dictionary of result-value pairs
+        :param str record_identifier: unique identifier of the record, value
+            in 'record_identifier' column to look for to determine if the record
+            already exists
+        :param bool force_overwrite: whether to overwrite the existing record
+        :param bool strict_type: whether the type of the reported values should
+            remain as is. Pipestat would attempt to convert to the
+            schema-defined one otherwise
+        :param bool return_id: PostgreSQL IDs of the records that have been
+            updated. Not available with results file as backend
+        :return bool | int: whether the result has been reported or the ID of
+            the updated record in the table, if requested
         """
-        if self.file is not None:
-            raise PipestatDatabaseError(
-                f"The {self.__class__.__name__} object " f"is not backed by a database"
+        record_identifier = self._strict_record_id(record_identifier)
+        if return_id and self.file is not None:
+            raise NotImplementedError(
+                "There is no way to return the updated object ID while using "
+                "results file as the object backend"
             )
-        if DB_CONNECTION_KEY in self and isinstance(
-            self[DB_CONNECTION_KEY], psycopg2.extensions.connection
-        ):
-            return True
-        return False
-
-    def establish_postgres_connection(self, suppress: bool = False) -> bool:
-        """
-        Establish PostgreSQL connection using the config data
-
-        :param bool suppress: whether to suppress any connection errors
-        :return bool: whether the connection has been established successfully
-        """
-        if self.check_connection():
-            raise PipestatDatabaseError(
-                f"Connection is already established: "
-                f"{self[DB_CONNECTION_KEY].info.host}"
+        if self.schema is None:
+            raise SchemaNotFoundError("report results")
+        updated_ids = False
+        result_identifiers = list(values.keys())
+        self.assert_results_defined(results=result_identifiers)
+        existing = self.check_which_results_exist(
+            rid=record_identifier, results=result_identifiers
+        )
+        if existing:
+            _LOGGER.warning(
+                f"These results exist for '{record_identifier}': {existing}"
             )
-        try:
-            self[DB_CONNECTION_KEY] = psycopg2.connect(
-                dbname=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_NAME_KEY],
-                user=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_USER_KEY],
-                password=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_PASSWORD_KEY],
-                host=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY],
-                port=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_PORT_KEY],
-            )
-        except psycopg2.Error as e:
-            _LOGGER.error(
-                f"Could not connect to: "
-                f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}"
-            )
-            _LOGGER.info(f"Caught error: {e}")
-            if suppress:
+            if not force_overwrite:
                 return False
-            raise
+            _LOGGER.info(f"Overwriting existing results: {existing}")
+        for r in result_identifiers:
+            validate_type(
+                value=values[r], schema=self.result_schemas[r], strict_type=strict_type
+            )
+        if self.file is not None:
+            self.data.make_writable()
+        if not self[DB_ONLY_KEY]:
+            self._report_data_element(
+                record_identifier=record_identifier, values=values
+            )
+        if self.file is not None:
+            self.data.write()
+            self.data.make_readonly()
         else:
-            _LOGGER.debug(
-                f"Established connection with PostgreSQL: "
-                f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}"
-            )
-            return True
-
-    def close_postgres_connection(self) -> None:
-        """
-        Close connection and remove client bound
-        """
-        if not self.check_connection():
-            raise PipestatDatabaseError(
-                f"The connection has not been established: "
-                f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}"
-            )
-        self[DB_CONNECTION_KEY].close()
-        del self[DB_CONNECTION_KEY]
-        _LOGGER.debug(
-            f"Closed connection with PostgreSQL: "
-            f"{self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY]}"
+            try:
+                updated_ids = self._report_db(
+                    record_identifier=record_identifier, value=values
+                )
+            except Exception as e:
+                _LOGGER.error(
+                    f"Could not insert the result into the database. Exception: {e}"
+                )
+                if not self[DB_ONLY_KEY]:
+                    for r in result_identifiers:
+                        del self[DATA_KEY][self.namespace][record_identifier][r]
+                raise
+        nl = "\n"
+        rep_strs = [f"{k}: {v}" for k, v in values.items()]
+        _LOGGER.info(
+            f"Reported records for '{record_identifier}' in '{self.namespace}' "
+            f"namespace:{nl} - {(nl + ' - ').join(rep_strs)}"
         )
+        return True if not return_id else updated_ids
 
-    def _strict_record_id(self, forced_value: str = None) -> str:
+    def _report_db(
+        self, values: Dict[str, Any], record_identifier: str, table_name: str = None
+    ) -> int:
         """
-        Get record identifier from the outer source or stored with this object
+        Report a result to a database
 
-        :param str forced_value: return this value
-        :return str: record identifier
+        :param Dict[str, Any] values: values to report
+        :param str record_identifier: record to report the result for
+        :param str table_name: name of the table to report the result in
+        :return int: updated/inserted row
         """
-        if forced_value is not None:
-            return forced_value
-        if self.record_identifier is not None:
-            return self.record_identifier
-        raise PipestatError(
-            f"You must provide the record identifier you want to perform "
-            f"the action on. Either in the {self.__class__.__name__} "
-            f"constructor or as an argument to the method."
-        )
+        record_identifier = self._strict_record_id(record_identifier)
+        ORMClass = self._get_orm(table_name)
+        values.update({RECORD_ID: record_identifier})
+        if not self.check_record_exists(
+            record_identifier=record_identifier, table_name=table_name
+        ):
+            new_record = ORMClass(**values)
+            with self.session as s:
+                s.add(new_record)
+                s.commit()
+                returned_id = new_record.id
+        else:
+            with self.session as s:
+                record_to_update = (
+                    s.query(ORMClass)
+                    .filter(getattr(ORMClass, RECORD_ID) == record_identifier)
+                    .first()
+                )
+                for result_id, result_value in values.items():
+                    setattr(record_to_update, result_id, result_value)
+                s.commit()
+                returned_id = record_to_update.id
+        return returned_id
+
+    def _report_data_element(
+        self, record_identifier: str, values: Dict[str, Any]
+    ) -> None:
+        """
+        Update the value of a result in a current namespace.
+
+        This method overwrites any existing data and creates the required
+         hierarchical mapping structure if needed.
+
+        :param str record_identifier: unique identifier of the record
+        :param Dict[str, Any] values: dict of results identifiers and values
+            to be reported
+        """
+        self[DATA_KEY].setdefault(self.namespace, PXAM())
+        self[DATA_KEY][self.namespace].setdefault(record_identifier, PXAM())
+        for res_id, val in values.items():
+            self[DATA_KEY][self.namespace][record_identifier][res_id] = val
+
+    def remove(
+        self,
+        record_identifier: str = None,
+        result_identifier: str = None,
+    ) -> bool:
+        """
+        Remove a result.
+
+        If no result ID specified or last result is removed, the entire record
+        will be removed.
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to be removed or None
+             if the record should be removed.
+        :return bool: whether the result has been removed
+        """
+        r_id = self._strict_record_id(record_identifier)
+        rm_record = True if result_identifier is None else False
+        if not self.check_record_exists(
+            record_identifier=r_id, table_name=self.namespace
+        ):
+            _LOGGER.error(f"Record '{r_id}' not found")
+            return False
+        if result_identifier and not self.check_result_exists(result_identifier, r_id):
+            _LOGGER.error(f"'{result_identifier}' has not been reported for '{r_id}'")
+            return False
+        if self.file:
+            self.data.make_writable()
+        if not self[DB_ONLY_KEY]:
+            if rm_record:
+                _LOGGER.info(f"Removing '{r_id}' record")
+                del self[DATA_KEY][self.namespace][r_id]
+            else:
+                val_backup = self[DATA_KEY][self.namespace][r_id][result_identifier]
+                del self[DATA_KEY][self.namespace][r_id][result_identifier]
+                _LOGGER.info(
+                    f"Removed result '{result_identifier}' for record "
+                    f"'{r_id}' from '{self.namespace}' namespace"
+                )
+                if not self[DATA_KEY][self.namespace][r_id]:
+                    _LOGGER.info(
+                        f"Last result removed for '{r_id}'. " f"Removing the record"
+                    )
+                    del self[DATA_KEY][self.namespace][r_id]
+                    rm_record = True
+        if self.file:
+            self.data.write()
+            self.data.make_readonly()
+        if self.file is None:
+            try:
+                self._remove_db(
+                    record_identifier=r_id,
+                    result_identifier=None if rm_record else result_identifier,
+                )
+            except Exception as e:
+                _LOGGER.error(
+                    f"Could not remove the result from the database. Exception: {e}"
+                )
+                if not self[DB_ONLY_KEY] and not rm_record:
+                    self[DATA_KEY][self.namespace][r_id][result_identifier] = val_backup
+                raise
+        return True
+
+    def _remove_db(
+        self,
+        record_identifier: str = None,
+        result_identifier: str = None,
+        table_name: str = None,
+    ) -> bool:
+        """
+        Remove a result.
+
+        If no result ID specified or last result is removed, the entire record
+        will be removed.
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to be removed or None
+             if the record should be removed.
+        :param str table_name: name of the table to report the result in
+        :return bool: whether the result has been removed
+        :raise PipestatDatabaseError: if either record or result specified are not found
+        """
+        table_name = table_name or self.namespace
+        record_identifier = self._strict_record_id(record_identifier)
+        ORMClass = self._get_orm(table_name=table_name)
+        if self.check_record_exists(
+            record_identifier=record_identifier, table_name=table_name
+        ):
+            with self.session as s:
+                record = (
+                    s.query(ORMClass)
+                    .filter(getattr(ORMClass, RECORD_ID) == record_identifier)
+                    .first()
+                )
+                if result_identifier is None:
+                    # delete row
+                    record.delete()
+                else:
+                    # set the value to None
+                    if not self.check_result_exists(
+                        record_identifier=record_identifier,
+                        result_identifier=result_identifier,
+                        table_name=table_name,
+                    ):
+                        raise PipestatDatabaseError(
+                            f"Result '{result_identifier}' not found for record "
+                            f"'{record_identifier}'"
+                        )
+                    setattr(record, result_identifier, None)
+                s.commit()
+        else:
+            raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
