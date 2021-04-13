@@ -39,10 +39,7 @@ class TestConnection:
             schema_path=schema_file_path,
             namespace="test",
         )
-        assert not pm.check_connection()
-        pm.establish_postgres_connection()
-        assert pm.check_connection()
-        pm.close_postgres_connection()
+        assert pm.is_db_connected()
 
     def test_connection_overwrite_error(self, config_file_path, schema_file_path):
         pm = PipestatManager(
@@ -51,46 +48,8 @@ class TestConnection:
             schema_path=schema_file_path,
             namespace="test",
         )
-        pm.establish_postgres_connection()
         with pytest.raises(PipestatDatabaseError):
-            pm.establish_postgres_connection()
-        pm.close_postgres_connection()
-
-    @pytest.mark.parametrize("suppress", [True, False])
-    def test_connection_error(self, config_file_path, schema_file_path, suppress):
-        pm = PipestatManager(
-            config=config_file_path,
-            database_only=True,
-            schema_path=schema_file_path,
-            namespace="test",
-        )
-        pm[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY] = "bogus_host"
-        if suppress:
-            assert not pm.establish_postgres_connection(suppress=suppress)
-        else:
-            with pytest.raises(psycopg2Error):
-                pm.establish_postgres_connection(suppress=suppress)
-
-    def test_connection_closing(self, config_file_path, schema_file_path):
-        pm = PipestatManager(
-            config=config_file_path,
-            database_only=True,
-            schema_path=schema_file_path,
-            namespace="test",
-        )
-        pm.establish_postgres_connection()
-        pm.close_postgres_connection()
-        assert not pm.check_connection()
-
-    def test_connection_closing_closed(self, config_file_path, schema_file_path):
-        pm = PipestatManager(
-            config=config_file_path,
-            database_only=True,
-            schema_path=schema_file_path,
-            namespace="test",
-        )
-        with pytest.raises(PipestatDatabaseError):
-            pm.close_postgres_connection()
+            pm.establish_db_connection()
 
 
 class TestPipestatManagerInstantiation:

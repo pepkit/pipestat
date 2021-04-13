@@ -229,33 +229,22 @@ class PipestatManager(dict):
                 "Must specify either database login " "credentials or a YAML file path"
             )
 
-    def _get_flag_file(
-        self, record_identifier: str = None
-    ) -> Union[str, List[str], None]:
+    def __str__(self):
         """
-        Get path to the status flag file for the specified record
+        Generate string representation of the object
 
-        :param str record_identifier: unique record identifier
-        :return str | list[str] | None: path to the status flag file
+        :return str: string representation of the object
         """
-        from glob import glob
-
-        r_id = self._strict_record_id(record_identifier)
-        if self.file is None:
-            return
-        if self.file is not None:
-            regex = os.path.join(
-                self[STATUS_FILE_DIR], f"{self.namespace}_{r_id}_*.flag"
-            )
-            file_list = glob(regex)
-            if len(file_list) > 1:
-                _LOGGER.warning("Multiple flag files found")
-                return file_list
-            elif len(file_list) == 1:
-                return file_list[0]
-            else:
-                _LOGGER.debug("No flag files found")
-                return None
+        res = f"{self.__class__.__name__} ({self.namespace})"
+        res += "\nBackend: {}".format(
+            f"file ({self.file})" if self.file else "PostgreSQL"
+        )
+        res += f"\nResults schema source: {self.schema_path}"
+        res += f"\nStatus schema source: {self.status_schema_source}"
+        res += f"\nRecords count: {self.record_count}"
+        if self.highlighted_results:
+            res += f"\nHighlighted results: {', '.join(self.highlighted_results)}"
+        return res
 
     @property
     def record_count(self) -> int:
@@ -408,11 +397,39 @@ class PipestatManager(dict):
         operations, no commit afterwards.
         """
         if not self.is_db_connected():
-            self.establish_db_connection_orm()
+            self.establish_db_connection()
         with self[DB_SESSION_KEY]() as session:
             _LOGGER.debug("Created session")
             yield session
             _LOGGER.debug("Ending session")
+
+    def _get_flag_file(
+        self, record_identifier: str = None
+    ) -> Union[str, List[str], None]:
+        """
+        Get path to the status flag file for the specified record
+
+        :param str record_identifier: unique record identifier
+        :return str | list[str] | None: path to the status flag file
+        """
+        from glob import glob
+
+        r_id = self._strict_record_id(record_identifier)
+        if self.file is None:
+            return
+        if self.file is not None:
+            regex = os.path.join(
+                self[STATUS_FILE_DIR], f"{self.namespace}_{r_id}_*.flag"
+            )
+            file_list = glob(regex)
+            if len(file_list) > 1:
+                _LOGGER.warning("Multiple flag files found")
+                return file_list
+            elif len(file_list) == 1:
+                return file_list[0]
+            else:
+                _LOGGER.debug("No flag files found")
+                return None
 
     def _strict_record_id(self, forced_value: str = None) -> str:
         """
@@ -466,7 +483,7 @@ class PipestatManager(dict):
         self[DB_ORMS_KEY][tn] = type(tn.capitalize(), (self[DB_BASE_KEY],), attr_dict)
         self[DB_BASE_KEY].metadata.create_all(bind=self[DB_ENGINE_KEY])
 
-    def establish_db_connection_orm(self) -> bool:
+    def establish_db_connection(self) -> bool:
         """
         Establish DB connection using the config data
 
@@ -757,20 +774,33 @@ class PipestatManager(dict):
         if self.schema is None:
             raise SchemaNotFoundError("initialize the database table")
         if not self.is_db_connected():
-            self.establish_db_connection_orm()
-        # if self._check_table_exists(table_name=self.namespace):
-        #     _LOGGER.debug(f"Table '{self.namespace}' already exists in the database")
-        #     if not self[DB_ONLY_KEY]:
-        #         self._table_to_dict()
-        #     # return False
+            self.establish_db_connection()
         _LOGGER.info(f"Initializing '{self.namespace}' table in '{PKG_NAME}' database")
         self._create_table_orm(table_name=self.namespace, schema=self.result_schemas)
+        if not self[DB_ONLY_KEY]:
+            self._table_to_dict()
         return True
+
+    def _table_to_dict(self) -> None:
+        """
+        Create a dictionary from the database table data
+        """
+        with self.session as s:
+            records = s.query(self._get_orm(self.namespace)).all()
+        _LOGGER.debug(f"Reading data from database for '{self.namespace}' namespace")
+        for record in records:
+            record_id = getattr(record, RECORD_ID)
+            for column in record.__table__.columns:
+                val = getattr(record, column.name, None)
+                if val is not None:
+                    self._report_data_element(
+                        record_identifier=record_id, values={column.name: val}
+                    )
 
     def _init_status_table(self):
         status_table_name = f"{self.namespace}_{STATUS}"
         if not self.is_db_connected():
-            self.establish_db_connection_orm()
+            self.establish_db_connection()
         # if not self._check_table_exists(table_name=status_table_name):
         _LOGGER.debug(
             f"Initializing '{status_table_name}' table in " f"'{PKG_NAME}' database"
@@ -943,9 +973,12 @@ class PipestatManager(dict):
         """
         r_id = self._strict_record_id(record_identifier)
         if self.file is None:
-            return self._retrieve_db(
+            results = self._retrieve_db(
                 result_identifier=result_identifier, record_identifier=r_id
             )
+            if result_identifier is not None:
+                return results[result_identifier]
+            return results
         else:
             if r_id not in self.data[self.namespace]:
                 raise PipestatDatabaseError(f"Record '{r_id}' not found")
@@ -981,7 +1014,6 @@ class PipestatManager(dict):
             existing = self.check_which_results_exist(
                 results=[result_identifier],
                 rid=record_identifier,
-                table_name=table_name,
             )
             if not existing:
                 raise PipestatDatabaseError(
@@ -1082,7 +1114,7 @@ class PipestatManager(dict):
         else:
             try:
                 updated_ids = self._report_db(
-                    record_identifier=record_identifier, value=values
+                    record_identifier=record_identifier, values=values
                 )
             except Exception as e:
                 _LOGGER.error(
@@ -1242,26 +1274,23 @@ class PipestatManager(dict):
             record_identifier=record_identifier, table_name=table_name
         ):
             with self.session as s:
-                record = (
-                    s.query(ORMClass)
-                    .filter(getattr(ORMClass, RECORD_ID) == record_identifier)
-                    .first()
+                records = s.query(ORMClass).filter(
+                    getattr(ORMClass, RECORD_ID) == record_identifier
                 )
                 if result_identifier is None:
                     # delete row
-                    record.delete()
+                    records.delete()
                 else:
                     # set the value to None
                     if not self.check_result_exists(
                         record_identifier=record_identifier,
                         result_identifier=result_identifier,
-                        table_name=table_name,
                     ):
                         raise PipestatDatabaseError(
                             f"Result '{result_identifier}' not found for record "
                             f"'{record_identifier}'"
                         )
-                    setattr(record, result_identifier, None)
+                    setattr(records.first(), result_identifier, None)
                 s.commit()
         else:
             raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
