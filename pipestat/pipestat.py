@@ -889,7 +889,10 @@ class PipestatManager(dict):
             return False
 
     def check_which_results_exist(
-        self, results: List[str], rid: str = None
+        self,
+        results: List[str],
+        rid: Optional[str] = None,
+        table_name: Optional[str] = None,
     ) -> List[str]:
         """
         Check which results have been reported
@@ -901,7 +904,9 @@ class PipestatManager(dict):
         """
         rid = self._strict_record_id(rid)
         if self.file is None:
-            existing = self._check_which_results_exist_db(results=results, rid=rid)
+            existing = self._check_which_results_exist_db(
+                results=results, rid=rid, table_name=table_name
+            )
         else:
             existing = []
             for r in results:
@@ -1105,6 +1110,7 @@ class PipestatManager(dict):
             existing = self.check_which_results_exist(
                 results=[result_identifier],
                 rid=record_identifier,
+                table_name=table_name,
             )
             if not existing:
                 raise PipestatDatabaseError(
