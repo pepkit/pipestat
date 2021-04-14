@@ -1,9 +1,10 @@
 from contextlib import contextmanager
 from copy import deepcopy
 from logging import getLogger
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import quote_plus
 
+import sqlalchemy.orm
 from attmap import PathExAttMap as PXAM
 from jsonschema import validate
 from sqlalchemy import Column, Float, ForeignKey, Integer, String, Table, create_engine
@@ -956,6 +957,96 @@ class PipestatManager(dict):
             )
             > 0
         )
+
+    def select(
+        self,
+        table_name: Optional[str] = None,
+        columns: Optional[List[str]] = None,
+        filter_condition: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+    ) -> List[Any]:
+        """
+        Perform a SELECT on the table, filtering limited to a single condition
+
+        :param str table_name: name of the table to SELECT from
+        :param List[str] columns: columns to include in the result
+        :param [(key,operator,value)] filter_condition: e.g. [("id", "eq", 1)] operator list
+            - eq for ==
+            - lt for <
+            - ge for >=
+            - in for in_
+            - like for like
+        :param int offset: skip this number of rows
+        :param int limit: include this number of rows
+        """
+
+        def _dynamic_filter(
+            ORM: sqlalchemy.orm.DeclarativeMeta,
+            query: sqlalchemy.orm.Query,
+            filter_condition: List[Tuple[str, str, Union[str, List[str]]]],
+        ):
+            """
+            Return filtered query based on condition.
+
+            :param sqlalchemy.orm.DeclarativeMeta ORM:
+            :param sqlalchemy.orm.Query query: takes query
+            :param [(key,operator,value)] filter_condition: e.g. [("id", "eq", 1)] operator list
+                - eq for ==
+                - lt for <
+                - ge for >=
+                - in for in_
+                - like for like
+            :return: query
+            """
+            for raw in filter_condition:
+                try:
+                    key, op, value = raw
+                except ValueError:
+                    raise Exception("Invalid filter: %s" % raw)
+                column = getattr(ORM, key, None)
+                if column is None:
+                    raise Exception("Invalid filter column: %s" % key)
+                if op == "in":
+                    if isinstance(value, list):
+                        filt = column.in_(value)
+                    else:
+                        filt = column.in_(value.split(","))
+                else:
+                    try:
+                        attr = (
+                            list(
+                                filter(
+                                    lambda e: hasattr(column, e % op),
+                                    ["%s", "%s_", "__%s__"],
+                                )
+                            )[0]
+                            % op
+                        )
+                    except IndexError:
+                        raise Exception(f"Invalid filter operator: {op}")
+                    if value == "null":
+                        value = None
+                    filt = getattr(column, attr)(value)
+                query = query.filter(filt)
+            return query
+
+        ORM = self._get_orm(table_name or self.namespace)
+        with self.session as s:
+            if columns is not None:
+                query = s.query(*[getattr(ORM, column) for column in columns])
+            else:
+                query = s.query(ORM)
+            if filter_condition is not None:
+                query = _dynamic_filter(
+                    ORM=ORM, query=query, filter_condition=filter_condition
+                )
+            if isinstance(offset, int):
+                query = query.offset(offset)
+            if isinstance(limit, int):
+                query = query.limit(limit)
+            result = query.all()
+        return result
 
     def retrieve(
         self, record_identifier: str = None, result_identifier: str = None
