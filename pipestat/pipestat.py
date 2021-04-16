@@ -1,15 +1,15 @@
 from contextlib import contextmanager
 from copy import deepcopy
 from logging import getLogger
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 from urllib.parse import quote_plus
 
 import sqlalchemy.orm
 from attmap import PathExAttMap as PXAM
 from jsonschema import validate
-from sqlalchemy import Column, Float, ForeignKey, Integer, String, Table, create_engine
+from sqlalchemy import Column, create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import DeclarativeMeta, relationship, sessionmaker
+from sqlalchemy.orm import DeclarativeMeta, sessionmaker
 from ubiquerg import create_lock, remove_lock
 from yacman import YacAttMap
 
@@ -33,14 +33,15 @@ class PipestatManager(dict):
 
     def __init__(
         self,
-        namespace: str = None,
-        record_identifier: str = None,
-        schema_path: str = None,
-        results_file_path: str = None,
-        database_only: bool = False,
-        config: Union[str, dict] = None,
-        status_schema_path: str = None,
-        flag_file_dir: str = None,
+        namespace: Optional[str] = None,
+        record_identifier: Optional[str] = None,
+        schema_path: Optional[str] = None,
+        results_file_path: Optional[str] = None,
+        database_only: Optional[bool] = False,
+        config: Optional[Union[str, dict]] = None,
+        status_schema_path: Optional[str] = None,
+        flag_file_dir: Optional[str] = None,
+        custom_declarative_base: Optional[sqlalchemy.orm.DeclarativeMeta] = None,
     ):
         """
         Initialize the object
@@ -60,6 +61,8 @@ class PipestatManager(dict):
             with the config file content
         :param str status_schema_path: path to the status schema that formalizes
             the status flags structure
+        :param sqlalchemy.orm.DeclarativeMeta custom_declarative_base: a declarative base to
+            use for ORMs creation a new instance will be created if not provided
         """
 
         def _check_cfg_key(cfg: dict, key: str) -> bool:
@@ -218,16 +221,16 @@ class PipestatManager(dict):
                 ]
             ):
                 raise MissingConfigDataError(
-                    "Must specify all database login " "credentials or result_file_path"
+                    "Must specify all database login credentials or result_file_path"
                 )
             self[DB_ORMS_KEY] = {}
-            self[DB_BASE_KEY] = declarative_base()
+            self[DB_BASE_KEY] = custom_declarative_base or declarative_base()
             self[DATA_KEY] = YacAttMap()
             self._init_db_table()
             self._init_status_table()
         else:
             raise MissingConfigDataError(
-                "Must specify either database login " "credentials or a YAML file path"
+                "Must specify either database login credentials or a YAML file path"
             )
 
     def __str__(self):
@@ -238,7 +241,9 @@ class PipestatManager(dict):
         """
         res = f"{self.__class__.__name__} ({self.namespace})"
         res += "\nBackend: {}".format(
-            f"file ({self.file})" if self.file else "PostgreSQL"
+            f"file ({self.file})"
+            if self.file
+            else f"Database (dialect: {self[DB_ENGINE_KEY].dialect.name})"
         )
         res += f"\nResults schema source: {self.schema_path}"
         res += f"\nStatus schema source: {self.status_schema_source}"
@@ -1054,7 +1059,9 @@ class PipestatManager(dict):
         return result
 
     def retrieve(
-        self, record_identifier: str = None, result_identifier: str = None
+        self,
+        record_identifier: Optional[str] = None,
+        result_identifier: Optional[str] = None,
     ) -> Union[Any, Dict[str, Any]]:
         """
         Retrieve a result for a record.
