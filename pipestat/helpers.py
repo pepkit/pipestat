@@ -29,26 +29,6 @@ def get_status_table_schema(status_schema: Dict[str, Any]) -> Dict[str, Any]:
     return status_table_schema
 
 
-def schema_to_columns(schema):
-    """
-    Get a list of database table columns from a schema
-
-    :param dict schema: schema to parse
-    :return list[str]: columns to inial ize database table with
-    """
-    columns = []
-    for colname, col_dict in schema.items():
-        if col_dict[SCHEMA_TYPE_KEY] not in TABLE_COLS_BY_TYPE:
-            _LOGGER.warning(
-                f"'{col_dict[SCHEMA_TYPE_KEY]}' result type defined"
-                f" in schema is not supported"
-            )
-            continue
-        columns.append(TABLE_COLS_BY_TYPE[col_dict[SCHEMA_TYPE_KEY]].format(colname))
-    _LOGGER.info(f"Table columns created based on schema: {columns}")
-    return columns
-
-
 def validate_type(value, schema, strict_type=False):
     """
     Validate reported result against a partial schema, in case of failure try

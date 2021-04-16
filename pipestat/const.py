@@ -25,17 +25,6 @@ STATUS_SUBPARSER_MESSAGES = {
     STATUS_GET_CMD: "Get status.",
 }
 
-TABLE_COLS_BY_TYPE = {
-    "integer": "{} INT",
-    "number": "{} NUMERIC",
-    "string": "{} TEXT",
-    "boolean": "{} BOOLEAN",
-    "object": "{} JSONB",
-    "array": "{} TEXT[]",
-    "file": "{} JSONB",
-    "image": "{} JSONB",
-}
-
 DOC_URL = "http://pipestat.databio.org/en/latest/db_config/"
 
 # DB config keys
@@ -53,6 +42,7 @@ DB_CREDENTIALS = [
     CFG_PASSWORD_KEY,
     CFG_USER_KEY,
     CFG_NAME_KEY,
+    CFG_DIALECT_KEY,
 ]
 
 # object attribute names
@@ -70,7 +60,6 @@ DATA_KEY = "_data"
 NAME_KEY = "_name"
 FILE_KEY = "_file"
 RECORD_ID_KEY = "_record_id"
-DB_CONNECTION_KEY = "_db_connnection"
 DB_SESSION_KEY = "_db_session"
 DB_ENGINE_KEY = "_db_engine"
 HIGHLIGHTED_KEY = "_highlighted"
@@ -86,14 +75,6 @@ STATUS = "status"
 
 RESERVED_COLNAMES = [ID, RECORD_ID]
 
-FIXED_COLUMNS = [f"{ID} BIGSERIAL PRIMARY KEY", f"{RECORD_ID} TEXT UNIQUE NOT NULL"]
-
-STATUS_TABLE_COLUMNS = [
-    f"{ID} BIGSERIAL PRIMARY KEY",
-    f"{RECORD_ID} TEXT UNIQUE NOT NULL",
-    f"{STATUS} TEXT",
-]
-# f"{STATUS} {STATUS}"]  # custom type 'status'
 CANONICAL_TYPES = {
     "image": {
         "type": "object",
