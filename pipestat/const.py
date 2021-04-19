@@ -35,6 +35,7 @@ CFG_PORT_KEY = "port"
 CFG_PASSWORD_KEY = "password"
 CFG_USER_KEY = "user"
 CFG_DIALECT_KEY = "dialect"  # sqlite, mysql, postgresql, oracle, or mssql
+CFG_DRIVER_KEY = "driver"
 
 DB_CREDENTIALS = [
     CFG_HOST_KEY,
@@ -43,6 +44,7 @@ DB_CREDENTIALS = [
     CFG_USER_KEY,
     CFG_NAME_KEY,
     CFG_DIALECT_KEY,
+    CFG_DRIVER_KEY,
 ]
 
 # object attribute names

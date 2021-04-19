@@ -387,13 +387,16 @@ class PipestatManager(dict):
                 host=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY],
                 port=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_PORT_KEY],
                 dialect=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_DIALECT_KEY],
+                driver=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_DRIVER_KEY],
             )
         except (KeyError, AttributeError) as e:
             raise PipestatDatabaseError(
                 f"Could not determine database URL. Caught error: {str(e)}"
             )
         parsed_creds = {k: quote_plus(str(v)) for k, v in creds.items()}
-        return "{dialect}://{user}:{passwd}@{host}:{port}/{name}".format(**parsed_creds)
+        return "{dialect}+{driver}://{user}:{passwd}@{host}:{port}/{name}".format(
+            **parsed_creds
+        )
 
     @property
     @contextmanager
