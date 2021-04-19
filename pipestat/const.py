@@ -123,8 +123,8 @@ SQL_CLASSES_BY_TYPE = {
     "object": JSON,
     "image": JSON,
     "file": JSON,
-    "string": String,
-    "array": ARRAY(String),
+    "string": String(500),
+    "array": JSON,
     "boolean": Boolean,
 }
 

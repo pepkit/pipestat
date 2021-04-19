@@ -481,7 +481,7 @@ class PipestatManager(dict):
         attr_dict = dict(
             __tablename__=tn,
             id=Column(Integer, primary_key=True),
-            record_identifier=Column(String, unique=True),
+            record_identifier=Column(SQL_CLASSES_BY_TYPE["string"], unique=True),
         )
         for result_id, result_metadata in schema.items():
             col_type = SQL_CLASSES_BY_TYPE[result_metadata[SCHEMA_TYPE_KEY]]
@@ -500,7 +500,6 @@ class PipestatManager(dict):
         """
         if self.is_db_connected():
             raise PipestatDatabaseError("Connection is already established")
-
         self[DB_ENGINE_KEY] = create_engine(self.db_url, echo=True)
         self[DB_SESSION_KEY] = sessionmaker(bind=self[DB_ENGINE_KEY])
         return True
@@ -975,7 +974,9 @@ class PipestatManager(dict):
         self,
         table_name: Optional[str] = None,
         columns: Optional[List[str]] = None,
-        filter_condition: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
+        filter_conditions: Optional[
+            List[Tuple[str, str, Union[str, List[str]]]]
+        ] = None,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
     ) -> List[Any]:
@@ -984,7 +985,7 @@ class PipestatManager(dict):
 
         :param str table_name: name of the table to SELECT from
         :param List[str] columns: columns to include in the result
-        :param [(key,operator,value)] filter_condition: e.g. [("id", "eq", 1)] operator list
+        :param [(key,operator,value)] filter_conditions: e.g. [("id", "eq", 1)] operator list
             - eq for ==
             - lt for <
             - ge for >=
@@ -994,65 +995,15 @@ class PipestatManager(dict):
         :param int limit: include this number of rows
         """
 
-        def _dynamic_filter(
-            ORM: sqlalchemy.orm.DeclarativeMeta,
-            query: sqlalchemy.orm.Query,
-            filter_condition: List[Tuple[str, str, Union[str, List[str]]]],
-        ):
-            """
-            Return filtered query based on condition.
-
-            :param sqlalchemy.orm.DeclarativeMeta ORM:
-            :param sqlalchemy.orm.Query query: takes query
-            :param [(key,operator,value)] filter_condition: e.g. [("id", "eq", 1)] operator list
-                - eq for ==
-                - lt for <
-                - ge for >=
-                - in for in_
-                - like for like
-            :return: query
-            """
-            for raw in filter_condition:
-                try:
-                    key, op, value = raw
-                except ValueError:
-                    raise Exception("Invalid filter: %s" % raw)
-                column = getattr(ORM, key, None)
-                if column is None:
-                    raise Exception("Invalid filter column: %s" % key)
-                if op == "in":
-                    if isinstance(value, list):
-                        filt = column.in_(value)
-                    else:
-                        filt = column.in_(value.split(","))
-                else:
-                    try:
-                        attr = (
-                            list(
-                                filter(
-                                    lambda e: hasattr(column, e % op),
-                                    ["%s", "%s_", "__%s__"],
-                                )
-                            )[0]
-                            % op
-                        )
-                    except IndexError:
-                        raise Exception(f"Invalid filter operator: {op}")
-                    if value == "null":
-                        value = None
-                    filt = getattr(column, attr)(value)
-                query = query.filter(filt)
-            return query
-
         ORM = self._get_orm(table_name or self.namespace)
         with self.session as s:
             if columns is not None:
                 query = s.query(*[getattr(ORM, column) for column in columns])
             else:
                 query = s.query(ORM)
-            if filter_condition is not None:
-                query = _dynamic_filter(
-                    ORM=ORM, query=query, filter_condition=filter_condition
+            if filter_conditions is not None:
+                query = dynamic_filter(
+                    ORM=ORM, query=query, filter_conditions=filter_conditions
                 )
             if isinstance(offset, int):
                 query = query.offset(offset)

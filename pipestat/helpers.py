@@ -163,3 +163,59 @@ def paginate_query(query, offset, limit):
         )
         query += sql.SQL(f" LIMIT {limit}")
     return query
+
+
+from typing import Dict, List, Optional, Tuple, Union
+
+from sqlalchemy.orm import DeclarativeMeta, Query
+
+
+def dynamic_filter(
+    ORM: DeclarativeMeta,
+    query: Query,
+    filter_conditions: List[Tuple[str, str, Union[str, List[str]]]],
+):
+    """
+    Return filtered query based on condition.
+
+    :param sqlalchemy.orm.DeclarativeMeta ORM:
+    :param sqlalchemy.orm.Query query: takes query
+    :param [(key,operator,value)] filter_conditions: e.g. [("id", "eq", 1)] operator list
+        - eq for ==
+        - lt for <
+        - ge for >=
+        - in for in_
+        - like for like
+    :return: query
+    """
+    for raw in filter_conditions:
+        try:
+            key, op, value = raw
+        except ValueError:
+            raise Exception(f"Invalid filter: {raw}")
+        column = getattr(ORM, key, None)
+        if column is None:
+            raise Exception(f"Invalid filter column: {key}")
+        if op == "in":
+            if isinstance(value, list):
+                filt = column.in_(value)
+            else:
+                filt = column.in_(value.split(","))
+        else:
+            try:
+                attr = (
+                    list(
+                        filter(
+                            lambda e: hasattr(column, e % op),
+                            ["%s", "%s_", "__%s__"],
+                        )
+                    )[0]
+                    % op
+                )
+            except IndexError:
+                raise Exception(f"Invalid filter operator: {op}")
+            if value == "null":
+                value = None
+            filt = getattr(column, attr)(value)
+        query = query.filter(filt)
+    return query
