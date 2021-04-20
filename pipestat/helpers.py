@@ -3,6 +3,7 @@ from re import findall
 from typing import Any, Dict
 
 import jsonschema
+import sqlalchemy.orm
 from oyaml import safe_load
 from psycopg2 import sql
 from ubiquerg import expandpath
@@ -173,8 +174,9 @@ from sqlalchemy.orm import DeclarativeMeta, Query
 def dynamic_filter(
     ORM: DeclarativeMeta,
     query: Query,
-    filter_conditions: List[Tuple[str, str, Union[str, List[str]]]],
-):
+    filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
+    json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
+) -> sqlalchemy.orm.Query:
     """
     Return filtered query based on condition.
 
@@ -186,36 +188,49 @@ def dynamic_filter(
         - ge for >=
         - in for in_
         - like for like
+    :param [(col,key,value)] json_filter_conditions: conditions for JSONB column to query.
+        Only '==' is supported e.g. [("other", "genome", "hg38")]
     :return: query
     """
-    for raw in filter_conditions:
+
+    def _unpack_tripartite(x):
         try:
-            key, op, value = raw
+            e1, e2, e3 = x
+            return e1, e2, e3
         except ValueError:
-            raise Exception(f"Invalid filter: {raw}")
-        column = getattr(ORM, key, None)
-        if column is None:
-            raise Exception(f"Invalid filter column: {key}")
-        if op == "in":
-            if isinstance(value, list):
-                filt = column.in_(value)
+            raise Exception(f"Invalid tripartite element: {x}")
+
+    if filter_conditions is not None:
+        for filter_condition in filter_conditions:
+            key, op, value = _unpack_tripartite(filter_condition)
+            column = getattr(ORM, key, None)
+            if column is None:
+                raise Exception(f"Invalid filter column: {key}")
+            if op == "in":
+                if isinstance(value, list):
+                    filt = column.in_(value)
+                else:
+                    filt = column.in_(value.split(","))
             else:
-                filt = column.in_(value.split(","))
-        else:
-            try:
-                attr = (
-                    list(
-                        filter(
-                            lambda e: hasattr(column, e % op),
-                            ["%s", "%s_", "__%s__"],
-                        )
-                    )[0]
-                    % op
-                )
-            except IndexError:
-                raise Exception(f"Invalid filter operator: {op}")
-            if value == "null":
-                value = None
-            filt = getattr(column, attr)(value)
-        query = query.filter(filt)
+                try:
+                    attr = (
+                        list(
+                            filter(
+                                lambda e: hasattr(column, e % op),
+                                ["%s", "%s_", "__%s__"],
+                            )
+                        )[0]
+                        % op
+                    )
+                except IndexError:
+                    raise Exception(f"Invalid filter operator: {op}")
+                if value == "null":
+                    value = None
+                filt = getattr(column, attr)(value)
+            query = query.filter(filt)
+
+    if json_filter_conditions is not None:
+        for json_filter_condition in json_filter_conditions:
+            col, key, value = _unpack_tripartite(json_filter_condition)
+            query = query.filter(getattr(ORM, col)[key].astext == value)
     return query

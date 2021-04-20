@@ -1,5 +1,6 @@
 import os
 
+from sqlalchemy.dialects.postgresql.json import JSONB
 from sqlalchemy.types import ARRAY, JSON, Boolean, Float, Integer, String
 
 PKG_NAME = "pipestat"
@@ -120,11 +121,11 @@ CLASSES_BY_TYPE = {
 SQL_CLASSES_BY_TYPE = {
     "number": Float,
     "integer": Integer,
-    "object": JSON,
-    "image": JSON,
-    "file": JSON,
+    "object": JSONB,
+    "image": JSONB,
+    "file": JSONB,
     "string": String(500),
-    "array": JSON,
+    "array": JSONB,
     "boolean": Boolean,
 }
 
