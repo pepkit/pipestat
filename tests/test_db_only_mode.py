@@ -25,7 +25,7 @@ class TestDatabaseOnly:
         psm.report(values=val)
         assert len(psm.data) == 0
         val_name = list(val.keys())[0]
-        assert psm.select(filter_condition=[(val_name, "eq", str(val[val_name]))])
+        assert psm.select(filter_conditions=[(val_name, "eq", str(val[val_name]))])
 
     @pytest.mark.parametrize(["rec_id", "res_id"], [("sample2", "number_of_things")])
     @pytest.mark.parametrize("backend", ["db"])
@@ -45,7 +45,7 @@ class TestDatabaseOnly:
         )
         psm = PipestatManager(**args)
         result = psm.select(
-            filter_condition=[(RECORD_ID, "eq", rec_id)],
+            filter_conditions=[(RECORD_ID, "eq", rec_id)],
             columns=[res_id],
             limit=limit,
         )

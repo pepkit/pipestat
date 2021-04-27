@@ -9,7 +9,7 @@ from attmap import PathExAttMap as PXAM
 from jsonschema import validate
 from sqlalchemy import Column, create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import DeclarativeMeta, sessionmaker
+from sqlalchemy.orm import DeclarativeMeta, scoped_session, sessionmaker
 from ubiquerg import create_lock, remove_lock
 from yacman import YacAttMap
 
@@ -482,6 +482,7 @@ class PipestatManager(dict):
             __tablename__=tn,
             id=Column(Integer, primary_key=True),
             record_identifier=Column(SQL_CLASSES_BY_TYPE["string"], unique=True),
+            query=self[DB_SCOPED_SESSION_KEY].query_property(),
         )
         for result_id, result_metadata in schema.items():
             col_type = SQL_CLASSES_BY_TYPE[result_metadata[SCHEMA_TYPE_KEY]]
@@ -502,6 +503,7 @@ class PipestatManager(dict):
             raise PipestatDatabaseError("Connection is already established")
         self[DB_ENGINE_KEY] = create_engine(self.db_url, echo=True)
         self[DB_SESSION_KEY] = sessionmaker(bind=self[DB_ENGINE_KEY])
+        self[DB_SCOPED_SESSION_KEY] = scoped_session(self[DB_SESSION_KEY])
         return True
 
     def is_db_connected(self) -> bool:
