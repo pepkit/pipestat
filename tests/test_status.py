@@ -20,7 +20,7 @@ class TestStatus:
     def test_status_not_configured(
         self, schema_file_path, config_file_path, results_file_path, backend, status_id
     ):
-        """ status management works even in case it has not been configured"""
+        """status management works even in case it has not been configured"""
         args = dict(schema_path=schema_file_path, namespace="test")
         backend_data = (
             {"config": config_file_path}
@@ -45,7 +45,7 @@ class TestStatus:
         status_id,
         custom_status_schema,
     ):
-        """ status management works even in case it has not been configured"""
+        """status management works even in case it has not been configured"""
         args = dict(
             schema_path=schema_file_path,
             namespace="test",

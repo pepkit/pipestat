@@ -31,7 +31,7 @@ class TestConnection:
 
 class TestPipestatManagerInstantiation:
     def test_obj_creation_file(self, schema_file_path, results_file_path):
-        """ Object constructor works with file as backend"""
+        """Object constructor works with file as backend"""
         assert isinstance(
             PipestatManager(
                 namespace="test",
@@ -42,7 +42,7 @@ class TestPipestatManagerInstantiation:
         )
 
     def test_obj_creation_db(self, config_file_path):
-        """ Object constructor works with database as backend"""
+        """Object constructor works with database as backend"""
         assert isinstance(PipestatManager(config=config_file_path), PipestatManager)
 
     @pytest.mark.xfail(reason="schema is no longer required to init the object")
@@ -75,7 +75,7 @@ class TestPipestatManagerInstantiation:
         )
 
     def test_missing_cfg_data(self, schema_file_path):
-        """ Object constructor raises exception if cfg is missing data """
+        """Object constructor raises exception if cfg is missing data"""
         tmp_pth = os.path.join(mkdtemp(), "res.yml")
         with open(tmp_pth, "w") as file:
             dump({"database": {"host": "localhost"}}, file)
@@ -85,12 +85,12 @@ class TestPipestatManagerInstantiation:
             )
 
     def test_unknown_backend(self, schema_file_path):
-        """ Either db config or results file path needs to be provided """
+        """Either db config or results file path needs to be provided"""
         with pytest.raises(MissingConfigDataError):
             PipestatManager(namespace="test", schema_path=schema_file_path)
 
     def test_create_results_file(self, schema_file_path):
-        """ Results file is created if a nonexistent path provided """
+        """Results file is created if a nonexistent path provided"""
         tmp_res_file = os.path.join(mkdtemp(), "res.yml")
         print(f"Temporary results file: {tmp_res_file}")
         assert not os.path.exists(tmp_res_file)
@@ -102,7 +102,7 @@ class TestPipestatManagerInstantiation:
         assert os.path.exists(tmp_res_file)
 
     def test_use_other_namespace_file(self, schema_file_path):
-        """ Results file can be used with just one namespace """
+        """Results file can be used with just one namespace"""
         tmp_res_file = os.path.join(mkdtemp(), "res.yml")
         print(f"Temporary results file: {tmp_res_file}")
         assert not os.path.exists(tmp_res_file)
@@ -121,14 +121,14 @@ class TestPipestatManagerInstantiation:
 
     @pytest.mark.parametrize("pth", [["/$HOME/path.yaml"], 1])
     def test_wrong_class_results_file(self, schema_file_path, pth):
-        """ Input string that is not a file path raises an informative error """
+        """Input string that is not a file path raises an informative error"""
         with pytest.raises((TypeError, AssertionError)):
             PipestatManager(
                 namespace="test", results_file_path=pth, schema_path=schema_file_path
             )
 
     def test_results_file_contents_loaded(self, results_file_path, schema_file_path):
-        """ Contents of the results file are present after loading """
+        """Contents of the results file are present after loading"""
         psm = PipestatManager(
             namespace="test",
             results_file_path=results_file_path,
@@ -137,7 +137,7 @@ class TestPipestatManagerInstantiation:
         assert "test" in psm.data
 
     def test_str_representation(self, results_file_path, schema_file_path):
-        """ Test string representation identifies number of records """
+        """Test string representation identifies number of records"""
         psm = PipestatManager(
             namespace="test",
             results_file_path=results_file_path,

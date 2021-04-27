@@ -12,7 +12,7 @@ _LOGGER = getLogger(PKG_NAME)
 
 
 def main():
-    """ Primary workflow """
+    """Primary workflow"""
     from inspect import getdoc
 
     parser = logmuse.add_logging_options(build_argparser(getdoc(PipestatManager)))
