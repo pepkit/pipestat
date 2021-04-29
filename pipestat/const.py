@@ -71,6 +71,7 @@ HIGHLIGHTED_KEY = "_highlighted"
 # schema keys
 SCHEMA_PROP_KEY = "properties"
 SCHEMA_TYPE_KEY = "type"
+SCHEMA_DESC_KEY = "description"
 
 # DB column names
 ID = "id"

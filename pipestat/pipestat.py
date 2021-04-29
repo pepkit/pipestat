@@ -724,6 +724,9 @@ class PipestatManager(dict):
                 assert SCHEMA_TYPE_KEY in v, SchemaError(
                     f"Result '{k}' is missing '{SCHEMA_TYPE_KEY}' key"
                 )
+                assert SCHEMA_DESC_KEY in v, SchemaError(
+                    f"Result '{k}' is missing '{SCHEMA_DESC_KEY}' key"
+                )
                 if v[SCHEMA_TYPE_KEY] == "object" and SCHEMA_PROP_KEY in s[k]:
                     _recursively_replace_custom_types(s[k][SCHEMA_PROP_KEY])
                 if v[SCHEMA_TYPE_KEY] in CANONICAL_TYPES.keys():
