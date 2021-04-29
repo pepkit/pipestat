@@ -481,13 +481,19 @@ class PipestatManager(dict):
         attr_dict = dict(
             __tablename__=tn,
             id=Column(Integer, primary_key=True),
-            record_identifier=Column(SQL_CLASSES_BY_TYPE["string"], unique=True),
+            record_identifier=Column(
+                SQL_CLASSES_BY_TYPE["string"],
+                unique=True,
+                doc="A unique identifier of the record",
+            ),
             query=self[DB_SCOPED_SESSION_KEY].query_property(),
         )
         for result_id, result_metadata in schema.items():
             col_type = SQL_CLASSES_BY_TYPE[result_metadata[SCHEMA_TYPE_KEY]]
             _LOGGER.debug(f"Adding object: {result_id} of type: {str(col_type)}")
-            attr_dict.update({result_id: Column(col_type)})
+            attr_dict.update(
+                {result_id: Column(col_type, doc=result_metadata["description"])}
+            )
         attr_dict.update({"__repr__": _auto_repr})
         _LOGGER.debug(f"Creating '{tn}' ORM with args: {attr_dict}")
         self[DB_ORMS_KEY][tn] = type(tn.capitalize(), (self[DB_BASE_KEY],), attr_dict)
