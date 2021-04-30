@@ -477,6 +477,9 @@ class PipestatManager(dict):
             ]
             return "<{}: {}>".format(x.__class__.__name__, ", ".join(attr_strs))
 
+        _LOGGER.info(
+            f"Creating models for '{self.namespace}' table in '{PKG_NAME}' database"
+        )
         tn = table_name or self.namespace
         attr_dict = dict(
             __tablename__=tn,
@@ -794,7 +797,6 @@ class PipestatManager(dict):
             raise SchemaNotFoundError("initialize the database table")
         if not self.is_db_connected():
             self.establish_db_connection()
-        _LOGGER.info(f"Initializing '{self.namespace}' table in '{PKG_NAME}' database")
         self._create_table_orm(table_name=self.namespace, schema=self.result_schemas)
         if not self[DB_ONLY_KEY]:
             self._table_to_dict()
