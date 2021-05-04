@@ -42,6 +42,7 @@ class PipestatManager(dict):
         status_schema_path: Optional[str] = None,
         flag_file_dir: Optional[str] = None,
         custom_declarative_base: Optional[sqlalchemy.orm.DeclarativeMeta] = None,
+        show_db_logs: bool = False,
     ):
         """
         Initialize the object
@@ -226,6 +227,7 @@ class PipestatManager(dict):
             self[DB_ORMS_KEY] = {}
             self[DB_BASE_KEY] = custom_declarative_base or declarative_base()
             self[DATA_KEY] = YacAttMap()
+            self._show_db_logs = show_db_logs
             self._init_db_table()
             self._init_status_table()
         else:
@@ -477,7 +479,7 @@ class PipestatManager(dict):
             ]
             return "<{}: {}>".format(x.__class__.__name__, ", ".join(attr_strs))
 
-        _LOGGER.info(
+        _LOGGER.debug(
             f"Creating models for '{self.namespace}' table in '{PKG_NAME}' database"
         )
         tn = table_name or self.namespace
@@ -510,7 +512,7 @@ class PipestatManager(dict):
         """
         if self.is_db_connected():
             raise PipestatDatabaseError("Connection is already established")
-        self[DB_ENGINE_KEY] = create_engine(self.db_url, echo=True)
+        self[DB_ENGINE_KEY] = create_engine(self.db_url, echo=self._show_db_logs)
         self[DB_SESSION_KEY] = sessionmaker(bind=self[DB_ENGINE_KEY])
         self[DB_SCOPED_SESSION_KEY] = scoped_session(self[DB_SESSION_KEY])
         return True
