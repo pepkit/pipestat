@@ -37,7 +37,7 @@ class PipestatManager(dict):
         record_identifier: Optional[str] = None,
         schema_path: Optional[str] = None,
         results_file_path: Optional[str] = None,
-        database_only: Optional[bool] = False,
+        database_only: Optional[bool] = True,
         config: Optional[Union[str, dict]] = None,
         status_schema_path: Optional[str] = None,
         flag_file_dir: Optional[str] = None,
@@ -203,11 +203,6 @@ class PipestatManager(dict):
             self.config_path,
         )
         if results_file_path:
-            if self[DB_ONLY_KEY]:
-                raise ValueError(
-                    "Running in database only mode does not make "
-                    "sense with a YAML file as a backend."
-                )
             self[FILE_KEY] = results_file_path
             self._init_results_file()
             flag_file_dir = _select_value(
@@ -1172,12 +1167,13 @@ class PipestatManager(dict):
             rid=record_identifier, results=result_identifiers
         )
         if existing:
+            existing_str = ", ".join(existing)
             _LOGGER.warning(
-                f"These results exist for '{record_identifier}': {existing}"
+                f"These results exist for '{record_identifier}': {existing_str}"
             )
             if not force_overwrite:
                 return False
-            _LOGGER.info(f"Overwriting existing results: {existing}")
+            _LOGGER.info(f"Overwriting existing results: {existing_str}")
         for r in result_identifiers:
             validate_type(
                 value=values[r], schema=self.result_schemas[r], strict_type=strict_type
