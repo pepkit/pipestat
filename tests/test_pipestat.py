@@ -48,7 +48,7 @@ class TestReporting:
         results_file_path,
         backend,
     ):
-        args = dict(schema_path=schema_file_path, namespace="test")
+        args = dict(schema_path=schema_file_path, namespace="test", database_only=False)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -115,7 +115,7 @@ class TestReporting:
         results_file_path,
         backend,
     ):
-        args = dict(schema_path=schema_file_path, namespace="test")
+        args = dict(schema_path=schema_file_path, namespace="test", database_only=False)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -263,7 +263,7 @@ class TestRemoval:
         schema_file_path,
         backend,
     ):
-        args = dict(schema_path=schema_file_path, namespace="test")
+        args = dict(schema_path=schema_file_path, namespace="test", database_only=False)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -279,7 +279,7 @@ class TestRemoval:
     def test_remove_record(
         self, rec_id, schema_file_path, config_file_path, results_file_path, backend
     ):
-        args = dict(schema_path=schema_file_path, namespace="test")
+        args = dict(schema_path=schema_file_path, namespace="test", database_only=False)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -339,7 +339,7 @@ class TestRemoval:
         results_file_path,
         backend,
     ):
-        args = dict(schema_path=schema_file_path, namespace="test")
+        args = dict(schema_path=schema_file_path, namespace="test", database_only=False)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -366,7 +366,10 @@ class TestNoRecordID:
     ):
         REC_ID = "constant_record_id"
         args = dict(
-            schema_path=schema_file_path, namespace="test", record_identifier=REC_ID
+            schema_path=schema_file_path,
+            namespace="test",
+            record_identifier=REC_ID,
+            database_only=False,
         )
         backend_data = (
             {"config": config_file_path}
