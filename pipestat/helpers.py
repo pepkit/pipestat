@@ -126,8 +126,8 @@ def dynamic_filter(
 
     def _unpack_tripartite(x):
         try:
-            assert isinstance(x, Iterable) and not isinstance(x, str), TypeError(
-                "Wrong filter class, a non-string iterable is required"
+            assert isinstance(x, List) or isinstance(x, Tuple), TypeError(
+                "Wrong filter class, a List or Tuple is required"
             )
             e1, e2, e3 = x
             return e1, e2, e3
