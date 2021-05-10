@@ -204,7 +204,7 @@ class PipestatManager(dict):
         )
         if results_file_path:
             if self[DB_ONLY_KEY]:
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "Running in database only mode does not make sense with a YAML file as a backend. "
                     "Changing back to using memory."
                 )
