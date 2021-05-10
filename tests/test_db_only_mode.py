@@ -29,6 +29,50 @@ class TestDatabaseOnly:
 
     @pytest.mark.parametrize(["rec_id", "res_id"], [("sample2", "number_of_things")])
     @pytest.mark.parametrize("backend", ["db"])
+    def test_select_invalid_filter_column(
+        self,
+        rec_id,
+        res_id,
+        config_file_path,
+        results_file_path,
+        schema_file_path,
+        backend,
+    ):
+        args = dict(
+            schema_path=schema_file_path, namespace="test", config=config_file_path
+        )
+        psm = PipestatManager(**args)
+        with pytest.raises(ValueError):
+            psm.select(
+                filter_conditions=[("bogus_column", "eq", rec_id)],
+                columns=[res_id],
+            )
+
+    @pytest.mark.parametrize(["rec_id", "res_id"], [("sample2", "number_of_things")])
+    @pytest.mark.parametrize("backend", ["db"])
+    @pytest.mark.parametrize("filter", [("column", "eq", 1), "a", [1, 2, 3]])
+    def test_select_invalid_filter_structure(
+        self,
+        rec_id,
+        res_id,
+        config_file_path,
+        results_file_path,
+        schema_file_path,
+        backend,
+        filter,
+    ):
+        args = dict(
+            schema_path=schema_file_path, namespace="test", config=config_file_path
+        )
+        psm = PipestatManager(**args)
+        with pytest.raises(ValueError):
+            psm.select(
+                filter_conditions=[filter],
+                columns=[res_id],
+            )
+
+    @pytest.mark.parametrize(["rec_id", "res_id"], [("sample2", "number_of_things")])
+    @pytest.mark.parametrize("backend", ["db"])
     @pytest.mark.parametrize("limit", [1, 2, 3, 15555])
     def test_select_limit(
         self,

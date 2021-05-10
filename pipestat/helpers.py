@@ -1,11 +1,12 @@
 import logging
 from re import findall
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import jsonschema
 import sqlalchemy.orm
 from oyaml import safe_load
 from psycopg2 import sql
+from sqlalchemy.orm import DeclarativeMeta, Query
 from ubiquerg import expandpath
 
 from .const import *
@@ -101,76 +102,6 @@ def mk_list_of_str(x):
     )
 
 
-def preprocess_condition_pair(condition, condition_val):
-    """
-    Preprocess query condition and values to ensure sanity and compatibility
-
-    :param str condition: condition string
-    :param tuple condition_val: values to populate condition string with
-    :return (psycopg2.sql.SQL, tuple): condition pair
-    """
-
-    def _check_semicolon(x):
-        """
-        recursively check for semicolons in an object
-
-        :param aby x: object to inspect
-        :raises ValueError: if semicolon detected
-        """
-        if isinstance(x, str):
-            assert ";" not in x, ValueError(
-                f"semicolons are not permitted in condition values: '{str(x)}'"
-            )
-        if isinstance(x, list):
-            list(map(lambda v: _check_semicolon(v), x))
-
-    if condition:
-        if not isinstance(condition, str):
-            raise TypeError("Condition has to be a string")
-        else:
-            _check_semicolon(condition)
-            placeholders = findall("%s", condition)
-            condition = sql.SQL(condition)
-        if not condition_val:
-            raise ValueError("condition provided but condition_val missing")
-        assert isinstance(condition_val, list), TypeError(
-            "condition_val has to be a list"
-        )
-        condition_val = tuple(condition_val)
-        assert len(placeholders) == len(condition_val), ValueError(
-            f"Number of condition ({len(condition_val)}) values not equal "
-            f"number of placeholders in: {condition}"
-        )
-    return condition, condition_val
-
-
-def paginate_query(query, offset, limit):
-    """
-    Apply offset and limit to the query string
-
-    :param sql.SQL query: query string to apply limit and offset to
-    :param int offset: offset to apply; no. of records to skip
-    :param int limit: limit to apply; max no. of records to return
-    :return sql.SQL: a possibly paginated query
-    """
-    if offset is not None:
-        assert isinstance(offset, int), TypeError(
-            f"Provided offset ({offset}) must be an int"
-        )
-        query += sql.SQL(f" OFFSET {offset}")
-    if limit is not None:
-        assert isinstance(limit, int), TypeError(
-            f"Provided limit ({limit}) must be an int"
-        )
-        query += sql.SQL(f" LIMIT {limit}")
-    return query
-
-
-from typing import Dict, List, Optional, Tuple, Union
-
-from sqlalchemy.orm import DeclarativeMeta, Query
-
-
 def dynamic_filter(
     ORM: DeclarativeMeta,
     query: Query,
@@ -198,14 +129,16 @@ def dynamic_filter(
             e1, e2, e3 = x
             return e1, e2, e3
         except ValueError:
-            raise Exception(f"Invalid tripartite element: {x}")
+            raise ValueError(
+                f"Invalid filter value: {x}. The filters must be tripartite"
+            )
 
     if filter_conditions is not None:
         for filter_condition in filter_conditions:
             key, op, value = _unpack_tripartite(filter_condition)
             column = getattr(ORM, key, None)
             if column is None:
-                raise Exception(f"Invalid filter column: {key}")
+                raise ValueError(f"Selected filter column does not exist: {key}")
             if op == "in":
                 if isinstance(value, list):
                     filt = column.in_(value)
@@ -223,7 +156,7 @@ def dynamic_filter(
                         % op
                     )
                 except IndexError:
-                    raise Exception(f"Invalid filter operator: {op}")
+                    raise ValueError()(f"Invalid filter operator: {op}")
                 if value == "null":
                     value = None
                 filt = getattr(column, attr)(value)
