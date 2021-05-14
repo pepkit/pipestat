@@ -22,3 +22,11 @@ output_file:
 output_image:
   type: image
   description: "This a path to the output image"
+md5sum:
+  type: string
+  description: "MD5SUM of an object"
+  highlighted: true
+  db_column:
+    unique: true
+    nullable: false
+    

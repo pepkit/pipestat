@@ -278,6 +278,19 @@ class PipestatManager(dict):
         return self._get_attr(HIGHLIGHTED_KEY) or []
 
     @property
+    def db_column_kwargs_by_result(self) -> Dict[str, Any]:
+        """
+        Database column key word arguments for every result, sourced from the results schema
+
+        :return Dict[str, Any]: key word arguments for every result
+        """
+        return {
+            result_id: self.schema[result_id]["db_column"]
+            for result_id in self.schema.keys()
+            if "db_column" in self.schema[result_id]
+        }
+
+    @property
     def namespace(self) -> str:
         """
         Namespace the object writes the results to
@@ -498,7 +511,13 @@ class PipestatManager(dict):
             col_type = SQL_CLASSES_BY_TYPE[result_metadata[SCHEMA_TYPE_KEY]]
             _LOGGER.debug(f"Adding object: {result_id} of type: {str(col_type)}")
             attr_dict.update(
-                {result_id: Column(col_type, doc=result_metadata["description"])}
+                {
+                    result_id: Column(
+                        col_type,
+                        doc=result_metadata["description"],
+                        **self.db_column_kwargs_by_result.get(result_id, {}),
+                    )
+                }
             )
         attr_dict.update({"__repr__": _auto_repr})
         _LOGGER.debug(f"Creating '{tn}' ORM with args: {attr_dict}")
