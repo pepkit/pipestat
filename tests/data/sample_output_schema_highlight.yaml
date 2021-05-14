@@ -21,21 +21,21 @@ output_file:
   description: "This a path to the output file"
 output_image:
   type: image
-  highlighted: false
+  highlight: false
   description: "This a path to the output image"
 log:
   type: file
-  highlighted: true
+  highlight: true
   description: "The log file of the pipeline run"
 profile:
   type: file
-  highlighted: true
+  highlight: true
   description: "The profile of the pipeline run"
 commands:
   type: file
-  highlighted: true
+  highlight: true
   description: "The file with shell commands executed by this pipeline"
 version:
   type: string
-  highlighted: true
+  highlight: true
   description: "Pipeline version"

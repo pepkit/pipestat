@@ -67,6 +67,7 @@ DB_SESSION_KEY = "_db_session"
 DB_SCOPED_SESSION_KEY = "_db_scoped_session"
 DB_ENGINE_KEY = "_db_engine"
 HIGHLIGHTED_KEY = "_highlighted"
+DB_COLUMN = "db_column"
 
 # schema keys
 SCHEMA_PROP_KEY = "properties"

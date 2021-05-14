@@ -285,9 +285,9 @@ class PipestatManager(dict):
         :return Dict[str, Any]: key word arguments for every result
         """
         return {
-            result_id: self.schema[result_id]["db_column"]
+            result_id: self.schema[result_id][DB_COLUMN]
             for result_id in self.schema.keys()
-            if "db_column" in self.schema[result_id]
+            if DB_COLUMN in self.schema[result_id]
         }
 
     @property
