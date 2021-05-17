@@ -7,9 +7,15 @@ from urllib.parse import quote_plus
 import sqlalchemy.orm
 from attmap import PathExAttMap as PXAM
 from jsonschema import validate
-from sqlalchemy import Column, create_engine
+from sqlalchemy import Column, ForeignKey, create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import DeclarativeMeta, scoped_session, sessionmaker
+from sqlalchemy.orm import (
+    DeclarativeMeta,
+    backref,
+    relationship,
+    scoped_session,
+    sessionmaker,
+)
 from ubiquerg import create_lock, remove_lock
 from yacman import YacAttMap
 
@@ -280,14 +286,46 @@ class PipestatManager(dict):
     @property
     def db_column_kwargs_by_result(self) -> Dict[str, Any]:
         """
-        Database column key word arguments for every result, sourced from the results schema
+        Database column key word arguments for every result,
+        sourced from the results schema in the `db_column` section
 
         :return Dict[str, Any]: key word arguments for every result
         """
         return {
-            result_id: self.schema[result_id][DB_COLUMN]
+            result_id: self.schema[result_id][DB_COLUMN_KEY]
             for result_id in self.schema.keys()
-            if DB_COLUMN in self.schema[result_id]
+            if DB_COLUMN_KEY in self.schema[result_id]
+        }
+
+    @property
+    def db_column_relationships_by_result(self) -> Dict[str, str]:
+        """
+        Database column relationships for every result,
+        sourced from the results schema in the `relationship` section
+
+        *Note: this is an experimental feature*
+
+        :return Dict[str, Dict[str, str]]: relationships for every result
+        """
+
+        def _validate_rel_section(result_id):
+            if not all(
+                [
+                    k in self.schema[result_id][DB_RELATIONSHIP_KEY].keys()
+                    for k in DB_RELATIONSHIP_ELEMENTS
+                ]
+            ):
+                PipestatDatabaseError(
+                    f"Not all required {DB_RELATIONSHIP_KEY} settings ({DB_RELATIONSHIP_ELEMENTS}) were "
+                    f"provided for result: {result_id}"
+                )
+            return True
+
+        return {
+            result_id: self.schema[result_id][DB_RELATIONSHIP_KEY]
+            for result_id in self.schema.keys()
+            if DB_RELATIONSHIP_KEY in self.schema[result_id]
+            and _validate_rel_section(result_id)
         }
 
     @property
@@ -510,11 +548,29 @@ class PipestatManager(dict):
         for result_id, result_metadata in schema.items():
             col_type = SQL_CLASSES_BY_TYPE[result_metadata[SCHEMA_TYPE_KEY]]
             _LOGGER.debug(f"Adding object: {result_id} of type: {str(col_type)}")
+
+            rel_info = self.db_column_relationships_by_result.get(result_id, {})
+            col_args = []
+            # if there is a relationship defined for this result, include it
+            if rel_info:
+                attr_dict.update(
+                    {
+                        rel_info["name"]: relationship(
+                            rel_info["table"].capitalize(),
+                            backref=backref(
+                                rel_info["backref"], uselist=True, cascade="delete,all"
+                            ),
+                        )
+                    }
+                )
+                col_args = [ForeignKey(f"{rel_info['table']}.{rel_info['column']}")]
+
             attr_dict.update(
                 {
                     result_id: Column(
                         col_type,
                         doc=result_metadata["description"],
+                        *col_args,
                         **self.db_column_kwargs_by_result.get(result_id, {}),
                     )
                 }
