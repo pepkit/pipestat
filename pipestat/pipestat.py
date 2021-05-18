@@ -8,6 +8,7 @@ import sqlalchemy.orm
 from attmap import PathExAttMap as PXAM
 from jsonschema import validate
 from sqlalchemy import Column, ForeignKey, create_engine
+from sqlalchemy import text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import (
     DeclarativeMeta,
@@ -1193,6 +1194,48 @@ class PipestatManager(dict):
                 if getattr(record, column, None) is not None
             }
         raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
+
+    def select_txt(
+        self,
+        filter_templ: Optional[str] = "",
+        filter_params: Optional[Dict[str, Any]] = {},
+        table_name: Optional[str] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+    ) -> List[Any]:
+        """
+        Execute a query with a textual filter. Returns all results.
+
+        To retrieve all table contents, leave the filter arguments out.
+        Table name defaults to the namespace
+
+        :param str filter_templ: filter template with value placeholders,
+             formatted as follows `id<:value and name=:name`
+        :param Dict[str, Any] filter_params: a mapping keys specified in the `filter_templ`
+            to parameters that are supposed to replace the placeholders
+        :param str table_name: name of the table to query
+        :param int offset: skip this number of rows
+        :param int limit: include this number of rows
+        :return List[Any]: a list of matched records
+        """
+        if self.file:
+            raise PipestatDatabaseError(
+                f"The {self.__class__.__name__} object is not backed by a database. "
+                f"This operation is not supported for file backend."
+            )
+        table_name = table_name or self.namespace
+        with self.session as s:
+            q = (
+                s.query(self._get_orm(table_name))
+                .filter(text(filter_templ))
+                .params(**filter_params)
+            )
+            if isinstance(offset, int):
+                q = q.offset(offset)
+            if isinstance(limit, int):
+                q = q.limit(limit)
+            results = q.all()
+        return results
 
     def assert_results_defined(self, results: List[str]) -> None:
         """
