@@ -31,11 +31,11 @@ h4 .content {
 # Package `pipestat` Documentation
 
 ## <a name="PipestatManager"></a> Class `PipestatManager`
-Pipestat standardizes reporting of pipeline results and pipeline status management. It formalizes a way for pipeline developers and downstream tools developers to communicate -- results produced by a pipeline can easily and reliably become an input for downstream analyses. The object exposes API for interacting with the results and pipeline status and can be backed by either a YAML-formatted file or a PostgreSQL database.
+Pipestat standardizes reporting of pipeline results and pipeline status management. It formalizes a way for pipeline developers and downstream tools developers to communicate -- results produced by a pipeline can easily and reliably become an input for downstream analyses. The object exposes API for interacting with the results and pipeline status and can be backed by either a YAML-formatted file or a database.
 
 
 ```python
-def __init__(self, namespace=None, record_identifier=None, schema_path=None, results_file_path=None, database_only=False, config=None, status_schema_path=None, flag_file_dir=None)
+def __init__(self, namespace: Optional[str]=None, record_identifier: Optional[str]=None, schema_path: Optional[str]=None, results_file_path: Optional[str]=None, database_only: Optional[bool]=True, config: Union[str, dict, NoneType]=None, status_schema_path: Optional[str]=None, flag_file_dir: Optional[str]=None, custom_declarative_base: Optional[sqlalchemy.orm.decl_api.DeclarativeMeta]=None, show_db_logs: bool=False)
 ```
 
 Initialize the object
@@ -48,18 +48,19 @@ Initialize the object
 - `database_only` (`bool`):  whether the reported data should not bestored in the memory, but only in the database
 - `config` (`str | dict`):  path to the configuration file or a mappingwith the config file content
 - `status_schema_path` (`str`):  path to the status schema that formalizesthe status flags structure
+- `custom_declarative_base` (`sqlalchemy.orm.DeclarativeMeta`):  a declarative base touse for ORMs creation a new instance will be created if not provided
 
 
 
 
 ```python
-def assert_results_defined(self, results)
+def assert_results_defined(self, results: List[str]) -> None
 ```
 
 Assert provided list of results is defined in the schema
 #### Parameters:
 
-- `results` (`list[str]`):  list of results tocheck for existence in the schema
+- `results` (`List[str]`):  list of results tocheck for existence in the schema
 
 
 #### Raises:
@@ -70,36 +71,25 @@ Assert provided list of results is defined in the schema
 
 
 ```python
-def check_connection(self)
+def check_record_exists(self, record_identifier: str, table_name: str=None) -> bool
 ```
 
-Check whether a PostgreSQL connection has been established
-#### Returns:
-
-- `bool`:  whether the connection has been established
-
-
-
-
-```python
-def check_record_exists(self, record_identifier=None)
-```
-
-Check if the record exists
+Check if the specified record exists in the table
 #### Parameters:
 
-- `record_identifier` (`str`):  unique identifier of the record
+- `record_identifier` (`str`):  record to check for
+- `table_name` (`str`):  table name to check
 
 
 #### Returns:
 
-- `bool`:  whether the record exists
+- `bool`:  whether the record exists in the table
 
 
 
 
 ```python
-def check_result_exists(self, result_identifier, record_identifier=None)
+def check_result_exists(self, result_identifier: str, record_identifier: str=None) -> bool
 ```
 
 Check if the result has been reported
@@ -117,7 +107,25 @@ Check if the result has been reported
 
 
 ```python
-def clear_status(self, record_identifier=None, flag_names=None)
+def check_which_results_exist(self, results: List[str], rid: Optional[str]=None, table_name: Optional[str]=None) -> List[str]
+```
+
+Check which results have been reported
+#### Parameters:
+
+- `rid` (`str`):  unique identifier of the record
+- `results` (`List[str]`):  names of the results to check
+
+
+#### Returns:
+
+- `List[str]`:  whether the specified result has been reported for theindicated record in current namespace
+
+
+
+
+```python
+def clear_status(self, record_identifier: str=None, flag_names: List[str]=None) -> List[Optional[str]]
 ```
 
 Remove status flags
@@ -129,16 +137,8 @@ Remove status flags
 
 #### Returns:
 
-- `list[str]`:  Collection of names of flags removed
+- `List[str]`:  Collection of names of flags removed
 
-
-
-
-```python
-def close_postgres_connection(self)
-```
-
-Close connection and remove client bound
 
 
 
@@ -167,27 +167,53 @@ Data object
 
 
 ```python
-def db_cursor(self)
+def db_column_kwargs_by_result(self)
 ```
 
-Establish connection and get a PostgreSQL database cursor, commit and close the connection afterwards
+Database column key word arguments for every result, sourced from the results schema in the `db_column` section
 #### Returns:
 
-- `LoggingCursor`:  Database cursor object
+- `Dict[str, Any]`:  key word arguments for every result
 
 
 
 
 ```python
-def establish_postgres_connection(self, suppress=False)
+def db_column_relationships_by_result(self)
 ```
 
-Establish PostgreSQL connection using the config data
-#### Parameters:
+Database column relationships for every result, sourced from the results schema in the `relationship` section
 
-- `suppress` (`bool`):  whether to suppress any connection errors
+*Note: this is an experimental feature*
+#### Returns:
+
+- `Dict[str, Dict[str, str]]`:  relationships for every result
 
 
+
+
+```python
+def db_url(self)
+```
+
+Database URL, generated based on config credentials
+#### Returns:
+
+- `str`:  database URL
+
+
+#### Raises:
+
+- `PipestatDatabaseError`:  if the object is not backed by a database
+
+
+
+
+```python
+def establish_db_connection(self) -> bool
+```
+
+Establish DB connection using the config data
 #### Returns:
 
 - `bool`:  whether the connection has been established successfully
@@ -208,7 +234,24 @@ File path that the object is reporting the results into
 
 
 ```python
-def get_status(self, record_identifier=None)
+def get_orm(self, table_name: str=None) -> Any
+```
+
+Get an object relational mapper class
+#### Parameters:
+
+- `table_name` (`str`):  table name to get a class for
+
+
+#### Returns:
+
+- `Any`:  Object relational mapper class
+
+
+
+
+```python
+def get_status(self, record_identifier: str=None) -> Optional[str]
 ```
 
 Get the current pipeline status
@@ -220,7 +263,7 @@ Get the current pipeline status
 
 
 ```python
-def get_status_flag_path(self, status_identifier, record_identifier=None)
+def get_status_flag_path(self, status_identifier: str, record_identifier=None) -> str
 ```
 
 Get the path to the status file flag
@@ -244,7 +287,19 @@ def highlighted_results(self)
 Highlighted results
 #### Returns:
 
-- `list[str]`:  a collection of highlighted results
+- `List[str]`:  a collection of highlighted results
+
+
+
+
+```python
+def is_db_connected(self) -> bool
+```
+
+Check whether a DB connection has been established
+#### Returns:
+
+- `bool`:  whether the connection has been established
 
 
 
@@ -286,7 +341,7 @@ Unique identifier of the record
 
 
 ```python
-def remove(self, record_identifier=None, result_identifier=None)
+def remove(self, record_identifier: str=None, result_identifier: str=None) -> bool
 ```
 
 Remove a result.
@@ -307,13 +362,13 @@ will be removed.
 
 
 ```python
-def report(self, values, record_identifier=None, force_overwrite=False, strict_type=True, return_id=False)
+def report(self, values: Dict[str, Any], record_identifier: str=None, force_overwrite: bool=False, strict_type: bool=True, return_id: bool=False) -> Union[bool, int]
 ```
 
 Report a result.
 #### Parameters:
 
-- `values` (`dict[str, any]`):  dictionary of result-value pairs
+- `values` (`Dict[str, any]`):  dictionary of result-value pairs
 - `record_identifier` (`str`):  unique identifier of the record, valuein 'record_identifier' column to look for to determine if the record already exists
 - `force_overwrite` (`bool`):  whether to overwrite the existing record
 - `strict_type` (`bool`):  whether the type of the reported values shouldremain as is. Pipestat would attempt to convert to the schema-defined one otherwise
@@ -340,7 +395,7 @@ Result schema mappings
 
 
 ```python
-def retrieve(self, record_identifier=None, result_identifier=None)
+def retrieve(self, record_identifier: Optional[str]=None, result_identifier: Optional[str]=None) -> Union[Any, Dict[str, Any]]
 ```
 
 Retrieve a result for a record.
@@ -355,7 +410,7 @@ be returned.
 
 #### Returns:
 
-- `any | dict[str, any]`:  a single result or a mapping with all theresults reported for the record
+- `any | Dict[str, any]`:  a single result or a mapping with all theresults reported for the record
 
 
 
@@ -385,28 +440,56 @@ Schema path
 
 
 ```python
-def select(self, columns=None, condition=None, condition_val=None, offset=None, limit=None)
+def select(self, table_name: Optional[str]=None, columns: Optional[List[str]]=None, filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]]=None, json_filter_conditions: Optional[List[Tuple[str, str, str]]]=None, offset: Optional[int]=None, limit: Optional[int]=None) -> List[Any]
 ```
 
-Get all the contents from the selected table, possibly restricted by the provided condition.
+Perform a `SELECT` on the table
 #### Parameters:
 
-- `columns` (`str | list[str]`):  columns to select
-- `condition` (`str`):  condition to restrict the resultswith, will be appended to the end of the SELECT statement and safely populated with 'condition_val', for example: `"id=%s"`
-- `condition_val` (`list`):  values to fill the placeholderin 'condition' with
-- `offset` (`int`):  number of records to be skipped
-- `limit` (`int`):  max number of records to be returned
-
-
-#### Returns:
-
-- `list[psycopg2.extras.DictRow]`:  all table contents
+- `table_name` (`str`):  name of the table to SELECT from
+- `columns` (`List[str]`):  columns to include in the result
+- `filter_conditions` (`[(key,operator,value)]`): - eq for == - lt for < - ge for >= - in for in_ - like for like
+- `json_filter_conditions` (`[(col,key,value)]`):  conditions for JSONB column toquery that include JSON column name, key withing the JSON object in that column and the value to check the identity against. Therefore only '==' is supported in non-nested checks, e.g. [("other", "genome", "hg38")]
+- `offset` (`int`):  skip this number of rows
+- `limit` (`int`):  include this number of rows
 
 
 
 
 ```python
-def set_status(self, status_identifier, record_identifier=None)
+def select_txt(self, filter_templ: Optional[str]='', filter_params: Optional[Dict[str, Any]]={}, table_name: Optional[str]=None, offset: Optional[int]=None, limit: Optional[int]=None) -> List[Any]
+```
+
+Execute a query with a textual filter. Returns all results.
+
+To retrieve all table contents, leave the filter arguments out.
+Table name defaults to the namespace
+#### Parameters:
+
+- `filter_templ` (`str`):  filter template with value placeholders,formatted as follows `id<:value and name=:name`
+- `filter_params` (`Dict[str, Any]`):  a mapping keys specified in the `filter_templ`to parameters that are supposed to replace the placeholders
+- `table_name` (`str`):  name of the table to query
+- `offset` (`int`):  skip this number of rows
+- `limit` (`int`):  include this number of rows
+
+
+#### Returns:
+
+- `List[Any]`:  a list of matched records
+
+
+
+
+```python
+def session(self)
+```
+
+Provide a transactional scope around a series of query operations, no commit afterwards.
+
+
+
+```python
+def set_status(self, status_identifier: str, record_identifier: str=None) -> None
 ```
 
 Set pipeline run status.
@@ -447,7 +530,7 @@ Status schema source
 
 
 ```python
-def validate_schema(self)
+def validate_schema(self) -> None
 ```
 
 Check schema for any possible issues
@@ -461,4 +544,4 @@ Check schema for any possible issues
 
 
 
-*Version Information: `pipestat` v0.0.3-dev, generated by `lucidoc` v0.4.3*
+*Version Information: `pipestat` v0.1.0-dev, generated by `lucidoc` v0.4.2*

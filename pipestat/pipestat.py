@@ -7,8 +7,7 @@ from urllib.parse import quote_plus
 import sqlalchemy.orm
 from attmap import PathExAttMap as PXAM
 from jsonschema import validate
-from sqlalchemy import Column, ForeignKey, create_engine
-from sqlalchemy import text
+from sqlalchemy import Column, ForeignKey, create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import (
     DeclarativeMeta,
@@ -886,7 +885,7 @@ class PipestatManager(dict):
         Create a dictionary from the database table data
         """
         with self.session as s:
-            records = s.query(self._get_orm(self.namespace)).all()
+            records = s.query(self.get_orm(self.namespace)).all()
         _LOGGER.debug(f"Reading data from database for '{self.namespace}' namespace")
         for record in records:
             record_id = getattr(record, RECORD_ID)
@@ -941,7 +940,7 @@ class PipestatManager(dict):
         with self.session as s:
             return s.query(self[DB_ORMS_KEY][table_name].id).count()
 
-    def _get_orm(self, table_name: str = None) -> Any:
+    def get_orm(self, table_name: str = None) -> Any:
         """
         Get an object relational mapper class
 
@@ -974,7 +973,7 @@ class PipestatManager(dict):
         if self.file is None:
             with self.session as s:
                 return (
-                    s.query(self._get_orm(table_name).id)
+                    s.query(self.get_orm(table_name).id)
                     .filter_by(record_identifier=record_identifier)
                     .first()
                     is not None
@@ -1032,7 +1031,7 @@ class PipestatManager(dict):
         rid = self._strict_record_id(rid)
         with self.session as s:
             record = (
-                s.query(self._get_orm(table_name))
+                s.query(self.get_orm(table_name))
                 .filter_by(record_identifier=rid)
                 .first()
             )
@@ -1074,7 +1073,7 @@ class PipestatManager(dict):
         limit: Optional[int] = None,
     ) -> List[Any]:
         """
-        Perform a SELECT on the table
+        Perform a `SELECT` on the table
 
         :param str table_name: name of the table to SELECT from
         :param List[str] columns: columns to include in the result
@@ -1092,7 +1091,7 @@ class PipestatManager(dict):
         :param int limit: include this number of rows
         """
 
-        ORM = self._get_orm(table_name or self.namespace)
+        ORM = self.get_orm(table_name or self.namespace)
         with self.session as s:
             if columns is not None:
                 query = s.query(*[getattr(ORM, column) for column in columns])
@@ -1180,7 +1179,7 @@ class PipestatManager(dict):
 
         with self.session as s:
             record = (
-                s.query(self._get_orm(table_name))
+                s.query(self.get_orm(table_name))
                 .filter_by(record_identifier=record_identifier)
                 .first()
             )
@@ -1223,10 +1222,9 @@ class PipestatManager(dict):
                 f"The {self.__class__.__name__} object is not backed by a database. "
                 f"This operation is not supported for file backend."
             )
-        table_name = table_name or self.namespace
         with self.session as s:
             q = (
-                s.query(self._get_orm(table_name))
+                s.query(self.get_orm(table_name or self.namespace))
                 .filter(text(filter_templ))
                 .params(**filter_params)
             )
@@ -1344,7 +1342,7 @@ class PipestatManager(dict):
         :return int: updated/inserted row
         """
         record_identifier = self._strict_record_id(record_identifier)
-        ORMClass = self._get_orm(table_name)
+        ORMClass = self.get_orm(table_name)
         values.update({RECORD_ID: record_identifier})
         if not self.check_record_exists(
             record_identifier=record_identifier, table_name=table_name
@@ -1469,7 +1467,7 @@ class PipestatManager(dict):
         """
         table_name = table_name or self.namespace
         record_identifier = self._strict_record_id(record_identifier)
-        ORMClass = self._get_orm(table_name=table_name)
+        ORMClass = self.get_orm(table_name=table_name)
         if self.check_record_exists(
             record_identifier=record_identifier, table_name=table_name
         ):
