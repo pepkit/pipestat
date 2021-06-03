@@ -140,6 +140,22 @@ log_file:
 
 The highlighted results can be later retrieved by pipestat clients via `PipestatManager.highlighted_results` property, which simply returns a list of result identifiers.
 
+## Database columns configuration (DB backend only)
+If the `PipestatManager` object is backed by a database, the database columns can be easily configured using the results schema via `db_column` section. For example:
+
+```yaml
+important_numeric_id:
+  type: integer
+  description: "An important ID that must be unique and always exist"
+  db_column:
+    unique: true
+    nullable: false
+```
+
+The values provided in the `db_column` section are passed to the `sqlalchemy.schema.Column` constructor. Therefore, please refer to [`sqlalchemy.Column` class constructor documentation](https://docs.sqlalchemy.org/en/14/core/metadata.html?highlight=column#sqlalchemy.schema.Column.__init__) to learn more about the keys that can be specified in this section.
+
+In the above example, the `important_numeric_id` result reported with the `PipestatManager` instance initialized with that schema will be forced to be always provided and unique across all records.
+
 # Status schema
 
 Apart from results reporting pipestat provides a robust pipeline status management system, which can be used to report pipeline status from within the pipeline and monitor pipeline's status in other software. Status schema file defines the possible pipeline status identifiers and provides other metadata, like `description` or `color` for display purposes.
