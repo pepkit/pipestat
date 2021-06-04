@@ -13,6 +13,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 
 - results highligting support
+- database column parametrizing from the results schema
 - static typing
 
 ## [0.0.4] - 2021-04-02

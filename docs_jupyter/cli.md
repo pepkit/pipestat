@@ -14,23 +14,23 @@ pipestat -h
     version: 0.0.1
     usage: pipestat [-h] [--version] [--silent] [--verbosity V] [--logdev]
                     {report,inspect,remove,retrieve} ...
-    
+
     pipestat - report pipeline results
-    
+
     positional arguments:
       {report,inspect,remove,retrieve}
         report              Report a result.
         inspect             Inspect a database.
         remove              Remove a result.
         retrieve            Retrieve a result.
-    
+
     optional arguments:
       -h, --help            show this help message and exit
       --version             show program's version number and exit
       --silent              Silence logging. Overrides verbosity.
       --verbosity V         Set logging level (1-5 or logging module level name)
       --logdev              Expand content of logging message format.
-    
+
     pipestat standardizes reporting of pipeline results. It formalizes a way for
     pipeline developers and downstream tools developers to communicate -- results
     produced by a pipeline can easily and reliably become an input for downstream
@@ -45,9 +45,9 @@ pipestat report -h
 
     usage: pipestat report [-h] -n N (-f F | -c C | -a) -s S -i I -r R -v V [-o]
                            [-t]
-    
+
     Report a result.
-    
+
     optional arguments:
       -h, --help            show this help message and exit
       -n N, --namespace N   Name of the pipeline to report result for
@@ -82,9 +82,9 @@ pipestat retrieve -h
 ```
 
     usage: pipestat retrieve [-h] -n N (-f F | -c C | -a) [-s S] -i I -r R
-    
+
     Retrieve a result.
-    
+
     optional arguments:
       -h, --help            show this help message and exit
       -n N, --namespace N   Name of the pipeline to report result for
@@ -113,9 +113,9 @@ pipestat remove -h
 ```
 
     usage: pipestat remove [-h] -n N (-f F | -c C | -a) [-s S] -i I -r R
-    
+
     Remove a result.
-    
+
     optional arguments:
       -h, --help            show this help message and exit
       -n N, --namespace N   Name of the pipeline to report result for
@@ -144,9 +144,9 @@ pipestat inspect -h
 ```
 
     usage: pipestat inspect [-h] -n N (-f F | -c C | -a) [-s S] [-d]
-    
+
     Inspect a database.
-    
+
     optional arguments:
       -h, --help            show this help message and exit
       -n N, --namespace N   Name of the pipeline to report result for
@@ -227,8 +227,8 @@ pipestat inspect -f $temp_file -n test
 ```
 
     Reading data from '/var/folders/3f/0wj7rs2144l9zsgxd3jn5nxc0000gn/T/tmp.G6Gtt93d'
-    
-    
+
+
     PipestatManager (test)
     Backend: file (/var/folders/3f/0wj7rs2144l9zsgxd3jn5nxc0000gn/T/tmp.G6Gtt93d)
     Records count: 1
@@ -242,12 +242,12 @@ pipestat inspect --data -f $temp_file -n test
 ```
 
     Reading data from '/var/folders/3f/0wj7rs2144l9zsgxd3jn5nxc0000gn/T/tmp.G6Gtt93d'
-    
-    
+
+
     PipestatManager (test)
     Backend: file (/var/folders/3f/0wj7rs2144l9zsgxd3jn5nxc0000gn/T/tmp.G6Gtt93d)
     Records count: 1
-    
+
     Data:
     test:
       sample1:
@@ -299,14 +299,13 @@ pipestat inspect --data -f $temp_file -n test
 ```
 
     Reading data from '/var/folders/3f/0wj7rs2144l9zsgxd3jn5nxc0000gn/T/tmp.G6Gtt93d'
-    
-    
+
+
     PipestatManager (test)
     Backend: file (/var/folders/3f/0wj7rs2144l9zsgxd3jn5nxc0000gn/T/tmp.G6Gtt93d)
     Records count: 1
-    
+
     Data:
     test:
       sample1:
         number_of_things: 100
-

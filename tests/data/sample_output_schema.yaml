@@ -26,7 +26,3 @@ md5sum:
   type: string
   description: "MD5SUM of an object"
   highlight: true
-  db_column:
-    unique: true
-    nullable: false
-    
