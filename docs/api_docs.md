@@ -484,7 +484,7 @@ Table name defaults to the namespace
 def session(self)
 ```
 
-Provide a transactional scope around a series of query operations, no commit afterwards.
+Provide a transactional scope around a series of query operations.
 
 
 
