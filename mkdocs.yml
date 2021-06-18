@@ -12,7 +12,8 @@ nav:
     - Use Python API: python_api.md
     - Use command line interface: cli.md
   - Reference:
-    - Configuration format : config.md
+    - CLI usage: usage.md
+    - Configuration format: config.md
     - Environment variables: env_vars.md
     - Pipestat specification: pipestat_specification.md
     - Python API: autodoc_build/pipestat.md
