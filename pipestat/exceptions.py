@@ -31,11 +31,14 @@ class SchemaError(PipestatError):
 class SchemaNotFoundError(SchemaError):
     """Schema not found error"""
 
-    def __init__(self, msg):
-        txt = (
-            f"Results schema not found. The schema is required to {msg}. "
-            f"It needs to be supplied to the object constructor."
+    def __init__(self, msg, cli=False):
+        txt = f"Results schema not found. The schema is required to {msg}. "
+        txt += (
+            f"It needs to be supplied as an CLI argument"
+            if cli
+            else "It needs to be supplied to the object constructor."
         )
+        txt += f"or via '{ENV_VARS['schema']}' environment variable."
         super(SchemaNotFoundError, self).__init__(txt)
 
 
