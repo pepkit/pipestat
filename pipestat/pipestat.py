@@ -250,7 +250,7 @@ class PipestatManager(dict):
         """
         res = f"{self.__class__.__name__} ({self.namespace})"
         res += "\nBackend: {}".format(
-            f"file ({self.file})"
+            f"File (results: {self.file}, status: {self[STATUS_FILE_DIR]})"
             if self.file
             else f"Database (dialect: {self[DB_ENGINE_KEY].dialect.name})"
         )
