@@ -60,7 +60,7 @@ def main():
             record_identifier=args.record_identifier,
             values={args.result_identifier: value},
             force_overwrite=args.overwrite,
-            strict_type=not args.try_convert,
+            strict_type=args.skip_convert,
         )
     if args.command == INSPECT_CMD:
         print("\n")
