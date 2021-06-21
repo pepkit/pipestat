@@ -9,4 +9,4 @@ from .pipestat import *
 __classes__ = ["PipestatManager"]
 __all__ = __classes__
 
-logmuse.init_logger("pipestat")
+logmuse.init_logger(PKG_NAME)

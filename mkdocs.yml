@@ -5,12 +5,13 @@ repo_url: http://github.com/pepkit/pipestat
 pypi_name: pipestat
 
 nav:
-  - Getting Started: 
+  - Getting Started:
     - Introduction: README.md
     - Install and configure: install.md
   - How-to guides:
     - Use Python API: python_api.md
     - Use command line interface: cli.md
+    - Configure pipestat: configuration.md
   - Reference:
     - CLI usage: usage.md
     - Configuration format: config.md

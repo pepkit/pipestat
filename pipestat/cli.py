@@ -6,13 +6,14 @@ from ubiquerg import expandpath
 
 from .argparser import build_argparser
 from .const import *
+from .exceptions import SchemaNotFoundError
 from .pipestat import PipestatManager
 
 _LOGGER = getLogger(PKG_NAME)
 
 
 def main():
-    """ Primary workflow """
+    """Primary workflow"""
     from inspect import getdoc
 
     parser = logmuse.add_logging_options(build_argparser(getdoc(PipestatManager)))
@@ -36,6 +37,8 @@ def main():
     )
     if args.command == REPORT_CMD:
         value = args.value
+        if psm.schema is None:
+            raise SchemaNotFoundError(msg="report", cli=True)
         result_metadata = psm.schema[args.result_identifier]
         if (
             result_metadata[SCHEMA_TYPE_KEY]

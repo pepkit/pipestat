@@ -1,9 +1,12 @@
 import logging
 from re import findall
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import jsonschema
+import sqlalchemy.orm
 from oyaml import safe_load
 from psycopg2 import sql
+from sqlalchemy.orm import DeclarativeMeta, Query
 from ubiquerg import expandpath
 
 from .const import *
@@ -11,24 +14,21 @@ from .const import *
 _LOGGER = logging.getLogger(__name__)
 
 
-def schema_to_columns(schema):
+def get_status_table_schema(status_schema: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Get a list of database table columns from a schema
+    Update and return a status_table_schema based on user-provided status schema
 
-    :param dict schema: schema to parse
-    :return list[str]: columns to inial ize database table with
+    :param Dict[str, Any] status_schema: status schema provided by the user
+    :return Dict[str, Any]: status_schema status table scheme
+        to use as a base for status table generation
     """
-    columns = []
-    for colname, col_dict in schema.items():
-        if col_dict[SCHEMA_TYPE_KEY] not in TABLE_COLS_BY_TYPE:
-            _LOGGER.warning(
-                f"'{col_dict[SCHEMA_TYPE_KEY]}' result type defined"
-                f" in schema is not supported"
-            )
-            continue
-        columns.append(TABLE_COLS_BY_TYPE[col_dict[SCHEMA_TYPE_KEY]].format(colname))
-    _LOGGER.info(f"Table columns created based on schema: {columns}")
-    return columns
+    defined_status_codes = list(status_schema.keys())
+    _, status_table_schema = read_yaml_data(
+        path=STATUS_TABLE_SCHEMA, what="status table schema"
+    )
+    status_table_schema["status"].update({"enum": defined_status_codes})
+    _LOGGER.debug(f"Updated status table schema: {status_table_schema}")
+    return status_table_schema
 
 
 def validate_type(value, schema, strict_type=False):
@@ -102,66 +102,71 @@ def mk_list_of_str(x):
     )
 
 
-def preprocess_condition_pair(condition, condition_val):
+def dynamic_filter(
+    ORM: DeclarativeMeta,
+    query: Query,
+    filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
+    json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
+) -> sqlalchemy.orm.Query:
     """
-    Preprocess query condition and values to ensure sanity and compatibility
+    Return filtered query based on condition.
 
-    :param str condition: condition string
-    :param tuple condition_val: values to populate condition string with
-    :return (psycopg2.sql.SQL, tuple): condition pair
+    :param sqlalchemy.orm.DeclarativeMeta ORM:
+    :param sqlalchemy.orm.Query query: takes query
+    :param [(key,operator,value)] filter_conditions: e.g. [("id", "eq", 1)] operator list
+        - eq for ==
+        - lt for <
+        - ge for >=
+        - in for in_
+        - like for like
+    :param [(col,key,value)] json_filter_conditions: conditions for JSONB column to query.
+        Only '==' is supported e.g. [("other", "genome", "hg38")]
+    :return: query
     """
 
-    def _check_semicolon(x):
-        """
-        recursively check for semicolons in an object
-
-        :param aby x: object to inspect
-        :raises ValueError: if semicolon detected
-        """
-        if isinstance(x, str):
-            assert ";" not in x, ValueError(
-                f"semicolons are not permitted in condition values: '{str(x)}'"
+    def _unpack_tripartite(x):
+        try:
+            assert isinstance(x, List) or isinstance(x, Tuple), TypeError(
+                "Wrong filter class, a List or Tuple is required"
             )
-        if isinstance(x, list):
-            list(map(lambda v: _check_semicolon(v), x))
+            e1, e2, e3 = x
+            return e1, e2, e3
+        except Exception:
+            raise ValueError(
+                f"Invalid filter value: {x}. The filter must be a tripartite iterable"
+            )
 
-    if condition:
-        if not isinstance(condition, str):
-            raise TypeError("Condition has to be a string")
-        else:
-            _check_semicolon(condition)
-            placeholders = findall("%s", condition)
-            condition = sql.SQL(condition)
-        if not condition_val:
-            raise ValueError("condition provided but condition_val missing")
-        assert isinstance(condition_val, list), TypeError(
-            "condition_val has to be a list"
-        )
-        condition_val = tuple(condition_val)
-        assert len(placeholders) == len(condition_val), ValueError(
-            f"Number of condition ({len(condition_val)}) values not equal "
-            f"number of placeholders in: {condition}"
-        )
-    return condition, condition_val
+    if filter_conditions is not None:
+        for filter_condition in filter_conditions:
+            key, op, value = _unpack_tripartite(filter_condition)
+            column = getattr(ORM, key, None)
+            if column is None:
+                raise ValueError(f"Selected filter column does not exist: {key}")
+            if op == "in":
+                if isinstance(value, list):
+                    filt = column.in_(value)
+                else:
+                    filt = column.in_(value.split(","))
+            else:
+                try:
+                    attr = (
+                        list(
+                            filter(
+                                lambda e: hasattr(column, e % op),
+                                ["%s", "%s_", "__%s__"],
+                            )
+                        )[0]
+                        % op
+                    )
+                except IndexError:
+                    raise ValueError()(f"Invalid filter operator: {op}")
+                if value == "null":
+                    value = None
+                filt = getattr(column, attr)(value)
+            query = query.filter(filt)
 
-
-def paginate_query(query, offset, limit):
-    """
-    Apply offset and limit to the query string
-
-    :param sql.SQL query: query string to apply limit and offset to
-    :param int offset: offset to apply; no. of records to skip
-    :param int limit: limit to apply; max no. of records to return
-    :return sql.SQL: a possibly paginated query
-    """
-    if offset is not None:
-        assert isinstance(offset, int), TypeError(
-            f"Provided offset ({offset}) must be an int"
-        )
-        query += sql.SQL(f" OFFSET {offset}")
-    if limit is not None:
-        assert isinstance(limit, int), TypeError(
-            f"Provided limit ({limit}) must be an int"
-        )
-        query += sql.SQL(f" LIMIT {limit}")
+    if json_filter_conditions is not None:
+        for json_filter_condition in json_filter_conditions:
+            col, key, value = _unpack_tripartite(json_filter_condition)
+            query = query.filter(getattr(ORM, col)[key].astext == value)
     return query

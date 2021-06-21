@@ -4,7 +4,6 @@ Both the command line interface (CLI) and Python API support a collection of env
 
 Here is a list of the supported environment variables:
 
-
 | Environment variable       | API argument       | Description                                                                                                                 |
 |----------------------------|--------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | **PIPESTAT_NAMESPACE**     | namespace          | namespace to report into. This will be the DBtable name if using DB as the object back-end                                  |

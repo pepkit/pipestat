@@ -46,7 +46,7 @@ import pipestat
 psm = pipestat.PipestatManager()
 psm.report(values={"result_name": 1.1})
 ```
- 
+
 ## Retrieve a result
 
 From command line:
@@ -63,5 +63,3 @@ import pipestat
 psm = pipestat.PipestatManager()
 psm.retrieve(result_identifier="result_name")
 ```
- 
-
