@@ -93,6 +93,8 @@ class PipestatManager(dict):
                     os.path.dirname(rel_to_cwd), os.W_OK
                 ):
                     return rel_to_cwd
+                else:
+                    raise OSError(f"File not found: {path}")
                 raise OSError(f"Could not make this path absolute: {path}")
             joined = os.path.join(os.path.dirname(cfg_path), path)
             if os.path.isabs(joined):
