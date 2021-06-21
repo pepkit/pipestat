@@ -71,7 +71,7 @@ def build_argparser(desc):
         )
         if cmd == STATUS_SET_CMD:
             status_sps[cmd].add_argument(
-                "status-identifier",
+                "status_identifier",
                 help="Status identifier to set.",
             )
         status_sps[cmd].add_argument(
