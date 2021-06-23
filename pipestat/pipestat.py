@@ -95,7 +95,6 @@ class PipestatManager(dict):
                     return rel_to_cwd
                 else:
                     raise OSError(f"File not found: {path}")
-                raise OSError(f"Could not make this path absolute: {path}")
             joined = os.path.join(os.path.dirname(cfg_path), path)
             if os.path.isabs(joined):
                 return joined
@@ -182,6 +181,11 @@ class PipestatManager(dict):
                     f"highlighted results specification "
                     f"({self[HIGHLIGHTED_KEY]}) has to be a list"
                 )
+        else:
+            _LOGGER.debug(
+                "Creating object with no results schema."
+                " The object can be used only for status management in this case."
+            )
         # read status schema
         status_schema_path = (
             _mk_abs_via_cfg(
@@ -293,6 +297,8 @@ class PipestatManager(dict):
 
         :return Dict[str, Any]: key word arguments for every result
         """
+        if self.schema is None:
+            return {}
         return {
             result_id: self.schema[result_id][DB_COLUMN_KEY]
             for result_id in self.schema.keys()
@@ -309,6 +315,8 @@ class PipestatManager(dict):
 
         :return Dict[str, Dict[str, str]]: relationships for every result
         """
+        if self.schema is None:
+            return {}
 
         def _validate_rel_section(result_id):
             if not all(
@@ -560,7 +568,9 @@ class PipestatManager(dict):
                         rel_info["name"]: relationship(
                             rel_info["table"].capitalize(),
                             backref=backref(
-                                rel_info["backref"], uselist=True, cascade="delete,all"
+                                rel_info["backref"],
+                                uselist=True,
+                                cascade="delete,all",
                             ),
                         )
                     }
@@ -874,7 +884,7 @@ class PipestatManager(dict):
         :return bool: whether the table has been created
         """
         if self.schema is None:
-            raise SchemaNotFoundError("initialize the database table")
+            return False
         if not self.is_db_connected():
             self.establish_db_connection()
         self._create_table_orm(table_name=self.namespace, schema=self.result_schemas)
@@ -903,9 +913,7 @@ class PipestatManager(dict):
         if not self.is_db_connected():
             self.establish_db_connection()
         # if not self._check_table_exists(table_name=status_table_name):
-        _LOGGER.debug(
-            f"Initializing '{status_table_name}' table in " f"'{PKG_NAME}' database"
-        )
+        _LOGGER.debug(f"Initializing '{status_table_name}' table")
         self._create_table_orm(
             table_name=status_table_name,
             schema=get_status_table_schema(status_schema=self.status_schema),

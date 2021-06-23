@@ -24,7 +24,7 @@ def main():
     global _LOGGER
     _LOGGER = logmuse.logger_via_cli(args, make_root=True)
     _LOGGER.debug("Args namespace:\n{}".format(args))
-    if args.config and not args.schema:
+    if args.config and not args.schema and args.command != STATUS_CMD:
         parser.error("the following arguments are required: -s/--schema")
     psm = PipestatManager(
         namespace=args.namespace,

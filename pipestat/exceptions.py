@@ -36,9 +36,9 @@ class SchemaNotFoundError(SchemaError):
         txt += (
             f"It needs to be supplied as an CLI argument"
             if cli
-            else "It needs to be supplied to the object constructor."
+            else "It needs to be supplied to the object constructor"
         )
-        txt += f"or via '{ENV_VARS['schema']}' environment variable."
+        txt += f" or via '{ENV_VARS['schema']}' environment variable."
         super(SchemaNotFoundError, self).__init__(txt)
 
 
