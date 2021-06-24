@@ -1,5 +1,8 @@
 import os
 
+from sqlalchemy.dialects.postgresql.json import JSONB
+from sqlalchemy.types import ARRAY, JSON, Boolean, Float, Integer, String
+
 PKG_NAME = "pipestat"
 LOCK_PREFIX = "lock."
 REPORT_CMD = "report"
@@ -23,17 +26,6 @@ STATUS_SUBPARSER_MESSAGES = {
     STATUS_GET_CMD: "Get status.",
 }
 
-TABLE_COLS_BY_TYPE = {
-    "integer": "{} INT",
-    "number": "{} NUMERIC",
-    "string": "{} TEXT",
-    "boolean": "{} BOOLEAN",
-    "object": "{} JSONB",
-    "array": "{} TEXT[]",
-    "file": "{} JSONB",
-    "image": "{} JSONB",
-}
-
 DOC_URL = "http://pipestat.databio.org/en/latest/db_config/"
 
 # DB config keys
@@ -43,6 +35,8 @@ CFG_HOST_KEY = "host"
 CFG_PORT_KEY = "port"
 CFG_PASSWORD_KEY = "password"
 CFG_USER_KEY = "user"
+CFG_DIALECT_KEY = "dialect"  # sqlite, mysql, postgresql, oracle, or mssql
+CFG_DRIVER_KEY = "driver"
 
 DB_CREDENTIALS = [
     CFG_HOST_KEY,
@@ -50,6 +44,8 @@ DB_CREDENTIALS = [
     CFG_PASSWORD_KEY,
     CFG_USER_KEY,
     CFG_NAME_KEY,
+    CFG_DIALECT_KEY,
+    CFG_DRIVER_KEY,
 ]
 
 # object attribute names
@@ -61,16 +57,33 @@ STATUS_SCHEMA_KEY = "_status_schema"
 STATUS_SCHEMA_SOURCE_KEY = "_status_schema_source"
 STATUS_FILE_DIR = "_status_file_dir"
 RES_SCHEMAS_KEY = "_result_schemas"
+DB_BASE_KEY = "_declarative_base"
+DB_ORMS_KEY = "_orms"
 DATA_KEY = "_data"
 NAME_KEY = "_name"
 FILE_KEY = "_file"
 RECORD_ID_KEY = "_record_id"
-DB_CONNECTION_KEY = "_db_connnection"
+DB_SESSION_KEY = "_db_session"
+DB_SCOPED_SESSION_KEY = "_db_scoped_session"
+DB_ENGINE_KEY = "_db_engine"
 HIGHLIGHTED_KEY = "_highlighted"
+DB_COLUMN_KEY = "db_column"
+DB_RELATIONSHIP_KEY = "relationship"
+DB_RELATIONSHIP_NAME_KEY = "name"
+DB_RELATIONSHIP_TABLE_KEY = "table"
+DB_RELATIONSHIP_COL_KEY = "column"
+DB_RELATIONSHIP_BACKREF_KEY = "backref"
+DB_RELATIONSHIP_ELEMENTS = [
+    DB_RELATIONSHIP_BACKREF_KEY,
+    DB_RELATIONSHIP_COL_KEY,
+    DB_RELATIONSHIP_NAME_KEY,
+    DB_RELATIONSHIP_TABLE_KEY,
+]
 
 # schema keys
 SCHEMA_PROP_KEY = "properties"
 SCHEMA_TYPE_KEY = "type"
+SCHEMA_DESC_KEY = "description"
 
 # DB column names
 ID = "id"
@@ -79,14 +92,6 @@ STATUS = "status"
 
 RESERVED_COLNAMES = [ID, RECORD_ID]
 
-FIXED_COLUMNS = [f"{ID} BIGSERIAL PRIMARY KEY", f"{RECORD_ID} TEXT UNIQUE NOT NULL"]
-
-STATUS_TABLE_COLUMNS = [
-    f"{ID} BIGSERIAL PRIMARY KEY",
-    f"{RECORD_ID} TEXT UNIQUE NOT NULL",
-    f"{STATUS} TEXT",
-]
-# f"{STATUS} {STATUS}"]  # custom type 'status'
 CANONICAL_TYPES = {
     "image": {
         "type": "object",
@@ -127,9 +132,24 @@ CLASSES_BY_TYPE = {
     "boolean": bool,
 }
 
+SQL_CLASSES_BY_TYPE = {
+    "number": Float,
+    "integer": Integer,
+    "object": JSONB,
+    "image": JSONB,
+    "file": JSONB,
+    "string": String(500),
+    "array": JSONB,
+    "boolean": Boolean,
+}
+
 CFG_SCHEMA = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "schemas", "pipestat_config_schema.yaml"
 )
 STATUS_SCHEMA = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "schemas", "status_schema.yaml"
+)
+
+STATUS_TABLE_SCHEMA = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "schemas", "status_table_schema.yaml"
 )

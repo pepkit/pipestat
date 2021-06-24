@@ -3,5 +3,6 @@ jsonschema
 logmuse>=0.2.5
 oyaml
 psycopg2-binary
+sqlalchemy>=1.4.7
 ubiquerg>=0.6.1
-yacman>=0.8.0
+yacman>=0.8.1

@@ -6,13 +6,14 @@ from ubiquerg import expandpath
 
 from .argparser import build_argparser
 from .const import *
+from .exceptions import SchemaNotFoundError
 from .pipestat import PipestatManager
 
 _LOGGER = getLogger(PKG_NAME)
 
 
 def main():
-    """ Primary workflow """
+    """Primary workflow"""
     from inspect import getdoc
 
     parser = logmuse.add_logging_options(build_argparser(getdoc(PipestatManager)))
@@ -23,7 +24,7 @@ def main():
     global _LOGGER
     _LOGGER = logmuse.logger_via_cli(args, make_root=True)
     _LOGGER.debug("Args namespace:\n{}".format(args))
-    if args.config and not args.schema:
+    if args.config and not args.schema and args.command != STATUS_CMD:
         parser.error("the following arguments are required: -s/--schema")
     psm = PipestatManager(
         namespace=args.namespace,
@@ -36,6 +37,8 @@ def main():
     )
     if args.command == REPORT_CMD:
         value = args.value
+        if psm.schema is None:
+            raise SchemaNotFoundError(msg="report", cli=True)
         result_metadata = psm.schema[args.result_identifier]
         if (
             result_metadata[SCHEMA_TYPE_KEY]
@@ -57,7 +60,7 @@ def main():
             record_identifier=args.record_identifier,
             values={args.result_identifier: value},
             force_overwrite=args.overwrite,
-            strict_type=not args.try_convert,
+            strict_type=args.skip_convert,
         )
     if args.command == INSPECT_CMD:
         print("\n")

@@ -16,31 +16,34 @@ __all__ = [
 
 
 class PipestatError(Exception):
-    """ Base exception type for this package """
+    """Base exception type for this package"""
 
     __metaclass__ = abc.ABCMeta
 
 
 class SchemaError(PipestatError):
-    """ Schema error """
+    """Schema error"""
 
     def __init__(self, msg):
         super(SchemaError, self).__init__(msg)
 
 
 class SchemaNotFoundError(SchemaError):
-    """ Schema not found error """
+    """Schema not found error"""
 
-    def __init__(self, msg):
-        txt = (
-            f"Results schema not found. The schema is required to {msg}. "
-            f"It needs to be supplied to the object constructor."
+    def __init__(self, msg, cli=False):
+        txt = f"Results schema not found. The schema is required to {msg}. "
+        txt += (
+            f"It needs to be supplied as an CLI argument"
+            if cli
+            else "It needs to be supplied to the object constructor"
         )
+        txt += f" or via '{ENV_VARS['schema']}' environment variable."
         super(SchemaNotFoundError, self).__init__(txt)
 
 
 class MissingConfigDataError(PipestatError):
-    """ Exception for invalid config file. """
+    """Exception for invalid config file."""
 
     def __init__(self, msg):
         spacing = " " if msg[-1] in ["?", ".", "\n"] else "; "
@@ -49,14 +52,14 @@ class MissingConfigDataError(PipestatError):
 
 
 class PipestatDatabaseError(PipestatError):
-    """ Database error """
+    """Database error"""
 
     def __init__(self, msg):
         super(PipestatDatabaseError, self).__init__(msg)
 
 
 class InvalidTypeError(PipestatError):
-    """ Type of the reported value is not supported """
+    """Type of the reported value is not supported"""
 
     def __init__(self, type):
         super(InvalidTypeError, self).__init__(
@@ -66,7 +69,7 @@ class InvalidTypeError(PipestatError):
 
 
 class IncompatibleClassError(PipestatError):
-    """ Class  of the reported value is not supported """
+    """Class  of the reported value is not supported"""
 
     def __init__(self, cls, req_cls, type):
         super(IncompatibleClassError, self).__init__(

@@ -22,3 +22,7 @@ output_file:
 output_image:
   type: image
   description: "This a path to the output image"
+md5sum:
+  type: string
+  description: "MD5SUM of an object"
+  highlight: true

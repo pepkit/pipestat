@@ -71,11 +71,8 @@ def build_argparser(desc):
         )
         if cmd == STATUS_SET_CMD:
             status_sps[cmd].add_argument(
-                "-i",
-                "--status-identifier",
-                metavar="S",
-                help="Status identifier to use",
-                required=True,
+                "status_identifier",
+                help="Status identifier to set.",
             )
         status_sps[cmd].add_argument(
             "-f",
@@ -213,9 +210,9 @@ def build_argparser(desc):
 
     sps[REPORT_CMD].add_argument(
         "-t",
-        "--try-convert",
+        "--skip-convert",
         action="store_true",
-        help="Whether to try to convert the reported value into reqiuired "
+        help="Whether skip result type conversion into the reqiuired "
         "class in case it does not meet the schema requirements",
     )
 

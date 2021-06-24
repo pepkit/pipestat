@@ -6,10 +6,9 @@
 
 Pipelines, or workflows, are made from a set of commands that process input data and produce results. These results may take many forms, such as simple statistics, string variables, images, or processed data files. How do pipelines structure the results they produce? There is no standard structure for results, so usually, it's done differently for each pipeline. This restricts the portability of the outputs of pipelines, and makes it difficult to write software that can process results from a variety of different pipelines. As a result, each pipeline author usually writes dedicated report functions for each pipeline.
 
-Pipestat provides a formal specification for how a pipeline should structure its results. Therefore, any pipeline that follows the pipestat specification will record results in the same way. This makes it possible to build generic report software that can work with any pipestat-compatible pipeline, offloading the task of making pretty result reports to generic tools. 
+Pipestat provides a formal specification for how a pipeline should structure its results. Therefore, any pipeline that follows the pipestat specification will record results in the same way. This makes it possible to build generic report software that can work with any pipestat-compatible pipeline, offloading the task of making pretty result reports to generic tools.
 
 This document outlines the specification for pipestat results. If your pipeline stores results like this, then downstream tools that read pipestat results will be able to build nice summaries of your pipeline runs automatically. To write results according to this specification, you can use the reference implementation (the `pipestat` python package), or you can simply write your results to this specification using whatever system you like.
-
 
 # Terminology
 
@@ -33,13 +32,13 @@ Each *result* reported by a pipeline must have a specified data type. Pipestat i
 
 Importantly, pipestat extends the jsonschema vocabulary by adding two additional types, which are common results of a pipeline: `image` and `file`. These types require reporting objects with the following attributes:
 
-- `file`: 
-    - `path`: path to the reported file
-    - `title`: human readable description of the file
-- `image`: 
-    - `path`: path to the reported image, usually PDF
-    - `thumbnail`: path to the reported thumbnail, usually PNG or JPEG
-    - `title`: human readable description of the image    
+- `file`:
+  - `path`: path to the reported file
+  - `title`: human readable description of the file
+- `image`:
+  - `path`: path to the reported image, usually PDF
+  - `thumbnail`: path to the reported thumbnail, usually PNG or JPEG
+  - `title`: human readable description of the image
 
 # Pipestat schema
 
@@ -60,10 +59,9 @@ The pipestat schema is a YAML-formatted file. The top level keys are the unique 
 ```yaml
 result_identifier:
   type: <type>
-``` 
+```
 
 Here, `result_identifier` can be whatever name you want to use to identify this result. Here's a simple schema example that showcases most of the supported types:
-
 
 ```yaml
 number_of_things:
@@ -90,7 +88,7 @@ output_file:
 output_image:
   type: image
   description: "This a path to the output image"
-``` 
+```
 
 Here's a more complex schema example that showcases some of the more advanced jsonschema features:
 
@@ -114,18 +112,18 @@ output_object:
   properties:
     property1:
       array:
-        items: 
+        items:
           type: integer
     property2:
       type: boolean
   required:
     - property1
   description: "Object output with required array of integers and optional boolean"
-``` 
+```
 
 ## Results highlighting
 
-The pipestat specification allows to highlight results by adding `highlight: true` attribute under result identifier in the schema file. In the example below the `log_file` result will be highlighted. 
+The pipestat specification allows to highlight results by adding `highlight: true` attribute under result identifier in the schema file. In the example below the `log_file` result will be highlighted.
 
 ```yaml
 number_of_things:
@@ -142,12 +140,27 @@ log_file:
 
 The highlighted results can be later retrieved by pipestat clients via `PipestatManager.highlighted_results` property, which simply returns a list of result identifiers.
 
+## Database columns configuration (DB backend only)
+If the `PipestatManager` object is backed by a database, the database columns can be easily configured using the results schema via `db_column` section. For example:
+
+```yaml
+important_numeric_id:
+  type: integer
+  description: "An important ID that must be unique and always exist"
+  db_column:
+    unique: true
+    nullable: false
+```
+
+The values provided in the `db_column` section are passed to the `sqlalchemy.schema.Column` constructor. Therefore, please refer to [`sqlalchemy.Column` class constructor documentation](https://docs.sqlalchemy.org/en/14/core/metadata.html?highlight=column#sqlalchemy.schema.Column.__init__) to learn more about the keys that can be specified in this section.
+
+In the above example, the `important_numeric_id` result reported with the `PipestatManager` instance initialized with that schema will be forced to be always provided and unique across all records.
+
 # Status schema
 
 Apart from results reporting pipestat provides a robust pipeline status management system, which can be used to report pipeline status from within the pipeline and monitor pipeline's status in other software. Status schema file defines the possible pipeline status identifiers and provides other metadata, like `description` or `color` for display purposes.
 
 Here's an example of the pipestat status schema, which at the same time is the default status schema shipped with the pipestat Python package:
-
 
 ```yaml
 running:
@@ -174,7 +187,7 @@ As depicted above the top-level attributes are the status identifiers. Within ea
 
 # Backends
 
-The pipestat specification describes two backend types for storing results: a [YAML-formatted file](https://yaml.org/spec/1.2/spec.html) or a [PostgreSQL database](https://www.postgresql.org/). This flexibility makes pipestat useful for a wide variety of use cases. Some users just need a simple text file for smaller-scale needs, which is convenient and universal, requiring no database infrastructure. For larger-scale systems, a database back-end is necssary. The pipestat specification provides a layer that spans the two possibilities, so that reports can be made in the same way, regardless of which back-end is used in a particular use case. 
+The pipestat specification describes two backend types for storing results: a [YAML-formatted file](https://yaml.org/spec/1.2/spec.html) or a [PostgreSQL database](https://www.postgresql.org/). This flexibility makes pipestat useful for a wide variety of use cases. Some users just need a simple text file for smaller-scale needs, which is convenient and universal, requiring no database infrastructure. For larger-scale systems, a database back-end is necssary. The pipestat specification provides a layer that spans the two possibilities, so that reports can be made in the same way, regardless of which back-end is used in a particular use case.
 
 By using the `pipestat` package to write results, the pipeline author need not be concerned with database connections or dealing with racefree file writing, as these tasks are already implemented. The user who runs the pipeline will simply configure the pipestat backend as required.
 
@@ -190,32 +203,29 @@ For the YAML file backend, each file represents a namespace. The file always beg
 my_namespace:
     record1:
         my_result: 10
-        my_result1: 
+        my_result1:
             key: "value1"
     record2:
         my_result: 3
-        my_result1: 
+        my_result1:
             key: "value2"
-```  
+```
 
 A more concrete example would be:
-
 
 ```yaml
 rnaseq-pipe:
     patient1:
         duplicate_rate: 10
-        genomic_distribution: 
+        genomic_distribution:
             promoter: 15
             enhancer: 85
     patient2:
         duplicate_rate: 3
-        genomic_distribution: 
+        genomic_distribution:
             promoter: 30
             enhancer: 70
-```  
-
-
+```
 
 ## PostgreSQL database
 
