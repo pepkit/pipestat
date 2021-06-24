@@ -30,7 +30,9 @@ export PIPESTAT_RESULTS_FILE=results_file.yaml
 export PIPESTAT_NAMESPACE=my_namespace
 ```
 
-## Report a result
+## Pipeline results reporting and retrieval
+
+### Report a result
 
 From command line:
 
@@ -47,7 +49,7 @@ psm = pipestat.PipestatManager()
 psm.report(values={"result_name": 1.1})
 ```
 
-## Retrieve a result
+### Retrieve a result
 
 From command line:
 
@@ -62,4 +64,40 @@ import pipestat
 
 psm = pipestat.PipestatManager()
 psm.retrieve(result_identifier="result_name")
+```
+
+## Pipeline status management
+
+## Set status
+
+From command line:
+
+```console
+pipestat status set running
+```
+
+From Python:
+
+```python
+import pipestat
+
+psm = pipestat.PipestatManager()
+psm.set_status(status_identifier="running")
+```
+
+## Get status
+
+From command line:
+
+```console
+pipestat status get
+```
+
+From Python:
+
+```python
+import pipestat
+
+psm = pipestat.PipestatManager()
+psm.get_status()
 ```
