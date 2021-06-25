@@ -5,7 +5,7 @@ Pipestat offers a CLI that can be access via the `pipestat` command in the shell
 Here you can see the command-line usage instructions for the main command and for each subcommand:
 ## `pipestat --help`
 ```console
-version: 0.1.0-dev
+version: 0.1.0
 usage: pipestat [-h] [--version] [--silent] [--verbosity V] [--logdev]
                 {report,inspect,remove,retrieve,status} ...
 
