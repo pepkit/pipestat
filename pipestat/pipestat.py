@@ -1206,6 +1206,7 @@ class PipestatManager(dict):
 
     def select_txt(
         self,
+        columns: Optional[List[str]] = None,
         filter_templ: Optional[str] = "",
         filter_params: Optional[Dict[str, Any]] = {},
         table_name: Optional[str] = None,
@@ -1232,12 +1233,16 @@ class PipestatManager(dict):
                 f"The {self.__class__.__name__} object is not backed by a database. "
                 f"This operation is not supported for file backend."
             )
+        ORM = self.get_orm(table_name or self.namespace)
         with self.session as s:
-            q = (
-                s.query(self.get_orm(table_name or self.namespace))
-                .filter(text(filter_templ))
-                .params(**filter_params)
-            )
+            if columns is not None:
+                q = (
+                    s.query(*[getattr(ORM, column) for column in columns])
+                    .filter(text(filter_templ))
+                    .params(**filter_params)
+                )
+            else:
+                q = s.query(ORM).filter(text(filter_templ)).params(**filter_params)
             if isinstance(offset, int):
                 q = q.offset(offset)
             if isinstance(limit, int):
