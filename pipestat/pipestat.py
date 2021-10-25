@@ -1242,11 +1242,7 @@ class PipestatManager(dict):
                     .params(**filter_params)
                 )
             else:
-                q = (
-                    s.query(ORM)
-                    .filter(text(filter_templ))
-                    .params(**filter_params)
-                )
+                q = s.query(ORM).filter(text(filter_templ)).params(**filter_params)
             if isinstance(offset, int):
                 q = q.offset(offset)
             if isinstance(limit, int):
