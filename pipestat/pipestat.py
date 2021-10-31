@@ -1120,6 +1120,21 @@ class PipestatManager(dict):
             result = query.all()
         return result
 
+    def select_distinct(self, table_name, columns) -> List[Any]:
+        """
+        Perform a `SELECT DISTINCT` on given table and column
+
+        :param str table_name: name of the table to SELECT from
+        :param List[str] columns: columns to include in the result
+        """
+
+        ORM = self.get_orm(table_name or self.namespace)
+        with self.session as s:
+            query = s.query(*[getattr(ORM, column) for column in columns])
+            query = query.distinct()
+            result = query.all()
+        return result
+
     def retrieve(
         self,
         record_identifier: Optional[str] = None,
