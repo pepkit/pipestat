@@ -474,6 +474,7 @@ class PipestatManager(dict):
         with self[DB_SESSION_KEY]() as session:
             _LOGGER.debug("Created session")
             yield session
+            session.close()
             _LOGGER.debug("Ending session")
 
     def _get_flag_file(
@@ -1522,3 +1523,6 @@ class PipestatManager(dict):
                 s.commit()
         else:
             raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
+
+    def __del__(self):
+        self.session.close()
