@@ -101,3 +101,23 @@ import pipestat
 psm = pipestat.PipestatManager()
 psm.get_status()
 ```
+
+
+
+
+
+## Developer tests
+
+First you need a local demo instance of posgres running to test the database back-end. you can get one using docker matching the included config file like this:
+
+```
+docker run --rm -it -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=pipestat-password -e POSTGRES_DB=pipestat-test -p 5432:5432 postgres
+
+```
+
+Then, run tests:
+
+```
+pytest
+```
+
