@@ -469,7 +469,6 @@ class PipestatManager(dict):
         Provide a transactional scope around a series of query
         operations.
         """
-        print("test changes")
         if not self.is_db_connected():
             self.establish_db_connection()
         with self[DB_SESSION_KEY]() as session:
@@ -477,9 +476,11 @@ class PipestatManager(dict):
             try:
                 yield session
             except:
+                _LOGGER.info("session.rollback")
                 session.rollback()
                 raise
             finally:
+                _LOGGER.info("session.close")
                 session.close()
             _LOGGER.debug("Ending session")
 
