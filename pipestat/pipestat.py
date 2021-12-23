@@ -475,7 +475,12 @@ class PipestatManager(dict):
             _LOGGER.debug("Created session")
             try:
                 yield session
+            except:
+                _LOGGER.info("session.rollback")
+                session.rollback()
+                raise
             finally:
+                _LOGGER.info("session.close")
                 session.close()
             _LOGGER.debug("Ending session")
 
