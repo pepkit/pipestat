@@ -17,7 +17,7 @@ from sqlalchemy.orm import (
     sessionmaker,
 )
 from ubiquerg import create_lock, remove_lock
-from yacman import YacAttMap
+from yacman2 import YAMLConfigManager
 
 from .const import *
 from .exceptions import *
@@ -32,7 +32,7 @@ class PipestatManager(dict):
     pipeline status management. It formalizes a way for pipeline developers
     and downstream tools developers to communicate -- results produced by a
     pipeline can easily and reliably become an input for downstream analyses.
-    The object exposes API for interacting with the results and
+    The object exposes an API for interacting with the results and
     pipeline status and can be backed by either a YAML-formatted file
     or a database.
     """
@@ -53,10 +53,10 @@ class PipestatManager(dict):
         """
         Initialize the object
 
-        :param str namespace: namespace to report into. This will be the DB
-        table name if using DB as the object back-end
+        :param str namespace: namespace to report into, which corresponds to the pipeline.
+            This will be the DB table name if using DB as the object back-end
         :param str record_identifier: record identifier to report for. This
-            creates a weak bound to the record, which can be overriden in
+            creates a weak bound to the record, which can be overridden in
             this object method calls
         :param str schema_path: path to the output schema that formalizes
             the results structure
@@ -125,16 +125,16 @@ class PipestatManager(dict):
             return cfg[arg_name]
 
         super(PipestatManager, self).__init__()
-        self[CONFIG_KEY] = YacAttMap()
+        self[CONFIG_KEY] = YAMLConfigManager()
         # read config or config data
         config = config or os.getenv(ENV_VARS["config"])
         if config is not None:
             if isinstance(config, str):
                 config = os.path.abspath(expandpath(config))
-                self[CONFIG_KEY] = YacAttMap(filepath=config)
+                self[CONFIG_KEY] = YAMLConfigManager(filepath=config)
                 self._config_path = config
             elif isinstance(config, dict):
-                self[CONFIG_KEY] = YacAttMap(entries=config)
+                self[CONFIG_KEY] = YAMLConfigManager(entries=config)
                 self._config_path = None
             else:
                 raise TypeError(
@@ -142,7 +142,7 @@ class PipestatManager(dict):
                     "file to read or a dict"
                 )
             # validate config
-            cfg = self[CONFIG_KEY].to_dict(expand=True)
+            cfg = self[CONFIG_KEY].exp
             _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
             validate(cfg, cfg_schema)
 
@@ -239,7 +239,7 @@ class PipestatManager(dict):
                 )
             self[DB_ORMS_KEY] = {}
             self[DB_BASE_KEY] = custom_declarative_base or declarative_base()
-            self[DATA_KEY] = YacAttMap()
+            self[DATA_KEY] = YAMLConfigManager()
             self._show_db_logs = show_db_logs
             self._init_db_table()
             self._init_status_table()
@@ -423,11 +423,11 @@ class PipestatManager(dict):
         return self._get_attr(FILE_KEY)
 
     @property
-    def data(self) -> YacAttMap:
+    def data(self) -> YAMLConfigManager:
         """
         Data object
 
-        :return yacman.YacAttMap: the object that stores the reported data
+        :return yacman.YAMLConfigManager: the object that stores the reported data
         """
         return self._get_attr(DATA_KEY)
 
@@ -862,13 +862,19 @@ class PipestatManager(dict):
         """
         if not os.path.exists(self.file):
             _LOGGER.info(f"Initializing results file '{self.file}'")
-            data = YacAttMap(entries={self.namespace: "{}"})
-            data.write(filepath=self.file)
-            data.make_readonly()
+            data = YAMLConfigManager(entries={self.namespace: {}}, filepath=self.file,
+            create_file=True)
+            # data.filepath = self.file
+            # data.writable = True
+            # data.write()
+            # data.make_readonly()
+            with data as _:
+                _.write()
+
             self[DATA_KEY] = data
             return True
         _LOGGER.debug(f"Reading data from '{self.file}'")
-        data = YacAttMap(filepath=self.file)
+        data = YAMLConfigManager(filepath=self.file)
         filtered = list(filter(lambda x: not x.startswith("_"), data.keys()))
         if filtered and self.namespace not in filtered:
             raise PipestatDatabaseError(
@@ -1166,7 +1172,7 @@ class PipestatManager(dict):
             if r_id not in self.data[self.namespace]:
                 raise PipestatDatabaseError(f"Record '{r_id}' not found")
             if result_identifier is None:
-                return self.data[self.namespace][r_id].to_dict()
+                return self.data.exp[self.namespace][r_id]
             if result_identifier not in self.data[self.namespace][r_id]:
                 raise PipestatDatabaseError(
                     f"Result '{result_identifier}' not found for record '{r_id}'"
@@ -1333,15 +1339,24 @@ class PipestatManager(dict):
             validate_type(
                 value=values[r], schema=self.result_schemas[r], strict_type=strict_type
             )
-        if self.file is not None:
-            self.data.make_writable()
+        
+        # if self.file is not None:
+            # self.data.make_writable()
+
+
         if not self[DB_ONLY_KEY]:
             self._report_data_element(
                 record_identifier=record_identifier, values=values
             )
         if self.file is not None:
-            self.data.write()
-            self.data.make_readonly()
+            # Use a context manager to set and unset writable
+            with self.data as _:
+                _.write()
+            # self.data.make_readonly()
+
+            print(self.data)
+
+
         else:
             try:
                 updated_ids = self._report_db(
@@ -1411,8 +1426,8 @@ class PipestatManager(dict):
         :param Dict[str, Any] values: dict of results identifiers and values
             to be reported
         """
-        self[DATA_KEY].setdefault(self.namespace, PXAM())
-        self[DATA_KEY][self.namespace].setdefault(record_identifier, PXAM())
+        self[DATA_KEY].setdefault(self.namespace, {})
+        self[DATA_KEY][self.namespace].setdefault(record_identifier, {})
         for res_id, val in values.items():
             self[DATA_KEY][self.namespace][record_identifier][res_id] = val
 
@@ -1442,8 +1457,11 @@ class PipestatManager(dict):
         if result_identifier and not self.check_result_exists(result_identifier, r_id):
             _LOGGER.error(f"'{result_identifier}' has not been reported for '{r_id}'")
             return False
-        if self.file:
-            self.data.make_writable()
+
+        # For yacman2, the make_writable call happens in write()
+        # if self.file:
+        #     self.data.make_writable()
+
         if not self[DB_ONLY_KEY]:
             if rm_record:
                 _LOGGER.info(f"Removing '{r_id}' record")
@@ -1462,8 +1480,9 @@ class PipestatManager(dict):
                     del self[DATA_KEY][self.namespace][r_id]
                     rm_record = True
         if self.file:
-            self.data.write()
-            self.data.make_readonly()
+            with self.data as _:
+                _.write()
+
         if self.file is None:
             try:
                 self._remove_db(
