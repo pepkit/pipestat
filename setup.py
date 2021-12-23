@@ -19,9 +19,7 @@ with open("requirements/requirements-all.txt", "r") as reqs_file:
         # DEPENDENCIES.append(line.split("=")[0].rstrip("<>"))
         DEPENDENCIES.append(line)
 
-# 2to3
-if sys.version_info >= (3,):
-    extra["use_2to3"] = True
+
 extra["install_requires"] = DEPENDENCIES
 
 
