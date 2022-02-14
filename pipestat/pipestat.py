@@ -471,18 +471,19 @@ class PipestatManager(dict):
         """
         if not self.is_db_connected():
             self.establish_db_connection()
-        with self[DB_SESSION_KEY]() as session:
-            _LOGGER.debug("Created session")
-            try:
-                yield session
-            except:
-                _LOGGER.info("session.rollback")
-                session.rollback()
-                raise
-            finally:
-                _LOGGER.info("session.close")
-                session.close()
-            _LOGGER.debug("Ending session")
+        # with self[DB_SESSION_KEY]() as session:
+        session = self[DB_SESSION_KEY]()
+        _LOGGER.debug("Created session")
+        try:
+            yield session
+        except:
+            _LOGGER.info("session.rollback")
+            session.rollback()
+            raise
+        finally:
+            _LOGGER.info("session.close")
+            session.close()
+        _LOGGER.debug("Ending session")
 
     def _get_flag_file(
         self, record_identifier: str = None
