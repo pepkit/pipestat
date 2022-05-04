@@ -25,7 +25,6 @@ def is_in_file(fs, s, reverse=False):
             else:
                 assert s in fh.read()
 
-
 class TestReporting:
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -57,7 +56,12 @@ class TestReporting:
         args.update(backend_data)
         psm = PipestatManager(**args)
         psm.report(record_identifier=rec_id, values=val)
+        print(psm.data["test"])
+        print("Test if", rec_id, " is in ", psm.data["test"])
+
+        print(backend)
         assert rec_id in psm.data["test"]
+        print("Test if", list(val.keys())[0], " is in ", rec_id)
         assert list(val.keys())[0] in psm.data["test"][rec_id]
         if backend == "file":
             is_in_file(results_file_path, str(list(val.values())[0]))
