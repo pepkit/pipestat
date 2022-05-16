@@ -907,8 +907,6 @@ class PipestatManager(dict):
         """
         with self[DB_SESSION_KEY]() as s:
             records = s.query(self.get_orm(self.namespace)).all()
-            s.close()
-            _LOGGER.info("session closed")
         _LOGGER.debug(f"Reading data from database for '{self.namespace}' namespace")
         for record in records:
             record_id = getattr(record, RECORD_ID)
@@ -949,10 +947,7 @@ class PipestatManager(dict):
         from sqlalchemy import inspect
 
         with self[DB_SESSION_KEY]() as s:
-            table_status = inspect(s.bind).has_table(table_name=table_name)
-            s.close()
-            _LOGGER.info("session closed")
-            return table_status
+            return inspect(s.bind).has_table(table_name=table_name)
 
     def _count_rows(self, table_name: str) -> int:
         """
@@ -962,10 +957,7 @@ class PipestatManager(dict):
         :return int: number of rows in the selected table
         """
         with self[DB_SESSION_KEY]() as s:
-            row_count = s.query(self[DB_ORMS_KEY][table_name].id).count()
-            s.close()
-            _LOGGER.info("session closed")
-            return row_count
+            return s.query(self[DB_ORMS_KEY][table_name].id).count()
 
     def get_orm(self, table_name: str = None) -> Any:
         """
@@ -999,15 +991,12 @@ class PipestatManager(dict):
         """
         if self.file is None:
             with self[DB_SESSION_KEY]() as s:
-                record_status = (
+                return (
                     s.query(self.get_orm(table_name).id)
                     .filter_by(record_identifier=record_identifier)
                     .first()
                     is not None
                 )
-                s.close()
-                _LOGGER.info("session closed")
-                return record_status
         else:
             if (
                 self.namespace in self.data
@@ -1065,8 +1054,6 @@ class PipestatManager(dict):
                 .filter_by(record_identifier=rid)
                 .first()
             )
-            s.close()
-            _LOGGER.info("session closed")
         return [r for r in results if getattr(record, r, None) is not None]
 
     def check_result_exists(
@@ -1140,8 +1127,6 @@ class PipestatManager(dict):
             if isinstance(limit, int):
                 query = query.limit(limit)
             result = query.all()
-            s.close()
-            _LOGGER.info("session closed")
         return result
 
     def select_distinct(self, table_name, columns) -> List[Any]:
@@ -1157,8 +1142,6 @@ class PipestatManager(dict):
             query = s.query(*[getattr(ORM, column) for column in columns])
             query = query.distinct()
             result = query.all()
-            s.close()
-            _LOGGER.info("session closed")
         return result
 
     def retrieve(
@@ -1234,8 +1217,6 @@ class PipestatManager(dict):
                 .filter_by(record_identifier=record_identifier)
                 .first()
             )
-            s.close()
-            _LOGGER.info("session closed")
 
         if record is not None:
             if result_identifier is not None:
@@ -1291,8 +1272,6 @@ class PipestatManager(dict):
             if isinstance(limit, int):
                 q = q.limit(limit)
             results = q.all()
-            s.close()
-            _LOGGER.info("session closed")
         return results
 
     def assert_results_defined(self, results: List[str]) -> None:
@@ -1412,8 +1391,6 @@ class PipestatManager(dict):
                 s.add(new_record)
                 s.commit()
                 returned_id = new_record.id
-                s.close()
-                _LOGGER.info("session closed")
         else:
             with self[DB_SESSION_KEY]() as s:
                 record_to_update = (
@@ -1425,8 +1402,6 @@ class PipestatManager(dict):
                     setattr(record_to_update, result_id, result_value)
                 s.commit()
                 returned_id = record_to_update.id
-                s.close()
-                _LOGGER.info("session closed")
         return returned_id
 
     def _report_data_element(
@@ -1554,7 +1529,5 @@ class PipestatManager(dict):
                         )
                     setattr(records.first(), result_identifier, None)
                 s.commit()
-                s.close()
-                _LOGGER.info("session closed")
         else:
             raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
