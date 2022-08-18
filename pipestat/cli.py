@@ -41,10 +41,10 @@ def main():
             raise SchemaNotFoundError(msg="report", cli=True)
         result_metadata = psm.schema[args.result_identifier]
         if result_metadata[SCHEMA_TYPE_KEY] in [
-                "object",
-                "image",
-                "file",
-            ] and os.path.exists(expandpath(value)):
+            "object",
+            "image",
+            "file",
+        ] and os.path.exists(expandpath(value)):
             from json import load
 
             _LOGGER.info(
