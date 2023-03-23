@@ -1,9 +1,8 @@
-# some interactive pipestat test,s duplicated here in text form just for convenience
+# some interactive pipestat tests duplicated here in text form just for convenience
 
 import pipestat
+
 from jsonschema import ValidationError
-
-
 from tempfile import mkstemp
 
 _, temp_file = mkstemp(suffix=".yaml")
