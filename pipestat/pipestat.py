@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from urllib.parse import quote_plus
 
 import sqlalchemy.orm
-from attmap import PathExAttMap as PXAM
+
 from jsonschema import validate
 from sqlalchemy import Column, ForeignKey, create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
