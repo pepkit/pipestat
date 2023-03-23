@@ -869,7 +869,9 @@ class PipestatManager(dict):
         if not os.path.exists(self.file):
             _LOGGER.info(f"Initializing results file '{self.file}'")
 
-            data = YAMLConfigManager(entries={self.namespace: "{}"}, filepath=self.file, create_file=True)
+            data = YAMLConfigManager(
+                entries={self.namespace: "{}"}, filepath=self.file, create_file=True
+            )
             with data as data_locked:
                 data_locked.write()
 
@@ -1343,7 +1345,7 @@ class PipestatManager(dict):
             )
 
         # if self.file is not None:
-            # self.data.make_writable()
+        # self.data.make_writable()
 
         _LOGGER.warning("Writing to locked data...")
 
@@ -1481,7 +1483,6 @@ class PipestatManager(dict):
             if self.file:
                 with self.data as locked_data:
                     locked_data.write()
-
 
         if self.file is None:
             try:

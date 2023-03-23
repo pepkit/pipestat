@@ -25,6 +25,7 @@ def is_in_file(fs, s, reverse=False):
             else:
                 assert s in fh.read()
 
+
 class TestReporting:
     @pytest.mark.parametrize(
         ["rec_id", "val"],
