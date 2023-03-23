@@ -16,9 +16,9 @@ from sqlalchemy.orm import (
     scoped_session,
     sessionmaker,
 )
-from ubiquerg import create_lock, remove_lock
-from yacman2 import YAMLConfigManager
 
+from ubiquerg import create_lock, remove_lock
+from yacman import YAMLConfigManager
 from .const import *
 from .exceptions import *
 from .helpers import *
@@ -868,14 +868,10 @@ class PipestatManager(dict):
         """
         if not os.path.exists(self.file):
             _LOGGER.info(f"Initializing results file '{self.file}'")
-            data = YAMLConfigManager(entries={self.namespace: {}}, filepath=self.file,
-            create_file=True)
-            # data.filepath = self.file
-            # data.writable = True
-            # data.write()
-            # data.make_readonly()
-            with data as _:
-                _.write()
+
+            data = YAMLConfigManager(entries={self.namespace: "{}"}, filepath=self.file, create_file=True)
+            with data as data_locked:
+                data_locked.write()
 
             self[DATA_KEY] = data
             return True
@@ -1345,25 +1341,21 @@ class PipestatManager(dict):
             validate_type(
                 value=values[r], schema=self.result_schemas[r], strict_type=strict_type
             )
-        
+
         # if self.file is not None:
             # self.data.make_writable()
 
+        _LOGGER.warning("Writing to locked data...")
 
         if not self[DB_ONLY_KEY]:
             self._report_data_element(
                 record_identifier=record_identifier, values=values
             )
         if self.file is not None:
-            # Use a context manager to set and unset writable
-            with self.data as _:
-                _.write()
-            # self.data.make_readonly()
-
-            print(self.data)
-
-
+            with self.data as locked_data:
+                locked_data.write()
         else:
+            _LOGGER.warning("ELSE...")
             try:
                 updated_ids = self._report_db(
                     record_identifier=record_identifier, values=values
@@ -1377,11 +1369,15 @@ class PipestatManager(dict):
                         del self[DATA_KEY][self.namespace][record_identifier][r]
                 raise
         nl = "\n"
+        _LOGGER.warning("TEST HERE")
         rep_strs = [f"{k}: {v}" for k, v in values.items()]
         _LOGGER.info(
             f"Reported records for '{record_identifier}' in '{self.namespace}' "
             f"namespace:{nl} - {(nl + ' - ').join(rep_strs)}"
         )
+        _LOGGER.warning(self.data)
+        _LOGGER.warning(updated_ids)
+        _LOGGER.info(record_identifier, values)
         return True if not return_id else updated_ids
 
     def _report_db(
@@ -1464,10 +1460,6 @@ class PipestatManager(dict):
             _LOGGER.error(f"'{result_identifier}' has not been reported for '{r_id}'")
             return False
 
-        # For yacman2, the make_writable call happens in write()
-        # if self.file:
-        #     self.data.make_writable()
-
         if not self[DB_ONLY_KEY]:
             if rm_record:
                 _LOGGER.info(f"Removing '{r_id}' record")
@@ -1485,9 +1477,11 @@ class PipestatManager(dict):
                     )
                     del self[DATA_KEY][self.namespace][r_id]
                     rm_record = True
-        if self.file:
-            with self.data as _:
-                _.write()
+
+            if self.file:
+                with self.data as locked_data:
+                    locked_data.write()
+
 
         if self.file is None:
             try:
