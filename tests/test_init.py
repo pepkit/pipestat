@@ -101,12 +101,13 @@ class TestPipestatManagerInstantiation:
         )
         assert os.path.exists(tmp_res_file)
 
+    # @pytest.mark.skip()
     def test_use_other_namespace_file(self, schema_file_path):
         """Results file can be used with just one namespace"""
         tmp_res_file = os.path.join(mkdtemp(), "res.yml")
         print(f"Temporary results file: {tmp_res_file}")
         assert not os.path.exists(tmp_res_file)
-        PipestatManager(
+        psm = PipestatManager(
             namespace="test",
             results_file_path=tmp_res_file,
             schema_path=schema_file_path,

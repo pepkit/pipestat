@@ -2,6 +2,10 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.4.0] - 2023-XX-XX
+
+- Remove attmap dependency
+
 ## [0.3.1] - 2022-08-18
 
 ### Fix
@@ -30,7 +34,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
-- results highligting support
+- results highlighting support
 - database column parametrizing from the results schema
 - static typing
 - possibility to initialize the `PipestatManager` object (or use the `pipestat status` CLI) with no results schema defined for pipeline status management even when backed by a database; [Issue #1](https://github.com/pepkit/pipestat/issues/1)

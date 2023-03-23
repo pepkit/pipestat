@@ -12,7 +12,7 @@ jobs:
   pytest:
     strategy:
       matrix:
-        python-version: [3.6, 3.9]
+        python-version: [3.8, 3.11]
         os: [ubuntu-latest] # can't use macOS when using service containers or container jobs
     runs-on: ${{ matrix.os }}
     services:
@@ -33,10 +33,10 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Install dev dependancies
+    - name: Install dev dependencies
       run: if [ -f requirements/requirements-dev.txt ]; then pip install -r requirements/requirements-dev.txt; fi
 
-    - name: Install test dependancies
+    - name: Install test dependencies
       run: if [ -f requirements/requirements-test.txt ]; then pip install -r requirements/requirements-test.txt; fi
 
     - name: Install pipestat
