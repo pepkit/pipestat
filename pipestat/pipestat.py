@@ -19,8 +19,6 @@ from sqlalchemy.orm import (
 from ubiquerg import create_lock, remove_lock
 from yacman import YAMLConfigManager
 
-
-
 from .const import *
 from .exceptions import *
 from .helpers import *
