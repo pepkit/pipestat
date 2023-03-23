@@ -1,13 +1,1 @@
-test:
-  sample1:
-    name_of_something: test_name
-    number_of_things: 2
-  sample2:
-    number_of_things: 1
-    percentage_of_things: 10.1
-    name_of_something: test_name
-    output_file:
-      path: 1
-      title: abc
-  sample3:
-    name_of_something: test_name
+test: {}
