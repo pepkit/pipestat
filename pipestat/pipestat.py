@@ -471,18 +471,19 @@ class PipestatManager(dict):
         """
         if not self.is_db_connected():
             self.establish_db_connection()
-        with self[DB_SESSION_KEY]() as session:
-            _LOGGER.debug("Created session")
-            try:
-                yield session
-            except:
-                _LOGGER.info("session.rollback")
-                session.rollback()
-                raise
-            finally:
-                _LOGGER.info("session.close")
-                session.close()
-            _LOGGER.debug("Ending session")
+        # with self[DB_SESSION_KEY]() as session:
+        session = self[DB_SESSION_KEY]()
+        _LOGGER.debug("Created session")
+        try:
+            yield session
+        except:
+            _LOGGER.info("session.rollback")
+            session.rollback()
+            raise
+        finally:
+            _LOGGER.info("session.close")
+            session.close()
+        _LOGGER.debug("Ending session")
 
     def _get_flag_file(
         self, record_identifier: str = None
@@ -910,7 +911,7 @@ class PipestatManager(dict):
         """
         Create a dictionary from the database table data
         """
-        with self.session as s:
+        with self[DB_SESSION_KEY]() as s:
             records = s.query(self.get_orm(self.namespace)).all()
         _LOGGER.debug(f"Reading data from database for '{self.namespace}' namespace")
         for record in records:
@@ -951,7 +952,7 @@ class PipestatManager(dict):
         """
         from sqlalchemy import inspect
 
-        with self.session as s:
+        with self[DB_SESSION_KEY]() as s:
             return inspect(s.bind).has_table(table_name=table_name)
 
     def _count_rows(self, table_name: str) -> int:
@@ -961,7 +962,7 @@ class PipestatManager(dict):
         :param str table_name: table to count rows for
         :return int: number of rows in the selected table
         """
-        with self.session as s:
+        with self[DB_SESSION_KEY]() as s:
             return s.query(self[DB_ORMS_KEY][table_name].id).count()
 
     def get_orm(self, table_name: str = None) -> Any:
@@ -995,7 +996,7 @@ class PipestatManager(dict):
         :return bool: whether the record exists in the table
         """
         if self.file is None:
-            with self.session as s:
+            with self[DB_SESSION_KEY]() as s:
                 return (
                     s.query(self.get_orm(table_name).id)
                     .filter_by(record_identifier=record_identifier)
@@ -1053,7 +1054,7 @@ class PipestatManager(dict):
         """
         table_name = table_name or self.namespace
         rid = self._strict_record_id(rid)
-        with self.session as s:
+        with self[DB_SESSION_KEY]() as s:
             record = (
                 s.query(self.get_orm(table_name))
                 .filter_by(record_identifier=rid)
@@ -1116,7 +1117,7 @@ class PipestatManager(dict):
         """
 
         ORM = self.get_orm(table_name or self.namespace)
-        with self.session as s:
+        with self[DB_SESSION_KEY]() as s:
             if columns is not None:
                 query = s.query(*[getattr(ORM, column) for column in columns])
             else:
@@ -1143,7 +1144,7 @@ class PipestatManager(dict):
         """
 
         ORM = self.get_orm(table_name or self.namespace)
-        with self.session as s:
+        with self[DB_SESSION_KEY]() as s:
             query = s.query(*[getattr(ORM, column) for column in columns])
             query = query.distinct()
             result = query.all()
@@ -1216,7 +1217,7 @@ class PipestatManager(dict):
                     f"'{record_identifier}'"
                 )
 
-        with self.session as s:
+        with self[DB_SESSION_KEY]() as s:
             record = (
                 s.query(self.get_orm(table_name))
                 .filter_by(record_identifier=record_identifier)
@@ -1263,7 +1264,7 @@ class PipestatManager(dict):
                 f"This operation is not supported for file backend."
             )
         ORM = self.get_orm(table_name or self.namespace)
-        with self.session as s:
+        with self[DB_SESSION_KEY]() as s:
             if columns is not None:
                 q = (
                     s.query(*[getattr(ORM, column) for column in columns])
@@ -1401,12 +1402,12 @@ class PipestatManager(dict):
             record_identifier=record_identifier, table_name=table_name
         ):
             new_record = ORMClass(**values)
-            with self.session as s:
+            with self[DB_SESSION_KEY]() as s:
                 s.add(new_record)
                 s.commit()
                 returned_id = new_record.id
         else:
-            with self.session as s:
+            with self[DB_SESSION_KEY]() as s:
                 record_to_update = (
                     s.query(ORMClass)
                     .filter(getattr(ORMClass, RECORD_ID) == record_identifier)
@@ -1528,7 +1529,7 @@ class PipestatManager(dict):
         if self.check_record_exists(
             record_identifier=record_identifier, table_name=table_name
         ):
-            with self.session as s:
+            with self[DB_SESSION_KEY]() as s:
                 records = s.query(ORMClass).filter(
                     getattr(ORMClass, RECORD_ID) == record_identifier
                 )
