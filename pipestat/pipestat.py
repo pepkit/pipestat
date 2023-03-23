@@ -16,9 +16,9 @@ from sqlalchemy.orm import (
     scoped_session,
     sessionmaker,
 )
+
 from ubiquerg import create_lock, remove_lock
 from yacman import YAMLConfigManager
-
 from .const import *
 from .exceptions import *
 from .helpers import *
@@ -32,7 +32,7 @@ class PipestatManager(dict):
     pipeline status management. It formalizes a way for pipeline developers
     and downstream tools developers to communicate -- results produced by a
     pipeline can easily and reliably become an input for downstream analyses.
-    The object exposes API for interacting with the results and
+    The object exposes an API for interacting with the results and
     pipeline status and can be backed by either a YAML-formatted file
     or a database.
     """
@@ -53,10 +53,10 @@ class PipestatManager(dict):
         """
         Initialize the object
 
-        :param str namespace: namespace to report into. This will be the DB
-        table name if using DB as the object back-end
+        :param str namespace: namespace to report into, which corresponds to the pipeline.
+            This will be the DB table name if using DB as the object back-end
         :param str record_identifier: record identifier to report for. This
-            creates a weak bound to the record, which can be overriden in
+            creates a weak bound to the record, which can be overridden in
             this object method calls
         :param str schema_path: path to the output schema that formalizes
             the results structure
@@ -868,11 +868,11 @@ class PipestatManager(dict):
         """
         if not os.path.exists(self.file):
             _LOGGER.info(f"Initializing results file '{self.file}'")
+
             data = YAMLConfigManager(entries={self.namespace: "{}"}, filepath=self.file, create_file=True)
             with data as data_locked:
-                data.write()
-            # data.write(filepath=self.file)
-            # data.make_readonly()
+                data_locked.write()
+
             self[DATA_KEY] = data
             return True
         _LOGGER.debug(f"Reading data from '{self.file}'")
@@ -1342,13 +1342,11 @@ class PipestatManager(dict):
                 value=values[r], schema=self.result_schemas[r], strict_type=strict_type
             )
 
-
-
         # if self.file is not None:
             # self.data.make_writable()
 
-
         _LOGGER.warning("Writing to locked data...")
+
         if not self[DB_ONLY_KEY]:
             self._report_data_element(
                 record_identifier=record_identifier, values=values
@@ -1356,9 +1354,6 @@ class PipestatManager(dict):
         if self.file is not None:
             with self.data as locked_data:
                 locked_data.write()
-        #     self.data.write()
-        #     self.data.make_readonly()
-
         else:
             _LOGGER.warning("ELSE...")
             try:
@@ -1433,8 +1428,8 @@ class PipestatManager(dict):
         :param Dict[str, Any] values: dict of results identifiers and values
             to be reported
         """
-        self[DATA_KEY].setdefault(self.namespace, PXAM())
-        self[DATA_KEY][self.namespace].setdefault(record_identifier, PXAM())
+        self[DATA_KEY].setdefault(self.namespace, {})
+        self[DATA_KEY][self.namespace].setdefault(record_identifier, {})
         for res_id, val in values.items():
             self[DATA_KEY][self.namespace][record_identifier][res_id] = val
 
@@ -1465,11 +1460,6 @@ class PipestatManager(dict):
             _LOGGER.error(f"'{result_identifier}' has not been reported for '{r_id}'")
             return False
 
-
-
-
-        # if self.file:
-        #     self.data.make_writable()
         if not self[DB_ONLY_KEY]:
             if rm_record:
                 _LOGGER.info(f"Removing '{r_id}' record")
@@ -1491,8 +1481,6 @@ class PipestatManager(dict):
             if self.file:
                 with self.data as locked_data:
                     locked_data.write()
-            #     self.data.make_readonly()
-
 
 
         if self.file is None:

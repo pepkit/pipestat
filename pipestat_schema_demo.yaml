@@ -1,0 +1,6 @@
+number:
+  type: integer
+  description: "A number reported by the pipeline"
+name_of_something:
+  type: string
+  description: "Name of something reported by the pipeline"

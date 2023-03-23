@@ -1,6 +1,6 @@
 site_name: pipestat
 site_url: http://pipestat.databio.org/
-site_logo: img/pipestat_logo.svg
+site_logo: img/pipestat_logo_light.svg
 repo_url: http://github.com/pepkit/pipestat
 pypi_name: pipestat
 

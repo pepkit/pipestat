@@ -1,0 +1,78 @@
+# some interactive pipestat test,s duplicated here in text form just for convenience
+
+import pipestat
+from jsonschema import ValidationError
+
+
+from tempfile import mkstemp
+
+_, temp_file = mkstemp(suffix=".yaml")
+print(temp_file)
+
+psm = pipestat.PipestatManager(
+    namespace="test",
+    record_identifier="sample1",
+    results_file_path=temp_file,
+    schema_path="../tests/data/sample_output_schema.yaml",
+)
+
+psm.namespace
+psm.record_identifier
+
+psm.data
+
+psm.schema
+
+psm.result_schemas
+
+psm.report(values={"output_file": {"path": "/home/user/path.csv"}})
+
+psm.report(
+    values={
+        "output_file": {
+            "path": "/home/user/path.csv",
+            "title": "CSV file with some data",
+        }
+    }
+)
+psm.data["test"]["sample1"]
+
+
+psm2 = pipestat.PipestatManager(
+    namespace="test",
+    record_identifier="sample2",
+    results_file_path=temp_file,
+    schema_path="../tests/data/sample_output_schema.yaml",
+)
+
+psm2.data
+psm2.report(values={"number_of_things": 2})
+
+"sample2" in psm2.data["test"]
+
+psm4 = pipestat.PipestatManager(
+    namespace="test",
+    record_identifier="sample2",
+    config="/home/nsheff/code/pipestat/tests/data/config.yaml",
+    schema_path="../data/sample_output_schema.yaml",
+)
+
+psm3.report(values={"number_of_things": 3})
+x = psm3.report(values={"name_of_something": "two"})
+
+x
+
+
+psm3.data
+psm3.data["test"]
+
+psm3["_db_session"]
+
+with psm3["_db_session"]() as s:
+	s.commit()
+
+
+
+
+psm4.data
+

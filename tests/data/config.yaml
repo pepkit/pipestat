@@ -1,6 +1,6 @@
 namespace: test
 record_identifier: sample1
-schema_path: sample_output_schema.yaml #$HOME/Desktop/sample_output_schema.yaml
+schema_path: sample_output_schema.yaml
 database:
   dialect: postgresql
   driver: psycopg2
@@ -9,4 +9,3 @@ database:
   password: pipestat-password
   host: 127.0.0.1
   port: 5432
-#results_file_path: results_file.yaml #$HOME/Desktop/results.yaml
