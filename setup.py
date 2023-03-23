@@ -70,7 +70,7 @@ setup(
     ],
     keywords="project, metadata, bioinformatics, sequencing, ngs, workflow",
     url="https://github.com/pepkit/" + PACKAGE,
-    author=u"Michal Stolarczyk, Nathan Sheffield",
+    author="Michal Stolarczyk, Nathan Sheffield",
     license="BSD2",
     entry_points={
         "console_scripts": ["pipestat = pipestat.__main__:main"],
