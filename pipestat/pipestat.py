@@ -109,18 +109,16 @@ class PipestatManager(dict):
         ) -> Any:
             if arg_value is not None:
                 return arg_value
-            if arg_name not in cfg or cfg[arg_name] is None:
+            if cfg.get(arg_name, None) is None:
                 if env_var is not None:
                     arg = os.getenv(env_var, None)
                     if arg is not None:
                         _LOGGER.debug(f"Value '{arg}' sourced from '{env_var}' env var")
                         return expandpath(arg)
+                message = f"Value for the required '{arg_name}' argument could not be determined."
                 if strict:
-                    raise PipestatError(
-                        f"Value for the required '{arg_name}' argument could not be"
-                        f" determined. Provide it in the config or pass to the "
-                        f"object constructor."
-                    )
+                    raise PipestatError(message)
+                _LOGGER.warning(message)
                 return
             return cfg[arg_name]
 
@@ -146,9 +144,22 @@ class PipestatManager(dict):
             _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
             validate(cfg, cfg_schema)
 
-        self[NAME_KEY] = _select_value(
-            "namespace", namespace, self[CONFIG_KEY], env_var=ENV_VARS["namespace"]
+        namespace = _select_value(
+            "namespace",
+            namespace,
+            self[CONFIG_KEY],
+            strict=False,
+            env_var=ENV_VARS["namespace"],
         )
+        if namespace is None:
+            msg = (
+                "Could not determine value for namespace. "
+                "This may be passed directly to the pipestat manager constructor, "
+                "or through a configuration file, "
+                f"or as an environment variable: {ENV_VARS['namespace']}"
+            )
+            raise PipestatError(msg)
+        self[NAME_KEY] = namespace
         self[RECORD_ID_KEY] = _select_value(
             "record_identifier",
             record_identifier,
@@ -220,7 +231,7 @@ class PipestatManager(dict):
                     "Running in database only mode does not make sense with a YAML file as a backend. "
                     "Changing back to using memory."
                 )
-                self[DB_ONLY_KEY] = not self[DB_ONLY_KEY]
+                self[DB_ONLY_KEY] = False
             self[FILE_KEY] = results_file_path
             self._init_results_file()
             flag_file_dir = _select_value(

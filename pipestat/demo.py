@@ -13,32 +13,29 @@ yam.to_dict()
 
 # Create the table column definitions matching this schema
 sample_field_definitions = {
-	"id": (Optional[int], Field(default=None, primary_key=True)),
+    "id": (Optional[int], Field(default=None, primary_key=True)),
 }
 for element in yam["properties"]["samples"]["items"]["properties"]:
-	sample_field_definitions[element] = (Optional[str], Field(default=None))
+    sample_field_definitions[element] = (Optional[str], Field(default=None))
 
 project_field_definitions = {}
 for element in yam["properties"]:
-	if element == "samples":
-		continue
-	project_field_definitions[element] = (Optional[str], Field(default=None))
+    if element == "samples":
+        continue
+    project_field_definitions[element] = (Optional[str], Field(default=None))
 
 # Build a SQLModel for this JSON-schema
 Sample = create_model(
-	f"{yam['pipeline_id']}_sample", # Name of table
-	__base__=SQLModel,
-	__cls_kwargs__={"table": True},  # Specifies this for SQLModel table
-	**sample_field_definitions
-	)
+    f"{yam['pipeline_id']}_sample",  # Name of table
+    __base__=SQLModel,
+    __cls_kwargs__={"table": True},  # Specifies this for SQLModel table
+    **sample_field_definitions,
+)
 
-Project = create_model(
-	f"{yam['pipeline_id']}_project",
-	**project_field_definitions
-	)
+Project = create_model(f"{yam['pipeline_id']}_project", **project_field_definitions)
 
 
-sample_instance = {"smooth_bw":"path/to/smooth_bw.bw"}
+sample_instance = {"smooth_bw": "path/to/smooth_bw.bw"}
 project_instance = {"number_of_things": 15}
 
 
@@ -75,7 +72,6 @@ print(s1)
 print(s2)
 
 
-
 # Retrieve a sample from the database like this
 session.get(Sample, 2)
 
@@ -84,6 +80,6 @@ session.exec(select(Sample)).all()
 
 # A generator that iterates through samples
 
-def sample_iter():
-	...
 
+def sample_iter():
+    ...
