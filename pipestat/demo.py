@@ -38,7 +38,6 @@ Project = create_model(
 	)
 
 
-
 sample_instance = {"smooth_bw":"path/to/smooth_bw.bw"}
 project_instance = {"number_of_things": 15}
 
@@ -61,6 +60,7 @@ isinstance(p1, SQLModel)
 
 
 # Test database insertion
+
 sqlite_url = "sqlite:///test.db"
 engine = create_engine(sqlite_url, echo=True)
 SQLModel.metadata.create_all(engine)
@@ -76,37 +76,14 @@ print(s2)
 
 
 
+# Retrieve a sample from the database like this
+session.get(Sample, 2)
 
+# Get all the samples from the database
+session.exec(select(Sample)).all()
 
+# A generator that iterates through samples
 
-from typing import Optional
-
-from pydantic import create_model
-from sqlmodel import Field, Session, SQLModel, create_engine
-
-
-field_definitions = {
-    "id": (Optional[int], Field(default=None, primary_key=True)),
-    "name": (str, ...),
-    "secret_name": (str, ...),
-    "age": (Optional[int], None),
-}
-
-Hero = create_model(
-    "Hero",
-    __base__=SQLModel,
-    __cls_kwargs__={"table": True},
-    **field_definitions,
-)
-
-if __name__ == '__main__':
-sqlite_url = "sqlite:///test.db"
-engine = create_engine(sqlite_url, echo=True)
-SQLModel.metadata.create_all(engine)
-session = Session(engine)
-hero = Hero(name="Spider-Boy", secret_name="Pedro Parqueador")
-session.add(hero)
-session.commit()
-session.refresh(hero)
-print(hero)
+def sample_iter():
+	...
 
