@@ -102,13 +102,10 @@ class PipestatManager(dict):
 
         def _select_value(
             arg_name: str,
-            arg_value: Any,
             cfg: dict,
             strict: bool = True,
             env_var: str = None,
         ) -> Any:
-            if arg_value is not None:
-                return arg_value
             if cfg.get(arg_name, None) is None:
                 if env_var is not None:
                     arg = os.getenv(env_var, None)
@@ -144,12 +141,15 @@ class PipestatManager(dict):
             _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
             validate(cfg, cfg_schema)
 
-        namespace = _select_value(
-            "namespace",
-            namespace,
-            self[CONFIG_KEY],
-            strict=False,
-            env_var=ENV_VARS["namespace"],
+        namespace = (
+            _select_value(
+                "namespace",
+                self[CONFIG_KEY],
+                strict=False,
+                env_var=ENV_VARS["namespace"],
+            )
+            if namespace is None
+            else namespace
         )
         if namespace is None:
             msg = (
@@ -160,21 +160,27 @@ class PipestatManager(dict):
             )
             raise PipestatError(msg)
         self[NAME_KEY] = namespace
-        self[RECORD_ID_KEY] = _select_value(
-            "record_identifier",
-            record_identifier,
-            self[CONFIG_KEY],
-            False,
-            ENV_VARS["record_identifier"],
+        self[RECORD_ID_KEY] = (
+            _select_value(
+                "record_identifier",
+                self[CONFIG_KEY],
+                False,
+                ENV_VARS["record_identifier"],
+            )
+            if record_identifier is None
+            else record_identifier
         )
         self[DB_ONLY_KEY] = database_only
         # read results schema
-        self._schema_path = _select_value(
-            "schema_path",
-            schema_path,
-            self[CONFIG_KEY],
-            False,
-            env_var=ENV_VARS["schema"],
+        self._schema_path = (
+            _select_value(
+                "schema_path",
+                self[CONFIG_KEY],
+                False,
+                env_var=ENV_VARS["schema"],
+            )
+            if schema_path is None
+            else schema_path
         )
         if self._schema_path is not None:
             _, self[SCHEMA_KEY] = read_yaml_data(
@@ -202,11 +208,12 @@ class PipestatManager(dict):
             _mk_abs_via_cfg(
                 _select_value(
                     "status_schema_path",
-                    status_schema_path,
                     self[CONFIG_KEY],
                     False,
                     env_var=ENV_VARS["status_schema"],
-                ),
+                )
+                if status_schema_path is None
+                else status_schema_path,
                 self.config_path,
             )
             or STATUS_SCHEMA
@@ -218,11 +225,12 @@ class PipestatManager(dict):
         results_file_path = _mk_abs_via_cfg(
             _select_value(
                 "results_file_path",
-                results_file_path,
                 self[CONFIG_KEY],
                 False,
                 ENV_VARS["results_file"],
-            ),
+            )
+            if results_file_path is None
+            else results_file_path,
             self.config_path,
         )
         if results_file_path:
@@ -234,8 +242,10 @@ class PipestatManager(dict):
                 self[DB_ONLY_KEY] = False
             self[FILE_KEY] = results_file_path
             self._init_results_file()
-            flag_file_dir = _select_value(
-                "flag_file_dir", flag_file_dir, self[CONFIG_KEY], False
+            flag_file_dir = (
+                _select_value("flag_file_dir", self[CONFIG_KEY], False)
+                if flag_file_dir is None
+                else flag_file_dir
             ) or os.path.dirname(self.file)
             self[STATUS_FILE_DIR] = _mk_abs_via_cfg(flag_file_dir, self.config_path)
         elif CFG_DATABASE_KEY in self[CONFIG_KEY]:
