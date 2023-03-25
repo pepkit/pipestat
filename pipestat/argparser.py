@@ -31,7 +31,9 @@ def build_argparser(desc):
 
     subparsers = parser.add_subparsers(dest="command")
 
-    def add_subparser(cmd, msg, subparsers):
+    def add_subparser(
+        cmd: str, msg: str, subparsers: argparse._SubParsersAction
+    ) -> argparse.ArgumentParser:
         return subparsers.add_parser(
             cmd,
             description=msg,
@@ -44,17 +46,17 @@ def build_argparser(desc):
     sps = {}
     # common arguments
     for cmd in SUBPARSER_MSGS.keys():
-        sps[cmd] = add_subparser(cmd, SUBPARSER_MSGS[cmd], subparsers)
+        p = add_subparser(cmd, SUBPARSER_MSGS[cmd], subparsers)
         # status is nested and status subcommands require config path
-        if cmd == STATUS_CMD:
-            continue
-        sps[cmd].add_argument(
-            "-n",
-            "--namespace",
-            type=str,
-            metavar="N",
-            help=f"Name of the pipeline to report result for. {_env_txt('namespace')}",
-        )
+        if cmd != STATUS_CMD:
+            p.add_argument(
+                "-n",
+                "--namespace",
+                type=str,
+                metavar="N",
+                help=f"Name of the pipeline to report result for. {_env_txt('namespace')}",
+            )
+        sps[cmd] = p
 
     status_subparser = sps[STATUS_CMD]
     status_subparsers = status_subparser.add_subparsers(dest="subcommand")
