@@ -32,7 +32,7 @@ class PipestatManager(dict):
     pipeline status management. It formalizes a way for pipeline developers
     and downstream tools developers to communicate -- results produced by a
     pipeline can easily and reliably become an input for downstream analyses.
-    The object exposes an API for interacting with the results and
+    A PipestatManager object exposes an API for interacting with the results and
     pipeline status and can be backed by either a YAML-formatted file
     or a database.
     """
