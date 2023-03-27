@@ -851,12 +851,13 @@ class PipestatManager(dict):
             :return dict: schema with types replaced
             """
             for k, v in s.items():
-                assert SCHEMA_TYPE_KEY in v, SchemaError(
-                    f"Result '{k}' is missing '{SCHEMA_TYPE_KEY}' key"
-                )
-                assert SCHEMA_DESC_KEY in v, SchemaError(
-                    f"Result '{k}' is missing '{SCHEMA_DESC_KEY}' key"
-                )
+                missing_req_keys = [
+                    req for req in [SCHEMA_TYPE_KEY, SCHEMA_DESC_KEY] if req not in v
+                ]
+                if missing_req_keys:
+                    raise SchemaError(
+                        f"Result '{k}' is missing required key(s): {', '.join(missing_req_keys)}"
+                    )
                 if v[SCHEMA_TYPE_KEY] == "object" and SCHEMA_PROP_KEY in s[k]:
                     _recursively_replace_custom_types(s[k][SCHEMA_PROP_KEY])
                 if v[SCHEMA_TYPE_KEY] in CANONICAL_TYPES.keys():
