@@ -880,9 +880,10 @@ class PipestatManager(dict):
         assert isinstance(schema, dict), SchemaError(
             f"The schema has to be a dict; got {type(schema)}"
         )
-        for col_name in RESERVED_COLNAMES:
-            assert col_name not in schema.keys(), PipestatError(
-                f"'{col_name}' is an identifier reserved by pipestat"
+        reserved_used = set(schema.keys()) & set(RESERVED_COLNAMES)
+        if reserved_used:
+            raise PipestatError(
+                f"Schema used pipestat reserved identifier(s): {', '.join(reserved_used)}"
             )
         self[RES_SCHEMAS_KEY] = _recursively_replace_custom_types(schema)
 
