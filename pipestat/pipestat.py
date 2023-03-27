@@ -883,9 +883,7 @@ class PipestatManager(dict):
             assert col_name not in schema.keys(), PipestatError(
                 f"'{col_name}' is an identifier reserved by pipestat"
             )
-        self[RES_SCHEMAS_KEY] = {}
-        schema = _recursively_replace_custom_types(schema)
-        self[RES_SCHEMAS_KEY] = schema
+        self[RES_SCHEMAS_KEY] = _recursively_replace_custom_types(schema)
 
     def _init_results_file(self) -> bool:
         """
