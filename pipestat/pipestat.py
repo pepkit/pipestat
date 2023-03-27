@@ -878,7 +878,7 @@ class PipestatManager(dict):
         schema = deepcopy(self.schema)
         _LOGGER.debug(f"Validating input schema")
         assert isinstance(schema, dict), SchemaError(
-            f"The schema has to be a {dict().__class__.__name__}"
+            f"The schema has to be a dict; got {type(schema)}"
         )
         for col_name in RESERVED_COLNAMES:
             assert col_name not in schema.keys(), PipestatError(
