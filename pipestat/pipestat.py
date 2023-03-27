@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from copy import deepcopy
+import json
 from logging import getLogger
 from typing import Dict, List, Optional, Tuple, Union
 from urllib.parse import quote_plus
@@ -212,9 +213,8 @@ class PipestatManager(dict):
             else schema_path
         )
         if self._schema_path is not None:
-            schema_path_to_parse = _mk_abs_via_cfg(self._schema_path, self.config_path)
-            _LOGGER.debug(f"Reading schema file: {schema_path_to_parse}")
-            _, self[SCHEMA_KEY] = read_yaml_data(schema_path_to_parse, "schema")
+            schema_to_read = _mk_abs_via_cfg(self._schema_path, self.config_path)
+            self[SCHEMA_KEY] = read_schema(schema_to_read)
             self.validate_schema()
             # determine the highlighted results
             self[HIGHLIGHTED_KEY] = [
@@ -1573,3 +1573,8 @@ class PipestatManager(dict):
                 s.commit()
         else:
             raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
+
+
+def read_schema(schema_file: str) -> Dict[str, Any]:
+    _, raw_schema = read_yaml_data(schema_file, "schema")
+    return flatten_schema(raw_schema)

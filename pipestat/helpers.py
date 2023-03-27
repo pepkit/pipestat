@@ -10,6 +10,7 @@ from sqlalchemy.orm import DeclarativeMeta, Query
 from ubiquerg import expandpath
 
 from .const import *
+from .exceptions import SchemaError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +30,30 @@ def get_status_table_schema(status_schema: Dict[str, Any]) -> Dict[str, Any]:
     status_table_schema["status"].update({"enum": defined_status_codes})
     _LOGGER.debug(f"Updated status table schema: {status_table_schema}")
     return status_table_schema
+
+
+def flatten_schema(raw_schema: Dict[str, Any]) -> Dict[str, Any]:
+    if SCHEMA_PROP_KEY not in raw_schema:
+        raise SchemaError(f"Missing top-level '{SCHEMA_PROP_KEY}'")
+    props = raw_schema[SCHEMA_PROP_KEY]
+    if "samples" not in props:
+        return props
+    sample_level_data = props["samples"]
+    if "items" not in sample_level_data:
+        raise SchemaError("No 'items' in sample-level schema section")
+    sample_level_data = sample_level_data["items"]
+    if SCHEMA_PROP_KEY not in sample_level_data:
+        raise SchemaError(f"No '{SCHEMA_PROP_KEY}' in sample-level schema items")
+    sample_level_data = sample_level_data[SCHEMA_PROP_KEY]
+    project_sample_key_overlap = set(props) & set(sample_level_data)
+    if project_sample_key_overlap:
+        raise SchemaError(
+            f"{len(project_sample_key_overlap)} keys shared between project level and sample level: {', '.join(project_sample_key_overlap)}"
+        )
+    return {
+        **sample_level_data,
+        **{k: obj for k, obj in props.items() if k != "samples"},
+    }
 
 
 def validate_type(value, schema, strict_type=False):
