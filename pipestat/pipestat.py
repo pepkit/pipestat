@@ -212,9 +212,9 @@ class PipestatManager(dict):
             else schema_path
         )
         if self._schema_path is not None:
-            _, self[SCHEMA_KEY] = read_yaml_data(
-                _mk_abs_via_cfg(self._schema_path, self.config_path), "schema"
-            )
+            schema_path_to_parse = _mk_abs_via_cfg(self._schema_path, self.config_path)
+            _LOGGER.debug(f"Reading schema file: {schema_path_to_parse}")
+            _, self[SCHEMA_KEY] = read_yaml_data(schema_path_to_parse, "schema")
             self.validate_schema()
             # determine the highlighted results
             self[HIGHLIGHTED_KEY] = [
