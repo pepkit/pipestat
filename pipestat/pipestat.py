@@ -107,7 +107,7 @@ class PipestatManager(dict):
             strict: bool = True,
             env_var: str = None,
         ) -> Any:
-            if cfg.get(arg_name, None) is None:
+            if cfg.get(arg_name) is None:
                 if env_var is not None:
                     arg = os.getenv(env_var, None)
                     if arg is not None:
