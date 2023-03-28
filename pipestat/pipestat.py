@@ -141,6 +141,37 @@ class PipestatManager(dict):
         else:
             self[CONFIG_KEY] = YAMLConfigManager()
 
+        # Finalize results file.
+        results_file_path = _mk_abs_via_cfg(
+            _select_value(
+                "results_file_path",
+                self[CONFIG_KEY],
+                False,
+                ENV_VARS["results_file"],
+            )
+            if results_file_path is None
+            else results_file_path,
+            self.config_path,
+        )
+
+        # Validation of presence of backend and database info, if applicable
+        # Backend is implied as file if results_file_path is truthy.
+        # Otherwise, assume database as backend and validate accordingly.
+        if not results_file_path:
+            if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
+                raise MissingConfigDataError(
+                    "Must specify either database login credentials or a YAML file path"
+                )
+            if not all(
+                [
+                    _check_cfg_key(self[CONFIG_KEY][CFG_DATABASE_KEY], key)
+                    for key in DB_CREDENTIALS
+                ]
+            ):
+                raise MissingConfigDataError(
+                    "Must specify all database login credentials or result_file_path"
+                )
+
         namespace = (
             _select_value(
                 "namespace",
@@ -221,19 +252,9 @@ class PipestatManager(dict):
         self[STATUS_SCHEMA_SOURCE_KEY], self[STATUS_SCHEMA_KEY] = read_yaml_data(
             status_schema_path, "status schema"
         )
-        # determine results file
-        results_file_path = _mk_abs_via_cfg(
-            _select_value(
-                "results_file_path",
-                self[CONFIG_KEY],
-                False,
-                ENV_VARS["results_file"],
-            )
-            if results_file_path is None
-            else results_file_path,
-            self.config_path,
-        )
+
         if results_file_path:
+            _LOGGER.debug(f"Determined file as backend: {results_file_path}")
             if self[DB_ONLY_KEY]:
                 _LOGGER.debug(
                     "Running in database only mode does not make sense with a YAML file as a backend. "
@@ -248,26 +269,14 @@ class PipestatManager(dict):
                 else flag_file_dir
             ) or os.path.dirname(self.file)
             self[STATUS_FILE_DIR] = _mk_abs_via_cfg(flag_file_dir, self.config_path)
-        elif CFG_DATABASE_KEY in self[CONFIG_KEY]:
-            if not all(
-                [
-                    _check_cfg_key(self[CONFIG_KEY][CFG_DATABASE_KEY], key)
-                    for key in DB_CREDENTIALS
-                ]
-            ):
-                raise MissingConfigDataError(
-                    "Must specify all database login credentials or result_file_path"
-                )
+        else:
+            _LOGGER.debug("Determined database as backend")
             self[DB_ORMS_KEY] = {}
             self[DB_BASE_KEY] = custom_declarative_base or declarative_base()
             self[DATA_KEY] = YAMLConfigManager()
             self._show_db_logs = show_db_logs
             self._init_db_table()
             self._init_status_table()
-        else:
-            raise MissingConfigDataError(
-                "Must specify either database login credentials or a YAML file path"
-            )
 
     def __str__(self):
         """
