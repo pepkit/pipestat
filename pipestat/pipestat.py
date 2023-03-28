@@ -120,26 +120,26 @@ class PipestatManager(dict):
             return cfg[arg_name]
 
         super(PipestatManager, self).__init__()
-        self[CONFIG_KEY] = YAMLConfigManager()
         # read config or config data
         config = config or os.getenv(ENV_VARS["config"])
         if config is not None:
             if isinstance(config, str):
                 config = os.path.abspath(expandpath(config))
-                self[CONFIG_KEY] = YAMLConfigManager(filepath=config)
                 self._config_path = config
             elif isinstance(config, dict):
-                self[CONFIG_KEY] = YAMLConfigManager(entries=config)
                 self._config_path = None
             else:
                 raise TypeError(
                     "database_config has to be either path to the "
                     "file to read or a dict"
                 )
+            self[CONFIG_KEY] = YAMLConfigManager(filepath=config)
             # validate config
             cfg = self[CONFIG_KEY].exp
             _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
             validate(cfg, cfg_schema)
+        else:
+            self[CONFIG_KEY] = YAMLConfigManager()
 
         namespace = (
             _select_value(
