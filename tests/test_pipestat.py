@@ -454,7 +454,7 @@ class TestHighlighting:
 
 
 class TestEnvVars:
-    def test_no_config(self, monkeypatch, results_file_path, schema_file_path):
+    def test_no_config__psm_is_built_from_env_vars(self, monkeypatch, results_file_path, schema_file_path):
         """
         test that the object can be created if the arguments
         are provided as env vars
@@ -468,11 +468,8 @@ class TestEnvVars:
         except Exception as e:
             pytest.fail(f"Error during pipestat manager creation: {e}")
 
-    def test_config(self, monkeypatch, config_file_path):
-        """
-        test that the object can be created if the arguments are
-        provided in a config that is provided as env vars
-        """
+    def test_config__psm_is_built_from_config_file_env_var(self, monkeypatch, config_file_path):
+        """PSM can be created from config parsed from env var value."""
         monkeypatch.setenv(ENV_VARS["config"], config_file_path)
         try:
             PipestatManager()
