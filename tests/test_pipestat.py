@@ -463,7 +463,10 @@ class TestEnvVars:
         monkeypatch.setenv(ENV_VARS["record_identifier"], "sample1")
         monkeypatch.setenv(ENV_VARS["results_file"], results_file_path)
         monkeypatch.setenv(ENV_VARS["schema"], schema_file_path)
-        PipestatManager()
+        try:
+            PipestatManager()
+        except Exception as e:
+            pytest.fail(f"Error during pipestat manager creation: {e}")
 
     def test_config(self, monkeypatch, config_file_path):
         """
@@ -471,4 +474,7 @@ class TestEnvVars:
         provided in a config that is provided as env vars
         """
         monkeypatch.setenv(ENV_VARS["config"], config_file_path)
-        PipestatManager()
+        try:
+            PipestatManager()
+        except Exception as e:
+            pytest.fail(f"Error during pipestat manager creation: {e}")
