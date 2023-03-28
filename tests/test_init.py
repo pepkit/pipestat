@@ -86,7 +86,7 @@ class TestPipestatManagerInstantiation:
 
     def test_unknown_backend(self, schema_file_path):
         """Either db config or results file path needs to be provided"""
-        with pytest.raises(MissingConfigDataError):
+        with pytest.raises(NoBackendSpecifiedError):
             PipestatManager(namespace="test", schema_path=schema_file_path)
 
     def test_create_results_file(self, schema_file_path):
