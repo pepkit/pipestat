@@ -479,3 +479,9 @@ class TestEnvVars:
             PipestatManager()
         except Exception as e:
             pytest.fail(f"Error during pipestat manager creation: {e}")
+
+
+def test_no_constructor_args__raises_expected_exception():
+    """See Issue #3 in the repository."""
+    with pytest.raises(NoBackendSpecifiedError):
+        PipestatManager()

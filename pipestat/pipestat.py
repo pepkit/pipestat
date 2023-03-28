@@ -159,9 +159,7 @@ class PipestatManager(dict):
         # Otherwise, assume database as backend and validate accordingly.
         if not results_file_path:
             if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
-                raise MissingConfigDataError(
-                    "Must specify either database login credentials or a YAML file path"
-                )
+                raise NoBackendSpecifiedError()
             if not all(
                 [
                     _check_cfg_key(self[CONFIG_KEY][CFG_DATABASE_KEY], key)

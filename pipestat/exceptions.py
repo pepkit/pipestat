@@ -7,6 +7,7 @@ from .const import *
 __all__ = [
     "InvalidTypeError",
     "IncompatibleClassError",
+    "NoBackendSpecifiedError",
     "PipestatError",
     "PipestatDatabaseError",
     "MissingConfigDataError",
@@ -19,6 +20,10 @@ class PipestatError(Exception):
     """Base exception type for this package"""
 
     __metaclass__ = abc.ABCMeta
+
+
+class NoBackendSpecifiedError(PipestatError):
+    """Subtype for designating lack of backend specification"""
 
 
 class SchemaError(PipestatError):
