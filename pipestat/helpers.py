@@ -170,17 +170,11 @@ def dynamic_filter(
                 else:
                     filt = column.in_(value.split(","))
             else:
-                try:
-                    attr = (
-                        list(
-                            filter(
-                                lambda e: hasattr(column, e % op),
-                                ["%s", "%s_", "__%s__"],
-                            )
-                        )[0]
-                        % op
-                    )
-                except IndexError:
+                attr = next(
+                    filter(lambda a: hasattr(column, a), [op, op + "_", f"__{op}__"]),
+                    None,
+                )
+                if attr is None:
                     raise ValueError(f"Invalid filter operator: {op}")
                 if value == "null":
                     value = None
