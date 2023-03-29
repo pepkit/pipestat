@@ -6,8 +6,6 @@ from typing import Dict, List, Optional, Tuple, Union
 from urllib.parse import quote_plus
 
 import sqlalchemy.orm
-
-from jsonschema import validate
 from sqlalchemy import Column, ForeignKey, create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import (
@@ -17,6 +15,10 @@ from sqlalchemy.orm import (
     scoped_session,
     sessionmaker,
 )
+
+import sqlmodel as sql
+
+from jsonschema import validate
 
 from ubiquerg import create_lock, remove_lock
 from yacman import YAMLConfigManager
@@ -1046,8 +1048,9 @@ class PipestatManager(dict):
         """
         Check which results have been reported
 
-        :param str rid: unique identifier of the record
         :param List[str] results: names of the results to check
+        :param str rid: unique identifier of the record
+        :param str table_name: name of the table for which to check results
         :return List[str]: whether the specified result has been reported for the
             indicated record in current namespace
         """
