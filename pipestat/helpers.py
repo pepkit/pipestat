@@ -150,16 +150,13 @@ def dynamic_filter(
     """
 
     def _unpack_tripartite(x):
-        try:
-            assert isinstance(x, List) or isinstance(x, Tuple), TypeError(
-                "Wrong filter class, a List or Tuple is required"
-            )
-            e1, e2, e3 = x
-            return e1, e2, e3
-        except Exception:
+        if not (isinstance(x, List) or isinstance(x, Tuple)):
+            raise TypeError("Wrong filter class; a List or Tuple is required")
+        if len(x) != 3:
             raise ValueError(
                 f"Invalid filter value: {x}. The filter must be a tripartite iterable"
             )
+        return tuple(x)
 
     if filter_conditions is not None:
         for filter_condition in filter_conditions:
@@ -184,7 +181,7 @@ def dynamic_filter(
                         % op
                     )
                 except IndexError:
-                    raise ValueError()(f"Invalid filter operator: {op}")
+                    raise ValueError(f"Invalid filter operator: {op}")
                 if value == "null":
                     value = None
                 filt = getattr(column, attr)(value)
