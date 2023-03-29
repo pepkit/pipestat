@@ -19,11 +19,10 @@ class TestDatabaseOnly:
         config_file_path,
         schema_file_path,
     ):
-        REC_ID = "constant_record_id"
         psm = PipestatManager(
             schema_path=schema_file_path,
             namespace="test",
-            record_identifier=REC_ID,
+            record_identifier="constant_record_id",
             database_only=True,
             config=config_file_path,
         )
