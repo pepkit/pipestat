@@ -165,10 +165,9 @@ def dynamic_filter(
             if column is None:
                 raise ValueError(f"Selected filter column does not exist: {key}")
             if op == "in":
-                if isinstance(value, list):
-                    filt = column.in_(value)
-                else:
-                    filt = column.in_(value.split(","))
+                filt = column.in_(
+                    value if isinstance(value, list) else value.split(",")
+                )
             else:
                 attr = next(
                     filter(lambda a: hasattr(column, a), [op, op + "_", f"__{op}__"]),
