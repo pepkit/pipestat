@@ -64,7 +64,6 @@ NAME_KEY = "_name"
 FILE_KEY = "_file"
 RECORD_ID_KEY = "_record_id"
 DB_SESSION_KEY = "_db_session"
-DB_SCOPED_SESSION_KEY = "_db_scoped_session"
 DB_ENGINE_KEY = "_db_engine"
 HIGHLIGHTED_KEY = "_highlighted"
 DB_COLUMN_KEY = "db_column"
@@ -84,6 +83,7 @@ DB_RELATIONSHIP_ELEMENTS = [
 SCHEMA_PROP_KEY = "properties"
 SCHEMA_TYPE_KEY = "type"
 SCHEMA_DESC_KEY = "description"
+SCHEMA_PIPELINE_ID_KEY = "pipeline_id"
 
 # DB column names
 ID = "id"

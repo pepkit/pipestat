@@ -5,7 +5,7 @@ from pipestat.const import *
 
 
 class TestStatus:
-    def test_status_file_defult_location(self, schema_file_path, results_file_path):
+    def test_status_file_default_location(self, schema_file_path, results_file_path):
         """status file location is set to the results file dir
         if not specified"""
         psm = PipestatManager(

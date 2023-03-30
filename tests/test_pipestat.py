@@ -3,9 +3,10 @@ from collections.abc import Mapping
 import pytest
 from jsonschema import ValidationError
 
-from pipestat import PipestatManager, read_schema
+from pipestat import PipestatManager
 from pipestat.const import *
 from pipestat.exceptions import *
+from pipestat.helpers import ParsedSchema
 
 
 def is_in_file(fs, s, reverse=False):
@@ -440,9 +441,9 @@ class TestHighlighting:
     def test_highlighting_works(self, highlight_schema_file_path, results_file_path):
         """the highlighted results are sourced from the schema and only ones
         that are indicated with 'highlight: true` are respected"""
-        s = read_schema(highlight_schema_file_path)
+        s = ParsedSchema(highlight_schema_file_path, is_status=False)
         schema_highlighted_results = [
-            k for k, v in s.items() if v.get("highlight", False)
+            k for k, v in s.project_level_data.items() if v.get("highlight", False)
         ]
         psm = PipestatManager(
             namespace="test",

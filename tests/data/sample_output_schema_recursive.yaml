@@ -1,3 +1,4 @@
+pipeline_id: test_pipe
 properties:
   collection_of_images:
     description: "This store collection of values"

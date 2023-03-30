@@ -1,3 +1,4 @@
+pipeline_id: test_pipe
 running_custom:
   description: "the pipeline is running"
   color: [30, 144, 255] # dodgerblue

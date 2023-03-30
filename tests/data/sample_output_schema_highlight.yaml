@@ -1,3 +1,4 @@
+pipeline_id: test_pipe
 properties:
   number_of_things:
     type: integer

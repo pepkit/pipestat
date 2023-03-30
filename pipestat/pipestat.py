@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from urllib.parse import quote_plus
 
 import sqlalchemy.orm
-from sqlalchemy import Column, ForeignKey, create_engine, text
+from sqlalchemy import Column, ForeignKey, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import (
     DeclarativeMeta,
@@ -16,7 +16,8 @@ from sqlalchemy.orm import (
     sessionmaker,
 )
 
-import sqlmodel as sql
+from pydantic import create_model
+from sqlmodel import Field, Session, SQLModel, create_engine
 
 from jsonschema import validate
 
@@ -216,8 +217,8 @@ class PipestatManager(dict):
         )
         if self._schema_path is not None:
             schema_to_read = _mk_abs_via_cfg(self._schema_path, self.config_path)
-            self[SCHEMA_KEY] = read_schema(schema_to_read)
-            self.validate_schema()
+            _, self[SCHEMA_KEY] = read_yaml_data(schema_to_read, "schema")
+            self.validate_results_schema()
             # determine the highlighted results
             self[HIGHLIGHTED_KEY] = [
                 k
@@ -252,6 +253,7 @@ class PipestatManager(dict):
         self[STATUS_SCHEMA_SOURCE_KEY], self[STATUS_SCHEMA_KEY] = read_yaml_data(
             status_schema_path, "status schema"
         )
+        self[STATUS_SCHEMA_KEY] = ParsedSchema(self[STATUS_SCHEMA_KEY], is_status=True)
 
         if results_file_path:
             _LOGGER.debug(f"Determined file as backend: {results_file_path}")
@@ -272,11 +274,17 @@ class PipestatManager(dict):
         else:
             _LOGGER.debug("Determined database as backend")
             self[DB_ORMS_KEY] = {}
-            self[DB_BASE_KEY] = custom_declarative_base or declarative_base()
             self[DATA_KEY] = YAMLConfigManager()
             self._show_db_logs = show_db_logs
-            self._init_db_table()
-            self._init_status_table()
+            if self.schema:
+                result_models = self._create_orms(self.result_schemas, is_status=False)
+                if not self[DB_ONLY_KEY]:
+                    self._table_to_dict()
+            status_models = self._create_orms(
+                get_status_table_schema(status_schema=self.status_schema),
+                is_status=True,
+            )
+            SQLModel.metadata.create_all(self._engine)
 
     def __str__(self):
         """
@@ -317,7 +325,7 @@ class PipestatManager(dict):
 
         :return List[str]: a collection of highlighted results
         """
-        return self._get_attr(HIGHLIGHTED_KEY) or []
+        return self.get(HIGHLIGHTED_KEY, [])
 
     @property
     def db_column_kwargs_by_result(self) -> Dict[str, Any]:
@@ -327,11 +335,9 @@ class PipestatManager(dict):
 
         :return Dict[str, Any]: key word arguments for every result
         """
-        if self.schema is None:
-            return {}
         return {
             result_id: self.schema[result_id][DB_COLUMN_KEY]
-            for result_id in self.schema.keys()
+            for result_id in (self.schema or {}).keys()
             if DB_COLUMN_KEY in self.schema[result_id]
         }
 
@@ -375,7 +381,7 @@ class PipestatManager(dict):
 
         :return str: namespace the object writes the results to
         """
-        return self._get_attr(NAME_KEY)
+        return self.get(NAME_KEY)
 
     @property
     def record_identifier(self) -> str:
@@ -384,7 +390,7 @@ class PipestatManager(dict):
 
         :return str: unique identifier of the record
         """
-        return self._get_attr(RECORD_ID_KEY)
+        return self.get(RECORD_ID_KEY)
 
     @property
     def schema(self) -> Dict:
@@ -393,7 +399,7 @@ class PipestatManager(dict):
 
         :return dict: schema that formalizes the results structure
         """
-        return self._get_attr(SCHEMA_KEY)
+        return self.get(SCHEMA_KEY)
 
     @property
     def status_schema(self) -> Dict:
@@ -402,7 +408,7 @@ class PipestatManager(dict):
 
         :return dict: schema that formalizes the pipeline status structure
         """
-        return self._get_attr(STATUS_SCHEMA_KEY)
+        return self.get(STATUS_SCHEMA_KEY)
 
     @property
     def status_schema_source(self) -> Dict:
@@ -412,7 +418,7 @@ class PipestatManager(dict):
         :return dict: source of the schema that formalizes
             the pipeline status structure
         """
-        return self._get_attr(STATUS_SCHEMA_SOURCE_KEY)
+        return self.get(STATUS_SCHEMA_SOURCE_KEY)
 
     @property
     def schema_path(self) -> str:
@@ -441,7 +447,7 @@ class PipestatManager(dict):
         :return dict: schemas that formalize the structure of each result
             in a canonical jsonschema way
         """
-        return self._get_attr(RES_SCHEMAS_KEY)
+        return self.get(RES_SCHEMAS_KEY)
 
     @property
     def file(self) -> str:
@@ -450,7 +456,7 @@ class PipestatManager(dict):
 
         :return str: file path that the object is reporting the results into
         """
-        return self._get_attr(FILE_KEY)
+        return self.get(FILE_KEY)
 
     @property
     def data(self) -> YAMLConfigManager:
@@ -459,7 +465,7 @@ class PipestatManager(dict):
 
         :return yacman.YAMLConfigManager: the object that stores the reported data
         """
-        return self._get_attr(DATA_KEY)
+        return self.get(DATA_KEY)
 
     @property
     def db_url(self) -> str:
@@ -499,10 +505,7 @@ class PipestatManager(dict):
         Provide a transactional scope around a series of query
         operations.
         """
-        if not self.is_db_connected():
-            self.establish_db_connection()
-        # with self[DB_SESSION_KEY]() as session:
-        session = self[DB_SESSION_KEY]()
+        session = Session(self._engine)
         _LOGGER.debug("Created session")
         try:
             yield session
@@ -560,103 +563,56 @@ class PipestatManager(dict):
             f"constructor or as an argument to the method."
         )
 
-    def _create_table_orm(self, table_name: str, schema: Dict[str, Any]):
+    def _create_orms(self, schema: Dict[str, Any]):
         """
-        Create a table
+        Create ORMs.
 
-        :param str table_name: name of the table to create
         :param Dict[str, Any] schema: schema to base table creation on
         """
-
-        def _auto_repr(x: Any) -> str:
-            """
-            Auto-generated __repr__ fun
-
-            :param Any x: object to generate __repr__ method for
-            :return str: string object representation
-            """
-            attr_strs = [
-                f"{k}={str(v)}" for k, v in x.__dict__.items() if not k.startswith("_")
-            ]
-            return "<{}: {}>".format(x.__class__.__name__, ", ".join(attr_strs))
-
         _LOGGER.debug(
             f"Creating models for '{self.namespace}' table in '{PKG_NAME}' database"
         )
-        tn = table_name or self.namespace
-        attr_dict = dict(
-            __tablename__=tn,
-            id=Column(Integer, primary_key=True),
-            record_identifier=Column(
-                SQL_CLASSES_BY_TYPE["string"],
-                unique=True,
-                doc="A unique identifier of the record",
-            ),
-            query=self[DB_SCOPED_SESSION_KEY].query_property(),
-        )
-        for result_id, result_metadata in schema.items():
-            col_type = SQL_CLASSES_BY_TYPE[result_metadata[SCHEMA_TYPE_KEY]]
-            _LOGGER.debug(f"Adding object: {result_id} of type: {str(col_type)}")
+        # TODO: read/parse the actual data from the schema.
+        # TODO: be aware of flattening (flatten_schema).
+        parsed_schema = ParsedSchema(schema)
 
-            rel_info = self.db_column_relationships_by_result.get(result_id, {})
-            col_args = []
-            # if there is a relationship defined for this result, include it
-            if rel_info:
-                attr_dict.update(
-                    {
-                        rel_info["name"]: relationship(
-                            rel_info["table"].capitalize(),
-                            backref=backref(
-                                rel_info["backref"],
-                                uselist=True,
-                                cascade="delete,all",
-                            ),
-                        )
-                    }
-                )
-                col_args = [ForeignKey(f"{rel_info['table']}.{rel_info['column']}")]
-
-            attr_dict.update(
-                {
-                    result_id: Column(
-                        col_type,
-                        doc=result_metadata["description"],
-                        *col_args,
-                        **self.db_column_kwargs_by_result.get(result_id, {}),
+        project_level_data = parsed_schema.project_level_data
+        models = {}
+        if project_level_data:
+            suffix = "status" if is_status else "project"
+            project_table_name = f"{parsed_schema.pipeline_id}__{suffix}"
+            project_model = create_model(
+                project_table_name,
+                base=SQLModel,
+                __cls_kwargs__={"table": True},
+                **project_level_data,
+            )
+            models[project_table_name] = project_model
+        if not is_status:
+            sample_level_data = parsed_schema.sample_level_data
+            id_key = "id"
+            sample_fields = {}
+            if sample_level_data:
+                # TODO: create Sample model
+                if id_key in sample_level_data:
+                    raise SchemaError(
+                        f"'{id_key}' is reserved for primary key and can't be part of schema."
                     )
-                }
-            )
-        attr_dict.update({"__repr__": _auto_repr})
-        _LOGGER.debug(f"Creating '{tn}' ORM with args: {attr_dict}")
-        self[DB_ORMS_KEY][tn] = type(tn.capitalize(), (self[DB_BASE_KEY],), attr_dict)
-        self[DB_BASE_KEY].metadata.create_all(bind=self[DB_ENGINE_KEY])
-
-    def establish_db_connection(self) -> bool:
-        """
-        Establish DB connection using the config data
-
-        :return bool: whether the connection has been established successfully
-        """
-        if self.is_db_connected():
-            raise PipestatDatabaseError("Connection is already established")
-        self[DB_ENGINE_KEY] = create_engine(self.db_url, echo=self._show_db_logs)
-        self[DB_SESSION_KEY] = sessionmaker(bind=self[DB_ENGINE_KEY])
-        self[DB_SCOPED_SESSION_KEY] = scoped_session(self[DB_SESSION_KEY])
-        return True
-
-    def is_db_connected(self) -> bool:
-        """
-        Check whether a DB connection has been established
-
-        :return bool: whether the connection has been established
-        """
-        if self.file is not None:
-            raise PipestatDatabaseError(
-                f"The {self.__class__.__name__} object is not backed by a database"
-            )
-        if DB_SESSION_KEY in self and isinstance(self[DB_SESSION_KEY], sessionmaker):
-            return True
-        return False
+                sample_fields[id_key] = (
+                    Optional[int],
+                    Field(default=None, primary_key=True),
+                )
+                for field_name, field_data in sample_level_data.items():
+                    sample_fields[field_name] = (Optional[str], Field(default=None))
+                sample_table_name = f"{parsed_schema.pipeline_id}__sample"
+                sample_model = create_model(
+                    sample_table_name,
+                    base=SQLModel,
+                    __cls_kwargs__={"table": True},
+                    **sample_fields,
+                )
+                models[sample_table_name] = sample_model
+        return models
 
     def set_status(self, status_identifier: str, record_identifier: str = None) -> None:
         """
@@ -838,7 +794,7 @@ class PipestatManager(dict):
         else:
             return [removed]
 
-    def validate_schema(self) -> None:
+    def validate_results_schema(self) -> None:
         """
         Check schema for any possible issues
 
@@ -877,7 +833,11 @@ class PipestatManager(dict):
                     ]
             return s
 
-        schema = deepcopy(self.schema)
+        schema = {
+            k: v
+            for k, v in deepcopy(self.schema).items()
+            if k != SCHEMA_PIPELINE_ID_KEY
+        }
         _LOGGER.debug(f"Validating input schema")
         assert isinstance(schema, dict), SchemaError(
             f"The schema has to be a dict; got {type(schema)}"
@@ -918,28 +878,23 @@ class PipestatManager(dict):
         self[DATA_KEY] = data
         return False
 
-    def _init_db_table(self) -> bool:
-        """
-        Initialize a database table based on the provided schema,
-        if it does not exist. Read the data stored in the database into the
-        memory otherwise.
-
-        :return bool: whether the table has been created
-        """
-        if self.schema is None:
-            return False
-        if not self.is_db_connected():
-            self.establish_db_connection()
-        self._create_table_orm(table_name=self.namespace, schema=self.result_schemas)
-        if not self[DB_ONLY_KEY]:
-            self._table_to_dict()
-        return True
+    @property
+    def _engine(self):
+        """Access the database engine backing this manager."""
+        try:
+            return self[DB_ENGINE_KEY]
+        except KeyError:
+            # Do it this way rather than .setdefault to avoid evaluating
+            # the expression for the default argument (i.e., building
+            # the engine) if it's not necessary.
+            self[DB_ENGINE_KEY] = create_engine(self.db_url, echo=self._show_db_logs)
+            return self[DB_ENGINE_KEY]
 
     def _table_to_dict(self) -> None:
         """
         Create a dictionary from the database table data
         """
-        with self[DB_SESSION_KEY]() as s:
+        with self.session as s:
             records = s.query(self.get_orm(self.namespace)).all()
         _LOGGER.debug(f"Reading data from database for '{self.namespace}' namespace")
         for record in records:
@@ -951,17 +906,6 @@ class PipestatManager(dict):
                         record_identifier=record_id, values={column.name: val}
                     )
 
-    def _init_status_table(self):
-        status_table_name = f"{self.namespace}_{STATUS}"
-        if not self.is_db_connected():
-            self.establish_db_connection()
-        # if not self._check_table_exists(table_name=status_table_name):
-        _LOGGER.debug(f"Initializing '{status_table_name}' table")
-        self._create_table_orm(
-            table_name=status_table_name,
-            schema=get_status_table_schema(status_schema=self.status_schema),
-        )
-
     def _get_attr(self, attr: str) -> Any:
         """
         Safely get the name of the selected attribute of this object
@@ -969,7 +913,7 @@ class PipestatManager(dict):
         :param str attr: attr to select
         :return:
         """
-        return self[attr] if attr in self else None
+        return self.get(attr)
 
     def _check_table_exists(self, table_name: str) -> bool:
         """
@@ -980,7 +924,7 @@ class PipestatManager(dict):
         """
         from sqlalchemy import inspect
 
-        with self[DB_SESSION_KEY]() as s:
+        with self.session as s:
             return inspect(s.bind).has_table(table_name=table_name)
 
     def _count_rows(self, table_name: str) -> int:
@@ -990,7 +934,7 @@ class PipestatManager(dict):
         :param str table_name: table to count rows for
         :return int: number of rows in the selected table
         """
-        with self[DB_SESSION_KEY]() as s:
+        with self.session as s:
             return s.query(self[DB_ORMS_KEY][table_name].id).count()
 
     def get_orm(self, table_name: str = None) -> Any:
@@ -1024,7 +968,7 @@ class PipestatManager(dict):
         :return bool: whether the record exists in the table
         """
         if self.file is None:
-            with self[DB_SESSION_KEY]() as s:
+            with self.session as s:
                 return (
                     s.query(self.get_orm(table_name).id)
                     .filter_by(record_identifier=record_identifier)
@@ -1083,7 +1027,7 @@ class PipestatManager(dict):
         """
         table_name = table_name or self.namespace
         rid = self._strict_record_id(rid)
-        with self[DB_SESSION_KEY]() as s:
+        with self.session as s:
             record = (
                 s.query(self.get_orm(table_name))
                 .filter_by(record_identifier=rid)
@@ -1146,7 +1090,7 @@ class PipestatManager(dict):
         """
 
         ORM = self.get_orm(table_name or self.namespace)
-        with self[DB_SESSION_KEY]() as s:
+        with self.session as s:
             if columns is not None:
                 query = s.query(*[getattr(ORM, column) for column in columns])
             else:
@@ -1173,7 +1117,7 @@ class PipestatManager(dict):
         """
 
         ORM = self.get_orm(table_name or self.namespace)
-        with self[DB_SESSION_KEY]() as s:
+        with self.session as s:
             query = s.query(*[getattr(ORM, column) for column in columns])
             query = query.distinct()
             result = query.all()
@@ -1246,7 +1190,7 @@ class PipestatManager(dict):
                     f"'{record_identifier}'"
                 )
 
-        with self[DB_SESSION_KEY]() as s:
+        with self.session as s:
             record = (
                 s.query(self.get_orm(table_name))
                 .filter_by(record_identifier=record_identifier)
@@ -1293,7 +1237,7 @@ class PipestatManager(dict):
                 f"This operation is not supported for file backend."
             )
         ORM = self.get_orm(table_name or self.namespace)
-        with self[DB_SESSION_KEY]() as s:
+        with self.session as s:
             if columns is not None:
                 q = (
                     s.query(*[getattr(ORM, column) for column in columns])
@@ -1431,12 +1375,12 @@ class PipestatManager(dict):
             record_identifier=record_identifier, table_name=table_name
         ):
             new_record = ORMClass(**values)
-            with self[DB_SESSION_KEY]() as s:
+            with self.session as s:
                 s.add(new_record)
                 s.commit()
                 returned_id = new_record.id
         else:
-            with self[DB_SESSION_KEY]() as s:
+            with self.session as s:
                 record_to_update = (
                     s.query(ORMClass)
                     .filter(getattr(ORMClass, RECORD_ID) == record_identifier)
@@ -1555,7 +1499,7 @@ class PipestatManager(dict):
         if self.check_record_exists(
             record_identifier=record_identifier, table_name=table_name
         ):
-            with self[DB_SESSION_KEY]() as s:
+            with self.session as s:
                 records = s.query(ORMClass).filter(
                     getattr(ORMClass, RECORD_ID) == record_identifier
                 )
@@ -1576,8 +1520,3 @@ class PipestatManager(dict):
                 s.commit()
         else:
             raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
-
-
-def read_schema(schema_file: str) -> Dict[str, Any]:
-    _, raw_schema = read_yaml_data(schema_file, "schema")
-    return flatten_schema(raw_schema)

@@ -1,8 +1,12 @@
+import copy
 import logging
-from re import findall
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import jsonschema
+
+from pydantic import create_model
+from sqlmodel Field, SQLModel
+
 import sqlalchemy.orm
 from oyaml import safe_load
 from psycopg2 import sql
@@ -23,37 +27,121 @@ def get_status_table_schema(status_schema: Dict[str, Any]) -> Dict[str, Any]:
     :return Dict[str, Any]: status_schema status table scheme
         to use as a base for status table generation
     """
-    defined_status_codes = list(status_schema.keys())
     _, status_table_schema = read_yaml_data(
         path=STATUS_TABLE_SCHEMA, what="status table schema"
     )
-    status_table_schema["status"].update({"enum": defined_status_codes})
+    status_table_schema["status"].update({"enum": list(status_schema.keys())})
     _LOGGER.debug(f"Updated status table schema: {status_table_schema}")
     return status_table_schema
 
 
-def flatten_schema(raw_schema: Dict[str, Any]) -> Dict[str, Any]:
-    if SCHEMA_PROP_KEY not in raw_schema:
-        raise SchemaError(f"Missing top-level '{SCHEMA_PROP_KEY}'")
-    props = raw_schema[SCHEMA_PROP_KEY]
-    if "samples" not in props:
-        return props
-    sample_level_data = props["samples"]
-    if "items" not in sample_level_data:
-        raise SchemaError("No 'items' in sample-level schema section")
-    sample_level_data = sample_level_data["items"]
-    if SCHEMA_PROP_KEY not in sample_level_data:
-        raise SchemaError(f"No '{SCHEMA_PROP_KEY}' in sample-level schema items")
-    sample_level_data = sample_level_data[SCHEMA_PROP_KEY]
-    project_sample_key_overlap = set(props) & set(sample_level_data)
-    if project_sample_key_overlap:
-        raise SchemaError(
-            f"{len(project_sample_key_overlap)} keys shared between project level and sample level: {', '.join(project_sample_key_overlap)}"
+class ParsedSchema(object):
+    def __init__(self, data: Union[Dict[str, Any], str], is_status: bool) -> None:
+        if not isinstance(data, dict):
+            _, data = read_yaml_data(data, "schema")
+        SCHEMA_PIPELINE_ID_KEY = "pipeline_id"
+        if SCHEMA_PIPELINE_ID_KEY not in data:
+            raise SchemaError(
+                f"Missing top-level schema key: '{SCHEMA_PIPELINE_ID_KEY}'"
+            )
+        self._pipeline_id = data[SCHEMA_PIPELINE_ID_KEY]
+        if is_status:
+            self._status_data = {
+                k: v for k, v in data.items() if k != SCHEMA_PIPELINE_ID_KEY
+            }
+            return
+        self._status_data = {}
+        if SCHEMA_PROP_KEY not in data:
+            raise SchemaError(f"Missing top-level '{SCHEMA_PROP_KEY}'")
+        props = data[SCHEMA_PROP_KEY]
+        try:
+            sample_level_data = props["samples"]
+        except KeyError:
+            self._project_level_data = props
+            self._sample_level_data = {}
+        else:
+            if "items" not in sample_level_data:
+                raise SchemaError("No 'items' in sample-level schema section")
+            sample_level_data = sample_level_data["items"]
+            if SCHEMA_PROP_KEY not in sample_level_data:
+                raise SchemaError(
+                    f"No '{SCHEMA_PROP_KEY}' in sample-level schema items"
+                )
+            sample_level_data = sample_level_data[SCHEMA_PROP_KEY]
+            project_sample_key_overlap = set(props) & set(sample_level_data)
+            if project_sample_key_overlap:
+                raise SchemaError(
+                    f"{len(project_sample_key_overlap)} keys shared between project level and sample level: {', '.join(project_sample_key_overlap)}"
+                )
+            self._project_level_data = {
+                k: v
+                for k, v in props.items()
+                if k not in ["samples", SCHEMA_PIPELINE_ID_KEY]
+            }
+            self._sample_level_data = sample_level_data
+
+    @property
+    def pipeline_id(self):
+        return self._pipeline_id
+
+    @property
+    def project_level_data(self):
+        return copy.deepcopy(self._project_level_data)
+
+    @property
+    def sample_level_data(self):
+        return copy.deepcopy(self._sample_level_data)
+
+    @property
+    def status_data(self):
+        return copy.deepcopy(self._status_data)
+
+    @property
+    def project_table_name(self):
+        return self._table_name("project")
+
+    @property
+    def sample_table_name(self):
+        return self._table_name("sample")
+
+    @property
+    def status_table_name(self):
+        return self._table_name("status")
+
+    def build_project_model(self):
+        data = self.project_level_data
+        if data:
+            return self._create_model(self._table_name("project"), **data)
+
+    def build_sample_model(self):
+        data = self.sample_level_data
+        if not data:
+            return
+        id_key = "id"
+        sample_fields = {}
+        if id_key in data:
+            raise SchemaError(
+                f"'{id_key}' is reserved for primary key and can't be part of schema."
+            )
+        sample_fields[id_key] = (
+            Optional[int],
+            Field(default=None, primary_key=True),
         )
-    return {
-        **sample_level_data,
-        **{k: obj for k, obj in props.items() if k != "samples"},
-    }
+        for field_name, field_data in data.items():
+            sample_fields[field_name] = (Optional[str], Field(default=None))
+        return self._create_model(self.sample_table_name, **sample_fields)
+
+    # -> pydantic.main.ModelMetaclass
+    def _create_model(self, table_name: str, **kwargs):
+        return create_model(table_name, base=SQLModel, __cls_kwargs__={"table": True}, **kwargs)
+
+    def build_status_model(self):
+        data = self.status_data
+        if data:
+            return self._create_model(self._table_name("status"), **data)
+
+    def _table_name(self, suffix: str) -> str:
+        return f"{self.pipeline_id}__{suffix}"
 
 
 def validate_type(value, schema, strict_type=False):
