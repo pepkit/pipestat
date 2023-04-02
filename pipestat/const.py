@@ -38,22 +38,11 @@ CFG_USER_KEY = "user"
 CFG_DIALECT_KEY = "dialect"  # sqlite, mysql, postgresql, oracle, or mssql
 CFG_DRIVER_KEY = "driver"
 
-DB_CREDENTIALS = [
-    CFG_HOST_KEY,
-    CFG_PORT_KEY,
-    CFG_PASSWORD_KEY,
-    CFG_USER_KEY,
-    CFG_NAME_KEY,
-    CFG_DIALECT_KEY,
-    CFG_DRIVER_KEY,
-]
-
 # object attribute names
 DB_ONLY_KEY = "_database_only"
 CONFIG_KEY = "_config"
 SCHEMA_KEY = "_schema"
 STATUS_KEY = "_status"
-STATUS_SCHEMA_KEY = "_status_schema"
 STATUS_SCHEMA_SOURCE_KEY = "_status_schema_source"
 STATUS_FILE_DIR = "_status_file_dir"
 RES_SCHEMAS_KEY = "_result_schemas"

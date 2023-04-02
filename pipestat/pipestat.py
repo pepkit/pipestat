@@ -1,19 +1,14 @@
 from contextlib import contextmanager
 from copy import deepcopy
-import json
 from logging import getLogger
 from typing import Dict, List, Optional, Tuple, Union
 from urllib.parse import quote_plus
 
 import sqlalchemy.orm
 from sqlalchemy import Column, ForeignKey, text
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import (
     DeclarativeMeta,
-    backref,
     relationship,
-    scoped_session,
-    sessionmaker,
 )
 
 from pydantic import create_model
@@ -49,9 +44,7 @@ class PipestatManager(dict):
         results_file_path: Optional[str] = None,
         database_only: Optional[bool] = True,
         config: Optional[Union[str, dict]] = None,
-        status_schema_path: Optional[str] = None,
         flag_file_dir: Optional[str] = None,
-        custom_declarative_base: Optional[sqlalchemy.orm.DeclarativeMeta] = None,
         show_db_logs: bool = False,
     ):
         """
@@ -70,17 +63,7 @@ class PipestatManager(dict):
             stored in the memory, but only in the database
         :param str | dict config: path to the configuration file or a mapping
             with the config file content
-        :param str status_schema_path: path to the status schema that formalizes
-            the status flags structure
-        :param sqlalchemy.orm.DeclarativeMeta custom_declarative_base: a declarative base to
-            use for ORMs creation a new instance will be created if not provided
         """
-
-        def _check_cfg_key(cfg: dict, key: str) -> bool:
-            if key not in cfg:
-                _LOGGER.warning(f"Key '{key}' not found in config")
-                return False
-            return True
 
         def _mk_abs_via_cfg(
             path: Optional[str],
@@ -164,47 +147,58 @@ class PipestatManager(dict):
         if not results_file_path:
             if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
                 raise NoBackendSpecifiedError()
-            if not all(
-                [
-                    _check_cfg_key(self[CONFIG_KEY][CFG_DATABASE_KEY], key)
-                    for key in DB_CREDENTIALS
-                ]
-            ):
-                raise MissingConfigDataError(
-                    "Must specify all database login credentials or result_file_path"
+            try:
+                dbconf = self[CONFIG_KEY][CFG_DATABASE_KEY]
+            except KeyError:
+                raise PipestatDatabaseError(
+                    f"No database section ('{CFG_DATABASE_KEY}') in config"
                 )
+            try:
+                creds = dict(
+                    name=dbconf[CFG_NAME_KEY],
+                    user=dbconf[CFG_USER_KEY],
+                    passwd=dbconf[CFG_PASSWORD_KEY],
+                    host=dbconf[CFG_HOST_KEY],
+                    port=dbconf[CFG_PORT_KEY],
+                    dialect=dbconf[CFG_DIALECT_KEY],
+                    driver=dbconf[CFG_DRIVER_KEY],
+                )
+            except KeyError as e:
+                raise MissingConfigDataError(
+                    f"Could not determine database URL. Caught error: {str(e)}"
+                )
+            parsed_creds = {k: quote_plus(str(v)) for k, v in creds.items()}
+            self._db_url = (
+                "{dialect}+{driver}://{user}:{passwd}@{host}:{port}/{name}".format(
+                    **parsed_creds
+                )
+            )
 
-        namespace = (
-            _select_value(
+        if namespace is None:
+            namespace = _select_value(
                 "namespace",
                 self[CONFIG_KEY],
                 strict=False,
                 env_var=ENV_VARS["namespace"],
             )
-            if namespace is None
-            else namespace
-        )
-        if namespace is None:
-            msg = (
-                "Could not determine value for namespace. "
-                "This may be passed directly to the pipestat manager constructor, "
-                "or through a configuration file, "
-                f"or as an environment variable: {ENV_VARS['namespace']}"
-            )
-            raise PipestatError(msg)
+            if namespace is None:
+                msg = (
+                    "Could not determine value for namespace. "
+                    "This may be passed directly to the pipestat manager constructor, "
+                    "or through a configuration file, "
+                    f"or as an environment variable: {ENV_VARS['namespace']}"
+                )
+                raise PipestatError(msg)
         self[NAME_KEY] = namespace
-        self[RECORD_ID_KEY] = (
-            _select_value(
-                "record_identifier",
-                self[CONFIG_KEY],
-                False,
-                ENV_VARS["record_identifier"],
-            )
-            if record_identifier is None
-            else record_identifier
+        self[RECORD_ID_KEY] = record_identifier or _select_value(
+            "record_identifier",
+            self[CONFIG_KEY],
+            False,
+            ENV_VARS["record_identifier"],
         )
         self[DB_ONLY_KEY] = database_only
-        # read results schema
+
+        # read schema
         self._schema_path = (
             _select_value(
                 "schema_path",
@@ -215,45 +209,18 @@ class PipestatManager(dict):
             if schema_path is None
             else schema_path
         )
-        if self._schema_path is not None:
-            schema_to_read = _mk_abs_via_cfg(self._schema_path, self.config_path)
-            _, self[SCHEMA_KEY] = read_yaml_data(schema_to_read, "schema")
-            self.validate_results_schema()
-            # determine the highlighted results
-            self[HIGHLIGHTED_KEY] = [
-                k
-                for k, v in self.schema.items()
-                if "highlight" in v and v["highlight"] is True
-            ]
-            if self[HIGHLIGHTED_KEY]:
-                assert isinstance(self[HIGHLIGHTED_KEY], list), TypeError(
-                    f"highlighted results specification "
-                    f"({self[HIGHLIGHTED_KEY]}) has to be a list"
-                )
-        else:
-            _LOGGER.debug(
-                "Creating object with no results schema."
-                " The object can be used only for status management in this case."
-            )
-        # read status schema
-        status_schema_path = (
-            _mk_abs_via_cfg(
-                _select_value(
-                    "status_schema_path",
-                    self[CONFIG_KEY],
-                    False,
-                    env_var=ENV_VARS["status_schema"],
-                )
-                if status_schema_path is None
-                else status_schema_path,
-                self.config_path,
-            )
-            or STATUS_SCHEMA
-        )
-        self[STATUS_SCHEMA_SOURCE_KEY], self[STATUS_SCHEMA_KEY] = read_yaml_data(
-            status_schema_path, "status schema"
-        )
-        self[STATUS_SCHEMA_KEY] = ParsedSchema(self[STATUS_SCHEMA_KEY], is_status=True)
+        if self._schema_path is None:
+            raise PipestatError("No schema path could be found.")
+        schema_to_read = _mk_abs_via_cfg(self._schema_path, self.config_path)
+        self[SCHEMA_KEY] = ParsedSchema(schema_to_read)
+        self.validate_schema()
+        # determine the highlighted results
+        self[HIGHLIGHTED_KEY] = [
+            k for k, v in self.schema.items() if v.get("highlight", False)
+        ]
+        # TODO: if no status schema nested in main one, check env var and default.
+        # TODO: set status schema source key's value
+        # TODO: validate presence of status schema if no results schema (neither project nor samples)
 
         if results_file_path:
             _LOGGER.debug(f"Determined file as backend: {results_file_path}")
@@ -264,7 +231,10 @@ class PipestatManager(dict):
                 )
                 self[DB_ONLY_KEY] = False
             self[FILE_KEY] = results_file_path
-            self._init_results_file()
+            if not os.path.exists(self.file):
+                self._init_results_file()
+            else:
+                self._load_results_file()
             flag_file_dir = (
                 _select_value("flag_file_dir", self[CONFIG_KEY], False)
                 if flag_file_dir is None
@@ -276,14 +246,7 @@ class PipestatManager(dict):
             self[DB_ORMS_KEY] = {}
             self[DATA_KEY] = YAMLConfigManager()
             self._show_db_logs = show_db_logs
-            if self.schema:
-                result_models = self._create_orms(self.result_schemas, is_status=False)
-                if not self[DB_ONLY_KEY]:
-                    self._table_to_dict()
-            status_models = self._create_orms(
-                get_status_table_schema(status_schema=self.status_schema),
-                is_status=True,
-            )
+            models = self._create_orms(self.schema)
             SQLModel.metadata.create_all(self._engine)
 
     def __str__(self):
@@ -408,7 +371,7 @@ class PipestatManager(dict):
 
         :return dict: schema that formalizes the pipeline status structure
         """
-        return self.get(STATUS_SCHEMA_KEY)
+        return self.schema.status_data
 
     @property
     def status_schema_source(self) -> Dict:
@@ -447,7 +410,7 @@ class PipestatManager(dict):
         :return dict: schemas that formalize the structure of each result
             in a canonical jsonschema way
         """
-        return self.get(RES_SCHEMAS_KEY)
+        return self.schema.get(RES_SCHEMAS_KEY)
 
     @property
     def file(self) -> str:
@@ -475,28 +438,7 @@ class PipestatManager(dict):
         :return str: database URL
         :raise PipestatDatabaseError: if the object is not backed by a database
         """
-        if self.file is not None:
-            raise PipestatDatabaseError(
-                "Can't determine database URL if the object is backed by a file"
-            )
-        try:
-            creds = dict(
-                name=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_NAME_KEY],
-                user=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_USER_KEY],
-                passwd=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_PASSWORD_KEY],
-                host=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_HOST_KEY],
-                port=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_PORT_KEY],
-                dialect=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_DIALECT_KEY],
-                driver=self[CONFIG_KEY][CFG_DATABASE_KEY][CFG_DRIVER_KEY],
-            )
-        except (KeyError, AttributeError) as e:
-            raise PipestatDatabaseError(
-                f"Could not determine database URL. Caught error: {str(e)}"
-            )
-        parsed_creds = {k: quote_plus(str(v)) for k, v in creds.items()}
-        return "{dialect}+{driver}://{user}:{passwd}@{host}:{port}/{name}".format(
-            **parsed_creds
-        )
+        return self._db_url
 
     @property
     @contextmanager
@@ -563,56 +505,16 @@ class PipestatManager(dict):
             f"constructor or as an argument to the method."
         )
 
-    def _create_orms(self, schema: Dict[str, Any]):
-        """
-        Create ORMs.
-
-        :param Dict[str, Any] schema: schema to base table creation on
-        """
+    def _create_orms(self):
+        """Create ORMs."""
         _LOGGER.debug(
             f"Creating models for '{self.namespace}' table in '{PKG_NAME}' database"
         )
-        # TODO: read/parse the actual data from the schema.
-        # TODO: be aware of flattening (flatten_schema).
-        parsed_schema = ParsedSchema(schema)
-
-        project_level_data = parsed_schema.project_level_data
-        models = {}
-        if project_level_data:
-            suffix = "status" if is_status else "project"
-            project_table_name = f"{parsed_schema.pipeline_id}__{suffix}"
-            project_model = create_model(
-                project_table_name,
-                base=SQLModel,
-                __cls_kwargs__={"table": True},
-                **project_level_data,
-            )
-            models[project_table_name] = project_model
-        if not is_status:
-            sample_level_data = parsed_schema.sample_level_data
-            id_key = "id"
-            sample_fields = {}
-            if sample_level_data:
-                # TODO: create Sample model
-                if id_key in sample_level_data:
-                    raise SchemaError(
-                        f"'{id_key}' is reserved for primary key and can't be part of schema."
-                    )
-                sample_fields[id_key] = (
-                    Optional[int],
-                    Field(default=None, primary_key=True),
-                )
-                for field_name, field_data in sample_level_data.items():
-                    sample_fields[field_name] = (Optional[str], Field(default=None))
-                sample_table_name = f"{parsed_schema.pipeline_id}__sample"
-                sample_model = create_model(
-                    sample_table_name,
-                    base=SQLModel,
-                    __cls_kwargs__={"table": True},
-                    **sample_fields,
-                )
-                models[sample_table_name] = sample_model
-        return models
+        schema = self.schema
+        project = (schema.project_table_name, schema.build_project_model())
+        samples = (schema.sammple_table_name, schema.build_sample_model())
+        status = (schema.status_table_name, schema.build_status_model())
+        return {tn: mod for tn, mod in [project, samples, status] if mod is not None}
 
     def set_status(self, status_identifier: str, record_identifier: str = None) -> None:
         """
@@ -794,7 +696,7 @@ class PipestatManager(dict):
         else:
             return [removed]
 
-    def validate_results_schema(self) -> None:
+    def validate_schema(self) -> None:
         """
         Check schema for any possible issues
 
@@ -816,57 +718,53 @@ class PipestatManager(dict):
                     raise SchemaError(
                         f"Result '{k}' is missing required key(s): {', '.join(missing_req_keys)}"
                     )
-                if v[SCHEMA_TYPE_KEY] == "object" and SCHEMA_PROP_KEY in s[k]:
+                curr_type_name = v[SCHEMA_TYPE_KEY]
+                if curr_type_name == "object" and SCHEMA_PROP_KEY in s[k]:
                     _recursively_replace_custom_types(s[k][SCHEMA_PROP_KEY])
-                if v[SCHEMA_TYPE_KEY] in CANONICAL_TYPES.keys():
-                    s.setdefault(k, {})
-                    s[k].setdefault(SCHEMA_PROP_KEY, {})
-                    s[k][SCHEMA_PROP_KEY].update(
-                        CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]][SCHEMA_PROP_KEY]
-                    )
-                    s[k].setdefault("required", [])
-                    s[k]["required"].extend(
-                        CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]]["required"]
-                    )
-                    s[k][SCHEMA_TYPE_KEY] = CANONICAL_TYPES[v[SCHEMA_TYPE_KEY]][
-                        SCHEMA_TYPE_KEY
-                    ]
+                try:
+                    curr_type_spec = CANONICAL_TYPES[curr_type_name]
+                except KeyError:
+                    continue
+                s.setdefault(k, {})
+                s[k].setdefault(SCHEMA_PROP_KEY, {})
+                s[k][SCHEMA_PROP_KEY].update(curr_type_spec[SCHEMA_PROP_KEY])
+                s[k].setdefault("required", []).extend(curr_type_spec["required"])
+                s[k][SCHEMA_TYPE_KEY] = curr_type_spec[SCHEMA_TYPE_KEY]
             return s
 
-        schema = {
-            k: v
-            for k, v in deepcopy(self.schema).items()
-            if k != SCHEMA_PIPELINE_ID_KEY
-        }
-        _LOGGER.debug(f"Validating input schema")
-        assert isinstance(schema, dict), SchemaError(
-            f"The schema has to be a dict; got {type(schema)}"
-        )
-        reserved_used = set(schema.keys()) & set(RESERVED_COLNAMES)
-        if reserved_used:
-            raise PipestatError(
-                f"Schema used pipestat reserved identifier(s): {', '.join(reserved_used)}"
+        reserved_keywords_used = self.schema.reserved_keywords_used
+        if reserved_keywords_used:
+            raise SchemaError(
+                f"{len(reserved_keywords_used)} reserved keyword(s) used: {', '.join(reserved_keywords_used)}"
             )
-        self[RES_SCHEMAS_KEY] = _recursively_replace_custom_types(schema)
+        # TODO: pare down to what really needs dealt with here.
+        project_data = self.schema.project_level_data
+        samples_data = self.schema.sample_level_data
+        project_sample_overlap = set(project_data) & set(samples_data)
+        if project_sample_overlap:
+            raise SchemaError(
+                f"Overlap between project- and sample-level keys: {', '.join(project_sample_overlap)}"
+            )
+        self[RES_SCHEMAS_KEY] = _recursively_replace_custom_types(
+            {**project_data, **samples_data}
+        )
 
-    def _init_results_file(self) -> bool:
+    def _init_results_file(self) -> None:
         """
         Initialize YAML results file if it does not exist.
         Read the data stored in the existing file into the memory otherwise.
 
         :return bool: whether the file has been created
         """
-        if not os.path.exists(self.file):
-            _LOGGER.info(f"Initializing results file '{self.file}'")
+        _LOGGER.info(f"Initializing results file '{self.file}'")
+        data = YAMLConfigManager(
+            entries={self.namespace: "{}"}, filepath=self.file, create_file=True
+        )
+        with data as data_locked:
+            data_locked.write()
+        self[DATA_KEY] = data
 
-            data = YAMLConfigManager(
-                entries={self.namespace: "{}"}, filepath=self.file, create_file=True
-            )
-            with data as data_locked:
-                data_locked.write()
-
-            self[DATA_KEY] = data
-            return True
+    def _load_results_file(self) -> None:
         _LOGGER.debug(f"Reading data from '{self.file}'")
         data = YAMLConfigManager(filepath=self.file)
         filtered = list(filter(lambda x: not x.startswith("_"), data.keys()))
@@ -876,7 +774,6 @@ class PipestatManager(dict):
                 f"other namespace: {filtered[0]}"
             )
         self[DATA_KEY] = data
-        return False
 
     @property
     def _engine(self):

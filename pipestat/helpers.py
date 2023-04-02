@@ -1,11 +1,12 @@
 import copy
 import logging
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import jsonschema
 
 from pydantic import create_model
-from sqlmodel Field, SQLModel
+from sqlmodel import Field, SQLModel
 
 import sqlalchemy.orm
 from oyaml import safe_load
@@ -19,45 +20,26 @@ from .exceptions import SchemaError
 _LOGGER = logging.getLogger(__name__)
 
 
-def get_status_table_schema(status_schema: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Update and return a status_table_schema based on user-provided status schema
-
-    :param Dict[str, Any] status_schema: status schema provided by the user
-    :return Dict[str, Any]: status_schema status table scheme
-        to use as a base for status table generation
-    """
-    _, status_table_schema = read_yaml_data(
-        path=STATUS_TABLE_SCHEMA, what="status table schema"
-    )
-    status_table_schema["status"].update({"enum": list(status_schema.keys())})
-    _LOGGER.debug(f"Updated status table schema: {status_table_schema}")
-    return status_table_schema
-
-
 class ParsedSchema(object):
-    def __init__(self, data: Union[Dict[str, Any], str], is_status: bool) -> None:
+    # TODO: validate no collision among the 3 namespaces.
+    def __init__(self, data: Union[Dict[str, Any], str]) -> None:
+        # initial validation and parse
         if not isinstance(data, dict):
             _, data = read_yaml_data(data, "schema")
-        SCHEMA_PIPELINE_ID_KEY = "pipeline_id"
         if SCHEMA_PIPELINE_ID_KEY not in data:
             raise SchemaError(
                 f"Missing top-level schema key: '{SCHEMA_PIPELINE_ID_KEY}'"
             )
         self._pipeline_id = data[SCHEMA_PIPELINE_ID_KEY]
-        if is_status:
-            self._status_data = {
-                k: v for k, v in data.items() if k != SCHEMA_PIPELINE_ID_KEY
-            }
-            return
-        self._status_data = {}
         if SCHEMA_PROP_KEY not in data:
             raise SchemaError(f"Missing top-level '{SCHEMA_PROP_KEY}'")
         props = data[SCHEMA_PROP_KEY]
+
+        # samples
         try:
-            sample_level_data = props["samples"]
+            sample_level_data = data["samples"]
         except KeyError:
-            self._project_level_data = props
+            _LOGGER.debug("No sample-level info found in schema  ")
             self._sample_level_data = {}
         else:
             if "items" not in sample_level_data:
@@ -73,12 +55,27 @@ class ParsedSchema(object):
                 raise SchemaError(
                     f"{len(project_sample_key_overlap)} keys shared between project level and sample level: {', '.join(project_sample_key_overlap)}"
                 )
-            self._project_level_data = {
-                k: v
-                for k, v in props.items()
-                if k not in ["samples", SCHEMA_PIPELINE_ID_KEY]
-            }
             self._sample_level_data = sample_level_data
+
+        # status
+        try:
+            self._status_data = data["status"]
+        except KeyError:
+            _LOGGER.debug("No status schema information")
+
+        # project-level
+        self._project_level_data = {
+            k: v
+            for k, v in data.items()
+            if k not in ["samples", "status", SCHEMA_PIPELINE_ID_KEY]
+        }
+
+    @property
+    def reserved_keywords_used(self):
+        reserved_keywords_used = {}
+        for data in [self.project_level_data, self.sample_level_data, self.status_data]:
+            reserved_keywords_used |= set(data.keys()) & set(RESERVED_COLNAMES)
+        return reserved_keywords_used
 
     @property
     def pipeline_id(self):
@@ -128,12 +125,15 @@ class ParsedSchema(object):
             Field(default=None, primary_key=True),
         )
         for field_name, field_data in data.items():
+            # TODO: read actual values
             sample_fields[field_name] = (Optional[str], Field(default=None))
         return self._create_model(self.sample_table_name, **sample_fields)
 
     # -> pydantic.main.ModelMetaclass
     def _create_model(self, table_name: str, **kwargs):
-        return create_model(table_name, base=SQLModel, __cls_kwargs__={"table": True}, **kwargs)
+        return create_model(
+            table_name, base=SQLModel, __cls_kwargs__={"table": True}, **kwargs
+        )
 
     def build_status_model(self):
         data = self.status_data
@@ -183,7 +183,7 @@ def validate_type(value, schema, strict_type=False):
         _LOGGER.debug(f"Value '{value}' validated successfully against a schema")
 
 
-def read_yaml_data(path, what):
+def read_yaml_data(path: Union[str, Path], what: str) -> Tuple[str, Dict[str, Any]]:
     """
     Safely read YAML file and log message
 
@@ -191,9 +191,16 @@ def read_yaml_data(path, what):
     :param str what: context
     :return (str, dict): absolute path to the read file and the read data
     """
-    assert isinstance(path, str), TypeError(f"Path is not a string: {path}")
-    path = expandpath(path)
-    assert os.path.exists(path), FileNotFoundError(f"File not found: {path}")
+    if isinstance(path, Path):
+        test = lambda p: p.is_file()
+    elif isinstance(path, str):
+        path = expandpath(path)
+        test = os.path.isfile
+    else:
+        raise TypeError(
+            f"Alleged path to YAML file to read is neither path nor string: {path}"
+        )
+    assert test(path), FileNotFoundError(f"File not found: {path}")
     _LOGGER.debug(f"Reading {what} from '{path}'")
     with open(path, "r") as f:
         return path, safe_load(f)
