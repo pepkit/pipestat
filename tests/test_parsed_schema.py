@@ -52,7 +52,7 @@ SAMPLES_ATTR = "sample_level_data"
 STATUS_ATTR = "status_data"
 NULL_SCHEMA_DATA = {}
 
-STATUS_EXP = {
+STATUS_DATA = {
     "running": {
         "description": "the pipeline is running",
         "color": [30, 144, 255],  # dodgerblue
@@ -75,15 +75,56 @@ STATUS_EXP = {
     },
 }
 
+PROJECT_DATA = {
+    "percentage_of_things": {"type": "number", "description": "Percentage of things"},
+    "name_of_something": {"type": "string", "description": "Name of something"},
+    "number_of_things": {
+        "type": "integer",
+        "description": "Number of things",
+    },
+    "switch_value": {
+        "type": "boolean",
+        "description": "Is the switch on of off",
+    },
+}
+
+
+SAMPLES_DATA = {
+    "smooth_bw": {
+        "path": "aligned_{genome}/{sample_name}_smooth.bw",
+        "type": "string",
+        "description": "A smooth bigwig file",
+    },
+    "aligned_bam": {
+        "path": "aligned_{genome}/{sample_name}_sort.bam",
+        "type": "string",
+        "description": "A sorted, aligned BAM file",
+    },
+    "peaks_bed": {
+        "path": "peak_calling_{genome}/{sample_name}_peaks.bed",
+        "type": "string",
+        "description": "Peaks in BED format",
+    },
+}
+
+
 INPUTS = [
     (
         "sample_output_schema__without_project_without_samples_with_status.yaml",
         [
             (PROJECT_ATTR, NULL_SCHEMA_DATA),
             (SAMPLES_ATTR, NULL_SCHEMA_DATA),
-            (STATUS_ATTR, STATUS_EXP),
+            (STATUS_ATTR, STATUS_DATA),
         ],
-    )
+    ),
+    (
+        "sample_output_schema__with_project_with_samples_without_status.yaml",
+        [
+            (PROJECT_ATTR, PROJECT_DATA),
+            (SAMPLES_ATTR, SAMPLES_DATA),
+            (STATUS_ATTR, NULL_SCHEMA_DATA),
+        ],
+    ),
 ]
 
 

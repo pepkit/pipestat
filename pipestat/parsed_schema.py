@@ -40,13 +40,13 @@ class ParsedSchema(object):
             self._status_data = data.pop("status")
         except KeyError:
             self._status_data = {}
-            _LOGGER.debug("No status schema information")
+            _LOGGER.debug("No status info found in schema")
 
         # samples
         try:
             sample_level_data = data.pop("samples")
         except KeyError:
-            _LOGGER.debug("No sample-level info found in schema  ")
+            _LOGGER.debug("No sample-level info found in schema")
             self._sample_level_data = {}
         else:
             if "items" not in sample_level_data:
@@ -66,7 +66,11 @@ class ParsedSchema(object):
 
         # project-level
         # Now, the main mapping's had some keys removed.
-        self._project_level_data = data
+        try:
+            self._project_level_data = data.pop(SCHEMA_PROP_KEY)
+        except KeyError:
+            _LOGGER.debug("No project-level info found in schema")
+            self._project_level_data = {}
 
     @property
     def reserved_keywords_used(self):
