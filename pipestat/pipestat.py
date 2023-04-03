@@ -1,5 +1,4 @@
 from contextlib import contextmanager
-from copy import deepcopy
 from logging import getLogger
 from typing import Dict, List, Optional, Tuple, Union
 from urllib.parse import quote_plus
@@ -11,16 +10,15 @@ from sqlalchemy.orm import (
     relationship,
 )
 
-from pydantic import create_model
 from sqlmodel import Field, Session, SQLModel, create_engine
 
 from jsonschema import validate
 
 from ubiquerg import create_lock, remove_lock
 from yacman import YAMLConfigManager
-from .const import *
 from .exceptions import *
 from .helpers import *
+from .parsed_schema import ParsedSchema
 
 _LOGGER = getLogger(PKG_NAME)
 
