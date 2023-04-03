@@ -6,7 +6,7 @@ from jsonschema import ValidationError
 from pipestat import PipestatManager
 from pipestat.const import *
 from pipestat.exceptions import *
-from pipestat.helpers import ParsedSchema
+from pipestat.parsed_schema import ParsedSchema
 
 
 def is_in_file(fs, s, reverse=False):
