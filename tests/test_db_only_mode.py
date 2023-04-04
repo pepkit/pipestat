@@ -19,6 +19,8 @@ class TestDatabaseOnly:
         config_file_path,
         schema_file_path,
     ):
+        # DEBUG
+        print(f"Schema file: {schema_file_path}")
         psm = PipestatManager(
             schema_path=schema_file_path,
             namespace="test",

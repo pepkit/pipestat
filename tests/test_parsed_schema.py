@@ -84,7 +84,7 @@ PROJECT_DATA = {
     },
     "switch_value": {
         "type": "boolean",
-        "description": "Is the switch on of off",
+        "description": "Is the switch on or off",
     },
 }
 
@@ -170,7 +170,11 @@ EXPECTED_SUBDATA_BY_EXAMPLE_FILE = [
 
 @pytest.mark.parametrize(
     ["filename", "attr_name", "expected"],
-    [(fn, attr, exp) for fn, attr_exp_pairs in EXPECTED_SUBDATA_BY_EXAMPLE_FILE for attr, exp in attr_exp_pairs],
+    [
+        (fn, attr, exp)
+        for fn, attr_exp_pairs in EXPECTED_SUBDATA_BY_EXAMPLE_FILE
+        for attr, exp in attr_exp_pairs
+    ],
 )
 def test_parsed_schema__has_correct_data(
     prepare_schema_from_file, filename, attr_name, expected

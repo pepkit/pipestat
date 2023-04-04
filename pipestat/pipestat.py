@@ -212,10 +212,6 @@ class PipestatManager(dict):
         schema_to_read = _mk_abs_via_cfg(self._schema_path, self.config_path)
         self[SCHEMA_KEY] = ParsedSchema(schema_to_read)
         self.validate_schema()
-        # determine the highlighted results
-        self[HIGHLIGHTED_KEY] = [
-            k for k, v in self.schema.items() if v.get("highlight", False)
-        ]
         # TODO: if no status schema nested in main one, check env var and default.
         # TODO: set status schema source key's value
         # TODO: validate presence of status schema if no results schema (neither project nor samples)
@@ -244,7 +240,7 @@ class PipestatManager(dict):
             self[DB_ORMS_KEY] = {}
             self[DATA_KEY] = YAMLConfigManager()
             self._show_db_logs = show_db_logs
-            models = self._create_orms(self.schema)
+            models = self._create_orms()
             SQLModel.metadata.create_all(self._engine)
 
     def __str__(self):
@@ -262,8 +258,9 @@ class PipestatManager(dict):
         res += f"\nResults schema source: {self.schema_path}"
         res += f"\nStatus schema source: {self.status_schema_source}"
         res += f"\nRecords count: {self.record_count}"
-        if self.highlighted_results:
-            res += f"\nHighlighted results: {', '.join(self.highlighted_results)}"
+        high_res = self.highlighted_results
+        if high_res:
+            res += f"\nHighlighted results: {', '.join(high_res)}"
         return res
 
     @property
@@ -286,7 +283,7 @@ class PipestatManager(dict):
 
         :return List[str]: a collection of highlighted results
         """
-        return self.get(HIGHLIGHTED_KEY, [])
+        return [k for k, v in self.result_schemas if v.get("highlight", False)]
 
     @property
     def db_column_kwargs_by_result(self) -> Dict[str, Any]:
@@ -736,16 +733,13 @@ class PipestatManager(dict):
                 f"{len(reserved_keywords_used)} reserved keyword(s) used: {', '.join(reserved_keywords_used)}"
             )
         # TODO: pare down to what really needs dealt with here.
-        project_data = self.schema.project_level_data
-        samples_data = self.schema.sample_level_data
-        project_sample_overlap = set(project_data) & set(samples_data)
+        project_sample_overlap = set(self.schema.project_level_data) & set(
+            self.schema.sample_level_data
+        )
         if project_sample_overlap:
             raise SchemaError(
                 f"Overlap between project- and sample-level keys: {', '.join(project_sample_overlap)}"
             )
-        self[RES_SCHEMAS_KEY] = _recursively_replace_custom_types(
-            {**project_data, **samples_data}
-        )
 
     def _init_results_file(self) -> None:
         """

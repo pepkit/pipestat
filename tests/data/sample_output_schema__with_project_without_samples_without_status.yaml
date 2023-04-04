@@ -11,4 +11,4 @@ properties:
     description: "Number of things"
   switch_value:
     type: "boolean"
-    description: "Is the switch on of off"
+    description: "Is the switch on or off"
