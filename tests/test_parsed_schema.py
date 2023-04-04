@@ -125,6 +125,14 @@ INPUTS = [
             (STATUS_ATTR, NULL_SCHEMA_DATA),
         ],
     ),
+    (
+        "sample_output_schema__with_project_without_samples_without_status.yaml",
+        [
+            (PROJECT_ATTR, PROJECT_DATA),
+            (SAMPLES_ATTR, NULL_SCHEMA_DATA),
+            (STATUS_ATTR, NULL_SCHEMA_DATA),
+        ]
+    ),
 ]
 
 
