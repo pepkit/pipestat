@@ -1,0 +1,34 @@
+pipeline_id: test_pipe
+samples:
+  type: array
+  items:
+    type: object
+    properties:
+      smooth_bw:
+        path: "aligned_{genome}/{sample_name}_smooth.bw"
+        type: string
+        description: "A smooth bigwig file"
+      aligned_bam:
+        path: "aligned_{genome}/{sample_name}_sort.bam"
+        type: string
+        description: "A sorted, aligned BAM file"
+      peaks_bed:
+        path: "peak_calling_{genome}/{sample_name}_peaks.bed"
+        type: string
+        description: "Peaks in BED format"
+status:
+  running:
+    description: "the pipeline is running"
+    color: [30, 144, 255] # dodgerblue
+  completed:
+    description: "the pipeline has completed"
+    color: [50, 205, 50] # limegreen
+  failed:
+    description: "the pipeline has failed"
+    color: [220, 20, 60] # crimson
+  waiting:
+    description: "the pipeline is waiting"
+    color: [240, 230, 140] # khaki
+  partial:
+    description: "the pipeline stopped before completion point"
+    color: [169, 169, 169] # darkgray

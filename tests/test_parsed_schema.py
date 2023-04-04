@@ -108,7 +108,23 @@ SAMPLES_DATA = {
 }
 
 
-INPUTS = [
+EXPECTED_SUBDATA_BY_EXAMPLE_FILE = [
+    (
+        "sample_output_schema__with_project_without_samples_without_status.yaml",
+        [
+            (PROJECT_ATTR, PROJECT_DATA),
+            (SAMPLES_ATTR, NULL_SCHEMA_DATA),
+            (STATUS_ATTR, NULL_SCHEMA_DATA),
+        ],
+    ),
+    (
+        "sample_output_schema__without_project_with_samples_without_status.yaml",
+        [
+            (PROJECT_ATTR, NULL_SCHEMA_DATA),
+            (SAMPLES_ATTR, SAMPLES_DATA),
+            (STATUS_ATTR, NULL_SCHEMA_DATA),
+        ],
+    ),
     (
         "sample_output_schema__without_project_without_samples_with_status.yaml",
         [
@@ -126,19 +142,35 @@ INPUTS = [
         ],
     ),
     (
-        "sample_output_schema__with_project_without_samples_without_status.yaml",
+        "sample_output_schema__with_project_without_samples_with_status.yaml",
         [
             (PROJECT_ATTR, PROJECT_DATA),
             (SAMPLES_ATTR, NULL_SCHEMA_DATA),
-            (STATUS_ATTR, NULL_SCHEMA_DATA),
-        ]
+            (STATUS_ATTR, STATUS_DATA),
+        ],
+    ),
+    (
+        "sample_output_schema__without_project_with_samples_with_status.yaml",
+        [
+            (PROJECT_ATTR, NULL_SCHEMA_DATA),
+            (SAMPLES_ATTR, SAMPLES_DATA),
+            (STATUS_ATTR, STATUS_DATA),
+        ],
+    ),
+    (
+        "sample_output_schema__with_project_with_samples_with_status.yaml",
+        [
+            (PROJECT_ATTR, PROJECT_DATA),
+            (SAMPLES_ATTR, SAMPLES_DATA),
+            (STATUS_ATTR, STATUS_DATA),
+        ],
     ),
 ]
 
 
 @pytest.mark.parametrize(
     ["filename", "attr_name", "expected"],
-    [(fn, attr, exp) for fn, attr_exp_pairs in INPUTS for attr, exp in attr_exp_pairs],
+    [(fn, attr, exp) for fn, attr_exp_pairs in EXPECTED_SUBDATA_BY_EXAMPLE_FILE for attr, exp in attr_exp_pairs],
 )
 def test_parsed_schema__has_correct_data(
     prepare_schema_from_file, filename, attr_name, expected
