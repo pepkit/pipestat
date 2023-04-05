@@ -507,7 +507,7 @@ class PipestatManager(dict):
         )
         schema = self.schema
         project = (schema.project_table_name, schema.build_project_model())
-        samples = (schema.sammple_table_name, schema.build_sample_model())
+        samples = (schema.sample_table_name, schema.build_sample_model())
         status = (schema.status_table_name, schema.build_status_model())
         return {tn: mod for tn, mod in [project, samples, status] if mod is not None}
 

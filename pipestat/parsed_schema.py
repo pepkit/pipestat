@@ -1,9 +1,11 @@
 """Abstraction of a parse of a schema definition"""
 
 import copy
+import json
 import logging
 from typing import *
-from pydantic import create_model
+from pydantic import BaseModel, create_model
+#from sqlalchemy.dialects.postgresql import ARRAY
 from sqlmodel import Field, SQLModel
 from .const import *
 from .exceptions import SchemaError
@@ -13,6 +15,11 @@ from .helpers import read_yaml_data
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["ParsedSchema"]
+
+
+# class BaseModel(SQLModel):
+#     class Config:
+#         arbitrary_types_allowed = True
 
 
 class ParsedSchema(object):
@@ -67,7 +74,12 @@ class ParsedSchema(object):
             _LOGGER.debug("No project-level info found in schema")
             self._project_level_data = {}
         else:
+            # DEBUG
+            print("Initial project data")
+            print(json.dumps(prj_data, indent=2))
             self._project_level_data = _recursively_replace_custom_types(prj_data)
+            print("Next project data")
+            print(json.dumps(self._project_level_data, indent=2))
 
     @property
     def reserved_keywords_used(self):
@@ -108,46 +120,70 @@ class ParsedSchema(object):
     def status_table_name(self):
         return self._table_name("status")
 
+    def _make_field_definitions(self, data: Dict[str, Any]):
+        # TODO: read actual values
+        # TODO: default to string if no type key?
+        # TODO: parse "required" ?
+        return {
+            name: (
+                #Optional[subdata[SCHEMA_TYPE_KEY]],
+                #subdata[SCHEMA_TYPE_KEY],
+                #Optional[str],
+                #CLASSES_BY_TYPE[subdata[SCHEMA_TYPE_KEY]],
+                self._get_data_type(subdata[SCHEMA_TYPE_KEY]),
+                Field(default=subdata.get("default")),
+            )
+            for name, subdata in data.items()
+        }
+
+    @staticmethod
+    def _get_data_type(type_name):
+        t = CLASSES_BY_TYPE[type_name]
+        #return ARRAY if t == list else t
+        return t
+
     def build_project_model(self):
         data = self.project_level_data
         # DEBUG
         print("Project data")
-        print(data)
-        if data:
-            return _create_model(self._table_name("project"), **data)
+        print(json.dumps(data, indent=2))
+        field_defs = self._make_field_definitions(data)
+        # DEBUG
+        print("FIELD DEFS")
+        print(field_defs)
+        if field_defs:
+            return _create_model(self._table_name("project"), **field_defs)
 
     def build_sample_model(self):
         data = self.sample_level_data
         if not data:
             return
         id_key = "id"
-        sample_fields = {}
         if id_key in data:
             raise SchemaError(
                 f"'{id_key}' is reserved for primary key and can't be part of schema."
             )
+        sample_fields = self._make_field_definitions(data)
         sample_fields[id_key] = (
             Optional[int],
             Field(default=None, primary_key=True),
         )
-        for field_name, field_data in data.items():
-            # TODO: read actual values
-            sample_fields[field_name] = (Optional[str], Field(default=None))
         return _create_model(self.sample_table_name, **sample_fields)
 
     def build_status_model(self):
-        data = self.status_data
-        if data:
-            return _create_model(self._table_name("status"), **data)
+        field_defs = self._make_field_definitions(self.status_data)
+        if field_defs:
+            return _create_model(self._table_name("status"), **field_defs)
 
     def _table_name(self, suffix: str) -> str:
         return f"{self.pipeline_id}__{suffix}"
 
 
 def _create_model(table_name: str, **kwargs):
-    return create_model(
-        table_name, base=SQLModel, __cls_kwargs__={"table": True}, **kwargs
-    )
+    return create_model(table_name, __base__=BaseModel, **kwargs)
+    # return create_model(
+    #     table_name, __base__=BaseModel, __cls_kwargs__={"table": True}, **kwargs
+    # )
 
 
 def _get_or_error(data: Dict[str, Any], key: str, msg: Optional[str] = None) -> Any:
@@ -173,12 +209,21 @@ def _recursively_replace_custom_types(s: dict) -> Dict:
                 f"Result '{k}' is missing required key(s): {', '.join(missing_req_keys)}"
             )
         curr_type_name = v[SCHEMA_TYPE_KEY]
+        # DEBUG
+        print(f"curr_type_name: {curr_type_name}")
         if curr_type_name == "object" and SCHEMA_PROP_KEY in s[k]:
+            # DEBUG
+            print("recursing")
             _recursively_replace_custom_types(s[k][SCHEMA_PROP_KEY])
         try:
             curr_type_spec = CANONICAL_TYPES[curr_type_name]
         except KeyError:
+            # DEBUG
+            print(f"Not a canonical type: {curr_type_name}")
             continue
+        # DEBUG
+        print("Current type spec")
+        print(curr_type_spec)
         s.setdefault(k, {})
         s[k].setdefault(SCHEMA_PROP_KEY, {})
         s[k][SCHEMA_PROP_KEY].update(curr_type_spec[SCHEMA_PROP_KEY])
