@@ -36,7 +36,6 @@ class PipestatManager(dict):
 
     def __init__(
         self,
-        namespace: Optional[str] = None,
         record_identifier: Optional[str] = None,
         schema_path: Optional[str] = None,
         results_file_path: Optional[str] = None,
@@ -48,8 +47,6 @@ class PipestatManager(dict):
         """
         Initialize the object
 
-        :param str namespace: namespace to report into, which corresponds to the pipeline.
-            This will be the DB table name if using DB as the object back-end
         :param str record_identifier: record identifier to report for. This
             creates a weak bound to the record, which can be overridden in
             this object method calls
@@ -172,22 +169,6 @@ class PipestatManager(dict):
                 )
             )
 
-        if namespace is None:
-            namespace = _select_value(
-                "namespace",
-                self[CONFIG_KEY],
-                strict=False,
-                env_var=ENV_VARS["namespace"],
-            )
-            if namespace is None:
-                msg = (
-                    "Could not determine value for namespace. "
-                    "This may be passed directly to the pipestat manager constructor, "
-                    "or through a configuration file, "
-                    f"or as an environment variable: {ENV_VARS['namespace']}"
-                )
-                raise PipestatError(msg)
-        self[NAME_KEY] = namespace
         self[RECORD_ID_KEY] = record_identifier or _select_value(
             "record_identifier",
             self[CONFIG_KEY],
@@ -237,10 +218,9 @@ class PipestatManager(dict):
             self[STATUS_FILE_DIR] = _mk_abs_via_cfg(flag_file_dir, self.config_path)
         else:
             _LOGGER.debug("Determined database as backend")
-            self[DB_ORMS_KEY] = {}
             self[DATA_KEY] = YAMLConfigManager()
             self._show_db_logs = show_db_logs
-            models = self._create_orms()
+            self[DB_ORMS_KEY] = self._create_orms()
             SQLModel.metadata.create_all(self._engine)
 
     def __str__(self):
@@ -257,24 +237,10 @@ class PipestatManager(dict):
         )
         res += f"\nResults schema source: {self.schema_path}"
         res += f"\nStatus schema source: {self.status_schema_source}"
-        res += f"\nRecords count: {self.record_count}"
         high_res = self.highlighted_results
         if high_res:
             res += f"\nHighlighted results: {', '.join(high_res)}"
         return res
-
-    @property
-    def record_count(self) -> int:
-        """
-        Number of records reported
-
-        :return int: number of records reported
-        """
-        return (
-            len(self.data[self.namespace])
-            if self.file
-            else self._count_rows(self.namespace)
-        )
 
     @property
     def highlighted_results(self) -> List[str]:
@@ -339,7 +305,7 @@ class PipestatManager(dict):
 
         :return str: namespace the object writes the results to
         """
-        return self.get(NAME_KEY)
+        return self.schema.pipeline_id
 
     @property
     def record_identifier(self) -> str:
@@ -405,7 +371,7 @@ class PipestatManager(dict):
         :return dict: schemas that formalize the structure of each result
             in a canonical jsonschema way
         """
-        return self.schema.get(RES_SCHEMAS_KEY)
+        return {**self.schema.project_level_data, **self.schema.sample_level_data}
 
     @property
     def file(self) -> str:
@@ -506,10 +472,15 @@ class PipestatManager(dict):
             f"Creating models for '{self.namespace}' table in '{PKG_NAME}' database"
         )
         schema = self.schema
-        project = (schema.project_table_name, schema.build_project_model())
-        samples = (schema.sample_table_name, schema.build_sample_model())
-        status = (schema.status_table_name, schema.build_status_model())
-        return {tn: mod for tn, mod in [project, samples, status] if mod is not None}
+        projects = schema.build_project_models()
+        # DEBUG
+        print("PROJECTS (below)")
+        print(projects)
+        prj_prefix = schema.project_table_name
+        res = {f"{prj_prefix}__{k}": mod for k, mod in projects.items()}
+        #samples = (schema.sample_table_name, schema.build_sample_model())
+        res[schema.status_table_name] = schema.build_status_model()
+        return res
 
     def set_status(self, status_identifier: str, record_identifier: str = None) -> None:
         """
@@ -823,8 +794,9 @@ class PipestatManager(dict):
         :param str table_name: table to count rows for
         :return int: number of rows in the selected table
         """
+        mod = self[DB_ORMS_KEY][table_name]
         with self.session as s:
-            return s.query(self[DB_ORMS_KEY][table_name].id).count()
+            return s.select(mod).count()
 
     def get_orm(self, table_name: str = None) -> Any:
         """
@@ -835,16 +807,19 @@ class PipestatManager(dict):
         """
         if DB_ORMS_KEY not in self:
             raise PipestatDatabaseError("Object relational mapper classes not defined")
-        tn = f"{table_name or self.namespace}"
-        if tn not in self[DB_ORMS_KEY]:
+        tn = table_name or self.namespace
+        orms = self[DB_ORMS_KEY]
+        mod = orms.get(tn)
+        if mod is None:
             raise PipestatDatabaseError(
-                f"No object relational mapper class defined for table: {tn}"
+                f"No object relational mapper class defined for table '{tn}'. "
+                f"{len(orms)} defined: {', '.join(orms.keys())}"
             )
-        if not isinstance(self[DB_ORMS_KEY][tn], DeclarativeMeta):
+        if not isinstance(mod, DeclarativeMeta):
             raise PipestatDatabaseError(
                 f"Object relational mapper class for table '{tn}' is invalid"
             )
-        return self[DB_ORMS_KEY][tn]
+        return mod
 
     def check_record_exists(
         self, record_identifier: str, table_name: str = None
@@ -859,8 +834,9 @@ class PipestatManager(dict):
         if self.file is None:
             with self.session as s:
                 return (
-                    s.query(self.get_orm(table_name).id)
-                    .filter_by(record_identifier=record_identifier)
+                    # s.query(self.get_orm(table_name).id)
+                    s.select(self.get_orm(table_name))
+                    .where(record_identifier=record_identifier)
                     .first()
                     is not None
                 )

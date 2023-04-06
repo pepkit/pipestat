@@ -12,12 +12,6 @@ properties:
   switch_value:
     type: boolean
     description: "Is the switch on or off"
-  collection_of_things:
-    type: array
-    description: "This store collection of values"
-  output_object:
-    type: object
-    description: "Object output"
   output_file:
     type: file
     description: "This a path to the output file"

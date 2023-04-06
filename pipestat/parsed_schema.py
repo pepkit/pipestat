@@ -3,9 +3,12 @@
 import copy
 import json
 import logging
+from pathlib import Path
 from typing import *
-from pydantic import BaseModel, create_model
-#from sqlalchemy.dialects.postgresql import ARRAY
+#from pydantic import BaseModel, create_model
+from pydantic import create_model
+
+# from sqlalchemy.dialects.postgresql import ARRAY
 from sqlmodel import Field, SQLModel
 from .const import *
 from .exceptions import SchemaError
@@ -17,9 +20,28 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["ParsedSchema"]
 
 
-# class BaseModel(SQLModel):
-#     class Config:
-#         arbitrary_types_allowed = True
+# The columns associated with the file and image types
+PATH_COL_SPEC = (Path, ...)
+TITLE_COL_SPEC = (Optional[str], Field(default=None))
+THUMBNAIL_COL_SPEC = (Optional[Path], Field(default=None))
+
+
+def _custom_types_column_specifications():
+    """Collection of the column specifications for the custom types"""
+    return {"path": PATH_COL_SPEC, "title": TITLE_COL_SPEC, "thumbnail": THUMBNAIL_COL_SPEC}
+
+
+def _add_custom_types_columns(col_specs: Dict[str, Any]) -> Dict[str, Any]:
+    custom_specs = {"path": PATH_COL_SPEC, "title": TITLE_COL_SPEC, "thumbnail": THUMBNAIL_COL_SPEC}
+    collisions = set(custom_specs) & set(col_specs)
+    if collisions:
+        raise SchemaError(f"{len(collisions)} reserved column name(s) used in schema: {', '.join(collisions)}")
+    return {**col_specs, **custom_specs}
+
+
+class BaseModel(SQLModel):
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class ParsedSchema(object):
@@ -74,12 +96,7 @@ class ParsedSchema(object):
             _LOGGER.debug("No project-level info found in schema")
             self._project_level_data = {}
         else:
-            # DEBUG
-            print("Initial project data")
-            print(json.dumps(prj_data, indent=2))
             self._project_level_data = _recursively_replace_custom_types(prj_data)
-            print("Next project data")
-            print(json.dumps(self._project_level_data, indent=2))
 
     @property
     def reserved_keywords_used(self):
@@ -124,66 +141,96 @@ class ParsedSchema(object):
         # TODO: read actual values
         # TODO: default to string if no type key?
         # TODO: parse "required" ?
-        return {
-            name: (
-                #Optional[subdata[SCHEMA_TYPE_KEY]],
-                #subdata[SCHEMA_TYPE_KEY],
-                #Optional[str],
-                #CLASSES_BY_TYPE[subdata[SCHEMA_TYPE_KEY]],
-                self._get_data_type(subdata[SCHEMA_TYPE_KEY]),
+        defs = {}
+        for name, subdata in data.items():
+            typename = subdata[SCHEMA_TYPE_KEY]
+            if typename in CANONICAL_TYPES:
+                # these are handled separately, table-wise (file-likes)
+                continue
+            defs[name] = (
+                # Optional[subdata[SCHEMA_TYPE_KEY]],
+                # subdata[SCHEMA_TYPE_KEY],
+                # Optional[str],
+                # CLASSES_BY_TYPE[subdata[SCHEMA_TYPE_KEY]],
+                self._get_data_type(typename),
                 Field(default=subdata.get("default")),
             )
-            for name, subdata in data.items()
-        }
+        return defs
 
     @staticmethod
     def _get_data_type(type_name):
         t = CLASSES_BY_TYPE[type_name]
-        #return ARRAY if t == list else t
+        # return ARRAY if t == list else t
         return t
 
-    def build_project_model(self):
+    @property
+    def file_like_table_name(self):
+        return self._table_name("files")
+
+    def build_file_model(self):
+        name = self.file_like_table_name
+        field_defs = _add_custom_types_columns({})
+        # TODO: check that this key isn't already there.
+        field_defs[RECORD_ID_KEY] = (str, ...)
+        self._add_id_field(field_defs)
+        return _create_model(name, **field_defs)
+
+    def build_project_models(self):
+        """Create the models associated with project-level data."""
         data = self.project_level_data
         # DEBUG
-        print("Project data")
+        print("DATA")
         print(json.dumps(data, indent=2))
         field_defs = self._make_field_definitions(data)
+        self._add_id_field(field_defs)
         # DEBUG
         print("FIELD DEFS")
         print(field_defs)
-        if field_defs:
-            return _create_model(self._table_name("project"), **field_defs)
+        if not field_defs:
+            # DEBUG
+            print("NO FIELD DEFINITIONS!")
+            return None
+        scalar_model = _create_model(self.project_table_name, **field_defs)
+        files_model = self.build_file_model()
+        return {"scalars": scalar_model, "files": files_model}
 
     def build_sample_model(self):
+        # TODO: include the ability to process the custom types.
+        # TODO: at minimum, we need capability for image and file, and maybe link.
+        raise NotImplementedError("sample-level isn't yet integrated")
         data = self.sample_level_data
         if not data:
             return
+        sample_fields = self._make_field_definitions(data)
+        self._add_id_field(sample_fields)
+        return _create_model(self.sample_table_name, **sample_fields)
+
+    @staticmethod
+    def _add_id_field(field_defs: Dict[str, Any]) -> None:
         id_key = "id"
-        if id_key in data:
+        if id_key in field_defs:
             raise SchemaError(
                 f"'{id_key}' is reserved for primary key and can't be part of schema."
             )
-        sample_fields = self._make_field_definitions(data)
-        sample_fields[id_key] = (
+        field_defs[id_key] = (
             Optional[int],
             Field(default=None, primary_key=True),
         )
-        return _create_model(self.sample_table_name, **sample_fields)
 
     def build_status_model(self):
         field_defs = self._make_field_definitions(self.status_data)
         if field_defs:
-            return _create_model(self._table_name("status"), **field_defs)
+            return _create_model(self.status_table_name, **field_defs)
 
     def _table_name(self, suffix: str) -> str:
         return f"{self.pipeline_id}__{suffix}"
 
 
 def _create_model(table_name: str, **kwargs):
-    return create_model(table_name, __base__=BaseModel, **kwargs)
-    # return create_model(
-    #     table_name, __base__=BaseModel, __cls_kwargs__={"table": True}, **kwargs
-    # )
+    #return create_model(table_name, __base__=BaseModel, **kwargs)
+    return create_model(
+        table_name, __base__=BaseModel, __cls_kwargs__={"table": True}, **kwargs
+    )
 
 
 def _get_or_error(data: Dict[str, Any], key: str, msg: Optional[str] = None) -> Any:
@@ -212,6 +259,7 @@ def _recursively_replace_custom_types(s: dict) -> Dict:
         # DEBUG
         print(f"curr_type_name: {curr_type_name}")
         if curr_type_name == "object" and SCHEMA_PROP_KEY in s[k]:
+            # TODO: are we still supporting this if switching to SQLModel?
             # DEBUG
             print("recursing")
             _recursively_replace_custom_types(s[k][SCHEMA_PROP_KEY])
@@ -224,9 +272,8 @@ def _recursively_replace_custom_types(s: dict) -> Dict:
         # DEBUG
         print("Current type spec")
         print(curr_type_spec)
-        s.setdefault(k, {})
-        s[k].setdefault(SCHEMA_PROP_KEY, {})
-        s[k][SCHEMA_PROP_KEY].update(curr_type_spec[SCHEMA_PROP_KEY])
-        s[k].setdefault("required", []).extend(curr_type_spec["required"])
-        s[k][SCHEMA_TYPE_KEY] = curr_type_spec[SCHEMA_TYPE_KEY]
+        spec = s.setdefault(k, {})
+        spec.setdefault(SCHEMA_PROP_KEY, {}).update(curr_type_spec[SCHEMA_PROP_KEY])
+        spec.setdefault("required", []).extend(curr_type_spec["required"])
+        spec[SCHEMA_TYPE_KEY] = curr_type_spec[SCHEMA_TYPE_KEY]
     return s

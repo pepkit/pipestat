@@ -1,5 +1,6 @@
 import os
 
+from pathlib import Path
 from sqlalchemy.dialects.postgresql.json import JSONB
 from sqlalchemy.types import ARRAY, JSON, Boolean, Float, Integer, String
 
@@ -49,7 +50,6 @@ RES_SCHEMAS_KEY = "_result_schemas"
 DB_BASE_KEY = "_declarative_base"
 DB_ORMS_KEY = "_orms"
 DATA_KEY = "_data"
-NAME_KEY = "_name"
 FILE_KEY = "_file"
 RECORD_ID_KEY = "_record_id"
 DB_SESSION_KEY = "_db_session"
@@ -81,9 +81,12 @@ STATUS = "status"
 
 RESERVED_COLNAMES = [ID, RECORD_ID]
 
+FILE_TYPE_NAME = "file"
+IMAGE_TYPE_NAME = "image"
+
 CANONICAL_TYPES = {
-    "image": {
-        "type": "object",
+    IMAGE_TYPE_NAME: {
+        "type": IMAGE_TYPE_NAME,
         "properties": {
             "path": {"type": "string"},
             "thumbnail_path": {"type": "string"},
@@ -91,8 +94,8 @@ CANONICAL_TYPES = {
         },
         "required": ["path", "thumbnail_path", "title"],
     },
-    "file": {
-        "type": "object",
+    FILE_TYPE_NAME: {
+        "type": FILE_TYPE_NAME,
         "properties": {
             "path": {"type": "string"},
             "title": {"type": "string"},
@@ -113,11 +116,8 @@ ENV_VARS = {
 CLASSES_BY_TYPE = {
     "number": float,
     "integer": int,
-    "object": dict,
-    "image": dict,
-    "file": dict,
     "string": str,
-    "array": list,
+    "path": Path,
     "boolean": bool,
 }
 
