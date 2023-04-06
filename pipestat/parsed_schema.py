@@ -178,6 +178,7 @@ class ParsedSchema(object):
         """Create the models associated with project-level data."""
         data = self.project_level_data
         field_defs = self._make_field_definitions(data)
+        self._add_record_identifier_field(field_defs)
         self._add_id_field(field_defs)
         # DEBUG
         print("FIELD DEFS")
@@ -212,6 +213,15 @@ class ParsedSchema(object):
             Optional[int],
             Field(default=None, primary_key=True),
         )
+
+    @staticmethod
+    def _add_record_identifier_field(field_defs: Dict[str, Any]) -> None:
+        id_key = "record_identifier"
+        if id_key in field_defs:
+            raise SchemaError(
+                f"'{id_key}' is reserved as identifier and can't be part of schema."
+            )
+        field_defs[id_key] = (str, Field(unique=True))
 
     def build_status_model(self):
         field_defs = self._make_field_definitions(self.status_data)
