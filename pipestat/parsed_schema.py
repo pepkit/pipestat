@@ -171,16 +171,12 @@ class ParsedSchema(object):
         name = self.file_like_table_name
         field_defs = _add_custom_types_columns({})
         # TODO: check that this key isn't already there.
-        field_defs[RECORD_ID_KEY] = (str, ...)
         self._add_id_field(field_defs)
         return _create_model(name, **field_defs)
 
     def build_project_models(self):
         """Create the models associated with project-level data."""
         data = self.project_level_data
-        # DEBUG
-        print("DATA")
-        print(json.dumps(data, indent=2))
         field_defs = self._make_field_definitions(data)
         self._add_id_field(field_defs)
         # DEBUG

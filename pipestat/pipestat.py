@@ -798,7 +798,7 @@ class PipestatManager(dict):
         with self.session as s:
             return s.select(mod).count()
 
-    def get_orm(self, table_name: str = None) -> Any:
+    def get_orm(self, table_name: Optional[str] = None) -> Any:
         """
         Get an object relational mapper class
 
@@ -885,20 +885,25 @@ class PipestatManager(dict):
         """
         Check if the specified results exist in the table
 
-        :param str rid: record to check for
         :param List[str] results: results identifiers to check for
+        :param str rid: record to check for
         :param str table_name: name of the table to search for results in
         :return List[str]: results identifiers that exist
         """
-        table_name = table_name or self.namespace
+        #table_name = table_name or self.namespace
         rid = self._strict_record_id(rid)
+        models = [self.get_orm(table_name)] if table_name else list(self[DB_ORMS_KEY].values())
+        record = None
         with self.session as s:
-            record = (
-                s.query(self.get_orm(table_name))
-                .filter_by(record_identifier=rid)
-                .first()
-            )
-        return [r for r in results if getattr(record, r, None) is not None]
+            for mod in models:
+                record = (
+                    s.query(mod)
+                    .filter_by(record_identifier=rid)
+                    .first()
+                )
+                if record:
+                    break
+        return [r for r in results if getattr(record, r, None) is not None] if record else []
 
     def check_result_exists(
         self,
