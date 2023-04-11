@@ -34,7 +34,8 @@ def get_base_model():
     class BaseModel(SQLModel):
         class Config:
             arbitrary_types_allowed = True
-    return BaseModel
+    return SQLModel
+    #return BaseModel
 
 
 class ParsedSchema(object):
@@ -161,7 +162,7 @@ class ParsedSchema(object):
         """Create the models associated with project-level data."""
         data = self.project_level_data
         field_defs = self._make_field_definitions(data)
-        #field_defs = self._add_record_identifier_field(field_defs)
+        field_defs = self._add_record_identifier_field(field_defs)
         field_defs = self._add_id_field(field_defs)
         # DEBUG
         print("FIELD DEFS")
@@ -205,10 +206,9 @@ class ParsedSchema(object):
             )
         #field_defs[id_key] = (str, Field(unique=True))
         # TODO: ensure this is required AND unique
-        #field_defs[id_key] = (str, Field(default=None))
-        field_defs[id_key] = (str, ...)
+        #field_defs[id_key] = (str, ...)
+        field_defs[id_key] = (str, Field(default=None))
         return field_defs
-
 
     def build_status_model(self):
         field_defs = self._make_field_definitions(self.status_data)
@@ -224,8 +224,9 @@ def _create_model(table_name: str, **kwargs):
     # DEBUG
     print("MODEL KWARGS")
     print(kwargs)
+    # extend_existing=True allows this call even when the table model already exists.
     return create_model(
-        table_name, __base__=get_base_model(), __cls_kwargs__={"table": True}, **kwargs
+        table_name, __base__=get_base_model(), __cls_kwargs__={"table": True}, __table_args__={"extend_existing": True}, **kwargs
     )
 
 
