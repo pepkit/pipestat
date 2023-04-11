@@ -5,7 +5,6 @@ import json
 import logging
 from pathlib import Path
 from typing import *
-#from pydantic import BaseModel, create_model
 from pydantic import create_model
 
 # from sqlalchemy.dialects.postgresql import ARRAY
@@ -31,17 +30,11 @@ def _custom_types_column_specifications():
     return {"path": PATH_COL_SPEC, "title": TITLE_COL_SPEC, "thumbnail": THUMBNAIL_COL_SPEC}
 
 
-def _add_custom_types_columns(col_specs: Dict[str, Any]) -> Dict[str, Any]:
-    custom_specs = {"path": PATH_COL_SPEC, "title": TITLE_COL_SPEC, "thumbnail": THUMBNAIL_COL_SPEC}
-    collisions = set(custom_specs) & set(col_specs)
-    if collisions:
-        raise SchemaError(f"{len(collisions)} reserved column name(s) used in schema: {', '.join(collisions)}")
-    return {**col_specs, **custom_specs}
-
-
-class BaseModel(SQLModel):
-    class Config:
-        arbitrary_types_allowed = True
+def get_base_model():
+    class BaseModel(SQLModel):
+        class Config:
+            arbitrary_types_allowed = True
+    return BaseModel
 
 
 class ParsedSchema(object):
@@ -144,9 +137,6 @@ class ParsedSchema(object):
         defs = {}
         for name, subdata in data.items():
             typename = subdata[SCHEMA_TYPE_KEY]
-            if typename in CANONICAL_TYPES:
-                # these are handled separately, table-wise (file-likes)
-                continue
             defs[name] = (
                 # Optional[subdata[SCHEMA_TYPE_KEY]],
                 # subdata[SCHEMA_TYPE_KEY],
@@ -167,19 +157,12 @@ class ParsedSchema(object):
     def file_like_table_name(self):
         return self._table_name("files")
 
-    def build_file_model(self):
-        name = self.file_like_table_name
-        field_defs = _add_custom_types_columns({})
-        # TODO: check that this key isn't already there.
-        self._add_id_field(field_defs)
-        return _create_model(name, **field_defs)
-
-    def build_project_models(self):
+    def build_project_model(self):
         """Create the models associated with project-level data."""
         data = self.project_level_data
         field_defs = self._make_field_definitions(data)
-        self._add_record_identifier_field(field_defs)
-        self._add_id_field(field_defs)
+        #field_defs = self._add_record_identifier_field(field_defs)
+        field_defs = self._add_id_field(field_defs)
         # DEBUG
         print("FIELD DEFS")
         print(field_defs)
@@ -187,9 +170,7 @@ class ParsedSchema(object):
             # DEBUG
             print("NO FIELD DEFINITIONS!")
             return None
-        scalar_model = _create_model(self.project_table_name, **field_defs)
-        files_model = self.build_file_model()
-        return {"scalars": scalar_model, "files": files_model}
+        return _create_model(self.project_table_name, **field_defs)
 
     def build_sample_model(self):
         # TODO: include the ability to process the custom types.
@@ -203,7 +184,7 @@ class ParsedSchema(object):
         return _create_model(self.sample_table_name, **sample_fields)
 
     @staticmethod
-    def _add_id_field(field_defs: Dict[str, Any]) -> None:
+    def _add_id_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
         id_key = "id"
         if id_key in field_defs:
             raise SchemaError(
@@ -213,15 +194,21 @@ class ParsedSchema(object):
             Optional[int],
             Field(default=None, primary_key=True),
         )
+        return field_defs
 
     @staticmethod
-    def _add_record_identifier_field(field_defs: Dict[str, Any]) -> None:
+    def _add_record_identifier_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
         id_key = "record_identifier"
         if id_key in field_defs:
             raise SchemaError(
                 f"'{id_key}' is reserved as identifier and can't be part of schema."
             )
-        field_defs[id_key] = (str, Field(unique=True))
+        #field_defs[id_key] = (str, Field(unique=True))
+        # TODO: ensure this is required AND unique
+        #field_defs[id_key] = (str, Field(default=None))
+        field_defs[id_key] = (str, ...)
+        return field_defs
+
 
     def build_status_model(self):
         field_defs = self._make_field_definitions(self.status_data)
@@ -234,8 +221,11 @@ class ParsedSchema(object):
 
 def _create_model(table_name: str, **kwargs):
     #return create_model(table_name, __base__=BaseModel, **kwargs)
+    # DEBUG
+    print("MODEL KWARGS")
+    print(kwargs)
     return create_model(
-        table_name, __base__=BaseModel, __cls_kwargs__={"table": True}, **kwargs
+        table_name, __base__=get_base_model(), __cls_kwargs__={"table": True}, **kwargs
     )
 
 
@@ -246,7 +236,7 @@ def _get_or_error(data: Dict[str, Any], key: str, msg: Optional[str] = None) -> 
     return data.pop(key)
 
 
-def _recursively_replace_custom_types(s: dict) -> Dict:
+def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:
     """
     Replace the custom types in pipestat schema with canonical types
 

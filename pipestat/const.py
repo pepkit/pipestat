@@ -81,12 +81,9 @@ STATUS = "status"
 
 RESERVED_COLNAMES = [ID, RECORD_ID]
 
-FILE_TYPE_NAME = "file"
-IMAGE_TYPE_NAME = "image"
-
 CANONICAL_TYPES = {
-    IMAGE_TYPE_NAME: {
-        "type": IMAGE_TYPE_NAME,
+    "image": {
+        "type": "object",
         "properties": {
             "path": {"type": "string"},
             "thumbnail_path": {"type": "string"},
@@ -94,8 +91,8 @@ CANONICAL_TYPES = {
         },
         "required": ["path", "thumbnail_path", "title"],
     },
-    FILE_TYPE_NAME: {
-        "type": FILE_TYPE_NAME,
+    "file": {
+        "type": "object",
         "properties": {
             "path": {"type": "string"},
             "title": {"type": "string"},
@@ -114,6 +111,7 @@ ENV_VARS = {
 }
 
 CLASSES_BY_TYPE = {
+    "object": str,
     "number": float,
     "integer": int,
     "string": str,

@@ -10,7 +10,7 @@ from sqlalchemy.orm import (
     relationship,
 )
 
-from sqlmodel import Field, Session, SQLModel, create_engine
+from sqlmodel import Field, Session, SQLModel, create_engine, select as sql_select
 
 from jsonschema import validate
 
@@ -471,16 +471,11 @@ class PipestatManager(dict):
         _LOGGER.debug(
             f"Creating models for '{self.namespace}' table in '{PKG_NAME}' database"
         )
+        models = {}
         schema = self.schema
-        projects = schema.build_project_models()
-        # DEBUG
-        print("PROJECTS (below)")
-        print(projects)
-        prj_prefix = schema.project_table_name
-        res = {f"{prj_prefix}__{k}": mod for k, mod in projects.items()}
-        #samples = (schema.sample_table_name, schema.build_sample_model())
-        res[schema.status_table_name] = schema.build_status_model()
-        return res
+        #models[schema.project_table_name] = schema.build_project_model()
+        models[self.namespace] = schema.build_project_model()
+        return models
 
     def set_status(self, status_identifier: str, record_identifier: str = None) -> None:
         """
@@ -832,21 +827,10 @@ class PipestatManager(dict):
         :return bool: whether the record exists in the table
         """
         if self.file is None:
-            with self.session as s:
-                return (
-                    # s.query(self.get_orm(table_name).id)
-                    s.select(self.get_orm(table_name))
-                    .where(record_identifier=record_identifier)
-                    .first()
-                    is not None
-                )
+            query_hit = self.get_one_record(rid=record_identifier, table_name=table_name)
+            return query_hit is not None
         else:
-            if (
-                self.namespace in self.data
-                and record_identifier in self.data[table_name]
-            ):
-                return True
-            return False
+            return self.namespace in self.data and record_identifier in self.data[table_name]
 
     def check_which_results_exist(
         self,
@@ -860,24 +844,16 @@ class PipestatManager(dict):
         :param List[str] results: names of the results to check
         :param str rid: unique identifier of the record
         :param str table_name: name of the table for which to check results
-        :return List[str]: whether the specified result has been reported for the
-            indicated record in current namespace
+        :return List[str]: names of results which exist
         """
         rid = self._strict_record_id(rid)
         if self.file is None:
-            existing = self._check_which_results_exist_db(
+            return self._check_which_results_exist_db(
                 results=results, rid=rid, table_name=table_name
             )
-        else:
-            existing = []
-            for r in results:
-                if (
-                    self.namespace in self.data
-                    and rid in self.data[self.namespace]
-                    and r in self.data[self.namespace][rid]
-                ):
-                    existing.append(r)
-        return existing
+        if self.namespace not in self.data:
+            return []
+        return [r for r in results if rid in self.data[self.namespace] and r in self.data[self.namespace][rid]]
 
     def _check_which_results_exist_db(
         self, results: List[str], rid: str = None, table_name: str = None
@@ -893,17 +869,42 @@ class PipestatManager(dict):
         #table_name = table_name or self.namespace
         rid = self._strict_record_id(rid)
         models = [self.get_orm(table_name)] if table_name else list(self[DB_ORMS_KEY].values())
-        record = None
+        # DEBUG
+        print("MODELS")
+        print(models)
+        with self.session as s:
+            record = self.get_one_record(rid=rid, table_name=table_name)
+
+        return [r for r in results if getattr(record, r, None) is not None] if record else []
+
+    def get_one_record(self, rid: Optional[str] = None, table_name: Optional[str] = None):
+        models = [self.get_orm(table_name)] if table_name else list(self[DB_ORMS_KEY].values())
+        # DEBUG
+        print("MODELS")
+        print(models)
         with self.session as s:
             for mod in models:
-                record = (
-                    s.query(mod)
-                    .filter_by(record_identifier=rid)
-                    .first()
-                )
+                # DEBUG
+                print("DIR(mod)")
+                print(dir(mod))
+                # print("OUTPUT_FILE")
+                # print(getattr(mod, "output_file"))
+                print("SCHEMA")
+                print(mod.schema_json())
+                # record = sql_select(mod).where(mod.record_identifier == rid).first()
+                # record = s.query(mod).where(mod.record_identifier == rid).first()
+                # stmt = sql_select(mod).where(mod.record_identifier == rid)
+                stmt = sql_select(mod)
+                print("STATEMENT")
+                print(stmt)
+                record = s.exec(stmt).first()
+                # record = (
+                #     s.query(mod)
+                #     .filter_by(record_identifier=rid)
+                #     .first()
+                # )
                 if record:
-                    break
-        return [r for r in results if getattr(record, r, None) is not None] if record else []
+                    return record
 
     def check_result_exists(
         self,

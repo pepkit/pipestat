@@ -5,6 +5,19 @@ from pipestat.const import *
 
 
 class TestDatabaseOnly:
+
+    # TODO: parameterize this against different schemas.
+    def test_manager_can_be_built_without_exception(self, config_file_path, schema_file_path):
+        try:
+            PipestatManager(
+                schema_path=schema_file_path,
+                record_identifier="irrelevant",
+                database_only=True,
+                config=config_file_path,
+            )
+        except Exception as e:
+            pytest.fail(f"Pipestat manager construction failed: {e})")
+
     @pytest.mark.parametrize(
         "val",
         [
@@ -13,6 +26,7 @@ class TestDatabaseOnly:
             {"percentage_of_things": 10.1},
         ],
     )
+    # TODO: need to test reporting of more complex types
     def test_report(
         self,
         val,
