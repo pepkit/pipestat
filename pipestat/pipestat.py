@@ -725,13 +725,17 @@ class PipestatManager(dict):
     def _load_results_file(self) -> None:
         _LOGGER.debug(f"Reading data from '{self.file}'")
         data = YAMLConfigManager(filepath=self.file)
-        filtered = list(filter(lambda x: not x.startswith("_"), data.keys()))
-        if filtered and self.namespace not in filtered:
-            raise PipestatDatabaseError(
-                f"'{self.file}' is already used to report results for "
-                f"other namespace: {filtered[0]}"
-            )
-        self[DATA_KEY] = data
+        namespaces_reported = [k for k in data.keys() if not k.startswith("_")]
+        num_namespaces = len(namespaces_reported)
+        if num_namespaces == 0:
+            self[DATA_KEY] = data
+        elif num_namespaces == 1:
+            previous = namespaces_reported[0]
+            if self.namespace != previous:
+                msg = f"'{self.file}' is already used to report results for a different (not {self.namespace}) namespace: {previous}"
+                raise PipestatError(msg)
+            self[DATA_KEY] = data
+        raise PipestatError(f"'{self.file}' is in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)}")
 
     @property
     def _engine(self):

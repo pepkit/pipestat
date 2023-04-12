@@ -1,5 +1,6 @@
 from tempfile import mkdtemp
 
+import oyaml
 import pytest
 from yaml import dump
 
@@ -59,7 +60,6 @@ class TestPipestatManagerInstantiation:
         self, recursive_schema_file_path, results_file_path
     ):
         psm = PipestatManager(
-            namespace="test",
             results_file_path=results_file_path,
             schema_path=recursive_schema_file_path,
         )
@@ -82,14 +82,12 @@ class TestPipestatManagerInstantiation:
         with open(tmp_pth, "w") as file:
             dump({"database": {"host": "localhost"}}, file)
         with pytest.raises(MissingConfigDataError):
-            PipestatManager(
-                namespace="test", config=tmp_pth, schema_path=schema_file_path
-            )
+            PipestatManager(config=tmp_pth, schema_path=schema_file_path)
 
     def test_unknown_backend(self, schema_file_path):
         """Either db config or results file path needs to be provided"""
         with pytest.raises(NoBackendSpecifiedError):
-            PipestatManager(namespace="test", schema_path=schema_file_path)
+            PipestatManager(schema_path=schema_file_path)
 
     def test_create_results_file(self, schema_file_path):
         """Results file is created if a nonexistent path provided"""
@@ -97,30 +95,38 @@ class TestPipestatManagerInstantiation:
         print(f"Temporary results file: {tmp_res_file}")
         assert not os.path.exists(tmp_res_file)
         PipestatManager(
-            namespace="test",
             results_file_path=tmp_res_file,
             schema_path=schema_file_path,
         )
         assert os.path.exists(tmp_res_file)
 
     # @pytest.mark.skip()
-    def test_use_other_namespace_file(self, schema_file_path):
+    def test_use_other_namespace_file(self, schema_file_path, tmp_path):
         """Results file can be used with just one namespace"""
         tmp_res_file = os.path.join(mkdtemp(), "res.yml")
         print(f"Temporary results file: {tmp_res_file}")
         assert not os.path.exists(tmp_res_file)
-        psm = PipestatManager(
-            namespace="test",
+        psm1 = PipestatManager(
             results_file_path=tmp_res_file,
             schema_path=schema_file_path,
         )
         assert os.path.exists(tmp_res_file)
-        with pytest.raises(PipestatDatabaseError):
+        with open(schema_file_path, 'r') as init_schema_file:
+            init_schema = oyaml.safe_load(init_schema_file)
+        assert psm1.namespace == init_schema[SCHEMA_PIPELINE_ID_KEY]
+        ns2 = "namespace2"
+        temp_schema_path = str(tmp_path / "schema.yaml")
+        init_schema[SCHEMA_PIPELINE_ID_KEY] = ns2
+        with open(temp_schema_path, 'w') as temp_schema_file:
+            dump(init_schema, temp_schema_file)
+        with pytest.raises(PipestatError) as exc_ctx:
             PipestatManager(
-                namespace="new_test",
                 results_file_path=tmp_res_file,
-                schema_path=schema_file_path,
+                schema_path=temp_schema_path,
             )
+        exp_msg = f"'{tmp_res_file}' is already used to report results for a different (not {ns2}) namespace: {psm1.namespace}"
+        obs_msg = str(exc_ctx.value)
+        assert obs_msg == exp_msg
 
     @pytest.mark.parametrize("pth", [["/$HOME/path.yaml"], 1])
     def test_wrong_class_results_file(self, schema_file_path, pth):
