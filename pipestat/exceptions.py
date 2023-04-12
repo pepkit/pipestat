@@ -19,8 +19,6 @@ __all__ = [
 class PipestatError(Exception):
     """Base exception type for this package"""
 
-    __metaclass__ = abc.ABCMeta
-
 
 class NoBackendSpecifiedError(PipestatError):
     """Subtype for designating lack of backend specification"""
