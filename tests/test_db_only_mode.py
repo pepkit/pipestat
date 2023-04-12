@@ -55,7 +55,7 @@ class TestDatabaseOnly:
         schema_file_path,
     ):
         args = dict(
-            schema_path=schema_file_path, namespace="test", config=config_file_path
+            schema_path=schema_file_path, config=config_file_path
         )
         psm = PipestatManager(**args)
         with pytest.raises(ValueError):
@@ -74,7 +74,7 @@ class TestDatabaseOnly:
         filter,
     ):
         args = dict(
-            schema_path=schema_file_path, namespace="test", config=config_file_path
+            schema_path=schema_file_path, config=config_file_path
         )
         psm = PipestatManager(**args)
         with pytest.raises((ValueError, TypeError)):
@@ -94,7 +94,7 @@ class TestDatabaseOnly:
         limit,
     ):
         args = dict(
-            schema_path=schema_file_path, namespace="test", config=config_file_path
+            schema_path=schema_file_path, config=config_file_path
         )
         psm = PipestatManager(**args)
         result = psm.select(
@@ -105,7 +105,7 @@ class TestDatabaseOnly:
         assert len(result) <= limit
 
     @pytest.mark.parametrize("offset", [0, 1, 2, 3, 15555])
-    @pytest.mark.xfail("Need to reimplement psm.record_count")
+    @pytest.mark.xfail(reason="Need to reimplement psm.record_count")
     def test_select_offset(
         self,
         config_file_path,
@@ -113,7 +113,7 @@ class TestDatabaseOnly:
         offset,
     ):
         args = dict(
-            schema_path=schema_file_path, namespace="test", config=config_file_path
+            schema_path=schema_file_path, config=config_file_path
         )
         psm = PipestatManager(**args)
         result = psm.select(offset=offset)
@@ -123,7 +123,7 @@ class TestDatabaseOnly:
     @pytest.mark.parametrize(
         ["offset", "limit"], [(0, 0), (0, 1), (0, 2), (0, 11111), (1, 1), (1, 0)]
     )
-    @pytest.mark.xfail("Need to reimplement psm.record_count")
+    @pytest.mark.xfail(reason="Need to reimplement psm.record_count")
     def test_select_pagination(
         self,
         config_file_path,
@@ -132,7 +132,7 @@ class TestDatabaseOnly:
         limit,
     ):
         args = dict(
-            schema_path=schema_file_path, namespace="test", config=config_file_path
+            schema_path=schema_file_path, config=config_file_path
         )
         psm = PipestatManager(**args)
         result = psm.select(offset=offset, limit=limit)
