@@ -118,7 +118,7 @@ class TestPipestatManagerInstantiation:
             results_file_path=results_file_path,
             schema_path=schema_file_path,
         )
-        assert "test" in psm.data
+        assert "test_pipe" in psm.data
 
     def test_str_representation(self, results_file_path, schema_file_path):
         """Test string representation identifies number of records"""
