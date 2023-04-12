@@ -45,13 +45,15 @@ class TestPipestatManagerInstantiation:
         """Object constructor works with database as backend"""
         assert isinstance(PipestatManager(config=config_file_path), PipestatManager)
 
-    @pytest.mark.xfail(reason="schema is no longer required to init the object")
-    def test_schema_req(self, results_file_path):
+    def test_schema_is_required_to_create_manager(self, results_file_path):
         """
-        Object constructor raises exception if schema is not provided
+        Object constructor raises exception if schema is not provided.
         """
-        with pytest.raises(PipestatError):
-            PipestatManager(namespace="test", results_file_path=results_file_path)
+        with pytest.raises(PipestatError) as err_ctx:
+            PipestatManager(results_file_path=results_file_path)
+        obs_err_msg = str(err_ctx.value)
+        exp_err_msg = "No schema path could be found."
+        assert obs_err_msg == exp_err_msg
 
     def test_schema_recursive_custom_type_conversion(
         self, recursive_schema_file_path, results_file_path
