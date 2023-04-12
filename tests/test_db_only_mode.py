@@ -47,7 +47,7 @@ class TestDatabaseOnly:
         assert psm.select(filter_conditions=[(val_name, "eq", str(val[val_name]))])
 
     @pytest.mark.parametrize(["rec_id", "res_id"], [("sample2", "number_of_things")])
-    def test_select_invalid_filter_column(
+    def test_select_invalid_filter_column__raises_expected_exception(
         self,
         rec_id,
         res_id,
@@ -65,13 +65,13 @@ class TestDatabaseOnly:
             )
 
     @pytest.mark.parametrize("res_id", ["number_of_things"])
-    @pytest.mark.parametrize("filter", [("column", "eq", 1), "a", [1, 2, 3]])
-    def test_select_invalid_filter_structure(
+    @pytest.mark.parametrize("filter_condition", [("column", "eq", 1), "a", [1, 2, 3]])
+    def test_select_invalid_filter_structure__raises_expected_exception(
         self,
         res_id,
         config_file_path,
         schema_file_path,
-        filter,
+        filter_condition,
     ):
         args = dict(
             schema_path=schema_file_path, config=config_file_path
@@ -79,7 +79,7 @@ class TestDatabaseOnly:
         psm = PipestatManager(**args)
         with pytest.raises((ValueError, TypeError)):
             psm.select(
-                filter_conditions=[filter],
+                filter_conditions=[filter_condition],
                 columns=[res_id],
             )
 
