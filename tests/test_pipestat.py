@@ -48,7 +48,7 @@ class TestReporting:
         results_file_path,
         backend,
     ):
-        args = dict(schema_path=schema_file_path, namespace="test", database_only=False)
+        args = dict(schema_path=schema_file_path, database_only=False)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -90,7 +90,7 @@ class TestReporting:
         instantiation stage since there is no way to init relational DB table
         with no columns predefined
         """
-        args = dict(namespace="test")
+        args = dict()
         backend_data = (
             {"config": config_no_schema_file_path}
             if backend == "db"
@@ -116,7 +116,7 @@ class TestReporting:
         results_file_path,
         backend,
     ):
-        args = dict(schema_path=schema_file_path, namespace="test", database_only=False)
+        args = dict(schema_path=schema_file_path, database_only=False)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -149,7 +149,7 @@ class TestReporting:
         backend,
         success,
     ):
-        args = dict(schema_path=schema_file_path, namespace="test")
+        args = dict(schema_path=schema_file_path)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -195,7 +195,7 @@ class TestRetrieval:
         schema_file_path,
         backend,
     ):
-        args = dict(schema_path=schema_file_path, namespace="test")
+        args = dict(schema_path=schema_file_path)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -213,7 +213,7 @@ class TestRetrieval:
     def test_retrieve_whole_record(
         self, rec_id, config_file_path, results_file_path, schema_file_path, backend
     ):
-        args = dict(schema_path=schema_file_path, namespace="test")
+        args = dict(schema_path=schema_file_path)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -237,7 +237,7 @@ class TestRetrieval:
         schema_file_path,
         backend,
     ):
-        args = dict(schema_path=schema_file_path, namespace="test")
+        args = dict(schema_path=schema_file_path)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -264,7 +264,7 @@ class TestRemoval:
         schema_file_path,
         backend,
     ):
-        args = dict(schema_path=schema_file_path, namespace="test", database_only=False)
+        args = dict(schema_path=schema_file_path, database_only=False)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -280,7 +280,7 @@ class TestRemoval:
     def test_remove_record(
         self, rec_id, schema_file_path, config_file_path, results_file_path, backend
     ):
-        args = dict(schema_path=schema_file_path, namespace="test", database_only=False)
+        args = dict(schema_path=schema_file_path, database_only=False)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -304,7 +304,7 @@ class TestRemoval:
         results_file_path,
         backend,
     ):
-        args = dict(schema_path=schema_file_path, namespace="test")
+        args = dict(schema_path=schema_file_path)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -319,7 +319,7 @@ class TestRemoval:
     def test_remove_nonexistent_record(
         self, rec_id, schema_file_path, config_file_path, results_file_path, backend
     ):
-        args = dict(schema_path=schema_file_path, namespace="test")
+        args = dict(schema_path=schema_file_path)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -340,7 +340,7 @@ class TestRemoval:
         results_file_path,
         backend,
     ):
-        args = dict(schema_path=schema_file_path, namespace="test", database_only=False)
+        args = dict(schema_path=schema_file_path, database_only=False)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -368,7 +368,7 @@ class TestNoRecordID:
         REC_ID = "constant_record_id"
         args = dict(
             schema_path=schema_file_path,
-            namespace="test",
+           
             record_identifier=REC_ID,
             database_only=False,
         )
@@ -399,7 +399,7 @@ class TestNoRecordID:
     ):
         REC_ID = "constant_record_id"
         args = dict(
-            schema_path=schema_file_path, namespace="test", record_identifier=REC_ID
+            schema_path=schema_file_path, record_identifier=REC_ID
         )
         backend_data = (
             {"config": config_file_path}
@@ -425,7 +425,7 @@ class TestNoRecordID:
     ):
         REC_ID = "constant_record_id"
         args = dict(
-            schema_path=schema_file_path, namespace="test", record_identifier=REC_ID
+            schema_path=schema_file_path, record_identifier=REC_ID
         )
         backend_data = (
             {"config": config_file_path}
@@ -446,7 +446,7 @@ class TestHighlighting:
             k for k, v in s.project_level_data.items() if v.get("highlight", False)
         ]
         psm = PipestatManager(
-            namespace="test",
+           
             results_file_path=results_file_path,
             schema_path=highlight_schema_file_path,
         )

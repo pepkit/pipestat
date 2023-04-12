@@ -9,7 +9,6 @@ class TestStatus:
         """status file location is set to the results file dir
         if not specified"""
         psm = PipestatManager(
-            namespace="test",
             results_file_path=results_file_path,
             schema_path=schema_file_path,
         )
@@ -21,7 +20,7 @@ class TestStatus:
         self, schema_file_path, config_file_path, results_file_path, backend, status_id
     ):
         """status management works even in case it has not been configured"""
-        args = dict(schema_path=schema_file_path, namespace="test")
+        args = dict(schema_path=schema_file_path,)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -48,7 +47,6 @@ class TestStatus:
         """status management works even in case it has not been configured"""
         args = dict(
             schema_path=schema_file_path,
-            namespace="test",
             status_schema_path=custom_status_schema,
         )
         backend_data = (
