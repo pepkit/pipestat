@@ -735,7 +735,8 @@ class PipestatManager(dict):
                 msg = f"'{self.file}' is already used to report results for a different (not {self.namespace}) namespace: {previous}"
                 raise PipestatError(msg)
             self[DATA_KEY] = data
-        raise PipestatError(f"'{self.file}' is in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)}")
+        else:
+            raise PipestatError(f"'{self.file}' is in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)}")
 
     @property
     def _engine(self):
