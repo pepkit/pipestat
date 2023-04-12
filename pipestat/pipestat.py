@@ -249,7 +249,7 @@ class PipestatManager(dict):
 
         :return List[str]: a collection of highlighted results
         """
-        return [k for k, v in self.result_schemas if v.get("highlight", False)]
+        return [k for k, v in self.result_schemas.items() if v.get("highlight", False)]
 
     @property
     def db_column_kwargs_by_result(self) -> Dict[str, Any]:
@@ -364,7 +364,7 @@ class PipestatManager(dict):
         return getattr(self, "_config_path", None)
 
     @property
-    def result_schemas(self) -> Dict:
+    def result_schemas(self) -> Dict[str, Any]:
         """
         Result schema mappings
 
