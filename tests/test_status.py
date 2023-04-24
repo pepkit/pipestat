@@ -47,15 +47,13 @@ class TestStatus:
     )
     def test_custom_status_schema(
         self,
-        schema_file_path,
         backend_data,
         status_id,
         custom_status_schema,
     ):
         """Status management works even in case it has not been configured."""
         args = dict(
-            schema_path=schema_file_path,
-            status_schema_path=custom_status_schema,
+            schema_path=custom_status_schema,
         )
         args.update(backend_data)
         psm = PipestatManager(**args)
