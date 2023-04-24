@@ -197,6 +197,7 @@ class ParsedSchema(object):
 
     def build_status_model(self):
         field_defs = self._make_field_definitions(self.status_data, require_type=False)
+        field_defs = self._add_record_identifier_field(field_defs)
         field_defs = self._add_id_field(field_defs)
         if field_defs:
             return _create_model(self.status_table_name, **field_defs)
