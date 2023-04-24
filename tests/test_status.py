@@ -18,7 +18,7 @@ def backend_data(request, config_file_path, results_file_path):
     )
 
 
-def test_status_file_default_location(self, schema_file_path, results_file_path):
+def test_status_file_default_location(schema_file_path, results_file_path):
     """status file location is set to the results file dir
     if not specified"""
     psm = PipestatManager(
@@ -30,7 +30,7 @@ def test_status_file_default_location(self, schema_file_path, results_file_path)
 @pytest.mark.parametrize("backend", ["file", "db"])
 @pytest.mark.parametrize("status_id", ["running", "failed", "completed"])
 def test_status_not_configured(
-    self, schema_file_path, config_file_path, results_file_path, backend, status_id
+    schema_file_path, config_file_path, results_file_path, backend, status_id
 ):
     """Status management works even in case it has not been configured."""
     args = dict(
@@ -53,7 +53,6 @@ def test_status_not_configured(
     "status_id", ["running_custom", "failed_custom", "completed_custom"]
 )
 def test_custom_status_schema(
-    self,
     backend_data,
     status_id,
     custom_status_schema,
