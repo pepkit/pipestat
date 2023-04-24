@@ -89,13 +89,13 @@ class TestPipestatManagerInstantiation:
             schema_path=schema_file_path,
         )
         assert os.path.exists(tmp_res_file)
-        with open(schema_file_path, 'r') as init_schema_file:
+        with open(schema_file_path, "r") as init_schema_file:
             init_schema = oyaml.safe_load(init_schema_file)
         assert psm1.namespace == init_schema[SCHEMA_PIPELINE_ID_KEY]
         ns2 = "namespace2"
         temp_schema_path = str(tmp_path / "schema.yaml")
         init_schema[SCHEMA_PIPELINE_ID_KEY] = ns2
-        with open(temp_schema_path, 'w') as temp_schema_file:
+        with open(temp_schema_path, "w") as temp_schema_file:
             dump(init_schema, temp_schema_file)
         with pytest.raises(PipestatError) as exc_ctx:
             PipestatManager(
@@ -123,5 +123,7 @@ class TestPipestatManagerInstantiation:
     @pytest.mark.xfail(reason="Need to re-implement record count")
     def test_str_representation(self, results_file_path, schema_file_path):
         """Test string representation identifies number of records"""
-        psm = PipestatManager(results_file_path=results_file_path, schema_path=schema_file_path)
+        psm = PipestatManager(
+            results_file_path=results_file_path, schema_path=schema_file_path
+        )
         assert f"Records count: {len(psm.data[psm.namespace])}" in str(psm)

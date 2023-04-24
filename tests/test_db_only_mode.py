@@ -5,9 +5,10 @@ from pipestat.const import *
 
 
 class TestDatabaseOnly:
-
     # TODO: parameterize this against different schemas.
-    def test_manager_can_be_built_without_exception(self, config_file_path, schema_file_path):
+    def test_manager_can_be_built_without_exception(
+        self, config_file_path, schema_file_path
+    ):
         try:
             PipestatManager(
                 schema_path=schema_file_path,
@@ -54,9 +55,7 @@ class TestDatabaseOnly:
         config_file_path,
         schema_file_path,
     ):
-        args = dict(
-            schema_path=schema_file_path, config=config_file_path
-        )
+        args = dict(schema_path=schema_file_path, config=config_file_path)
         psm = PipestatManager(**args)
         with pytest.raises(ValueError):
             psm.select(
@@ -73,9 +72,7 @@ class TestDatabaseOnly:
         schema_file_path,
         filter_condition,
     ):
-        args = dict(
-            schema_path=schema_file_path, config=config_file_path
-        )
+        args = dict(schema_path=schema_file_path, config=config_file_path)
         psm = PipestatManager(**args)
         with pytest.raises((ValueError, TypeError)):
             psm.select(
@@ -93,9 +90,7 @@ class TestDatabaseOnly:
         schema_file_path,
         limit,
     ):
-        args = dict(
-            schema_path=schema_file_path, config=config_file_path
-        )
+        args = dict(schema_path=schema_file_path, config=config_file_path)
         psm = PipestatManager(**args)
         result = psm.select(
             filter_conditions=[(RECORD_ID, "eq", rec_id)],
@@ -112,9 +107,7 @@ class TestDatabaseOnly:
         schema_file_path,
         offset,
     ):
-        args = dict(
-            schema_path=schema_file_path, config=config_file_path
-        )
+        args = dict(schema_path=schema_file_path, config=config_file_path)
         psm = PipestatManager(**args)
         result = psm.select(offset=offset)
         print(result)
@@ -131,9 +124,7 @@ class TestDatabaseOnly:
         offset,
         limit,
     ):
-        args = dict(
-            schema_path=schema_file_path, config=config_file_path
-        )
+        args = dict(schema_path=schema_file_path, config=config_file_path)
         psm = PipestatManager(**args)
         result = psm.select(offset=offset, limit=limit)
         print(result)

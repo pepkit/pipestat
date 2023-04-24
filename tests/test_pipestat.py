@@ -368,7 +368,6 @@ class TestNoRecordID:
         REC_ID = "constant_record_id"
         args = dict(
             schema_path=schema_file_path,
-           
             record_identifier=REC_ID,
             database_only=False,
         )
@@ -398,9 +397,7 @@ class TestNoRecordID:
         self, val, config_file_path, schema_file_path, results_file_path, backend
     ):
         REC_ID = "constant_record_id"
-        args = dict(
-            schema_path=schema_file_path, record_identifier=REC_ID
-        )
+        args = dict(schema_path=schema_file_path, record_identifier=REC_ID)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -424,9 +421,7 @@ class TestNoRecordID:
         self, val, config_file_path, schema_file_path, results_file_path, backend
     ):
         REC_ID = "constant_record_id"
-        args = dict(
-            schema_path=schema_file_path, record_identifier=REC_ID
-        )
+        args = dict(schema_path=schema_file_path, record_identifier=REC_ID)
         backend_data = (
             {"config": config_file_path}
             if backend == "db"
@@ -446,7 +441,6 @@ class TestHighlighting:
             k for k, v in s.project_level_data.items() if v.get("highlight", False)
         ]
         psm = PipestatManager(
-           
             results_file_path=results_file_path,
             schema_path=highlight_schema_file_path,
         )
