@@ -136,19 +136,30 @@ class ParsedSchema(object):
     def status_table_name(self):
         return self._table_name("status")
 
-    def _make_field_definitions(self, data: Dict[str, Any]):
+    def _make_field_definitions(self, data: Dict[str, Any], require_type: bool):
         # TODO: read actual values
         # TODO: default to string if no type key?
         # TODO: parse "required" ?
         defs = {}
         for name, subdata in data.items():
-            typename = subdata[SCHEMA_TYPE_KEY]
+            try:
+                typename = subdata[SCHEMA_TYPE_KEY]
+            except KeyError:
+                if require_type:
+                    _LOGGER.error(
+                        f"'{SCHEMA_TYPE_KEY}' is required for each schema element"
+                    )
+                    raise
+                else:
+                    data_type = str
+            else:
+                data_type = self._get_data_type(typename)
             defs[name] = (
                 # Optional[subdata[SCHEMA_TYPE_KEY]],
                 # subdata[SCHEMA_TYPE_KEY],
                 # Optional[str],
                 # CLASSES_BY_TYPE[subdata[SCHEMA_TYPE_KEY]],
-                self._get_data_type(typename),
+                data_type,
                 Field(default=subdata.get("default")),
             )
         return defs
@@ -166,7 +177,7 @@ class ParsedSchema(object):
     def build_project_model(self):
         """Create the models associated with project-level data."""
         data = self.project_level_data
-        field_defs = self._make_field_definitions(data)
+        field_defs = self._make_field_definitions(data, require_type=True)
         field_defs = self._add_record_identifier_field(field_defs)
         field_defs = self._add_id_field(field_defs)
         if not field_defs:
@@ -180,7 +191,7 @@ class ParsedSchema(object):
         data = self.sample_level_data
         if not data:
             return
-        sample_fields = self._make_field_definitions(data)
+        sample_fields = self._make_field_definitions(data, require_type=True)
         self._add_id_field(sample_fields)
         return _create_model(self.sample_table_name, **sample_fields)
 
@@ -211,7 +222,7 @@ class ParsedSchema(object):
         return field_defs
 
     def build_status_model(self):
-        field_defs = self._make_field_definitions(self.status_data)
+        field_defs = self._make_field_definitions(self.status_data, require_type=False)
         if field_defs:
             return _create_model(self.status_table_name, **field_defs)
 
