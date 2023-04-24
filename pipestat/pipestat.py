@@ -874,9 +874,6 @@ class PipestatManager(dict):
         #table_name = table_name or self.namespace
         rid = self._strict_record_id(rid)
         models = [self.get_orm(table_name)] if table_name else list(self[DB_ORMS_KEY].values())
-        # DEBUG
-        print("MODELS")
-        print(models)
         with self.session as s:
             record = self.get_one_record(rid=rid, table_name=table_name)
 
@@ -884,24 +881,12 @@ class PipestatManager(dict):
 
     def get_one_record(self, rid: Optional[str] = None, table_name: Optional[str] = None):
         models = [self.get_orm(table_name)] if table_name else list(self[DB_ORMS_KEY].values())
-        # DEBUG
-        print("MODELS")
-        print(models)
         with self.session as s:
             for mod in models:
-                # DEBUG
-                print("DIR(mod)")
-                print(dir(mod))
-                # print("OUTPUT_FILE")
-                # print(getattr(mod, "output_file"))
-                print("SCHEMA")
-                print(mod.schema_json())
                 # record = sql_select(mod).where(mod.record_identifier == rid).first()
                 # record = s.query(mod).where(mod.record_identifier == rid).first()
                 stmt = sql_select(mod).where(mod.record_identifier == rid)
                 #stmt = sql_select(mod)
-                print("STATEMENT")
-                print(stmt)
                 record = s.exec(stmt).first()
                 # record = (
                 #     s.query(mod)

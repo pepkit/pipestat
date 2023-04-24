@@ -164,12 +164,7 @@ class ParsedSchema(object):
         field_defs = self._make_field_definitions(data)
         field_defs = self._add_record_identifier_field(field_defs)
         field_defs = self._add_id_field(field_defs)
-        # DEBUG
-        print("FIELD DEFS")
-        print(field_defs)
         if not field_defs:
-            # DEBUG
-            print("NO FIELD DEFINITIONS!")
             return None
         return _create_model(self.project_table_name, **field_defs)
 
@@ -221,9 +216,6 @@ class ParsedSchema(object):
 
 def _create_model(table_name: str, **kwargs):
     #return create_model(table_name, __base__=BaseModel, **kwargs)
-    # DEBUG
-    print("MODEL KWARGS")
-    print(kwargs)
     # extend_existing=True allows this call even when the table model already exists.
     return create_model(
         table_name, __base__=get_base_model(), __cls_kwargs__={"table": True}, __table_args__={"extend_existing": True}, **kwargs
@@ -253,22 +245,13 @@ def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:
                 f"Result '{k}' is missing required key(s): {', '.join(missing_req_keys)}"
             )
         curr_type_name = v[SCHEMA_TYPE_KEY]
-        # DEBUG
-        print(f"curr_type_name: {curr_type_name}")
         if curr_type_name == "object" and SCHEMA_PROP_KEY in s[k]:
             # TODO: are we still supporting this if switching to SQLModel?
-            # DEBUG
-            print("recursing")
             _recursively_replace_custom_types(s[k][SCHEMA_PROP_KEY])
         try:
             curr_type_spec = CANONICAL_TYPES[curr_type_name]
         except KeyError:
-            # DEBUG
-            print(f"Not a canonical type: {curr_type_name}")
             continue
-        # DEBUG
-        print("Current type spec")
-        print(curr_type_spec)
         spec = s.setdefault(k, {})
         spec.setdefault(SCHEMA_PROP_KEY, {}).update(curr_type_spec[SCHEMA_PROP_KEY])
         spec.setdefault("required", []).extend(curr_type_spec["required"])
