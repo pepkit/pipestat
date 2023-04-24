@@ -472,9 +472,9 @@ class PipestatManager(dict):
             f"Creating models for '{self.namespace}' table in '{PKG_NAME}' database"
         )
         models = {}
-        schema = self.schema
-        #models[schema.project_table_name] = schema.build_project_model()
-        models[self.namespace] = schema.build_project_model()
+        # models[schema.project_table_name] = schema.build_project_model()
+        models[self.namespace] = self.schema.build_project_model()
+        models[self.schema.status_table_name] = self.schema.build_status_model()
         return models
 
     def set_status(self, status_identifier: str, record_identifier: str = None) -> None:
@@ -558,7 +558,7 @@ class PipestatManager(dict):
             self._report_db(
                 values={STATUS: status_identifier},
                 record_identifier=record_identifier,
-                table_name=f"{self.namespace}_{STATUS}",
+                table_name=self.schema.schema_table_name,
             )
         except Exception as e:
             _LOGGER.error(f"Could not insert into the status table. Exception: {e}")
@@ -597,7 +597,7 @@ class PipestatManager(dict):
             result = self._retrieve_db(
                 result_identifier=STATUS,
                 record_identifier=record_identifier,
-                table_name=f"{self.namespace}_{STATUS}",
+                table_name=self.schema.status_table_name,
             )
         except PipestatDatabaseError:
             return None
@@ -647,7 +647,7 @@ class PipestatManager(dict):
         try:
             self._remove_db(
                 record_identifier=record_identifier,
-                table_name=f"{self.namespace}_{STATUS}",
+                table_name=self.schema.status_table_name,
             )
         except Exception as e:
             _LOGGER.error(
@@ -736,7 +736,9 @@ class PipestatManager(dict):
                 raise PipestatError(msg)
             self[DATA_KEY] = data
         else:
-            raise PipestatError(f"'{self.file}' is in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)}")
+            raise PipestatError(
+                f"'{self.file}' is in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)}"
+            )
 
     @property
     def _engine(self):
@@ -832,10 +834,15 @@ class PipestatManager(dict):
         :return bool: whether the record exists in the table
         """
         if self.file is None:
-            query_hit = self.get_one_record(rid=record_identifier, table_name=table_name)
+            query_hit = self.get_one_record(
+                rid=record_identifier, table_name=table_name
+            )
             return query_hit is not None
         else:
-            return self.namespace in self.data and record_identifier in self.data[table_name]
+            return (
+                self.namespace in self.data
+                and record_identifier in self.data[table_name]
+            )
 
     def check_which_results_exist(
         self,
@@ -858,7 +865,11 @@ class PipestatManager(dict):
             )
         if self.namespace not in self.data:
             return []
-        return [r for r in results if rid in self.data[self.namespace] and r in self.data[self.namespace][rid]]
+        return [
+            r
+            for r in results
+            if rid in self.data[self.namespace] and r in self.data[self.namespace][rid]
+        ]
 
     def _check_which_results_exist_db(
         self, results: List[str], rid: str = None, table_name: str = None
@@ -871,22 +882,36 @@ class PipestatManager(dict):
         :param str table_name: name of the table to search for results in
         :return List[str]: results identifiers that exist
         """
-        #table_name = table_name or self.namespace
+        # table_name = table_name or self.namespace
         rid = self._strict_record_id(rid)
-        models = [self.get_orm(table_name)] if table_name else list(self[DB_ORMS_KEY].values())
+        models = (
+            [self.get_orm(table_name)]
+            if table_name
+            else list(self[DB_ORMS_KEY].values())
+        )
         with self.session as s:
             record = self.get_one_record(rid=rid, table_name=table_name)
 
-        return [r for r in results if getattr(record, r, None) is not None] if record else []
+        return (
+            [r for r in results if getattr(record, r, None) is not None]
+            if record
+            else []
+        )
 
-    def get_one_record(self, rid: Optional[str] = None, table_name: Optional[str] = None):
-        models = [self.get_orm(table_name)] if table_name else list(self[DB_ORMS_KEY].values())
+    def get_one_record(
+        self, rid: Optional[str] = None, table_name: Optional[str] = None
+    ):
+        models = (
+            [self.get_orm(table_name)]
+            if table_name
+            else list(self[DB_ORMS_KEY].values())
+        )
         with self.session as s:
             for mod in models:
                 # record = sql_select(mod).where(mod.record_identifier == rid).first()
                 # record = s.query(mod).where(mod.record_identifier == rid).first()
                 stmt = sql_select(mod).where(mod.record_identifier == rid)
-                #stmt = sql_select(mod)
+                # stmt = sql_select(mod)
                 record = s.exec(stmt).first()
                 # record = (
                 #     s.query(mod)

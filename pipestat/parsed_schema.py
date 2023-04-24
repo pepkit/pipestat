@@ -27,15 +27,20 @@ THUMBNAIL_COL_SPEC = (Optional[Path], Field(default=None))
 
 def _custom_types_column_specifications():
     """Collection of the column specifications for the custom types"""
-    return {"path": PATH_COL_SPEC, "title": TITLE_COL_SPEC, "thumbnail": THUMBNAIL_COL_SPEC}
+    return {
+        "path": PATH_COL_SPEC,
+        "title": TITLE_COL_SPEC,
+        "thumbnail": THUMBNAIL_COL_SPEC,
+    }
 
 
 def get_base_model():
     class BaseModel(SQLModel):
         class Config:
             arbitrary_types_allowed = True
+
     return SQLModel
-    #return BaseModel
+    # return BaseModel
 
 
 class ParsedSchema(object):
@@ -199,9 +204,9 @@ class ParsedSchema(object):
             raise SchemaError(
                 f"'{id_key}' is reserved as identifier and can't be part of schema."
             )
-        #field_defs[id_key] = (str, Field(unique=True))
+        # field_defs[id_key] = (str, Field(unique=True))
         # TODO: ensure this is required AND unique
-        #field_defs[id_key] = (str, ...)
+        # field_defs[id_key] = (str, ...)
         field_defs[id_key] = (str, Field(default=None))
         return field_defs
 
@@ -215,10 +220,14 @@ class ParsedSchema(object):
 
 
 def _create_model(table_name: str, **kwargs):
-    #return create_model(table_name, __base__=BaseModel, **kwargs)
+    # return create_model(table_name, __base__=BaseModel, **kwargs)
     # extend_existing=True allows this call even when the table model already exists.
     return create_model(
-        table_name, __base__=get_base_model(), __cls_kwargs__={"table": True}, __table_args__={"extend_existing": True}, **kwargs
+        table_name,
+        __base__=get_base_model(),
+        __cls_kwargs__={"table": True},
+        __table_args__={"extend_existing": True},
+        **kwargs,
     )
 
 
