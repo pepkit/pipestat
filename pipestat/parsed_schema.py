@@ -195,6 +195,12 @@ class ParsedSchema(object):
         self._add_id_field(sample_fields)
         return _create_model(self.sample_table_name, **sample_fields)
 
+    def build_status_model(self):
+        field_defs = self._make_field_definitions(self.status_data, require_type=False)
+        field_defs = self._add_id_field(field_defs)
+        if field_defs:
+            return _create_model(self.status_table_name, **field_defs)
+
     @staticmethod
     def _add_id_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
         id_key = "id"
@@ -220,11 +226,6 @@ class ParsedSchema(object):
         # field_defs[id_key] = (str, ...)
         field_defs[id_key] = (str, Field(default=None))
         return field_defs
-
-    def build_status_model(self):
-        field_defs = self._make_field_definitions(self.status_data, require_type=False)
-        if field_defs:
-            return _create_model(self.status_table_name, **field_defs)
 
     def _table_name(self, suffix: str) -> str:
         return f"{self.pipeline_id}__{suffix}"
