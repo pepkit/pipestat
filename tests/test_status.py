@@ -15,7 +15,9 @@ def backend_data(request, config_file_path, results_file_path):
         return {"config": config_file_path}
     elif request.param == BACKEND_KEY_FILE:
         return {"results_file_path": results_file_path}
-    raise Exception(f"Unrecognized initial parametrization for backend data: {request.param}")
+    raise Exception(
+        f"Unrecognized initial parametrization for backend data: {request.param}"
+    )
 
 
 def test_status_file_default_location(schema_file_path, results_file_path):
@@ -62,3 +64,9 @@ def test_custom_status_schema(
     psm = PipestatManager(**args)
     psm.set_status(record_identifier="sample1", status_identifier=status_id)
     assert psm.get_status(record_identifier="sample1") == status_id
+
+
+@pytest.mark.skip(reason="not implemented")
+def test_status_not_in_schema__raises_expected_error():
+    """A status to set must be a value declared in the active schema, whether default or custom."""
+    pass

@@ -132,10 +132,6 @@ class ParsedSchema(object):
     def sample_table_name(self):
         return self._table_name("sample")
 
-    @property
-    def status_table_name(self):
-        return self._table_name("status")
-
     def _make_field_definitions(self, data: Dict[str, Any], require_type: bool):
         # TODO: read actual values
         # TODO: default to string if no type key?
@@ -178,6 +174,7 @@ class ParsedSchema(object):
         """Create the models associated with project-level data."""
         data = self.project_level_data
         field_defs = self._make_field_definitions(data, require_type=True)
+        field_defs = self._add_status_field(field_defs)
         field_defs = self._add_record_identifier_field(field_defs)
         field_defs = self._add_id_field(field_defs)
         if not field_defs:
@@ -187,20 +184,14 @@ class ParsedSchema(object):
     def build_sample_model(self):
         # TODO: include the ability to process the custom types.
         # TODO: at minimum, we need capability for image and file, and maybe link.
-        raise NotImplementedError("sample-level isn't yet integrated")
         data = self.sample_level_data
-        if not data:
-            return
-        sample_fields = self._make_field_definitions(data, require_type=True)
-        self._add_id_field(sample_fields)
-        return _create_model(self.sample_table_name, **sample_fields)
-
-    def build_status_model(self):
-        field_defs = self._make_field_definitions(self.status_data, require_type=False)
+        if not self.sample_level_data:
+            return None
+        field_defs = self._make_field_definitions(data, require_type=True)
+        field_defs = self._add_status_field(field_defs)
         field_defs = self._add_record_identifier_field(field_defs)
         field_defs = self._add_id_field(field_defs)
-        if field_defs:
-            return _create_model(self.status_table_name, **field_defs)
+        return _create_model(self.sample_table_name, **field_defs)
 
     @staticmethod
     def _add_id_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
@@ -226,6 +217,15 @@ class ParsedSchema(object):
         # TODO: ensure this is required AND unique
         # field_defs[id_key] = (str, ...)
         field_defs[id_key] = (str, Field(default=None))
+        return field_defs
+
+    @staticmethod
+    def _add_status_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
+        if STATUS in field_defs:
+            raise SchemaError(
+                f"'{STATUS}' is reserved for status reporting and can't be part of schema."
+            )
+        field_defs[STATUS] = (str, Field(default=None))
         return field_defs
 
     def _table_name(self, suffix: str) -> str:

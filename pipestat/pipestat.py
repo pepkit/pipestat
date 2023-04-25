@@ -221,6 +221,9 @@ class PipestatManager(dict):
             self[DATA_KEY] = YAMLConfigManager()
             self._show_db_logs = show_db_logs
             self[DB_ORMS_KEY] = self._create_orms()
+            # DEBUG
+            print("ORMS")
+            print(self[DB_ORMS_KEY])
             SQLModel.metadata.create_all(self._engine)
 
     def __str__(self):
@@ -471,11 +474,10 @@ class PipestatManager(dict):
         _LOGGER.debug(
             f"Creating models for '{self.namespace}' table in '{PKG_NAME}' database"
         )
-        models = {}
-        # models[schema.project_table_name] = schema.build_project_model()
-        models[self.namespace] = self.schema.build_project_model()
-        models[self.schema.status_table_name] = self.schema.build_status_model()
-        return models
+        return {
+            self.schema.project_table_name: self.schema.build_project_model(),
+            self.schema.sample_table_name: self.schema.build_sample_model(),
+        }
 
     def set_status(self, status_identifier: str, record_identifier: str = None) -> None:
         """
@@ -483,7 +485,7 @@ class PipestatManager(dict):
 
         The status identifier needs to match one of identifiers specified in
         the status schema. A basic, ready to use, status schema is shipped with
-         this package.
+        this package.
 
         :param str status_identifier: status to set, one of statuses defined
             in the status schema
@@ -504,10 +506,19 @@ class PipestatManager(dict):
                 record_identifier=r_id,
                 prev_status=prev_status,
             )
+            # TODO: support project / sample distinction for file backend?
         else:
+            # project level
             self._set_status_db(
                 status_identifier=status_identifier,
                 record_identifier=r_id,
+                table_name=self.schema.project_table_name,
+            )
+            # sample level
+            self._set_status_db(
+                status_identifier=status_identifier,
+                record_identifier=r_id,
+                table_name=self.schema.sample_table_name,
             )
         if prev_status:
             _LOGGER.debug(
@@ -553,15 +564,18 @@ class PipestatManager(dict):
         self,
         status_identifier: str,
         record_identifier: str,
+        table_name: str,
     ) -> None:
         try:
             self._report_db(
                 values={STATUS: status_identifier},
                 record_identifier=record_identifier,
-                table_name=self.schema.schema_table_name,
+                table_name=table_name,
             )
         except Exception as e:
-            _LOGGER.error(f"Could not insert into the status table. Exception: {e}")
+            _LOGGER.error(
+                f"Could not insert into the status table ('{table_name}'). Exception: {e}"
+            )
             raise
 
     def get_status(self, record_identifier: str = None) -> Optional[str]:
@@ -597,7 +611,6 @@ class PipestatManager(dict):
             result = self._retrieve_db(
                 result_identifier=STATUS,
                 record_identifier=record_identifier,
-                table_name=self.schema.status_table_name,
             )
         except PipestatDatabaseError:
             return None
@@ -645,10 +658,7 @@ class PipestatManager(dict):
     def _clear_status_db(self, record_identifier: str = None) -> List[Union[str, None]]:
         removed = self.get_status(record_identifier)
         try:
-            self._remove_db(
-                record_identifier=record_identifier,
-                table_name=self.schema.status_table_name,
-            )
+            self._remove_db(record_identifier=record_identifier)
         except Exception as e:
             _LOGGER.error(
                 f"Could not remove the status from the database. Exception: {e}"
@@ -789,6 +799,16 @@ class PipestatManager(dict):
         with self.session as s:
             return inspect(s.bind).has_table(table_name=table_name)
 
+    def _get_model(self, table_name: str, strict: bool):
+        orms = self[DB_ORMS_KEY]
+        mod = orms.get(table_name)
+        if strict and mod is None:
+            raise PipestatDatabaseError(
+                f"No object relational mapper class defined for table '{table_name}'. "
+                f"{len(orms)} defined: {', '.join(orms.keys())}"
+            )
+        return mod
+
     def _count_rows(self, table_name: str) -> int:
         """
         Count rows in a selected table
@@ -796,7 +816,7 @@ class PipestatManager(dict):
         :param str table_name: table to count rows for
         :return int: number of rows in the selected table
         """
-        mod = self[DB_ORMS_KEY][table_name]
+        mod = self._get_model(table_name=table_name, strict=True)
         with self.session as s:
             return s.select(mod).count()
 
@@ -809,18 +829,7 @@ class PipestatManager(dict):
         """
         if DB_ORMS_KEY not in self:
             raise PipestatDatabaseError("Object relational mapper classes not defined")
-        tn = table_name or self.namespace
-        orms = self[DB_ORMS_KEY]
-        mod = orms.get(tn)
-        if mod is None:
-            raise PipestatDatabaseError(
-                f"No object relational mapper class defined for table '{tn}'. "
-                f"{len(orms)} defined: {', '.join(orms.keys())}"
-            )
-        if not isinstance(mod, DeclarativeMeta):
-            raise PipestatDatabaseError(
-                f"Object relational mapper class for table '{tn}' is invalid"
-            )
+        mod = self._get_model(table_name=table_name or self.namespace, strict=True)
         return mod
 
     def check_record_exists(
@@ -1247,7 +1256,7 @@ class PipestatManager(dict):
         self, values: Dict[str, Any], record_identifier: str, table_name: str = None
     ) -> int:
         """
-        Report a result to a database
+        Report a result to a database.
 
         :param Dict[str, Any] values: values to report
         :param str record_identifier: record to report the result for

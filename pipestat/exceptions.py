@@ -1,7 +1,6 @@
 """ Package exception types """
 
-import abc
-
+from typing import *
 from .const import *
 
 __all__ = [
@@ -79,3 +78,18 @@ class IncompatibleClassError(PipestatError):
             "Incompatible value class for the declared result type ({}). "
             "Required: {}; got: {}".format(type, req_cls, cls)
         )
+
+
+class UnrecognizedStatusError(PipestatError):
+    """Exception for when a value to set as status isn't declared in the active status schema."""
+
+    def __init__(self, status: str, known: Optional[Iterable[str]] = None):
+        self._status = status
+        msg = f"Unrecognized status: {status}"
+        if known is not None:
+            pass
+        super(UnrecognizedStatusError, self).__init__(msg)
+
+    @property
+    def status(self):
+        return self._status
