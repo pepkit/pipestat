@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import *
 import pytest
 import oyaml
+from pipestat.const import *
 from pipestat.exceptions import SchemaError
 from pipestat.parsed_schema import ParsedSchema
 from .conftest import DATA_PATH
@@ -126,14 +127,6 @@ EXPECTED_SUBDATA_BY_EXAMPLE_FILE = [
         ],
     ),
     (
-        "sample_output_schema__without_project_without_samples_with_status.yaml",
-        [
-            (PROJECT_ATTR, NULL_SCHEMA_DATA),
-            (SAMPLES_ATTR, NULL_SCHEMA_DATA),
-            (STATUS_ATTR, STATUS_DATA),
-        ],
-    ),
-    (
         "sample_output_schema__with_project_with_samples_without_status.yaml",
         [
             (PROJECT_ATTR, PROJECT_DATA),
@@ -184,6 +177,24 @@ def test_parsed_schema__has_correct_data(
     schema = ParsedSchema(raw_schema)
     observed = getattr(schema, attr_name)
     assert observed == expected
+
+
+
+
+
+@pytest.mark.parametrize(["schema_data", "expected_message"], [
+    ({SCHEMA_PIPELINE_ID_KEY: "test_pipe"}, "Neither sample-level nor project-level data items are declared."),
+    ({SCHEMA_PIPELINE_ID_KEY: "test_pipe", STATUS: STATUS_DATA}, "Neither sample-level nor project-level data items are declared."),
+    ({SCHEMA_PIPELINE_ID_KEY: "test_pipe", "samples": ["s1", "s2"]}, f"Sample-level info in schema isn't map-like, but rather: {list}"),
+    ({SCHEMA_PIPELINE_ID_KEY: "test_pipe", "samples": "sample1"}, f"Sample-level info in schema isn't map-like, but rather: {str}"),
+])
+def test_schema_with_neither_project_nor_sample_items__raises_expected_error(schema_data, expected_message, tmp_path):
+    schema_file = tmp_path / "schema.tmp.yaml"
+    write_yaml(data=schema_data, path=schema_file)
+    with pytest.raises(SchemaError) as err_ctx:
+        ParsedSchema(schema_file)
+    observed_message = str(err_ctx.value)
+    assert observed_message == expected_message
 
 
 def get_test_data_path(filename: str) -> str:

@@ -70,6 +70,8 @@ class ParsedSchema(object):
             _LOGGER.debug("No sample-level info found in schema")
             self._sample_level_data = {}
         else:
+            if not isinstance(sample_level_data, Mapping):
+                raise SchemaError(f"Sample-level info in schema isn't map-like, but rather: {type(sample_level_data)}")
             if "items" not in sample_level_data:
                 raise SchemaError("No 'items' in sample-level schema section")
             sample_level_data = sample_level_data["items"]
@@ -96,6 +98,11 @@ class ParsedSchema(object):
             self._project_level_data = {}
         else:
             self._project_level_data = _recursively_replace_custom_types(prj_data)
+
+        if not self._sample_level_data and not self._project_level_data:
+            raise SchemaError(
+                "Neither sample-level nor project-level data items are declared."
+            )
 
     @property
     def reserved_keywords_used(self):
