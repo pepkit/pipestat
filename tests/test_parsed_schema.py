@@ -240,3 +240,15 @@ def test_insufficient_schema__raises_expected_error_and_message(
         ParsedSchema(schema_file)
     observed_message = str(err_ctx.value)
     assert observed_message == expected_message
+
+
+@pytest.mark.skip(reason="not yet implemented")
+def test_reserved_keyword_use_in_schema__raises_expected_error_and_message():
+    # TODO: implement
+    pass
+
+
+@pytest.mark.skip(reason="not yet implemented")
+def test_sample_project_data_item_name_overlap__raises_expected_error_and_message():
+    # TODO: implement
+    pass

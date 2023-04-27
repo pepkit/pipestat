@@ -702,20 +702,6 @@ class PipestatManager(dict):
                 s[k][SCHEMA_TYPE_KEY] = curr_type_spec[SCHEMA_TYPE_KEY]
             return s
 
-        reserved_keywords_used = self.schema.reserved_keywords_used
-        if reserved_keywords_used:
-            raise SchemaError(
-                f"{len(reserved_keywords_used)} reserved keyword(s) used: {', '.join(reserved_keywords_used)}"
-            )
-        # TODO: pare down to what really needs dealt with here.
-        project_sample_overlap = set(self.schema.project_level_data) & set(
-            self.schema.sample_level_data
-        )
-        if project_sample_overlap:
-            raise SchemaError(
-                f"Overlap between project- and sample-level keys: {', '.join(project_sample_overlap)}"
-            )
-
     def _init_results_file(self) -> None:
         """
         Initialize YAML results file if it does not exist.

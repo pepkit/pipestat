@@ -102,13 +102,24 @@ class ParsedSchema(object):
                 f"Extra top-level key(s) in given schema data: {', '.join(data.keys())}"
             )
 
-    @property
-    def reserved_keywords_used(self):
+        # Check that no reserved keywords were used as data items.
         resv_kwds = {"id", RECORD_ID}
         reserved_keywords_used = set()
         for data in [self.project_level_data, self.sample_level_data, self.status_data]:
             reserved_keywords_used |= set(data.keys()) & resv_kwds
-        return reserved_keywords_used
+        if reserved_keywords_used:
+            raise SchemaError(
+                f"{len(reserved_keywords_used)} reserved keyword(s) used: {', '.join(reserved_keywords_used)}"
+            )
+
+        # Check that no data item name overlap exists between project- and sample-level data.
+        project_sample_overlap = set(self.project_level_data) & set(
+            self.sample_level_data
+        )
+        if project_sample_overlap:
+            raise SchemaError(
+                f"Overlap between project- and sample-level keys: {', '.join(project_sample_overlap)}"
+            )
 
     @property
     def pipeline_id(self):
