@@ -479,3 +479,10 @@ def test_no_constructor_args__raises_expected_exception():
     """See Issue #3 in the repository."""
     with pytest.raises(NoBackendSpecifiedError):
         PipestatManager()
+
+
+@pytest.mark.skip(reason="not yet implemented")
+def test_manager_always_has_status_schema_source():
+    """Even if no status schema is specified, the default one (and its location) is used."""
+    # TODO: implement
+    pass

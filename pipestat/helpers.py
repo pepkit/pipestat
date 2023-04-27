@@ -1,12 +1,12 @@
+"""Assorted project utilities"""
+
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import jsonschema
-
 import sqlalchemy.orm
 from oyaml import safe_load
-from psycopg2 import sql
 from sqlalchemy.orm import DeclarativeMeta, Query
 from ubiquerg import expandpath
 
@@ -27,6 +27,8 @@ def validate_type(value, schema, strict_type=False):
         against, e.g. {"type": "integer"}
     :param bool strict_type: whether the value should validate as is
     """
+    import jsonschema
+
     try:
         jsonschema.validate(value, schema)
     except jsonschema.exceptions.ValidationError as e:

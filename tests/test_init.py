@@ -5,8 +5,8 @@ import pytest
 from yaml import dump
 
 from pipestat import PipestatManager
-from pipestat.const import *
 from pipestat.exceptions import *
+from pipestat.parsed_schema import SCHEMA_PIPELINE_ID_KEY
 
 
 class TestPipestatManagerInstantiation:

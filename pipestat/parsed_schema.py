@@ -2,6 +2,7 @@
 
 import copy
 import logging
+from pathlib import Path
 from typing import *
 from pydantic import create_model
 
@@ -14,7 +15,10 @@ from .helpers import read_yaml_data
 
 _LOGGER = logging.getLogger(__name__)
 
-__all__ = ["ParsedSchema"]
+__all__ = ["ParsedSchema", "SCHEMA_PIPELINE_ID_KEY"]
+
+
+SCHEMA_PIPELINE_ID_KEY = "pipeline_id"
 
 
 # The columns associated with the file and image types
@@ -100,9 +104,10 @@ class ParsedSchema(object):
 
     @property
     def reserved_keywords_used(self):
+        resv_kwds = {"id", RECORD_ID}
         reserved_keywords_used = set()
         for data in [self.project_level_data, self.sample_level_data, self.status_data]:
-            reserved_keywords_used |= set(data.keys()) & set(RESERVED_COLNAMES)
+            reserved_keywords_used |= set(data.keys()) & resv_kwds
         return reserved_keywords_used
 
     @property

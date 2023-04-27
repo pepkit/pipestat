@@ -1,9 +1,36 @@
+"""Construction of the CLI definition and parsing framework for the pipestat application"""
+
 import argparse
-
+import os
 from ubiquerg import VersionInHelpParser
-
 from ._version import __version__
-from .const import *
+
+
+REPORT_CMD = "report"
+INSPECT_CMD = "inspect"
+REMOVE_CMD = "remove"
+RETRIEVE_CMD = "retrieve"
+STATUS_CMD = "status"
+SUBPARSER_MESSAGES = {
+    REPORT_CMD: "Report a result.",
+    INSPECT_CMD: "Inspect a database.",
+    REMOVE_CMD: "Remove a result.",
+    RETRIEVE_CMD: "Retrieve a result.",
+    STATUS_CMD: "Manage pipeline status.",
+}
+
+STATUS_GET_CMD = "get"
+STATUS_SET_CMD = "set"
+STATUS_SUBPARSER_MESSAGES = {
+    STATUS_SET_CMD: "Set status.",
+    STATUS_GET_CMD: "Get status.",
+}
+
+__all__ = (
+    ["build_argparser", "SUBPARSER_MESSAGES", "STATUS_SUBPARSER_MESSAGES"]
+    + list(SUBPARSER_MESSAGES.keys())
+    + list(STATUS_SUBPARSER_MESSAGES.keys())
+)
 
 
 def _env_txt(arg_name):
@@ -45,8 +72,8 @@ def build_argparser(desc):
 
     sps = {}
     # common arguments
-    for cmd in SUBPARSER_MSGS.keys():
-        p = add_subparser(cmd, SUBPARSER_MSGS[cmd], subparsers)
+    for cmd in SUBPARSER_MESSAGES.keys():
+        p = add_subparser(cmd, SUBPARSER_MESSAGES[cmd], subparsers)
         # status is nested and status subcommands require config path
         if cmd != STATUS_CMD:
             p.add_argument(

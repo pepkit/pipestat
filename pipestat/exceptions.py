@@ -49,7 +49,7 @@ class MissingConfigDataError(PipestatError):
 
     def __init__(self, msg):
         spacing = " " if msg[-1] in ["?", ".", "\n"] else "; "
-        suggest = "For config format documentation please see: " + DOC_URL
+        suggest = "For config format documentation please see: http://pipestat.databio.org/en/latest/db_config/"
         super(MissingConfigDataError, self).__init__(msg + spacing + suggest)
 
 

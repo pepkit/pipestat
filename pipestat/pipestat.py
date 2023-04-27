@@ -1,5 +1,7 @@
 from contextlib import contextmanager
+from glob import glob
 from logging import getLogger
+import os
 from typing import Dict, List, Optional, Tuple, Union
 from urllib.parse import quote_plus
 
@@ -19,6 +21,17 @@ from yacman import YAMLConfigManager
 from .exceptions import *
 from .helpers import *
 from .parsed_schema import ParsedSchema
+
+CFG_DATABASE_KEY = "database"
+CONFIG_KEY = "_config"
+DB_COLUMN_KEY = "db_column"
+DB_ONLY_KEY = "_database_only"
+DB_ORMS_KEY = "_orms"
+FILE_KEY = "_file"
+SCHEMA_KEY = "_schema"
+STATUS_FILE_DIR = "_status_file_dir"
+STATUS_SCHEMA_SOURCE_KEY = "_status_schema_source"
+
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -150,13 +163,15 @@ class PipestatManager(dict):
                 )
             try:
                 creds = dict(
-                    name=dbconf[CFG_NAME_KEY],
-                    user=dbconf[CFG_USER_KEY],
-                    passwd=dbconf[CFG_PASSWORD_KEY],
-                    host=dbconf[CFG_HOST_KEY],
-                    port=dbconf[CFG_PORT_KEY],
-                    dialect=dbconf[CFG_DIALECT_KEY],
-                    driver=dbconf[CFG_DRIVER_KEY],
+                    name=dbconf["name"],
+                    user=dbconf["user"],
+                    passwd=dbconf["password"],
+                    host=dbconf["host"],
+                    port=dbconf["port"],
+                    dialect=dbconf["dialect"],
+                    driver=dbconf[
+                        "driver"
+                    ],  # sqlite, mysql, postgresql, oracle, or mssql
                 )
             except KeyError as e:
                 raise MissingConfigDataError(
@@ -280,26 +295,6 @@ class PipestatManager(dict):
         """
         if self.schema is None:
             return {}
-
-        def _validate_rel_section(result_id):
-            if not all(
-                [
-                    k in self.schema[result_id][DB_RELATIONSHIP_KEY].keys()
-                    for k in DB_RELATIONSHIP_ELEMENTS
-                ]
-            ):
-                PipestatDatabaseError(
-                    f"Not all required {DB_RELATIONSHIP_KEY} settings ({DB_RELATIONSHIP_ELEMENTS}) were "
-                    f"provided for result: {result_id}"
-                )
-            return True
-
-        return {
-            result_id: self.schema[result_id][DB_RELATIONSHIP_KEY]
-            for result_id in self.schema.keys()
-            if DB_RELATIONSHIP_KEY in self.schema[result_id]
-            and _validate_rel_section(result_id)
-        }
 
     @property
     def namespace(self) -> str:
@@ -433,7 +428,6 @@ class PipestatManager(dict):
         :param str record_identifier: unique record identifier
         :return str | list[str] | None: path to the status flag file
         """
-        from glob import glob
 
         r_id = self._strict_record_id(record_identifier)
         if self.file is None:
@@ -479,7 +473,12 @@ class PipestatManager(dict):
             self.schema.sample_table_name: self.schema.build_sample_model(),
         }
 
-    def set_status(self, status_identifier: str, record_identifier: str = None) -> None:
+    def set_status(
+        self,
+        status_identifier: str,
+        record_identifier: str = None,
+        project_level: bool = False,
+    ) -> None:
         """
         Set pipeline run status.
 
@@ -491,6 +490,7 @@ class PipestatManager(dict):
             in the status schema
         :param str record_identifier: record identifier to set the
             pipeline status for
+        :param bool project_level: whether status is being set for a project-level pipeline, or sample-level
         """
         r_id = self._strict_record_id(record_identifier)
         known_status_identifiers = self.status_schema.keys()
@@ -501,6 +501,7 @@ class PipestatManager(dict):
             )
         prev_status = self.get_status(r_id)
         if self.file is not None:
+            # TODO: manage project-level flag here.
             self._set_status_file(
                 status_identifier=status_identifier,
                 record_identifier=r_id,
@@ -508,17 +509,15 @@ class PipestatManager(dict):
             )
             # TODO: support project / sample distinction for file backend?
         else:
-            # project level
-            self._set_status_db(
-                status_identifier=status_identifier,
-                record_identifier=r_id,
-                table_name=self.schema.project_table_name,
+            tn = (
+                self.schema.project_table_name
+                if project_level
+                else self.schema.sample_table_name
             )
-            # sample level
             self._set_status_db(
                 status_identifier=status_identifier,
                 record_identifier=r_id,
-                table_name=self.schema.sample_table_name,
+                table_name=tn,
             )
         if prev_status:
             _LOGGER.debug(

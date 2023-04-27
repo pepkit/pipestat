@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import *
 import pytest
 import oyaml
-from pipestat.const import *
+from pipestat.const import STATUS
 from pipestat.exceptions import SchemaError
-from pipestat.parsed_schema import ParsedSchema
+from pipestat.parsed_schema import ParsedSchema, SCHEMA_PIPELINE_ID_KEY
 from .conftest import DATA_PATH
 
 TEMP_SCHEMA_FILENAME = "schema.tmp.yaml"
@@ -172,7 +172,7 @@ EXPECTED_SUBDATA_BY_EXAMPLE_FILE = [
 def test_parsed_schema__has_correct_data(
     prepare_schema_from_file, filename, attr_name, expected
 ):
-    data_file = get_test_data_path(filename)
+    data_file = os.path.join(DATA_PATH, filename)
     raw_schema = prepare_schema_from_file(data_file)
     schema = ParsedSchema(raw_schema)
     observed = getattr(schema, attr_name)
@@ -209,7 +209,3 @@ def test_schema_with_neither_project_nor_sample_items__raises_expected_error(
         ParsedSchema(schema_file)
     observed_message = str(err_ctx.value)
     assert observed_message == expected_message
-
-
-def get_test_data_path(filename: str) -> str:
-    return os.path.join(DATA_PATH, filename)
