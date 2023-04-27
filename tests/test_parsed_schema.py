@@ -179,7 +179,18 @@ def test_parsed_schema__has_correct_data(
     assert observed == expected
 
 
-VALID_SCHEMA_DATA_PAIRS = []
+SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_ID = [
+    [("samples", SAMPLES_DATA)],
+    [("project", PROJECT_DATA)],
+    [("samples", SAMPLES_DATA), ("project", PROJECT_DATA)],
+    [("samples", SAMPLES_DATA), ("status", STATUS_DATA)],
+    [("project", PROJECT_DATA), ("status", STATUS_DATA)],
+    [
+        ("samples", SAMPLES_DATA),
+        ("project", PROJECT_DATA),
+        ("status", STATUS_DATA),
+    ],
+]
 
 
 @pytest.mark.parametrize(
@@ -204,21 +215,20 @@ VALID_SCHEMA_DATA_PAIRS = []
     ]
     + [
         (
-            dict(kvs),
+            dict(data),
             f"Could not find valid pipeline identifier (key '{SCHEMA_PIPELINE_ID_KEY}') in given schema data",
         )
-        for kvs in [
-            [("samples", SAMPLES_DATA)],
-            [("project", PROJECT_DATA)],
-            [("samples", SAMPLES_DATA), ("project", PROJECT_DATA)],
-            [("samples", SAMPLES_DATA), ("status", STATUS_DATA)],
-            [("project", PROJECT_DATA), ("status", STATUS_DATA)],
-            [
-                ("samples", SAMPLES_DATA),
-                ("project", PROJECT_DATA),
-                ("status", STATUS_DATA),
-            ],
-        ]
+        for data in SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_ID
+    ]
+    + [
+        (
+            dict(
+                data
+                + [(SCHEMA_PIPELINE_ID_KEY, "test_pipe"), ("extra_key", "placeholder")]
+            ),
+            "Extra top-level key(s) in given schema data: extra_key",
+        )
+        for data in SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_ID
     ],
 )
 def test_insufficient_schema__raises_expected_error_and_message(
