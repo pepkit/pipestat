@@ -1,5 +1,5 @@
 pipeline_id: test_pipe
-properties:
+project:
   percentage_of_things:
     type: "number"
     description: "Percentage of things"

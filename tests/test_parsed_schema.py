@@ -51,7 +51,7 @@ def test_empty__fails_with_missing_pipeline_id(prepare_schema_from_mapping):
 PROJECT_ATTR = "project_level_data"
 SAMPLES_ATTR = "sample_level_data"
 STATUS_ATTR = "status_data"
-NULL_SCHEMA_DATA = {}
+NULL_SCHEMA_DATA = None
 
 STATUS_DATA = {
     "running": {
@@ -179,16 +179,30 @@ def test_parsed_schema__has_correct_data(
     assert observed == expected
 
 
-
-
-
-@pytest.mark.parametrize(["schema_data", "expected_message"], [
-    ({SCHEMA_PIPELINE_ID_KEY: "test_pipe"}, "Neither sample-level nor project-level data items are declared."),
-    ({SCHEMA_PIPELINE_ID_KEY: "test_pipe", STATUS: STATUS_DATA}, "Neither sample-level nor project-level data items are declared."),
-    ({SCHEMA_PIPELINE_ID_KEY: "test_pipe", "samples": ["s1", "s2"]}, f"Sample-level info in schema isn't map-like, but rather: {list}"),
-    ({SCHEMA_PIPELINE_ID_KEY: "test_pipe", "samples": "sample1"}, f"Sample-level info in schema isn't map-like, but rather: {str}"),
-])
-def test_schema_with_neither_project_nor_sample_items__raises_expected_error(schema_data, expected_message, tmp_path):
+@pytest.mark.parametrize(
+    ["schema_data", "expected_message"],
+    [
+        (
+            {SCHEMA_PIPELINE_ID_KEY: "test_pipe"},
+            "Neither sample-level nor project-level data items are declared.",
+        ),
+        (
+            {SCHEMA_PIPELINE_ID_KEY: "test_pipe", STATUS: STATUS_DATA},
+            "Neither sample-level nor project-level data items are declared.",
+        ),
+        (
+            {SCHEMA_PIPELINE_ID_KEY: "test_pipe", "samples": ["s1", "s2"]},
+            f"sample-level info in schema definition has invalid type: list",
+        ),
+        (
+            {SCHEMA_PIPELINE_ID_KEY: "test_pipe", "samples": "sample1"},
+            f"sample-level info in schema definition has invalid type: str",
+        ),
+    ],
+)
+def test_schema_with_neither_project_nor_sample_items__raises_expected_error(
+    schema_data, expected_message, tmp_path
+):
     schema_file = tmp_path / "schema.tmp.yaml"
     write_yaml(data=schema_data, path=schema_file)
     with pytest.raises(SchemaError) as err_ctx:

@@ -1,5 +1,5 @@
 pipeline_id: test_pipe
-properties:
+samples:
   collection_of_images:
     description: "This store collection of values"
     type: array

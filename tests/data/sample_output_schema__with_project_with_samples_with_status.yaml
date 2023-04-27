@@ -1,5 +1,5 @@
 pipeline_id: test_pipe
-properties:
+project:
   number_of_things:
     type: integer
     description: "Number of things"
@@ -13,22 +13,18 @@ properties:
     type: boolean
     description: "Is the switch on or off"
 samples:
-  type: array
-  items:
-    type: object
-    properties:
-      smooth_bw:
-        path: "aligned_{genome}/{sample_name}_smooth.bw"
-        type: string
-        description: "A smooth bigwig file"
-      aligned_bam:
-        path: "aligned_{genome}/{sample_name}_sort.bam"
-        type: string
-        description: "A sorted, aligned BAM file"
-      peaks_bed:
-        path: "peak_calling_{genome}/{sample_name}_peaks.bed"
-        type: string
-        description: "Peaks in BED format"
+  smooth_bw:
+    path: "aligned_{genome}/{sample_name}_smooth.bw"
+    type: string
+    description: "A smooth bigwig file"
+  aligned_bam:
+    path: "aligned_{genome}/{sample_name}_sort.bam"
+    type: string
+    description: "A sorted, aligned BAM file"
+  peaks_bed:
+    path: "peak_calling_{genome}/{sample_name}_peaks.bed"
+    type: string
+    description: "Peaks in BED format"
 status:
   running:
     description: "the pipeline is running"

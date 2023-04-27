@@ -1,9 +1,7 @@
 """Abstraction of a parse of a schema definition"""
 
 import copy
-import json
 import logging
-from pathlib import Path
 from typing import *
 from pydantic import create_model
 
@@ -43,6 +41,19 @@ def get_base_model():
     # return BaseModel
 
 
+def _safe_pop_one_mapping(key: str, data: Dict[str, Any], info_name: str) -> Any:
+    try:
+        value = data.pop(key)
+    except KeyError:
+        _LOGGER.debug(f"No {info_name} info found in schema")
+        return None
+    if isinstance(value, Mapping):
+        return value
+    raise SchemaError(
+        f"{info_name} info in schema definition has invalid type: {type(value).__name__}"
+    )
+
+
 class ParsedSchema(object):
     # TODO: validate no collision among the 3 namespaces.
     def __init__(self, data: Union[Dict[str, Any], str]) -> None:
@@ -50,58 +61,41 @@ class ParsedSchema(object):
         if not isinstance(data, dict):
             _, data = read_yaml_data(data, "schema")
         data = copy.deepcopy(data)
-        self._pipeline_id = _get_or_error(
-            data,
-            SCHEMA_PIPELINE_ID_KEY,
-            f"Missing top-level schema key: '{SCHEMA_PIPELINE_ID_KEY}'",
-        )
 
-        # status
-        try:
-            self._status_data = data.pop("status")
-        except KeyError:
-            self._status_data = {}
-            _LOGGER.debug("No status info found in schema")
-
-        # samples
-        try:
-            sample_level_data = data.pop("samples")
-        except KeyError:
-            _LOGGER.debug("No sample-level info found in schema")
-            self._sample_level_data = {}
-        else:
-            if not isinstance(sample_level_data, Mapping):
-                raise SchemaError(f"Sample-level info in schema isn't map-like, but rather: {type(sample_level_data)}")
-            if "items" not in sample_level_data:
-                raise SchemaError("No 'items' in sample-level schema section")
-            sample_level_data = sample_level_data["items"]
-            if SCHEMA_PROP_KEY not in sample_level_data:
-                raise SchemaError(
-                    f"No '{SCHEMA_PROP_KEY}' in sample-level schema items"
-                )
-            sample_level_data = sample_level_data[SCHEMA_PROP_KEY]
-            project_sample_key_overlap = set(data) & set(sample_level_data)
-            if project_sample_key_overlap:
-                raise SchemaError(
-                    f"{len(project_sample_key_overlap)} keys shared between project level and sample level: {', '.join(project_sample_key_overlap)}"
-                )
-            self._sample_level_data = _recursively_replace_custom_types(
-                sample_level_data
+        # pipeline identifier
+        self._pipeline_id = data.pop(SCHEMA_PIPELINE_ID_KEY, None)
+        if not isinstance(self._pipeline_id, str):
+            raise SchemaError(
+                f"Could not find valid pipeline identifier (key '{SCHEMA_PIPELINE_ID_KEY}') in given schema data"
             )
 
-        # project-level
-        # Now, the main mapping's had some keys removed.
-        try:
-            prj_data = data.pop(SCHEMA_PROP_KEY)
-        except KeyError:
-            _LOGGER.debug("No project-level info found in schema")
-            self._project_level_data = {}
-        else:
-            self._project_level_data = _recursively_replace_custom_types(prj_data)
+        # Parse sample-level data item declarations.
+        self._sample_level_data = _safe_pop_one_mapping(
+            key="samples", data=data, info_name="sample-level"
+        )
 
+        # Parse project-level data item declarations.
+        prj_data = _safe_pop_one_mapping(
+            key="project", data=data, info_name="project-level"
+        )
+        self._project_level_data = (
+            _recursively_replace_custom_types(prj_data) if prj_data else None
+        )
+
+        # Sample- and/or project-level data must be declared.
         if not self._sample_level_data and not self._project_level_data:
             raise SchemaError(
                 "Neither sample-level nor project-level data items are declared."
+            )
+
+        # Parse custom status declaration if present.
+        self._status_data = _safe_pop_one_mapping(
+            key="status", data=data, info_name="status"
+        )
+
+        if data:
+            raise SchemaError(
+                f"Extra top-level key(s) in given schema data: {', '.join(data.keys())}"
             )
 
     @property
@@ -140,7 +134,6 @@ class ParsedSchema(object):
         return self._table_name("sample")
 
     def _make_field_definitions(self, data: Dict[str, Any], require_type: bool):
-        # TODO: read actual values
         # TODO: default to string if no type key?
         # TODO: parse "required" ?
         defs = {}
@@ -249,13 +242,6 @@ def _create_model(table_name: str, **kwargs):
         __table_args__={"extend_existing": True},
         **kwargs,
     )
-
-
-def _get_or_error(data: Dict[str, Any], key: str, msg: Optional[str] = None) -> Any:
-    # pre-check avoid potential traceback pollution.
-    if key not in data:
-        raise SchemaError(msg or f"Missing key: '{key}'")
-    return data.pop(key)
 
 
 def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:

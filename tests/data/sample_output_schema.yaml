@@ -1,5 +1,5 @@
 pipeline_id: test_pipe
-properties:
+samples:
   number_of_things:
     type: integer
     description: "Number of things"
@@ -12,12 +12,12 @@ properties:
   switch_value:
     type: boolean
     description: "Is the switch on or off"
-#  output_file:
-#    type: file
-#    description: "This a path to the output file"
-#  output_image:
-#    type: image
-#    description: "This a path to the output image"
+  output_file:
+    type: file
+    description: "This a path to the output file"
+  output_image:
+    type: image
+    description: "This a path to the output image"
   md5sum:
     type: string
     description: "MD5SUM of an object"

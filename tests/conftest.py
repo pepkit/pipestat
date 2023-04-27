@@ -22,11 +22,6 @@ def highlight_schema_file_path():
 
 
 @pytest.fixture
-def custom_status_schema():
-    return os.path.join(DATA_PATH, "custom_status_schema.yaml")
-
-
-@pytest.fixture
 def recursive_schema_file_path():
     return os.path.join(DATA_PATH, "sample_output_schema_recursive.yaml")
 
