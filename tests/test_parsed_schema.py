@@ -179,6 +179,9 @@ def test_parsed_schema__has_correct_data(
     assert observed == expected
 
 
+VALID_SCHEMA_DATA_PAIRS = []
+
+
 @pytest.mark.parametrize(
     ["schema_data", "expected_message"],
     [
@@ -198,9 +201,27 @@ def test_parsed_schema__has_correct_data(
             {SCHEMA_PIPELINE_ID_KEY: "test_pipe", "samples": "sample1"},
             f"sample-level info in schema definition has invalid type: str",
         ),
+    ]
+    + [
+        (
+            dict(kvs),
+            f"Could not find valid pipeline identifier (key '{SCHEMA_PIPELINE_ID_KEY}') in given schema data",
+        )
+        for kvs in [
+            [("samples", SAMPLES_DATA)],
+            [("project", PROJECT_DATA)],
+            [("samples", SAMPLES_DATA), ("project", PROJECT_DATA)],
+            [("samples", SAMPLES_DATA), ("status", STATUS_DATA)],
+            [("project", PROJECT_DATA), ("status", STATUS_DATA)],
+            [
+                ("samples", SAMPLES_DATA),
+                ("project", PROJECT_DATA),
+                ("status", STATUS_DATA),
+            ],
+        ]
     ],
 )
-def test_schema_with_neither_project_nor_sample_items__raises_expected_error(
+def test_insufficient_schema__raises_expected_error_and_message(
     schema_data, expected_message, tmp_path
 ):
     schema_file = tmp_path / "schema.tmp.yaml"
