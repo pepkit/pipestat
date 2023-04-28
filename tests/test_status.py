@@ -1,23 +1,10 @@
 """Tests for pipestat's status checking/management functionality"""
 
+import os
 import pytest
-
 from pipestat import PipestatManager
-from pipestat.const import *
-
-BACKEND_KEY_DB = "db"
-BACKEND_KEY_FILE = "file"
-
-
-@pytest.fixture
-def backend_data(request, config_file_path, results_file_path):
-    if request.param == BACKEND_KEY_DB:
-        return {"config": config_file_path}
-    elif request.param == BACKEND_KEY_FILE:
-        return {"results_file_path": results_file_path}
-    raise Exception(
-        f"Unrecognized initial parametrization for backend data: {request.param}"
-    )
+from pipestat.pipestat import STATUS_FILE_DIR
+from .conftest import BACKEND_KEY_DB, BACKEND_KEY_FILE
 
 
 def test_status_file_default_location(schema_file_path, results_file_path):

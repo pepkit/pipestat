@@ -217,10 +217,9 @@ class PipestatManager(dict):
         # Status schema
         self[STATUS_SCHEMA_KEY] = parsed_schema.status_data
         if not self[STATUS_SCHEMA_KEY]:
-            self[STATUS_SCHEMA_KEY] = read_yaml_data(
+            self[STATUS_SCHEMA_SOURCE_KEY], self[STATUS_SCHEMA_KEY] = read_yaml_data(
                 path=STATUS_SCHEMA, what="default status schema"
             )
-            self[STATUS_SCHEMA_SOURCE_KEY] = STATUS_SCHEMA_KEY
         else:
             self[STATUS_SCHEMA_SOURCE_KEY] = schema_to_read
 

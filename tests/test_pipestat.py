@@ -8,7 +8,13 @@ from pipestat import PipestatManager
 from pipestat.const import *
 from pipestat.exceptions import *
 from pipestat.parsed_schema import ParsedSchema
-from .conftest import get_data_file_path, COMMON_CUSTOM_STATUS_DATA, DEFAULT_STATUS_DATA
+from .conftest import (
+    get_data_file_path,
+    BACKEND_KEY_DB,
+    BACKEND_KEY_FILE,
+    COMMON_CUSTOM_STATUS_DATA,
+    DEFAULT_STATUS_DATA,
+)
 
 
 def is_in_file(fs, s, reverse=False):
@@ -488,13 +494,14 @@ def absolutize_file(f: str) -> str:
 
 
 @pytest.mark.parametrize(
-    ["name_schema_file", "exp_status_schema", "exp_status_schema_path"],
+    ["schema_file_path", "exp_status_schema", "exp_status_schema_path"],
     [
         (absolutize_file(fn1), exp_status_schema, absolutize_file(fn2))
         for fn1, exp_status_schema, fn2 in [
             ("sample_output_schema.yaml", DEFAULT_STATUS_DATA, STATUS_SCHEMA),
             (
                 "sample_output_schema__with_project_with_samples_with_status.yaml",
+                COMMON_CUSTOM_STATUS_DATA,
                 "sample_output_schema__with_project_with_samples_with_status.yaml",
             ),
             (
@@ -504,6 +511,7 @@ def absolutize_file(f: str) -> str:
             ),
             (
                 "sample_output_schema__with_project_without_samples_with_status.yaml",
+                COMMON_CUSTOM_STATUS_DATA,
                 "sample_output_schema__with_project_without_samples_with_status.yaml",
             ),
             (
@@ -513,6 +521,7 @@ def absolutize_file(f: str) -> str:
             ),
             (
                 "sample_output_schema__without_project_with_samples_with_status.yaml",
+                COMMON_CUSTOM_STATUS_DATA,
                 "sample_output_schema__without_project_with_samples_with_status.yaml",
             ),
             (
@@ -523,10 +532,12 @@ def absolutize_file(f: str) -> str:
         ]
     ],
 )
+@pytest.mark.parametrize(
+    "backend_data", [BACKEND_KEY_FILE, BACKEND_KEY_DB], indirect=True
+)
 def test_manager_has_correct_status_schema_and_status_schema_source(
-    schema_filename, exp_status_schema, exp_status_schema_path
+    schema_file_path, exp_status_schema, exp_status_schema_path, backend_data
 ):
-    schema_path = get_data_file_path(schema_filename)
-    psm = PipestatManager(schema_path=schema_path)
+    psm = PipestatManager(schema_path=schema_file_path, **backend_data)
     assert psm.status_schema == exp_status_schema
     assert psm.status_schema_source == exp_status_schema_path

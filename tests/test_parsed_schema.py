@@ -221,7 +221,9 @@ def test_insufficient_schema__raises_expected_error_and_message(
 
 
 SIMPLE_ID_SECTION = [(SCHEMA_PIPELINE_ID_KEY, "test_pipe")]
-SIMPLE_SAMPLES_DATA = [("count", {"type": "integer", "description": "number of things"})]
+SIMPLE_SAMPLES_DATA = [
+    ("count", {"type": "integer", "description": "number of things"})
+]
 SIMPLE_PROJECT_DATA = [("pct", {"type": "number", "description": "percentage"})]
 
 
@@ -229,17 +231,21 @@ SIMPLE_PROJECT_DATA = [("pct", {"type": "number", "description": "percentage"})]
     "schema_data",
     [
         dict(SIMPLE_ID_SECTION + [(section_name, dict(section_data + extra))])
-        for section_name, section_data in [("samples", SIMPLE_SAMPLES_DATA), ("project", SIMPLE_PROJECT_DATA)]
+        for section_name, section_data in [
+            ("samples", SIMPLE_SAMPLES_DATA),
+            ("project", SIMPLE_PROJECT_DATA),
+        ]
         for extra in [
             [("id", {"type": "string", "description": "identifier"})],
             [(RECORD_ID, {"type": "string", "description": "identifier"})],
-            [("id", {"type": "string", "description": "identifier"}), (RECORD_ID, {"type": "string", "description": "identifier"})],
+            [
+                ("id", {"type": "string", "description": "identifier"}),
+                (RECORD_ID, {"type": "string", "description": "identifier"}),
+            ],
         ]
     ],
 )
-def test_reserved_keyword_use_in_schema__raises_expected_error_and_message(
-    schema_data
-):
+def test_reserved_keyword_use_in_schema__raises_expected_error_and_message(schema_data):
     with pytest.raises(SchemaError) as err_ctx:
         ParsedSchema(schema_data)
     observed_message = str(err_ctx.value)
@@ -251,21 +257,10 @@ def test_sample_project_data_item_name_overlap__raises_expected_error_and_messag
     schema_data = {
         SCHEMA_PIPELINE_ID_KEY: "test_pipe",
         "samples": {
-            "just_in_sample": {
-                "type": "string",
-                "description": "placeholder"
-            },
-            common_key: {
-                "type": "string",
-                "description": "in samples"
-            }
+            "just_in_sample": {"type": "string", "description": "placeholder"},
+            common_key: {"type": "string", "description": "in samples"},
         },
-        "project": {
-            common_key: {
-                "type": "string",
-                "description": "in project"
-            }
-        }
+        "project": {common_key: {"type": "string", "description": "in project"}},
     }
     with pytest.raises(SchemaError) as err_ctx:
         ParsedSchema(schema_data)
