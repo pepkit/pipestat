@@ -18,6 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["ParsedSchema", "SCHEMA_PIPELINE_ID_KEY"]
 
 
+NULL_MAPPING_VALUE = {}
 SCHEMA_PIPELINE_ID_KEY = "pipeline_id"
 
 
@@ -46,11 +47,7 @@ def get_base_model():
 
 
 def _safe_pop_one_mapping(key: str, data: Dict[str, Any], info_name: str) -> Any:
-    try:
-        value = data.pop(key)
-    except KeyError:
-        _LOGGER.debug(f"No {info_name} info found in schema")
-        return None
+    value = data.pop(key, NULL_MAPPING_VALUE)
     if isinstance(value, Mapping):
         return value
     raise SchemaError(
@@ -60,7 +57,7 @@ def _safe_pop_one_mapping(key: str, data: Dict[str, Any], info_name: str) -> Any
 
 class ParsedSchema(object):
     # TODO: validate no collision among the 3 namespaces.
-    def __init__(self, data: Union[Dict[str, Any], str]) -> None:
+    def __init__(self, data: Union[Dict[str, Any], Path, str]) -> None:
         # initial validation and parse
         if not isinstance(data, dict):
             _, data = read_yaml_data(data, "schema")
@@ -82,9 +79,7 @@ class ParsedSchema(object):
         prj_data = _safe_pop_one_mapping(
             key="project", data=data, info_name="project-level"
         )
-        self._project_level_data = (
-            _recursively_replace_custom_types(prj_data) if prj_data else None
-        )
+        self._project_level_data = _recursively_replace_custom_types(prj_data)
 
         # Sample- and/or project-level data must be declared.
         if not self._sample_level_data and not self._project_level_data:

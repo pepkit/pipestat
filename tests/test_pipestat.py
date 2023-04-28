@@ -1,3 +1,4 @@
+import os.path
 from collections.abc import Mapping
 
 import pytest
@@ -7,6 +8,7 @@ from pipestat import PipestatManager
 from pipestat.const import *
 from pipestat.exceptions import *
 from pipestat.parsed_schema import ParsedSchema
+from .conftest import get_data_file_path, COMMON_CUSTOM_STATUS_DATA, DEFAULT_STATUS_DATA
 
 
 def is_in_file(fs, s, reverse=False):
@@ -481,8 +483,50 @@ def test_no_constructor_args__raises_expected_exception():
         PipestatManager()
 
 
-@pytest.mark.skip(reason="not yet implemented")
-def test_manager_always_has_status_schema_source():
-    """Even if no status schema is specified, the default one (and its location) is used."""
-    # TODO: implement
-    pass
+def absolutize_file(f: str) -> str:
+    return f if os.path.isabs(f) else get_data_file_path(f)
+
+
+@pytest.mark.parametrize(
+    ["name_schema_file", "exp_status_schema", "exp_status_schema_path"],
+    [
+        (absolutize_file(fn1), exp_status_schema, absolutize_file(fn2))
+        for fn1, exp_status_schema, fn2 in [
+            ("sample_output_schema.yaml", DEFAULT_STATUS_DATA, STATUS_SCHEMA),
+            (
+                "sample_output_schema__with_project_with_samples_with_status.yaml",
+                "sample_output_schema__with_project_with_samples_with_status.yaml",
+            ),
+            (
+                "sample_output_schema__with_project_with_samples_without_status.yaml",
+                DEFAULT_STATUS_DATA,
+                STATUS_SCHEMA,
+            ),
+            (
+                "sample_output_schema__with_project_without_samples_with_status.yaml",
+                "sample_output_schema__with_project_without_samples_with_status.yaml",
+            ),
+            (
+                "sample_output_schema__with_project_without_samples_without_status.yaml",
+                DEFAULT_STATUS_DATA,
+                STATUS_SCHEMA,
+            ),
+            (
+                "sample_output_schema__without_project_with_samples_with_status.yaml",
+                "sample_output_schema__without_project_with_samples_with_status.yaml",
+            ),
+            (
+                "sample_output_schema__without_project_with_samples_without_status.yaml",
+                DEFAULT_STATUS_DATA,
+                STATUS_SCHEMA,
+            ),
+        ]
+    ],
+)
+def test_manager_has_correct_status_schema_and_status_schema_source(
+    schema_filename, exp_status_schema, exp_status_schema_path
+):
+    schema_path = get_data_file_path(schema_filename)
+    psm = PipestatManager(schema_path=schema_path)
+    assert psm.status_schema == exp_status_schema
+    assert psm.status_schema_source == exp_status_schema_path

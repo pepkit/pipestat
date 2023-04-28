@@ -11,6 +11,7 @@ __all__ = [
     "LOCK_PREFIX",
     "PKG_NAME",
     "RECORD_ID",
+    "RECORD_ID_KEY",
     "SCHEMA_DESC_KEY",
     "SCHEMA_PROP_KEY",
     "SCHEMA_TYPE_KEY",
@@ -22,11 +23,7 @@ PKG_NAME = "pipestat"
 LOCK_PREFIX = "lock."
 
 # object attribute names
-DATA_KEY = "_data"
 RECORD_ID_KEY = "_record_id"
-DB_SESSION_KEY = "_db_session"
-DB_ENGINE_KEY = "_db_engine"
-HIGHLIGHTED_KEY = "_highlighted"
 
 # schema keys
 SCHEMA_PROP_KEY = "properties"

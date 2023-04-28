@@ -1,0 +1,9 @@
+completed:
+  description: "the pipeline has completed"
+  color: [1, 205, 1]
+waiting:
+  description: "the pipeline is waiting"
+  color: [240, 230, 140]
+partial:
+  description: "the pipeline stopped before completion point"
+  color: [100, 100, 100]

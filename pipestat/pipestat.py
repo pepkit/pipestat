@@ -24,12 +24,15 @@ from .parsed_schema import ParsedSchema
 
 CFG_DATABASE_KEY = "database"
 CONFIG_KEY = "_config"
+DATA_KEY = "_data"
 DB_COLUMN_KEY = "db_column"
+DB_ENGINE_KEY = "_db_engine"
 DB_ONLY_KEY = "_database_only"
 DB_ORMS_KEY = "_orms"
 FILE_KEY = "_file"
 SCHEMA_KEY = "_schema"
 STATUS_FILE_DIR = "_status_file_dir"
+STATUS_SCHEMA_KEY = "_status_schema"
 STATUS_SCHEMA_SOURCE_KEY = "_status_schema_source"
 
 
@@ -205,12 +208,21 @@ class PipestatManager(dict):
         )
         if self._schema_path is None:
             raise PipestatError("No schema path could be found.")
+
+        # Main schema, perhaps with status also
         schema_to_read = _mk_abs_via_cfg(self._schema_path, self.config_path)
-        self[SCHEMA_KEY] = ParsedSchema(schema_to_read)
-        self.validate_schema()
-        # TODO: if no status schema nested in main one, check env var and default.
-        # TODO: set status schema source key's value
-        # TODO: validate presence of status schema if no results schema (neither project nor samples)
+        parsed_schema = ParsedSchema(schema_to_read)
+        self[SCHEMA_KEY] = parsed_schema
+
+        # Status schema
+        self[STATUS_SCHEMA_KEY] = parsed_schema.status_data
+        if not self[STATUS_SCHEMA_KEY]:
+            self[STATUS_SCHEMA_KEY] = read_yaml_data(
+                path=STATUS_SCHEMA, what="default status schema"
+            )
+            self[STATUS_SCHEMA_SOURCE_KEY] = STATUS_SCHEMA_KEY
+        else:
+            self[STATUS_SCHEMA_SOURCE_KEY] = schema_to_read
 
         if results_file_path:
             _LOGGER.debug(f"Determined file as backend: {results_file_path}")
@@ -222,8 +234,12 @@ class PipestatManager(dict):
                 self[DB_ONLY_KEY] = False
             self[FILE_KEY] = results_file_path
             if not os.path.exists(self.file):
+                _LOGGER.debug(
+                    f"Results file doesn't yet exist. Initializing: {self.file}"
+                )
                 self._init_results_file()
             else:
+                _LOGGER.debug(f"Loading results file: {self.file}")
                 self._load_results_file()
             flag_file_dir = (
                 _select_value("flag_file_dir", self[CONFIG_KEY], False)
@@ -236,9 +252,6 @@ class PipestatManager(dict):
             self[DATA_KEY] = YAMLConfigManager()
             self._show_db_logs = show_db_logs
             self[DB_ORMS_KEY] = self._create_orms()
-            # DEBUG
-            print("ORMS")
-            print(self[DB_ORMS_KEY])
             SQLModel.metadata.create_all(self._engine)
 
     def __str__(self):
@@ -330,7 +343,7 @@ class PipestatManager(dict):
 
         :return dict: schema that formalizes the pipeline status structure
         """
-        return self.schema.status_data
+        return self[STATUS_SCHEMA_KEY]
 
     @property
     def status_schema_source(self) -> Dict:
