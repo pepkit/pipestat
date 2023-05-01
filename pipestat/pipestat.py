@@ -2,17 +2,13 @@ from contextlib import contextmanager
 from glob import glob
 from logging import getLogger
 import os
-from typing import Dict, List, Optional, Tuple, Union
+from typing import *
 from urllib.parse import quote_plus
 
 import sqlalchemy.orm
-from sqlalchemy import Column, ForeignKey, text
-from sqlalchemy.orm import (
-    DeclarativeMeta,
-    relationship,
-)
+from sqlalchemy import text
 
-from sqlmodel import Field, Session, SQLModel, create_engine, select as sql_select
+from sqlmodel import Session, SQLModel, create_engine, select as sql_select
 
 from jsonschema import validate
 
@@ -296,19 +292,6 @@ class PipestatManager(dict):
         }
 
     @property
-    def db_column_relationships_by_result(self) -> Dict[str, str]:
-        """
-        Database column relationships for every result,
-        sourced from the results schema in the `relationship` section
-
-        *Note: this is an experimental feature*
-
-        :return Dict[str, Dict[str, str]]: relationships for every result
-        """
-        if self.schema is None:
-            return {}
-
-    @property
     def namespace(self) -> str:
         """
         Namespace the object writes the results to
@@ -480,16 +463,50 @@ class PipestatManager(dict):
         _LOGGER.debug(
             f"Creating models for '{self.namespace}' table in '{PKG_NAME}' database"
         )
-        return {
-            self.schema.project_table_name: self.schema.build_project_model(),
-            self.schema.sample_table_name: self.schema.build_sample_model(),
-        }
+        project_mod = self.schema.build_project_model()
+        samples_mod = self.schema.build_sample_model()
+        if project_mod and samples_mod:
+            return {
+                self.schema.sample_table_name: samples_mod,
+                self.schema.project_table_name: project_mod,
+            }
+        elif samples_mod:
+            return {self.namespace: samples_mod}
+        elif project_mod:
+            return {self.namespace: project_mod}
+        else:
+            raise SchemaError(
+                f"Neither project nor samples model could be built from schema source: {self.status_schema_source}"
+            )
+
+    def _get_table_name(self, project_level: Optional[bool] = None):
+        mods = self[DB_ORMS_KEY]
+        if len(mods) == 1:
+            return list(mods.keys())[0]
+        elif len(mods) == 2:
+            if project_level is None:
+                raise Exception(
+                    f"Cannot determine table suffix with 2 models present and no project-level flag"
+                )
+            prelim = (
+                self.schema.project_table_name
+                if project_level
+                else self.schema.sample_table_name
+            )
+            if prelim in mods:
+                return prelim
+            raise Exception(
+                f"Determined table name '{prelim}', which is not stored among these: {', '.join(mods.keys())}"
+            )
+        raise Exception(
+            f"Cannot determine table suffix with {len(mods)} model(s) present."
+        )
 
     def set_status(
         self,
         status_identifier: str,
         record_identifier: str = None,
-        project_level: bool = False,
+        project_level: Optional[bool] = None,
     ) -> None:
         """
         Set pipeline run status.
@@ -521,11 +538,7 @@ class PipestatManager(dict):
             )
             # TODO: support project / sample distinction for file backend?
         else:
-            tn = (
-                self.schema.project_table_name
-                if project_level
-                else self.schema.sample_table_name
-            )
+            tn = self._get_table_name(project_level=project_level)
             self._set_status_db(
                 status_identifier=status_identifier,
                 record_identifier=r_id,
@@ -764,7 +777,7 @@ class PipestatManager(dict):
         Create a dictionary from the database table data
         """
         with self.session as s:
-            records = s.query(self.get_orm(self.namespace)).all()
+            records = s.query(self.get_orm(table_name=self.namespace)).all()
         _LOGGER.debug(f"Reading data from database for '{self.namespace}' namespace")
         for record in records:
             record_id = getattr(record, RECORD_ID)
@@ -817,7 +830,7 @@ class PipestatManager(dict):
         with self.session as s:
             return s.select(mod).count()
 
-    def get_orm(self, table_name: Optional[str] = None) -> Any:
+    def get_orm(self, table_name: str) -> Any:
         """
         Get an object relational mapper class
 
@@ -826,12 +839,10 @@ class PipestatManager(dict):
         """
         if DB_ORMS_KEY not in self:
             raise PipestatDatabaseError("Object relational mapper classes not defined")
-        mod = self._get_model(table_name=table_name or self.namespace, strict=True)
+        mod = self._get_model(table_name=table_name, strict=True)
         return mod
 
-    def check_record_exists(
-        self, record_identifier: str, table_name: str = None
-    ) -> bool:
+    def check_record_exists(self, record_identifier: str, table_name: str) -> bool:
         """
         Check if the specified record exists in the table
 
@@ -890,25 +901,16 @@ class PipestatManager(dict):
         """
         # table_name = table_name or self.namespace
         rid = self._strict_record_id(rid)
-        models = (
-            [self.get_orm(table_name)]
-            if table_name
-            else list(self[DB_ORMS_KEY].values())
-        )
-        with self.session as s:
-            record = self.get_one_record(rid=rid, table_name=table_name)
-
+        record = self.get_one_record(rid=rid, table_name=table_name)
         return (
             [r for r in results if getattr(record, r, None) is not None]
             if record
             else []
         )
 
-    def get_one_record(
-        self, rid: Optional[str] = None, table_name: Optional[str] = None
-    ):
+    def get_one_record(self, table_name: str, rid: Optional[str] = None):
         models = (
-            [self.get_orm(table_name)]
+            [self.get_orm(table_name=table_name)]
             if table_name
             else list(self[DB_ORMS_KEY].values())
         )
@@ -981,7 +983,7 @@ class PipestatManager(dict):
         :param int limit: include this number of rows
         """
 
-        ORM = self.get_orm(table_name or self.namespace)
+        ORM = self.get_orm(table_name=table_name or self.namespace)
         with self.session as s:
             if columns is not None:
                 query = s.query(*[getattr(ORM, column) for column in columns])
@@ -1084,7 +1086,7 @@ class PipestatManager(dict):
 
         with self.session as s:
             record = (
-                s.query(self.get_orm(table_name))
+                s.query(self.get_orm(table_name=table_name))
                 .filter_by(record_identifier=record_identifier)
                 .first()
             )
@@ -1128,7 +1130,7 @@ class PipestatManager(dict):
                 f"The {self.__class__.__name__} object is not backed by a database. "
                 f"This operation is not supported for file backend."
             )
-        ORM = self.get_orm(table_name or self.namespace)
+        ORM = self.get_orm(table_name=table_name or self.namespace)
         with self.session as s:
             if columns is not None:
                 q = (
@@ -1167,6 +1169,7 @@ class PipestatManager(dict):
         force_overwrite: bool = False,
         strict_type: bool = True,
         return_id: bool = False,
+        project_level: Optional[bool] = None,
     ) -> Union[bool, int]:
         """
         Report a result.
@@ -1181,6 +1184,8 @@ class PipestatManager(dict):
             schema-defined one otherwise
         :param bool return_id: PostgreSQL IDs of the records that have been
             updated. Not available with results file as backend
+        :param project_level: whether what's being reported pertains to project-level,
+            rather than sample-level, attribute(s)
         :return bool | int: whether the result has been reported or the ID of
             the updated record in the table, if requested
         """
@@ -1226,8 +1231,9 @@ class PipestatManager(dict):
         else:
             _LOGGER.warning("ELSE...")
             try:
+                tn = self._get_table_name(project_level=project_level)
                 updated_ids = self._report_db(
-                    record_identifier=record_identifier, values=values
+                    record_identifier=record_identifier, values=values, table_name=tn
                 )
             except Exception as e:
                 _LOGGER.error(
@@ -1250,7 +1256,7 @@ class PipestatManager(dict):
         return True if not return_id else updated_ids
 
     def _report_db(
-        self, values: Dict[str, Any], record_identifier: str, table_name: str = None
+        self, values: Dict[str, Any], record_identifier: str, table_name: str
     ) -> int:
         """
         Report a result to a database.
@@ -1261,7 +1267,7 @@ class PipestatManager(dict):
         :return int: updated/inserted row
         """
         record_identifier = self._strict_record_id(record_identifier)
-        ORMClass = self.get_orm(table_name)
+        ORMClass = self.get_orm(table_name=table_name)
         values.update({RECORD_ID: record_identifier})
         if not self.check_record_exists(
             record_identifier=record_identifier, table_name=table_name
@@ -1285,7 +1291,10 @@ class PipestatManager(dict):
         return returned_id
 
     def _report_data_element(
-        self, record_identifier: str, values: Dict[str, Any]
+        self,
+        record_identifier: str,
+        values: Dict[str, Any],
+        table_name: Optional[bool] = None,
     ) -> None:
         """
         Update the value of a result in a current namespace.
@@ -1296,7 +1305,9 @@ class PipestatManager(dict):
         :param str record_identifier: unique identifier of the record
         :param Dict[str, Any] values: dict of results identifiers and values
             to be reported
+        :param str table_name: name of the table to report the result in
         """
+        # TODO: update to disambiguate sample- / project-level
         self[DATA_KEY].setdefault(self.namespace, {})
         self[DATA_KEY][self.namespace].setdefault(record_identifier, {})
         for res_id, val in values.items():

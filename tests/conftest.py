@@ -8,6 +8,7 @@ from pipestat.helpers import read_yaml_data
 
 BACKEND_KEY_DB = "db"
 BACKEND_KEY_FILE = "file"
+STANDARD_TEST_PIPE_ID = "test_pipe"
 
 
 def get_data_file_path(filename: str) -> str:

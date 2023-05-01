@@ -72,7 +72,7 @@ CLASSES_BY_TYPE = {
     "boolean": bool,
     "file": str,
     "image": str,
-    "link": str
+    "link": str,
 }
 
 CFG_SCHEMA = os.path.join(
