@@ -1,34 +1,18 @@
+"""Assorted project utilities"""
+
 import logging
-from re import findall
+import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import jsonschema
 import sqlalchemy.orm
 from oyaml import safe_load
-from psycopg2 import sql
 from sqlalchemy.orm import DeclarativeMeta, Query
 from ubiquerg import expandpath
 
 from .const import *
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def get_status_table_schema(status_schema: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Update and return a status_table_schema based on user-provided status schema
-
-    :param Dict[str, Any] status_schema: status schema provided by the user
-    :return Dict[str, Any]: status_schema status table scheme
-        to use as a base for status table generation
-    """
-    defined_status_codes = list(status_schema.keys())
-    _, status_table_schema = read_yaml_data(
-        path=STATUS_TABLE_SCHEMA, what="status table schema"
-    )
-    status_table_schema["status"].update({"enum": defined_status_codes})
-    _LOGGER.debug(f"Updated status table schema: {status_table_schema}")
-    return status_table_schema
 
 
 def validate_type(value, schema, strict_type=False):
@@ -43,6 +27,8 @@ def validate_type(value, schema, strict_type=False):
         against, e.g. {"type": "integer"}
     :param bool strict_type: whether the value should validate as is
     """
+    import jsonschema
+
     try:
         jsonschema.validate(value, schema)
     except jsonschema.exceptions.ValidationError as e:
@@ -70,7 +56,7 @@ def validate_type(value, schema, strict_type=False):
         _LOGGER.debug(f"Value '{value}' validated successfully against a schema")
 
 
-def read_yaml_data(path, what):
+def read_yaml_data(path: Union[str, Path], what: str) -> Tuple[str, Dict[str, Any]]:
     """
     Safely read YAML file and log message
 
@@ -78,9 +64,16 @@ def read_yaml_data(path, what):
     :param str what: context
     :return (str, dict): absolute path to the read file and the read data
     """
-    assert isinstance(path, str), TypeError(f"Path is not a string: {path}")
-    path = expandpath(path)
-    assert os.path.exists(path), FileNotFoundError(f"File not found: {path}")
+    if isinstance(path, Path):
+        test = lambda p: p.is_file()
+    elif isinstance(path, str):
+        path = expandpath(path)
+        test = os.path.isfile
+    else:
+        raise TypeError(
+            f"Alleged path to YAML file to read is neither path nor string: {path}"
+        )
+    assert test(path), FileNotFoundError(f"File not found: {path}")
     _LOGGER.debug(f"Reading {what} from '{path}'")
     with open(path, "r") as f:
         return path, safe_load(f)
@@ -125,16 +118,13 @@ def dynamic_filter(
     """
 
     def _unpack_tripartite(x):
-        try:
-            assert isinstance(x, List) or isinstance(x, Tuple), TypeError(
-                "Wrong filter class, a List or Tuple is required"
-            )
-            e1, e2, e3 = x
-            return e1, e2, e3
-        except Exception:
+        if not (isinstance(x, List) or isinstance(x, Tuple)):
+            raise TypeError("Wrong filter class; a List or Tuple is required")
+        if len(x) != 3:
             raise ValueError(
                 f"Invalid filter value: {x}. The filter must be a tripartite iterable"
             )
+        return tuple(x)
 
     if filter_conditions is not None:
         for filter_condition in filter_conditions:
@@ -143,23 +133,16 @@ def dynamic_filter(
             if column is None:
                 raise ValueError(f"Selected filter column does not exist: {key}")
             if op == "in":
-                if isinstance(value, list):
-                    filt = column.in_(value)
-                else:
-                    filt = column.in_(value.split(","))
+                filt = column.in_(
+                    value if isinstance(value, list) else value.split(",")
+                )
             else:
-                try:
-                    attr = (
-                        list(
-                            filter(
-                                lambda e: hasattr(column, e % op),
-                                ["%s", "%s_", "__%s__"],
-                            )
-                        )[0]
-                        % op
-                    )
-                except IndexError:
-                    raise ValueError()(f"Invalid filter operator: {op}")
+                attr = next(
+                    filter(lambda a: hasattr(column, a), [op, op + "_", f"__{op}__"]),
+                    None,
+                )
+                if attr is None:
+                    raise ValueError(f"Invalid filter operator: {op}")
                 if value == "null":
                     value = None
                 filt = getattr(column, attr)(value)

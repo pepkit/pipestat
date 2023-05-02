@@ -1,5 +1,5 @@
 pipeline_id: test_pipe
-samples:
+project:
   number_of_things:
     type: integer
     description: "Number of things"
@@ -12,13 +12,13 @@ samples:
   switch_value:
     type: boolean
     description: "Is the switch on or off"
-  output_file:
-    type: file
-    description: "This a path to the output file"
-  output_image:
-    type: image
-    description: "This a path to the output image"
-  md5sum:
-    type: string
-    description: "MD5SUM of an object"
-    highlight: true
+status:
+  completed:
+    description: "the pipeline has completed"
+    color: [ 1, 205, 1 ]
+  waiting:
+    description: "the pipeline is waiting"
+    color: [ 240, 230, 140 ]
+  partial:
+    description: "the pipeline stopped before completion point"
+    color: [ 100, 100, 100 ]

@@ -1,12 +1,12 @@
 """ Package exception types """
 
-import abc
-
+from typing import *
 from .const import *
 
 __all__ = [
     "InvalidTypeError",
     "IncompatibleClassError",
+    "NoBackendSpecifiedError",
     "PipestatError",
     "PipestatDatabaseError",
     "MissingConfigDataError",
@@ -18,7 +18,9 @@ __all__ = [
 class PipestatError(Exception):
     """Base exception type for this package"""
 
-    __metaclass__ = abc.ABCMeta
+
+class NoBackendSpecifiedError(PipestatError):
+    """Subtype for designating lack of backend specification"""
 
 
 class SchemaError(PipestatError):
@@ -47,7 +49,7 @@ class MissingConfigDataError(PipestatError):
 
     def __init__(self, msg):
         spacing = " " if msg[-1] in ["?", ".", "\n"] else "; "
-        suggest = "For config format documentation please see: " + DOC_URL
+        suggest = "For config format documentation please see: http://pipestat.databio.org/en/latest/db_config/"
         super(MissingConfigDataError, self).__init__(msg + spacing + suggest)
 
 
@@ -76,3 +78,18 @@ class IncompatibleClassError(PipestatError):
             "Incompatible value class for the declared result type ({}). "
             "Required: {}; got: {}".format(type, req_cls, cls)
         )
+
+
+class UnrecognizedStatusError(PipestatError):
+    """Exception for when a value to set as status isn't declared in the active status schema."""
+
+    def __init__(self, status: str, known: Optional[Iterable[str]] = None):
+        self._status = status
+        msg = f"Unrecognized status: {status}"
+        if known is not None:
+            pass
+        super(UnrecognizedStatusError, self).__init__(msg)
+
+    @property
+    def status(self):
+        return self._status

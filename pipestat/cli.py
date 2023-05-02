@@ -35,23 +35,22 @@ def main():
         status_schema_path=args.status_schema,
         flag_file_dir=args.flag_dir,
     )
+    types_to_read_from_json = ["object"] + list(CANONICAL_TYPES.keys())
     if args.command == REPORT_CMD:
         value = args.value
         if psm.schema is None:
             raise SchemaNotFoundError(msg="report", cli=True)
         result_metadata = psm.schema[args.result_identifier]
-        if result_metadata[SCHEMA_TYPE_KEY] in [
-            "object",
-            "image",
-            "file",
-        ] and os.path.exists(expandpath(value)):
-            from json import load
+        if result_metadata[SCHEMA_TYPE_KEY] in types_to_read_from_json:
+            path_to_read = expandpath(value)
+            if os.path.exists(path_to_read):
+                from json import load
 
-            _LOGGER.info(
-                f"Reading JSON file with object type value: {expandpath(value)}"
-            )
-            with open(expandpath(value), "r") as json_file:
-                value = load(json_file)
+                _LOGGER.info(f"Reading JSON file: {path_to_read}")
+                with open(path_to_read, "r") as json_file:
+                    value = load(json_file)
+            else:
+                _LOGGER.info(f"Path to read for {value} doesn't exist: {path_to_read}")
         psm.report(
             record_identifier=args.record_identifier,
             values={args.result_identifier: value},
