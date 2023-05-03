@@ -4,7 +4,7 @@ from logging import getLogger
 import logmuse
 from ubiquerg import expandpath
 
-from .argparser import build_argparser
+from .argparser import build_argparser, REPORT_CMD, INSPECT_CMD, REMOVE_CMD, RETRIEVE_CMD, STATUS_CMD
 from .const import *
 from .exceptions import SchemaNotFoundError
 from .pipestat import PipestatManager
