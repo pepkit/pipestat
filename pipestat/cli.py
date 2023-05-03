@@ -40,7 +40,7 @@ def main():
         value = args.value
         if psm.schema is None:
             raise SchemaNotFoundError(msg="report", cli=True)
-        result_metadata = psm.schema[args.result_identifier]
+        result_metadata = psm.schema.results_data[args.result_identifier]
         if result_metadata[SCHEMA_TYPE_KEY] in types_to_read_from_json:
             path_to_read = expandpath(value)
             if os.path.exists(path_to_read):
