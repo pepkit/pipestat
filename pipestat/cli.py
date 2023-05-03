@@ -27,12 +27,12 @@ def main():
     if args.config and not args.schema and args.command != STATUS_CMD:
         parser.error("the following arguments are required: -s/--schema")
     psm = PipestatManager(
-        namespace=args.namespace,
+        #namespace=args.namespace
         schema_path=args.schema,
         results_file_path=args.results_file,
         config=args.config,
         database_only=args.database_only,
-        status_schema_path=args.status_schema,
+        #status_schema_path=args.status_schema,
         flag_file_dir=args.flag_dir,
     )
     types_to_read_from_json = ["object"] + list(CANONICAL_TYPES.keys())
