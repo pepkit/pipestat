@@ -55,6 +55,7 @@ class PipestatManager(dict):
         config: Optional[Union[str, dict]] = None,
         flag_file_dir: Optional[str] = None,
         show_db_logs: bool = False,
+        project_level: Optional[bool] = False,
     ):
         """
         Initialize the object
@@ -191,6 +192,10 @@ class PipestatManager(dict):
         )
         self[DB_ONLY_KEY] = database_only
 
+        self.project_level = _select_value("project_level", self[CONFIG_KEY], False)
+        if self.project_level == None:
+            self.project_level = project_level
+
         # read schema
         self._schema_path = (
             _select_value(
@@ -203,7 +208,8 @@ class PipestatManager(dict):
             else schema_path
         )
         if self._schema_path is None:
-            raise PipestatError("No schema path could be found.")
+            # raise PipestatError("No schema path could be found.")
+            raise SchemaNotFoundError("PSM Creation")
 
         # Main schema, perhaps with status also
         schema_to_read = _mk_abs_via_cfg(self._schema_path, self.config_path)
@@ -480,6 +486,8 @@ class PipestatManager(dict):
             )
 
     def _get_table_name(self, project_level: Optional[bool] = None):
+        if project_level == None:
+            project_level = self.project_level
         mods = self[DB_ORMS_KEY]
         if len(mods) == 1:
             return list(mods.keys())[0]
@@ -811,7 +819,15 @@ class PipestatManager(dict):
 
     def _get_model(self, table_name: str, strict: bool):
         orms = self[DB_ORMS_KEY]
+
+        table_name = self._get_table_name()
+        # if self.project_level == False:
+        #     table_name = table_name + "__sample"
+        # else:
+        #     table_name = table_name + "__project"
+
         mod = orms.get(table_name)
+
         if strict and mod is None:
             raise PipestatDatabaseError(
                 f"No object relational mapper class defined for table '{table_name}'. "
@@ -982,6 +998,8 @@ class PipestatManager(dict):
         :param int offset: skip this number of rows
         :param int limit: include this number of rows
         """
+        if table_name == None:
+            table_name = self._get_table_name()
 
         ORM = self.get_orm(table_name=table_name or self.namespace)
         with self.session as s:
@@ -1189,6 +1207,11 @@ class PipestatManager(dict):
         :return bool | int: whether the result has been reported or the ID of
             the updated record in the table, if requested
         """
+        print(project_level)
+        if project_level == None:
+            project_level = self.project_level
+        print(project_level)
+
         record_identifier = self._strict_record_id(record_identifier)
         if return_id and self.file is not None:
             raise NotImplementedError(
