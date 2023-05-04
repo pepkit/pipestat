@@ -28,11 +28,9 @@ class TestPipestatManagerInstantiation:
         """
         Object constructor raises exception if schema is not provided.
         """
-        with pytest.raises(PipestatError) as err_ctx:
-            PipestatManager(results_file_path=results_file_path)
-        obs_err_msg = str(err_ctx.value)
-        exp_err_msg = "No schema path could be found."
-        assert obs_err_msg == exp_err_msg
+        # ToDo this test may be redundant with the modified test_report_requires_schema
+        with pytest.raises(SchemaNotFoundError):
+            psm = PipestatManager(results_file_path=results_file_path)
 
     def test_schema_recursive_custom_type_conversion(
         self, recursive_schema_file_path, results_file_path
