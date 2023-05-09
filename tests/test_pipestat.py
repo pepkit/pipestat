@@ -62,7 +62,7 @@ class TestReporting:
         )
         args.update(backend_data)
         psm = PipestatManager(**args)
-        psm.report(record_identifier=rec_id, values=val)
+        psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
         print(psm.data[STANDARD_TEST_PIPE_ID])
         print("Test if", rec_id, " is in ", psm.data[STANDARD_TEST_PIPE_ID])
 
