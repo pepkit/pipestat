@@ -73,6 +73,7 @@ CLASSES_BY_TYPE = {
     "file": str,
     "image": str,
     "link": str,
+    "array": list[float],
 }
 
 CFG_SCHEMA = os.path.join(
