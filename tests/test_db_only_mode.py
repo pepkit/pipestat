@@ -47,6 +47,53 @@ class TestDatabaseOnly:
         val_name = list(val.keys())[0]
         assert psm.select(filter_conditions=[(val_name, "eq", str(val[val_name]))])
 
+    @pytest.mark.parametrize(
+        "val",
+        [
+            {
+                "collection_of_images": [
+                    {"obj1": "object description"},
+                    {"obj2": "object description"},
+                ]
+            },
+            {
+                "output_file_in_object": {
+                    "properties": {
+                        "prop1": {
+                            "properties": {"path": "pathstring", "title": "titlestring"}
+                        }
+                    }
+                }
+            },
+            {"output_file": {"path": "path_string", "title": "title_string"}},
+            {
+                "output_image": {
+                    "path": "path_string",
+                    "thumbnail_path": "thumbnail_path_string",
+                    "title": "title_string",
+                }
+            },
+        ],
+    )
+    def test_complex_object_report(
+        self,
+        val,
+        config_file_path,
+        recursive_schema_file_path,
+    ):
+        REC_ID = "constant_record_id"
+        psm = PipestatManager(
+            schema_path=recursive_schema_file_path,
+            record_identifier=REC_ID,
+            database_only=True,
+            config=config_file_path,
+        )
+        psm.report(
+            values=val, force_overwrite=True
+        )  # Force overwrite so that resetting the SQL DB is unnecessary.
+        val_name = list(val.keys())[0]
+        assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
+
     @pytest.mark.parametrize(["rec_id", "res_id"], [("sample2", "number_of_things")])
     def test_select_invalid_filter_column__raises_expected_exception(
         self,
