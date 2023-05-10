@@ -71,9 +71,11 @@ class ParsedSchema(object):
             )
 
         # Parse sample-level data item declarations.
-        self._sample_level_data = _safe_pop_one_mapping(
+        sample_data = _safe_pop_one_mapping(
             key="samples", data=data, info_name="sample-level"
         )
+
+        self._sample_level_data = _recursively_replace_custom_types(sample_data)
 
         # Parse project-level data item declarations.
         prj_data = _safe_pop_one_mapping(
