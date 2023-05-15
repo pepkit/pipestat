@@ -1293,6 +1293,7 @@ class PipestatManager(dict):
         record_identifier = self._strict_record_id(record_identifier)
         ORMClass = self.get_orm(table_name=table_name)
         values.update({RECORD_ID: record_identifier})
+        values.update({"namespace": self["_config"]["namespace"]})
 
         for k in values.keys():
             if type(values[k]) is dict:
