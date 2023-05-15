@@ -7,6 +7,7 @@ from urllib.parse import quote_plus
 
 import sqlalchemy.orm
 from sqlalchemy import text
+import json
 
 from sqlmodel import Session, SQLModel, create_engine, select as sql_select
 
@@ -1292,6 +1293,13 @@ class PipestatManager(dict):
         record_identifier = self._strict_record_id(record_identifier)
         ORMClass = self.get_orm(table_name=table_name)
         values.update({RECORD_ID: record_identifier})
+
+        for k in values.keys():
+            if type(values[k]) is dict:
+                values[k] = json.dumps(
+                    values[k]
+                )  # convert dict to string for pushing to db table.
+
         if not self.check_record_exists(
             record_identifier=record_identifier, table_name=table_name
         ):

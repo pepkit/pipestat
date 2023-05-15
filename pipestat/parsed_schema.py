@@ -42,8 +42,8 @@ def get_base_model():
         class Config:
             arbitrary_types_allowed = True
 
-    return SQLModel
-    # return BaseModel
+    # return SQLModel
+    return BaseModel
 
 
 def _safe_pop_one_mapping(key: str, data: Dict[str, Any], info_name: str) -> Any:

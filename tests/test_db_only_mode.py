@@ -42,19 +42,22 @@ class TestDatabaseOnly:
             database_only=True,
             config=config_file_path,
         )
-        psm.report(values=val)
+        psm.report(values=val, force_overwrite=True)
         assert len(psm.data) == 0
         val_name = list(val.keys())[0]
-        assert psm.select(filter_conditions=[(val_name, "eq", str(val[val_name]))])
+        assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
 
     @pytest.mark.parametrize(
         "val",
         [
+            # {"collection_of_images": [{"items": {"file": {"path": "pathstring", "title": "titlestring"}}}]},
+            {"output_file": {"path": "path_string", "title": "title_string"}},
             {
-                "collection_of_images": [
-                    {"obj1": "object description"},
-                    {"obj2": "object description"},
-                ]
+                "output_image": {
+                    "path": "path_string",
+                    "thumbnail_path": "thumbnail_path_string",
+                    "title": "title_string",
+                }
             },
             {
                 "output_file_in_object": {
@@ -63,14 +66,6 @@ class TestDatabaseOnly:
                             "properties": {"path": "pathstring", "title": "titlestring"}
                         }
                     }
-                }
-            },
-            {"output_file": {"path": "path_string", "title": "title_string"}},
-            {
-                "output_image": {
-                    "path": "path_string",
-                    "thumbnail_path": "thumbnail_path_string",
-                    "title": "title_string",
                 }
             },
         ],
