@@ -7,6 +7,11 @@ from sqlmodel import Session, SQLModel, create_engine
 
 
 class ContextManagerDBTesting:
+    """
+    Creates context manager to connect to database at db_url and drop everything from the database upon exit to ensure
+    the db is empty for each new test.
+    """
+
     def __init__(self, db_url):
         self.db_url = db_url
 
