@@ -3,21 +3,37 @@ import pytest
 from pipestat import PipestatManager
 from pipestat.const import *
 
+from sqlmodel import Session, SQLModel, create_engine
+
+
+class ContextManagerDBTesting:
+    def __init__(self, db_url):
+        self.db_url = db_url
+
+    def __enter__(self):
+        self.engine = create_engine(self.db_url, echo=True)
+        SQLModel.metadata.create_all(self.engine)
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        SQLModel.metadata.drop_all(self.engine)
+
 
 class TestDatabaseOnly:
     # TODO: parameterize this against different schemas.
     def test_manager_can_be_built_without_exception(
         self, config_file_path, schema_file_path
     ):
-        try:
-            PipestatManager(
-                schema_path=schema_file_path,
-                record_identifier="irrelevant",
-                database_only=True,
-                config=config_file_path,
-            )
-        except Exception as e:
-            pytest.fail(f"Pipestat manager construction failed: {e})")
+        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
+        with ContextManagerDBTesting(db_url) as connection:
+            try:
+                PipestatManager(
+                    schema_path=schema_file_path,
+                    record_identifier="irrelevant",
+                    database_only=True,
+                    config=config_file_path,
+                )
+            except Exception as e:
+                pytest.fail(f"Pipestat manager construction failed: {e})")
 
     @pytest.mark.parametrize(
         "val",
@@ -34,18 +50,18 @@ class TestDatabaseOnly:
         config_file_path,
         schema_file_path,
     ):
-        # DEBUG
-        print(f"Schema file: {schema_file_path}")
-        psm = PipestatManager(
-            schema_path=schema_file_path,
-            record_identifier="constant_record_id",
-            database_only=True,
-            config=config_file_path,
-        )
-        psm.report(values=val, force_overwrite=True)
-        assert len(psm.data) == 0
-        val_name = list(val.keys())[0]
-        assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
+        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
+        with ContextManagerDBTesting(db_url) as connection:
+            psm = PipestatManager(
+                schema_path=schema_file_path,
+                record_identifier="constant_record_id",
+                database_only=True,
+                config=config_file_path,
+            )
+            psm.report(values=val, force_overwrite=True)
+            assert len(psm.data) == 0
+            val_name = list(val.keys())[0]
+            assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
 
     @pytest.mark.parametrize(
         "val",
@@ -76,18 +92,20 @@ class TestDatabaseOnly:
         config_file_path,
         recursive_schema_file_path,
     ):
-        REC_ID = "constant_record_id"
-        psm = PipestatManager(
-            schema_path=recursive_schema_file_path,
-            record_identifier=REC_ID,
-            database_only=True,
-            config=config_file_path,
-        )
-        psm.report(
-            values=val, force_overwrite=True
-        )  # Force overwrite so that resetting the SQL DB is unnecessary.
-        val_name = list(val.keys())[0]
-        assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
+        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
+        with ContextManagerDBTesting(db_url) as connection:
+            REC_ID = "constant_record_id"
+            psm = PipestatManager(
+                schema_path=recursive_schema_file_path,
+                record_identifier=REC_ID,
+                database_only=True,
+                config=config_file_path,
+            )
+            psm.report(
+                values=val, force_overwrite=True
+            )  # Force overwrite so that resetting the SQL DB is unnecessary.
+            val_name = list(val.keys())[0]
+            assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
 
     @pytest.mark.parametrize(["rec_id", "res_id"], [("sample2", "number_of_things")])
     def test_select_invalid_filter_column__raises_expected_exception(
@@ -97,13 +115,15 @@ class TestDatabaseOnly:
         config_file_path,
         schema_file_path,
     ):
-        args = dict(schema_path=schema_file_path, config=config_file_path)
-        psm = PipestatManager(**args)
-        with pytest.raises(ValueError):
-            psm.select(
-                filter_conditions=[("bogus_column", "eq", rec_id)],
-                columns=[res_id],
-            )
+        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
+        with ContextManagerDBTesting(db_url) as connection:
+            args = dict(schema_path=schema_file_path, config=config_file_path)
+            psm = PipestatManager(**args)
+            with pytest.raises(ValueError):
+                psm.select(
+                    filter_conditions=[("bogus_column", "eq", rec_id)],
+                    columns=[res_id],
+                )
 
     @pytest.mark.parametrize("res_id", ["number_of_things"])
     @pytest.mark.parametrize("filter_condition", [("column", "eq", 1), "a", [1, 2, 3]])
@@ -114,13 +134,15 @@ class TestDatabaseOnly:
         schema_file_path,
         filter_condition,
     ):
-        args = dict(schema_path=schema_file_path, config=config_file_path)
-        psm = PipestatManager(**args)
-        with pytest.raises((ValueError, TypeError)):
-            psm.select(
-                filter_conditions=[filter_condition],
-                columns=[res_id],
-            )
+        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
+        with ContextManagerDBTesting(db_url) as connection:
+            args = dict(schema_path=schema_file_path, config=config_file_path)
+            psm = PipestatManager(**args)
+            with pytest.raises((ValueError, TypeError)):
+                psm.select(
+                    filter_conditions=[filter_condition],
+                    columns=[res_id],
+                )
 
     @pytest.mark.parametrize(["rec_id", "res_id"], [("sample2", "number_of_things")])
     @pytest.mark.parametrize("limit", [1, 2, 3, 15555])
@@ -132,14 +154,16 @@ class TestDatabaseOnly:
         schema_file_path,
         limit,
     ):
-        args = dict(schema_path=schema_file_path, config=config_file_path)
-        psm = PipestatManager(**args)
-        result = psm.select(
-            filter_conditions=[(RECORD_ID, "eq", rec_id)],
-            columns=[res_id],
-            limit=limit,
-        )
-        assert len(result) <= limit
+        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
+        with ContextManagerDBTesting(db_url) as connection:
+            args = dict(schema_path=schema_file_path, config=config_file_path)
+            psm = PipestatManager(**args)
+            result = psm.select(
+                filter_conditions=[(RECORD_ID, "eq", rec_id)],
+                columns=[res_id],
+                limit=limit,
+            )
+            assert len(result) <= limit
 
     @pytest.mark.parametrize("offset", [0, 1, 2, 3, 15555])
     @pytest.mark.xfail(reason="Need to reimplement psm.record_count")
@@ -149,11 +173,13 @@ class TestDatabaseOnly:
         schema_file_path,
         offset,
     ):
-        args = dict(schema_path=schema_file_path, config=config_file_path)
-        psm = PipestatManager(**args)
-        result = psm.select(offset=offset)
-        print(result)
-        assert len(result) == max((psm.record_count - offset), 0)
+        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
+        with ContextManagerDBTesting(db_url) as connection:
+            args = dict(schema_path=schema_file_path, config=config_file_path)
+            psm = PipestatManager(**args)
+            result = psm.select(offset=offset)
+            print(result)
+            assert len(result) == max((psm.record_count - offset), 0)
 
     @pytest.mark.parametrize(
         ["offset", "limit"], [(0, 0), (0, 1), (0, 2), (0, 11111), (1, 1), (1, 0)]
@@ -166,8 +192,10 @@ class TestDatabaseOnly:
         offset,
         limit,
     ):
-        args = dict(schema_path=schema_file_path, config=config_file_path)
-        psm = PipestatManager(**args)
-        result = psm.select(offset=offset, limit=limit)
-        print(result)
-        assert len(result) == min(max((psm.record_count - offset), 0), limit)
+        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
+        with ContextManagerDBTesting(db_url) as connection:
+            args = dict(schema_path=schema_file_path, config=config_file_path)
+            psm = PipestatManager(**args)
+            result = psm.select(offset=offset, limit=limit)
+            print(result)
+            assert len(result) == min(max((psm.record_count - offset), 0), limit)
