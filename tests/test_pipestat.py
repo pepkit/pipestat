@@ -303,7 +303,6 @@ class TestRemoval:
             # TODO write something here to query db
             pass
 
-
     @pytest.mark.parametrize(
         ["rec_id", "res_id"], [("sample2", "nonexistent"), ("sample2", "bogus")]
     )
