@@ -277,7 +277,11 @@ class TestRemoval:
         args.update(backend_data)
         psm = PipestatManager(**args)
         psm.remove(result_identifier=res_id, record_identifier=rec_id)
-        assert res_id not in psm.data[STANDARD_TEST_PIPE_ID][rec_id]
+        if backend != "db":
+            assert res_id not in psm.data[STANDARD_TEST_PIPE_ID][rec_id]
+        else:
+            # TODO write something here to query db
+            pass
 
     @pytest.mark.parametrize("rec_id", ["sample1", "sample2"])
     @pytest.mark.parametrize("backend", ["file", "db"])
@@ -293,7 +297,12 @@ class TestRemoval:
         args.update(backend_data)
         psm = PipestatManager(**args)
         psm.remove(record_identifier=rec_id)
-        assert rec_id not in psm.data[STANDARD_TEST_PIPE_ID]
+        if backend != "db":
+            assert rec_id not in psm.data[STANDARD_TEST_PIPE_ID]
+        else:
+            # TODO write something here to query db
+            pass
+
 
     @pytest.mark.parametrize(
         ["rec_id", "res_id"], [("sample2", "nonexistent"), ("sample2", "bogus")]

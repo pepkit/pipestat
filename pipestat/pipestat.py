@@ -1208,10 +1208,8 @@ class PipestatManager(dict):
         :return bool | int: whether the result has been reported or the ID of
             the updated record in the table, if requested
         """
-        print(project_level)
         if project_level == None:
             project_level = self.project_level
-        print(project_level)
 
         record_identifier = self._strict_record_id(record_identifier)
         if return_id and self.file is not None:
@@ -1372,7 +1370,7 @@ class PipestatManager(dict):
             _LOGGER.error(f"'{result_identifier}' has not been reported for '{r_id}'")
             return False
 
-        if not self[DB_ONLY_KEY]:
+        if not self[DB_ONLY_KEY] and self.file:
             if rm_record:
                 _LOGGER.info(f"Removing '{r_id}' record")
                 del self[DATA_KEY][self.namespace][r_id]
