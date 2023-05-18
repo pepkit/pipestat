@@ -7,6 +7,8 @@ from typing import *
 from pydantic import create_model
 
 # from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy import Column
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 from .const import *
 from .exceptions import SchemaError
@@ -163,14 +165,20 @@ class ParsedSchema(object):
                     data_type = str
             else:
                 data_type = self._get_data_type(typename)
-            defs[name] = (
-                # Optional[subdata[SCHEMA_TYPE_KEY]],
-                # subdata[SCHEMA_TYPE_KEY],
-                # Optional[str],
-                # CLASSES_BY_TYPE[subdata[SCHEMA_TYPE_KEY]],
-                data_type,
-                Field(default=subdata.get("default")),
-            )
+            if data_type == dict:
+                defs[name] = (
+                    data_type,
+                    Field(sa_column=Column(JSONB), default={}),
+                )
+            else:
+                defs[name] = (
+                    # Optional[subdata[SCHEMA_TYPE_KEY]],
+                    # subdata[SCHEMA_TYPE_KEY],
+                    # Optional[str],
+                    # CLASSES_BY_TYPE[subdata[SCHEMA_TYPE_KEY]],
+                    data_type,
+                    Field(default=subdata.get("default")),
+                )
         return defs
 
     @staticmethod

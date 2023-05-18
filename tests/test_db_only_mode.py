@@ -110,7 +110,7 @@ class TestDatabaseOnly:
                 values=val, force_overwrite=True
             )  # Force overwrite so that resetting the SQL DB is unnecessary.
             val_name = list(val.keys())[0]
-            assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
+            assert psm.select(json_filter_conditions=[(val_name, "eq", val[val_name])])
 
     @pytest.mark.parametrize(["rec_id", "res_id"], [("sample2", "number_of_things")])
     def test_select_invalid_filter_column__raises_expected_exception(

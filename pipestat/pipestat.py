@@ -6,8 +6,6 @@ from typing import *
 from urllib.parse import quote_plus
 
 import sqlalchemy.orm
-from sqlalchemy import text
-import json
 
 from sqlmodel import Session, SQLModel, create_engine, select as sql_select
 
@@ -821,6 +819,7 @@ class PipestatManager(dict):
     def _get_model(self, table_name: str, strict: bool):
         orms = self[DB_ORMS_KEY]
 
+        # TODO Check tablename logic here.
         table_name = self._get_table_name()
         # if self.project_level == False:
         #     table_name = table_name + "__sample"
@@ -1003,22 +1002,28 @@ class PipestatManager(dict):
             table_name = self._get_table_name()
 
         ORM = self.get_orm(table_name=table_name or self.namespace)
+
         with self.session as s:
             if columns is not None:
-                query = s.query(*[getattr(ORM, column) for column in columns])
+                statement = sqlmodel.select(
+                    *[getattr(ORM, column) for column in columns]
+                )
             else:
-                query = s.query(ORM)
-            query = dynamic_filter(
+                statement = sqlmodel.select(ORM)
+
+            statement = dynamic_filter(
                 ORM=ORM,
-                query=query,
+                statement=statement,
                 filter_conditions=filter_conditions,
                 json_filter_conditions=json_filter_conditions,
             )
             if isinstance(offset, int):
-                query = query.offset(offset)
+                statement = statement.offset(offset)
             if isinstance(limit, int):
-                query = query.limit(limit)
-            result = query.all()
+                statement = statement.limit(limit)
+            results = s.exec(statement)
+            result = results.all()
+
         return result
 
     def select_distinct(self, table_name, columns) -> List[Any]:
@@ -1292,12 +1297,6 @@ class PipestatManager(dict):
         ORMClass = self.get_orm(table_name=table_name)
         values.update({RECORD_ID: record_identifier})
         values.update({"namespace": self["_config"]["namespace"]})
-
-        for k in values.keys():
-            if type(values[k]) is dict:
-                values[k] = json.dumps(
-                    values[k]
-                )  # convert dict to string for pushing to db table.
 
         if not self.check_record_exists(
             record_identifier=record_identifier, table_name=table_name

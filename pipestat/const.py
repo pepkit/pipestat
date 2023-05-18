@@ -64,7 +64,7 @@ ENV_VARS = {
 }
 
 CLASSES_BY_TYPE = {
-    "object": str,
+    "object": dict,
     "number": float,
     "integer": int,
     "string": str,

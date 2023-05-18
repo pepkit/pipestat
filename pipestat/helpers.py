@@ -6,8 +6,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import sqlalchemy.orm
+import sqlmodel.sql.expression
+from sqlmodel.main import SQLModel
 from oyaml import safe_load
-from sqlalchemy.orm import DeclarativeMeta, Query
+from sqlmodel.sql.expression import SelectOfScalar
 from ubiquerg import expandpath
 
 from .const import *
@@ -96,11 +98,11 @@ def mk_list_of_str(x):
 
 
 def dynamic_filter(
-    ORM: DeclarativeMeta,
-    query: Query,
+    ORM: SQLModel,
+    statement: SelectOfScalar,
     filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
     json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
-) -> sqlalchemy.orm.Query:
+) -> sqlmodel.sql.expression.SelectOfScalar:
     """
     Return filtered query based on condition.
 
@@ -146,10 +148,11 @@ def dynamic_filter(
                 if value == "null":
                     value = None
                 filt = getattr(column, attr)(value)
-            query = query.filter(filt)
+            statement = statement.where(filt)
 
     if json_filter_conditions is not None:
         for json_filter_condition in json_filter_conditions:
             col, key, value = _unpack_tripartite(json_filter_condition)
-            query = query.filter(getattr(ORM, col)[key].astext == value)
-    return query
+            statement = statement.where(getattr(ORM, col) == value)
+
+    return statement
