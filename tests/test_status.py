@@ -6,6 +6,8 @@ from pipestat import PipestatManager
 from pipestat.pipestat import STATUS_FILE_DIR
 from .conftest import BACKEND_KEY_DB, BACKEND_KEY_FILE
 
+from .test_db_only_mode import ContextManagerDBTesting
+
 
 def test_status_file_default_location(schema_file_path, results_file_path):
     """status file location is set to the results file dir
@@ -23,13 +25,17 @@ def test_status_not_configured(
     schema_file_path, config_file_path, backend_data, status_id
 ):
     """Status management works even in case it has not been configured."""
-    args = dict(
-        schema_path=schema_file_path,
+    db_url = (
+        "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
     )
-    args.update(backend_data)
-    psm = PipestatManager(**args)
-    psm.set_status(record_identifier="sample1", status_identifier=status_id)
-    assert psm.get_status(record_identifier="sample1") == status_id
+    with ContextManagerDBTesting(db_url) as connection:
+        args = dict(
+            schema_path=schema_file_path,
+        )
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        psm.set_status(record_identifier="sample1", status_identifier=status_id)
+        assert psm.get_status(record_identifier="sample1") == status_id
 
 
 @pytest.mark.skip(
