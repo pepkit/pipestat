@@ -165,7 +165,7 @@ class ParsedSchema(object):
                     data_type = str
             else:
                 data_type = self._get_data_type(typename)
-            if data_type == dict:
+            if data_type == dict or data_type == list[dict]:
                 defs[name] = (
                     data_type,
                     Field(sa_column=Column(JSONB), default={}),
@@ -294,8 +294,9 @@ def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:
             )
         curr_type_name = v[SCHEMA_TYPE_KEY]
         if curr_type_name == "object" and SCHEMA_PROP_KEY in s[k]:
-            # TODO: are we still supporting this if switching to SQLModel?
             _recursively_replace_custom_types(s[k][SCHEMA_PROP_KEY])
+        if curr_type_name == "array" and SCHEMA_ITEMS_KEY in s[k]:
+            _recursively_replace_custom_types(s[k][SCHEMA_ITEMS_KEY][SCHEMA_PROP_KEY])
         try:
             curr_type_spec = CANONICAL_TYPES[curr_type_name]
         except KeyError:

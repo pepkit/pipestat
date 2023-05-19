@@ -15,6 +15,7 @@ __all__ = [
     "SCHEMA_DESC_KEY",
     "SCHEMA_PROP_KEY",
     "SCHEMA_TYPE_KEY",
+    "SCHEMA_ITEMS_KEY",
     "STATUS",
     "STATUS_SCHEMA",
 ]
@@ -29,6 +30,7 @@ RECORD_ID_KEY = "_record_id"
 SCHEMA_PROP_KEY = "properties"
 SCHEMA_TYPE_KEY = "type"
 SCHEMA_DESC_KEY = "description"
+SCHEMA_ITEMS_KEY = "items"
 
 # DB column names
 RECORD_ID = "record_identifier"
@@ -73,7 +75,7 @@ CLASSES_BY_TYPE = {
     "file": str,
     "image": str,
     "link": str,
-    "array": list[str],
+    "array": list[dict],
 }
 
 CFG_SCHEMA = os.path.join(

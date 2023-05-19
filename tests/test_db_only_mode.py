@@ -73,7 +73,22 @@ class TestDatabaseOnly:
     @pytest.mark.parametrize(
         "val",
         [
-            # {"collection_of_images": [{"items": {"file": {"path": "pathstring", "title": "titlestring"}}}]},
+            {
+                "collection_of_images": [
+                    {
+                        "items": {
+                            "properties": {
+                                "prop1": {
+                                    "properties": {
+                                        "path": "pathstring",
+                                        "title": "titlestring",
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
             {"output_file": {"path": "path_string", "title": "title_string"}},
             {
                 "output_image": {
