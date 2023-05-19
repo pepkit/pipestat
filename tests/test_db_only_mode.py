@@ -17,10 +17,12 @@ class ContextManagerDBTesting:
 
     def __enter__(self):
         self.engine = create_engine(self.db_url, echo=True)
-        SQLModel.metadata.create_all(self.engine)
+        self.connection = self.engine.connect()
+        return self.connection
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         SQLModel.metadata.drop_all(self.engine)
+        self.connection.close()
 
 
 class TestDatabaseOnly:
