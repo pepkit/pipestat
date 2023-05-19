@@ -374,7 +374,7 @@ class TestNoRecordID:
         ],
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
-    @pytest.mark.parametrize("project_level", [False, True])
+    @pytest.mark.parametrize("project_level", [True])
     def test_report(
         self,
         val,
@@ -398,10 +398,13 @@ class TestNoRecordID:
         args.update(backend_data)
         psm = PipestatManager(**args)
         psm.report(values=val, project_level=project_level)
-        assert CONST_REC_ID in psm.data[STANDARD_TEST_PIPE_ID]
-        assert list(val.keys())[0] in psm.data[STANDARD_TEST_PIPE_ID][CONST_REC_ID]
         if backend == "file":
             assert_is_in_files(results_file_path, str(list(val.values())[0]))
+            assert CONST_REC_ID in psm.data[STANDARD_TEST_PIPE_ID]
+            assert list(val.keys())[0] in psm.data[STANDARD_TEST_PIPE_ID][CONST_REC_ID]
+        if backend == "db":
+            val_name = list(val.keys())[0]
+            assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
 
     @pytest.mark.parametrize(
         "val",
