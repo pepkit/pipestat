@@ -42,6 +42,7 @@ def _custom_types_column_specifications():
 def get_base_model():
     class BaseModel(SQLModel):
         __table_args__ = {"extend_existing": True}
+
         class Config:
             arbitrary_types_allowed = True
 
