@@ -66,3 +66,10 @@ def config_file_path():
 @pytest.fixture
 def config_no_schema_file_path():
     return get_data_file_path("config_no_schema.yaml")
+
+
+@pytest.fixture
+def schema_with_project_with_samples_without_status():
+    return get_data_file_path(
+        "sample_output_schema__with_project_with_samples_without_status.yaml"
+    )

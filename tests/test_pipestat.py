@@ -374,7 +374,7 @@ class TestNoRecordID:
         ],
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
-    @pytest.mark.parametrize("project_level", [True])
+    @pytest.mark.parametrize("project_level", [False])
     def test_report(
         self,
         val,

@@ -73,6 +73,46 @@ class TestDatabaseOnly:
     @pytest.mark.parametrize(
         "val",
         [
+            {"name_of_something": "test_name"},
+            # {"number_of_things": 1},
+            # {"percentage_of_things": 10.1},
+        ],
+    )
+    def test_report_samples_and_project(
+        self,
+        val,
+        config_file_path,
+        schema_with_project_with_samples_without_status,
+    ):
+        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
+        with ContextManagerDBTesting(db_url) as connection:
+            psm = PipestatManager(
+                schema_path=schema_with_project_with_samples_without_status,
+                record_identifier="constant_record_id",
+                database_only=True,
+                config=config_file_path,
+            )
+            # temp overwrite values
+            # Report and select project variables
+            # TODO refactor this test to align with the others in testing suite
+            val = {"number_of_things": 1}
+            psm.report(
+                values=val, force_overwrite=True, strict_type=False, project_level=True
+            )
+            val_name = list(val.keys())[0]
+            assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
+
+            # Report and select project variables
+            val = {"smooth_bw": "STRING"}
+            psm.report(
+                values=val, force_overwrite=True, strict_type=False, project_level=False
+            )
+            val_name = list(val.keys())[0]
+            assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
+
+    @pytest.mark.parametrize(
+        "val",
+        [
             {
                 "collection_of_images": [
                     {

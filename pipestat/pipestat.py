@@ -979,6 +979,7 @@ class PipestatManager(dict):
         json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
+        project_level: Optional[bool] = None,
     ) -> List[Any]:
         """
         Perform a `SELECT` on the table
@@ -998,6 +999,11 @@ class PipestatManager(dict):
         :param int offset: skip this number of rows
         :param int limit: include this number of rows
         """
+        if project_level == None:
+            project_level = self.project_level
+        else:
+            self.project_level = project_level
+
         if table_name == None:
             table_name = self._get_table_name()
 
@@ -1215,6 +1221,8 @@ class PipestatManager(dict):
         """
         if project_level == None:
             project_level = self.project_level
+        else:
+            self.project_level = project_level
 
         record_identifier = self._strict_record_id(record_identifier)
         if return_id and self.file is not None:
