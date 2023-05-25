@@ -2,6 +2,7 @@ import pytest
 
 from pipestat import PipestatManager
 from pipestat.const import *
+from .conftest import DB_URL
 
 from sqlmodel import Session, SQLModel, create_engine
 
@@ -30,8 +31,7 @@ class TestDatabaseOnly:
     def test_manager_can_be_built_without_exception(
         self, config_file_path, schema_file_path
     ):
-        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
-        with ContextManagerDBTesting(db_url) as connection:
+        with ContextManagerDBTesting(DB_URL) as connection:
             try:
                 PipestatManager(
                     schema_path=schema_file_path,
@@ -57,8 +57,7 @@ class TestDatabaseOnly:
         config_file_path,
         schema_file_path,
     ):
-        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
-        with ContextManagerDBTesting(db_url) as connection:
+        with ContextManagerDBTesting(DB_URL) as connection:
             psm = PipestatManager(
                 schema_path=schema_file_path,
                 record_identifier="constant_record_id",
@@ -84,8 +83,7 @@ class TestDatabaseOnly:
         config_file_path,
         schema_with_project_with_samples_without_status,
     ):
-        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
-        with ContextManagerDBTesting(db_url) as connection:
+        with ContextManagerDBTesting(DB_URL) as connection:
             psm = PipestatManager(
                 schema_path=schema_with_project_with_samples_without_status,
                 record_identifier="constant_record_id",
@@ -154,8 +152,7 @@ class TestDatabaseOnly:
         config_file_path,
         recursive_schema_file_path,
     ):
-        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
-        with ContextManagerDBTesting(db_url) as connection:
+        with ContextManagerDBTesting(DB_URL) as connection:
             REC_ID = "constant_record_id"
             psm = PipestatManager(
                 schema_path=recursive_schema_file_path,
@@ -177,8 +174,7 @@ class TestDatabaseOnly:
         config_file_path,
         schema_file_path,
     ):
-        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
-        with ContextManagerDBTesting(db_url) as connection:
+        with ContextManagerDBTesting(DB_URL) as connection:
             args = dict(schema_path=schema_file_path, config=config_file_path)
             psm = PipestatManager(**args)
             with pytest.raises(ValueError):
@@ -196,8 +192,7 @@ class TestDatabaseOnly:
         schema_file_path,
         filter_condition,
     ):
-        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
-        with ContextManagerDBTesting(db_url) as connection:
+        with ContextManagerDBTesting(DB_URL) as connection:
             args = dict(schema_path=schema_file_path, config=config_file_path)
             psm = PipestatManager(**args)
             with pytest.raises((ValueError, TypeError)):
@@ -216,8 +211,7 @@ class TestDatabaseOnly:
         schema_file_path,
         limit,
     ):
-        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
-        with ContextManagerDBTesting(db_url) as connection:
+        with ContextManagerDBTesting(DB_URL) as connection:
             args = dict(schema_path=schema_file_path, config=config_file_path)
             psm = PipestatManager(**args)
             result = psm.select(
@@ -235,8 +229,7 @@ class TestDatabaseOnly:
         schema_file_path,
         offset,
     ):
-        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
-        with ContextManagerDBTesting(db_url) as connection:
+        with ContextManagerDBTesting(DB_URL) as connection:
             args = dict(schema_path=schema_file_path, config=config_file_path)
             psm = PipestatManager(**args)
             result = psm.select(offset=offset)
@@ -254,8 +247,7 @@ class TestDatabaseOnly:
         offset,
         limit,
     ):
-        db_url = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
-        with ContextManagerDBTesting(db_url) as connection:
+        with ContextManagerDBTesting(DB_URL) as connection:
             args = dict(schema_path=schema_file_path, config=config_file_path)
             psm = PipestatManager(**args)
             result = psm.select(offset=offset, limit=limit)

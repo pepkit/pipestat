@@ -10,6 +10,8 @@ BACKEND_KEY_DB = "db"
 BACKEND_KEY_FILE = "file"
 STANDARD_TEST_PIPE_ID = "test_pipe"
 
+DB_URL = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
+
 
 def get_data_file_path(filename: str) -> str:
     data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")

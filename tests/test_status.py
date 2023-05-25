@@ -4,7 +4,7 @@ import os
 import pytest
 from pipestat import PipestatManager
 from pipestat.pipestat import STATUS_FILE_DIR
-from .conftest import BACKEND_KEY_DB, BACKEND_KEY_FILE
+from .conftest import BACKEND_KEY_DB, BACKEND_KEY_FILE, DB_URL
 
 from .test_db_only_mode import ContextManagerDBTesting
 
@@ -25,10 +25,7 @@ def test_status_not_configured(
     schema_file_path, config_file_path, backend_data, status_id
 ):
     """Status management works even in case it has not been configured."""
-    db_url = (
-        "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
-    )
-    with ContextManagerDBTesting(db_url) as connection:
+    with ContextManagerDBTesting(DB_URL) as connection:
         args = dict(
             schema_path=schema_file_path,
         )
