@@ -269,10 +269,25 @@ class PipestatManager(dict):
         )
         res += f"\nResults schema source: {self.schema_path}"
         res += f"\nStatus schema source: {self.status_schema_source}"
+        res += f"\nRecords count: {self.record_count}"
         high_res = self.highlighted_results
         if high_res:
             res += f"\nHighlighted results: {', '.join(high_res)}"
         return res
+
+    @property
+    def record_count(self) -> int:
+        """
+        Number of records reported
+
+        :return int: number of records reported
+        """
+
+        return (
+            len(self.data[self.namespace])
+            if self.file
+            else self._count_rows(self.namespace)
+        )
 
     @property
     def highlighted_results(self) -> List[str]:
@@ -845,7 +860,9 @@ class PipestatManager(dict):
         """
         mod = self._get_model(table_name=table_name, strict=True)
         with self.session as s:
-            return s.select(mod).count()
+            stmt = sql_select(mod)
+            records = s.exec(stmt).all()
+            return len(records)
 
     def get_orm(self, table_name: str) -> Any:
         """
