@@ -73,15 +73,17 @@ class TestDatabaseOnly:
         "val",
         [
             {"name_of_something": "test_name"},
-            # {"number_of_things": 1},
-            # {"percentage_of_things": 10.1},
+            {"number_of_things": 1},
+            {"percentage_of_things": 10.1},
         ],
     )
+    @pytest.mark.parametrize("project_level", [True, False])
     def test_report_samples_and_project(
         self,
         val,
         config_file_path,
         schema_with_project_with_samples_without_status,
+        project_level,
     ):
         with ContextManagerDBTesting(DB_URL) as connection:
             psm = PipestatManager(
@@ -90,23 +92,36 @@ class TestDatabaseOnly:
                 database_only=True,
                 config=config_file_path,
             )
-            # temp overwrite values
-            # Report and select project variables
-            # TODO refactor this test to align with the others in testing suite
-            val = {"number_of_things": 1}
-            psm.report(
-                values=val, force_overwrite=True, strict_type=False, project_level=True
-            )
             val_name = list(val.keys())[0]
-            assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
-
-            # Report and select project variables
-            val = {"smooth_bw": "STRING"}
-            psm.report(
-                values=val, force_overwrite=True, strict_type=False, project_level=False
-            )
-            val_name = list(val.keys())[0]
-            assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
+            if project_level is True:
+                if val_name in psm.schema.project_level_data:
+                    psm.report(
+                        values=val,
+                        force_overwrite=True,
+                        strict_type=False,
+                        project_level=project_level,
+                    )
+                    assert psm.select(
+                        filter_conditions=[(val_name, "eq", val[val_name])]
+                    )
+                else:
+                    pass
+                    # assert that this would fail to report otherwise.
+            if project_level is False:
+                if val_name in psm.schema.sample_level_data:
+                    psm.report(
+                        values=val,
+                        force_overwrite=True,
+                        strict_type=False,
+                        project_level=project_level,
+                    )
+                    val_name = list(val.keys())[0]
+                    assert psm.select(
+                        filter_conditions=[(val_name, "eq", val[val_name])]
+                    )
+                else:
+                    pass
+                    # assert that this would fail to report otherwise.
 
     @pytest.mark.parametrize(
         "val",
