@@ -452,13 +452,12 @@ class TestNoRecordID:
         assert psm.remove(result_identifier=list(val.keys())[0])
 
 
-@pytest.mark.xfail(reason="need to re-implement logic for highlighting status")
 def test_highlighting_works(highlight_schema_file_path, results_file_path):
     """the highlighted results are sourced from the schema and only ones
     that are indicated with 'highlight: true` are respected"""
     s = ParsedSchema(highlight_schema_file_path)
     schema_highlighted_results = [
-        k for k, v in s.project_level_data.items() if v.get("highlight", False)
+        k for k, v in s.sample_level_data.items() if v.get("highlight") is True
     ]
     psm = PipestatManager(
         results_file_path=results_file_path,

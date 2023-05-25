@@ -296,7 +296,7 @@ class PipestatManager(dict):
 
         :return List[str]: a collection of highlighted results
         """
-        return [k for k, v in self.result_schemas.items() if v.get("highlight", False)]
+        return [k for k, v in self.result_schemas.items() if v.get("highlight") is True]
 
     @property
     def db_column_kwargs_by_result(self) -> Dict[str, Any]:
