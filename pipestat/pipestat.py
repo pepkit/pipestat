@@ -12,8 +12,10 @@ from sqlmodel import Session, SQLModel, create_engine, select as sql_select
 
 from jsonschema import validate
 
-from ubiquerg import create_lock, remove_lock
+from ubiquerg import create_lock, remove_lock, expandpath
 from yacman import YAMLConfigManager
+
+from .const import *
 from .exceptions import *
 from .helpers import *
 from .parsed_schema import ParsedSchema
@@ -58,7 +60,7 @@ class PipestatManager(dict):
         project_level: Optional[bool] = False,
     ):
         """
-        Initialize the object
+        Initialize the PipestatManager object
 
         :param str record_identifier: record identifier to report for. This
             creates a weak bound to the record, which can be overridden in
@@ -72,28 +74,6 @@ class PipestatManager(dict):
         :param str | dict config: path to the configuration file or a mapping
             with the config file content
         """
-
-        def _mk_abs_via_cfg(
-            path: Optional[str],
-            cfg_path: Optional[str],
-        ) -> Optional[str]:
-            if path is None:
-                return path
-            assert isinstance(path, str), TypeError("Path is expected to be a str")
-            if os.path.isabs(path):
-                return path
-            if cfg_path is None:
-                rel_to_cwd = os.path.join(os.getcwd(), path)
-                if os.path.exists(rel_to_cwd) or os.access(
-                    os.path.dirname(rel_to_cwd), os.W_OK
-                ):
-                    return rel_to_cwd
-                else:
-                    raise OSError(f"File not found: {path}")
-            joined = os.path.join(os.path.dirname(cfg_path), path)
-            if os.path.isabs(joined):
-                return joined
-            raise OSError(f"Could not make this path absolute: {path}")
 
         def _select_value(
             arg_name: str,
@@ -137,7 +117,7 @@ class PipestatManager(dict):
             self[CONFIG_KEY] = YAMLConfigManager()
 
         # Finalize results file.
-        results_file_path = _mk_abs_via_cfg(
+        results_file_path = mk_abs_via_cfg(
             _select_value(
                 "results_file_path",
                 self[CONFIG_KEY],
@@ -212,7 +192,7 @@ class PipestatManager(dict):
             raise SchemaNotFoundError("PSM Creation")
 
         # Main schema, perhaps with status also
-        schema_to_read = _mk_abs_via_cfg(self._schema_path, self.config_path)
+        schema_to_read = mk_abs_via_cfg(self._schema_path, self.config_path)
         parsed_schema = ParsedSchema(schema_to_read)
         self[SCHEMA_KEY] = parsed_schema
 
@@ -247,7 +227,7 @@ class PipestatManager(dict):
                 if flag_file_dir is None
                 else flag_file_dir
             ) or os.path.dirname(self.file)
-            self[STATUS_FILE_DIR] = _mk_abs_via_cfg(flag_file_dir, self.config_path)
+            self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path)
         else:
             _LOGGER.debug("Determined database as backend")
             self[DATA_KEY] = YAMLConfigManager()
