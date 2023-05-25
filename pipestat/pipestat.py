@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from glob import glob
 from logging import getLogger
 import os
-import copy
+from copy import deepcopy
 from typing import *
 from urllib.parse import quote_plus
 
@@ -1225,7 +1225,7 @@ class PipestatManager(dict):
         else:
             self.project_level = project_level
 
-        values = copy.deepcopy(values)
+        values = deepcopy(values)
 
         record_identifier = self._strict_record_id(record_identifier)
         if return_id and self.file is not None:
