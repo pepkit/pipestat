@@ -96,15 +96,16 @@ def mk_list_of_str(x):
         f"String or list of strings required as input. Got: " f"{x.__class__.__name__}"
     )
 
+
 def mk_abs_via_cfg(
     path: Optional[str],
     cfg_path: Optional[str],
 ) -> Optional[str]:
     """
-    Helper function to ensure a path is absolute. 
-    
+    Helper function to ensure a path is absolute.
+
     Assumes a relative path is relative to cfg_path, or to current working directory if cfg_path is None.
-    
+
     : param path: The path to make absolute.
     : param cfg_path: Relative paths will be relative the containing folder of this pat
     """
@@ -125,7 +126,6 @@ def mk_abs_via_cfg(
     if os.path.isabs(joined):
         return joined
     raise OSError(f"Could not make this path absolute: {path}")
-
 
 
 def dynamic_filter(
@@ -187,4 +187,3 @@ def dynamic_filter(
             statement = statement.where(getattr(ORM, col) == value)
 
     return statement
-
