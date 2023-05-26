@@ -823,7 +823,7 @@ class PipestatManager(dict):
         mod = self._get_model(table_name=table_name, strict=True)
         return mod
 
-    def check_record_exists(self, record_identifier: str, table_name: str) -> bool:
+    def check_record_exists(self, record_identifier: str, table_name: str, project_level: Optional[bool] = None,) -> bool:
         """
         Check if the specified record exists in the table
 
@@ -839,7 +839,7 @@ class PipestatManager(dict):
         else:
             return (
                 self.namespace in self.data
-                and record_identifier in self.data[table_name]
+                and record_identifier in self.data[table_name][project_level]
             )
 
     def check_which_results_exist(
@@ -847,6 +847,7 @@ class PipestatManager(dict):
         results: List[str],
         rid: Optional[str] = None,
         table_name: Optional[str] = None,
+        project_level: Optional[bool] = None
     ) -> List[str]:
         """
         Check which results have been reported
@@ -856,6 +857,13 @@ class PipestatManager(dict):
         :param str table_name: name of the table for which to check results
         :return List[str]: names of results which exist
         """
+        if project_level is None:
+            project_level = self.project_level
+        if project_level is True:
+            project_level = "Project"
+        elif project_level is False:
+            project_level = "Sample"
+
         rid = self._strict_record_id(rid)
         if self.file is None:
             return self._check_which_results_exist_db(
@@ -866,7 +874,7 @@ class PipestatManager(dict):
         return [
             r
             for r in results
-            if rid in self.data[self.namespace] and r in self.data[self.namespace][rid]
+            if rid in self.data[self.namespace][project_level] and r in self.data[self.namespace][project_level][rid]
         ]
 
     def _check_which_results_exist_db(
@@ -914,6 +922,7 @@ class PipestatManager(dict):
         self,
         result_identifier: str,
         record_identifier: str = None,
+        project_level: Optional[bool] = None,
     ) -> bool:
         """
         Check if the result has been reported
@@ -929,6 +938,7 @@ class PipestatManager(dict):
                 self.check_which_results_exist(
                     results=[result_identifier],
                     rid=record_identifier,
+                    project_level=project_level,
                 )
             )
             > 0
@@ -1016,6 +1026,7 @@ class PipestatManager(dict):
         self,
         record_identifier: Optional[str] = None,
         result_identifier: Optional[str] = None,
+        project_level: Optional[bool] = None,
     ) -> Union[Any, Dict[str, Any]]:
         """
         Retrieve a result for a record.
@@ -1028,6 +1039,14 @@ class PipestatManager(dict):
         :return any | Dict[str, any]: a single result or a mapping with all the
             results reported for the record
         """
+
+        if project_level is None:
+            project_level = self.project_level
+        if project_level is True:
+            project_level = "Project"
+        elif project_level is False:
+            project_level = "Sample"
+
         r_id = self._strict_record_id(record_identifier)
         if self.file is None:
             results = self._retrieve_db(
@@ -1037,15 +1056,15 @@ class PipestatManager(dict):
                 return results[result_identifier]
             return results
         else:
-            if r_id not in self.data[self.namespace]:
+            if r_id not in self.data[self.namespace][project_level]:
                 raise PipestatDatabaseError(f"Record '{r_id}' not found")
             if result_identifier is None:
-                return self.data.exp[self.namespace][r_id]
-            if result_identifier not in self.data[self.namespace][r_id]:
+                return self.data.exp[self.namespace][project_level][r_id]
+            if result_identifier not in self.data[self.namespace][project_level][r_id]:
                 raise PipestatDatabaseError(
                     f"Result '{result_identifier}' not found for record '{r_id}'"
                 )
-            return self.data[self.namespace][r_id][result_identifier]
+            return self.data[self.namespace][project_level][r_id][result_identifier]
 
     def _retrieve_db(
         self,
@@ -1142,7 +1161,7 @@ class PipestatManager(dict):
             results = q.all()
         return results
 
-    def assert_results_defined(self, results: List[str]) -> None:
+    def assert_results_defined(self, results: List[str], project_level: bool) -> None:
         """
         Assert provided list of results is defined in the schema
 
@@ -1150,7 +1169,18 @@ class PipestatManager(dict):
             check for existence in the schema
         :raises SchemaError: if any of the results is not defined in the schema
         """
-        known_results = self.result_schemas.keys()
+
+
+        #take project level input and look for keys in the specific schema.
+        #warn if you are trying to report a sample to a project level and vice versa.
+
+        if project_level is False:
+            known_results = self['_schema'].sample_level_data.keys()
+        if project_level is True:
+            known_results = self['_schema'].project_level_data.keys()
+
+        #known_results = self.result_schemas.keys()
+
         for r in results:
             assert r in known_results, SchemaError(
                 f"'{r}' is not a known result. Results defined in the "
@@ -1201,9 +1231,9 @@ class PipestatManager(dict):
             raise SchemaNotFoundError("report results")
         updated_ids = False
         result_identifiers = list(values.keys())
-        self.assert_results_defined(results=result_identifiers)
+        self.assert_results_defined(results=result_identifiers, project_level=project_level)
         existing = self.check_which_results_exist(
-            rid=record_identifier, results=result_identifiers
+            rid=record_identifier, results=result_identifiers, project_level=project_level
         )
         if existing:
             existing_str = ", ".join(existing)
@@ -1225,7 +1255,7 @@ class PipestatManager(dict):
 
         if not self[DB_ONLY_KEY]:
             self._report_data_element(
-                record_identifier=record_identifier, values=values
+                record_identifier=record_identifier, values=values, project_level=project_level
             )
         if self.file is not None:
             with self.data as locked_data:
@@ -1298,6 +1328,7 @@ class PipestatManager(dict):
         self,
         record_identifier: str,
         values: Dict[str, Any],
+        project_level: Optional[bool] = None,
         table_name: Optional[bool] = None,
     ) -> None:
         """
@@ -1311,16 +1342,27 @@ class PipestatManager(dict):
             to be reported
         :param str table_name: name of the table to report the result in
         """
+        if project_level is None:
+            project_level = self.project_level
+        if project_level is True:
+            project_level = "Project"
+        elif project_level is False:
+            project_level = "Sample"
+
         # TODO: update to disambiguate sample- / project-level
         self[DATA_KEY].setdefault(self.namespace, {})
-        self[DATA_KEY][self.namespace].setdefault(record_identifier, {})
+        #self[DATA_KEY][self.namespace].setdefault(record_identifier, {})
+        self[DATA_KEY][self.namespace].setdefault(project_level, {})
+        self[DATA_KEY][self.namespace][project_level].setdefault(record_identifier, {})
         for res_id, val in values.items():
-            self[DATA_KEY][self.namespace][record_identifier][res_id] = val
+            self[DATA_KEY][self.namespace][project_level][record_identifier][res_id] = val
+            #self[DATA_KEY][self.namespace][record_identifier][res_id] = val
 
     def remove(
         self,
         record_identifier: str = None,
         result_identifier: str = None,
+        project_level: Optional[bool] = None,
     ) -> bool:
         """
         Remove a result.
@@ -1333,33 +1375,40 @@ class PipestatManager(dict):
              if the record should be removed.
         :return bool: whether the result has been removed
         """
+        if project_level is None:
+            project_level = self.project_level
+        if project_level is True:
+            project_level = "Project"
+        elif project_level is False:
+            project_level = "Sample"
+
         r_id = self._strict_record_id(record_identifier)
         rm_record = True if result_identifier is None else False
         if not self.check_record_exists(
-            record_identifier=r_id, table_name=self.namespace
+            record_identifier=r_id, table_name=self.namespace, project_level=project_level
         ):
             _LOGGER.error(f"Record '{r_id}' not found")
             return False
-        if result_identifier and not self.check_result_exists(result_identifier, r_id):
+        if result_identifier and not self.check_result_exists(result_identifier, r_id, project_level=project_level):
             _LOGGER.error(f"'{result_identifier}' has not been reported for '{r_id}'")
             return False
 
         if not self[DB_ONLY_KEY] and self.file:
             if rm_record:
                 _LOGGER.info(f"Removing '{r_id}' record")
-                del self[DATA_KEY][self.namespace][r_id]
+                del self[DATA_KEY][self.namespace][project_level][r_id]
             else:
-                val_backup = self[DATA_KEY][self.namespace][r_id][result_identifier]
-                del self[DATA_KEY][self.namespace][r_id][result_identifier]
+                val_backup = self[DATA_KEY][self.namespace][project_level][r_id][result_identifier]
+                del self[DATA_KEY][self.namespace][project_level][r_id][result_identifier]
                 _LOGGER.info(
                     f"Removed result '{result_identifier}' for record "
                     f"'{r_id}' from '{self.namespace}' namespace"
                 )
-                if not self[DATA_KEY][self.namespace][r_id]:
+                if not self[DATA_KEY][self.namespace][project_level][r_id]:
                     _LOGGER.info(
                         f"Last result removed for '{r_id}'. " f"Removing the record"
                     )
-                    del self[DATA_KEY][self.namespace][r_id]
+                    del self[DATA_KEY][self.namespace][project_level][r_id]
                     rm_record = True
 
             if self.file:
@@ -1377,7 +1426,7 @@ class PipestatManager(dict):
                     f"Could not remove the result from the database. Exception: {e}"
                 )
                 if not self[DB_ONLY_KEY] and not rm_record:
-                    self[DATA_KEY][self.namespace][r_id][result_identifier] = val_backup
+                    self[DATA_KEY][self.namespace][project_level][r_id][result_identifier] = val_backup
                 raise
         return True
 
