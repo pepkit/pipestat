@@ -23,7 +23,9 @@ class TestPipestatManagerInstantiation:
 
     def test_obj_creation_db(self, config_file_path):
         """Object constructor works with database as backend"""
-        assert isinstance(PipestatManager(config_file=config_file_path), PipestatManager)
+        assert isinstance(
+            PipestatManager(config_file=config_file_path), PipestatManager
+        )
 
     def test_schema_is_required_to_create_manager(self, results_file_path):
         """

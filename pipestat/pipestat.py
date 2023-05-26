@@ -74,16 +74,11 @@ class PipestatManager(dict):
         _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
         validate(cfg, cfg_schema)
 
-        # Finalize and validate backend, which can be either a file or database
-        # If results_file_path is truthy that implies backend is a file
-        # Otherwise, assume backend is a database.
+        # Determine and validate backend file or database
+        # If results_file_path is truthy, backend is a file
+        # Otherwise, backend is a database.
         results_file_path = mk_abs_via_cfg(
-            select_value(
-                "results_file_path",
-                self[CONFIG_KEY],
-                False,
-                ENV_VARS["results_file"],
-            )
+            self[CONFIG_KEY].get("results_file_path", env_var=ENV_VARS["results_file"])
             if results_file_path is None
             else results_file_path,
             self.config_path,
@@ -100,34 +95,26 @@ class PipestatManager(dict):
                     f"No database section ('{CFG_DATABASE_KEY}') in config"
                 )
 
-        self[RECORD_ID_KEY] = record_identifier or select_value(
+        self[RECORD_ID_KEY] = record_identifier or self[CONFIG_KEY].get(
             "record_identifier",
-            self[CONFIG_KEY],
-            False,
-            ENV_VARS["record_identifier"],
+            env_var=ENV_VARS["record_identifier"],
         )
         self[DB_ONLY_KEY] = database_only
 
-        self.project_level = select_value("project_level", self[CONFIG_KEY], False)
+        self.project_level = self[CONFIG_KEY].get("project_level")
         if self.project_level == None:
             self.project_level = project_level
 
-        # read schema
+        # Load pipestat schema in two parts: 1) main and 2) status
         self._schema_path = (
-            select_value(
-                "schema_path",
-                self[CONFIG_KEY],
-                False,
-                env_var=ENV_VARS["schema"],
-            )
+            self[CONFIG_KEY].get("schema_path", env_var=ENV_VARS["schema"])
             if schema_path is None
             else schema_path
         )
         if self._schema_path is None:
-            # raise PipestatError("No schema path could be found.")
-            raise SchemaNotFoundError("PSM Creation")
+            raise SchemaNotFoundError("PipestatManager creation failed; no schema")
 
-        # Main schema, perhaps with status also
+        # Main schema
         schema_to_read = mk_abs_via_cfg(self._schema_path, self.config_path)
         parsed_schema = ParsedSchema(schema_to_read)
         self[SCHEMA_KEY] = parsed_schema
@@ -159,7 +146,7 @@ class PipestatManager(dict):
                 _LOGGER.debug(f"Loading results file: {self.file}")
                 self._load_results_file()
             flag_file_dir = (
-                select_value("flag_file_dir", self[CONFIG_KEY], False)
+                self[CONFIG_KEY].get("flag_file_dir")
                 if flag_file_dir is None
                 else flag_file_dir
             ) or os.path.dirname(self.file)
