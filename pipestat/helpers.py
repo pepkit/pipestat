@@ -11,8 +11,10 @@ from sqlmodel.main import SQLModel
 from oyaml import safe_load
 from sqlmodel.sql.expression import SelectOfScalar
 from ubiquerg import expandpath
+from urllib.parse import quote_plus
 
 from .const import *
+from .exceptions import *
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -156,6 +158,28 @@ def select_value(
         _LOGGER.warning(message)
         return
     return cfg[arg_name]
+
+
+def construct_db_url(dbconf):
+    """Builds database URL from config settings"""
+    try:
+        creds = dict(
+            name=dbconf["name"],
+            user=dbconf["user"],
+            passwd=dbconf["password"],
+            host=dbconf["host"],
+            port=dbconf["port"],
+            dialect=dbconf["dialect"],
+            driver=dbconf["driver"],
+        )  # driver = sqlite, mysql, postgresql, oracle, or mssql
+    except KeyError as e:
+        raise MissingConfigDataError(
+            f"Could not determine database URL. Caught error: {str(e)}"
+        )
+    parsed_creds = {k: quote_plus(str(v)) for k, v in creds.items()}
+    return "{dialect}+{driver}://{user}:{passwd}@{host}:{port}/{name}".format(
+        **parsed_creds
+    )
 
 
 def dynamic_filter(

@@ -37,7 +37,7 @@ class TestDatabaseOnly:
                     schema_path=schema_file_path,
                     record_identifier="irrelevant",
                     database_only=True,
-                    config=config_file_path,
+                    config_file=config_file_path,
                 )
             except Exception as e:
                 pytest.fail(f"Pipestat manager construction failed: {e})")
@@ -62,7 +62,7 @@ class TestDatabaseOnly:
                 schema_path=schema_file_path,
                 record_identifier="constant_record_id",
                 database_only=True,
-                config=config_file_path,
+                config_file=config_file_path,
             )
             psm.report(values=val, force_overwrite=True)
             assert len(psm.data) == 0
@@ -90,7 +90,7 @@ class TestDatabaseOnly:
                 schema_path=schema_with_project_with_samples_without_status,
                 record_identifier="constant_record_id",
                 database_only=True,
-                config=config_file_path,
+                config_file=config_file_path,
             )
             val_name = list(val.keys())[0]
             if project_level is True:
@@ -173,7 +173,7 @@ class TestDatabaseOnly:
                 schema_path=recursive_schema_file_path,
                 record_identifier=REC_ID,
                 database_only=True,
-                config=config_file_path,
+                config_file=config_file_path,
             )
             psm.report(
                 values=val, force_overwrite=True
@@ -190,7 +190,7 @@ class TestDatabaseOnly:
         schema_file_path,
     ):
         with ContextManagerDBTesting(DB_URL) as connection:
-            args = dict(schema_path=schema_file_path, config=config_file_path)
+            args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = PipestatManager(**args)
             with pytest.raises(ValueError):
                 psm.select(
@@ -208,7 +208,7 @@ class TestDatabaseOnly:
         filter_condition,
     ):
         with ContextManagerDBTesting(DB_URL) as connection:
-            args = dict(schema_path=schema_file_path, config=config_file_path)
+            args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = PipestatManager(**args)
             with pytest.raises((ValueError, TypeError)):
                 psm.select(
@@ -227,7 +227,7 @@ class TestDatabaseOnly:
         limit,
     ):
         with ContextManagerDBTesting(DB_URL) as connection:
-            args = dict(schema_path=schema_file_path, config=config_file_path)
+            args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = PipestatManager(**args)
             result = psm.select(
                 filter_conditions=[(RECORD_ID, "eq", rec_id)],
@@ -244,7 +244,7 @@ class TestDatabaseOnly:
         offset,
     ):
         with ContextManagerDBTesting(DB_URL) as connection:
-            args = dict(schema_path=schema_file_path, config=config_file_path)
+            args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = PipestatManager(**args)
             result = psm.select(offset=offset)
             print(result)
@@ -261,7 +261,7 @@ class TestDatabaseOnly:
         limit,
     ):
         with ContextManagerDBTesting(DB_URL) as connection:
-            args = dict(schema_path=schema_file_path, config=config_file_path)
+            args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = PipestatManager(**args)
             result = psm.select(offset=offset, limit=limit)
             print(result)
