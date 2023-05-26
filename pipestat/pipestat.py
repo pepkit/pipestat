@@ -4,7 +4,6 @@ from logging import getLogger
 import os
 from copy import deepcopy
 from typing import *
-from urllib.parse import quote_plus
 
 import sqlalchemy.orm
 
@@ -13,7 +12,7 @@ from sqlmodel import Session, SQLModel, create_engine, select as sql_select
 from jsonschema import validate
 
 from ubiquerg import create_lock, remove_lock, expandpath
-from yacman import YAMLConfigManager
+from yacman import YAMLConfigManager, select_config
 
 from .const import *
 from .exceptions import *
@@ -40,7 +39,8 @@ class PipestatManager(dict):
         schema_path: Optional[str] = None,
         results_file_path: Optional[str] = None,
         database_only: Optional[bool] = True,
-        config: Optional[Union[str, dict]] = None,
+        config_file: Optional[str] = None,
+        config_dict: Optional[dict] = None,
         flag_file_dir: Optional[str] = None,
         show_db_logs: bool = False,
         project_level: Optional[bool] = False,
@@ -62,28 +62,21 @@ class PipestatManager(dict):
         """
 
         super(PipestatManager, self).__init__()
-        # read config or config data
-        config = config or os.getenv(ENV_VARS["config"])
-        if config is not None:
-            if isinstance(config, str):
-                config = os.path.abspath(expandpath(config))
-                self._config_path = config
-            elif isinstance(config, dict):
-                self._config_path = None
-            else:
-                raise TypeError(
-                    "database_config has to be either path to the "
-                    "file to read or a dict"
-                )
-            self[CONFIG_KEY] = YAMLConfigManager(filepath=config)
-            # validate config
-            cfg = self[CONFIG_KEY].exp
-            _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
-            validate(cfg, cfg_schema)
-        else:
-            self[CONFIG_KEY] = YAMLConfigManager()
 
-        # Finalize results file.
+        # Load and validate database configuration
+        config = select_config(config_file, ENV_VARS["config"])
+        print(
+            f"Config path: {config}; env: {ENV_VARS['config']}, config_file: {config_file}"
+        )
+        self._config_path = config
+        self[CONFIG_KEY] = YAMLConfigManager(entries=config_dict, filepath=config)
+        cfg = self[CONFIG_KEY].exp
+        _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
+        validate(cfg, cfg_schema)
+
+        # Finalize and validate backend, which can be either a file or database
+        # If results_file_path is truthy that implies backend is a file
+        # Otherwise, assume backend is a database.
         results_file_path = mk_abs_via_cfg(
             select_value(
                 "results_file_path",
@@ -96,40 +89,16 @@ class PipestatManager(dict):
             self.config_path,
         )
 
-        # Validation of presence of backend and database info, if applicable
-        # Backend is implied as file if results_file_path is truthy.
-        # Otherwise, assume database as backend and validate accordingly.
         if not results_file_path:
             if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
                 raise NoBackendSpecifiedError()
             try:
                 dbconf = self[CONFIG_KEY][CFG_DATABASE_KEY]
+                self._db_url = construct_db_url(dbconf)
             except KeyError:
                 raise PipestatDatabaseError(
                     f"No database section ('{CFG_DATABASE_KEY}') in config"
                 )
-            try:
-                creds = dict(
-                    name=dbconf["name"],
-                    user=dbconf["user"],
-                    passwd=dbconf["password"],
-                    host=dbconf["host"],
-                    port=dbconf["port"],
-                    dialect=dbconf["dialect"],
-                    driver=dbconf[
-                        "driver"
-                    ],  # sqlite, mysql, postgresql, oracle, or mssql
-                )
-            except KeyError as e:
-                raise MissingConfigDataError(
-                    f"Could not determine database URL. Caught error: {str(e)}"
-                )
-            parsed_creds = {k: quote_plus(str(v)) for k, v in creds.items()}
-            self._db_url = (
-                "{dialect}+{driver}://{user}:{passwd}@{host}:{port}/{name}".format(
-                    **parsed_creds
-                )
-            )
 
         self[RECORD_ID_KEY] = record_identifier or select_value(
             "record_identifier",

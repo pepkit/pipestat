@@ -23,7 +23,7 @@ class TestPipestatManagerInstantiation:
 
     def test_obj_creation_db(self, config_file_path):
         """Object constructor works with database as backend"""
-        assert isinstance(PipestatManager(config=config_file_path), PipestatManager)
+        assert isinstance(PipestatManager(config_file=config_file_path), PipestatManager)
 
     def test_schema_is_required_to_create_manager(self, results_file_path):
         """
@@ -59,7 +59,7 @@ class TestPipestatManagerInstantiation:
         with open(tmp_pth, "w") as file:
             dump({"database": {"host": "localhost"}}, file)
         with pytest.raises(MissingConfigDataError):
-            PipestatManager(config=tmp_pth, schema_path=schema_file_path)
+            PipestatManager(config_file=tmp_pth, schema_path=schema_file_path)
 
     def test_unknown_backend(self, schema_file_path):
         """Either db config or results file path needs to be provided"""

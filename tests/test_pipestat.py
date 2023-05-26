@@ -57,7 +57,7 @@ class TestReporting:
     ):
         args = dict(schema_path=schema_file_path, database_only=False)
         backend_data = (
-            {"config": config_file_path}
+            {"config_file": config_file_path}
             if backend == "db"
             else {"results_file_path": results_file_path}
         )
@@ -99,7 +99,7 @@ class TestReporting:
         """
         args = dict()
         backend_data = (
-            {"config": config_no_schema_file_path}
+            {"config_file": config_no_schema_file_path}
             if backend == "db"
             else {"results_file_path": results_file_path}
         )
@@ -123,7 +123,7 @@ class TestReporting:
     ):
         args = dict(schema_path=schema_file_path, database_only=False)
         backend_data = (
-            {"config": config_file_path}
+            {"config_file": config_file_path}
             if backend == "db"
             else {"results_file_path": results_file_path}
         )
@@ -156,7 +156,7 @@ class TestReporting:
     ):
         args = dict(schema_path=schema_file_path)
         backend_data = (
-            {"config": config_file_path}
+            {"config_file": config_file_path}
             if backend == "db"
             else {"results_file_path": results_file_path}
         )
@@ -202,7 +202,7 @@ class TestRetrieval:
     ):
         args = dict(schema_path=schema_file_path)
         backend_data = (
-            {"config": config_file_path}
+            {"config_file": config_file_path}
             if backend == "db"
             else {"results_file_path": results_file_path}
         )
@@ -220,7 +220,7 @@ class TestRetrieval:
     ):
         args = dict(schema_path=schema_file_path)
         backend_data = (
-            {"config": config_file_path}
+            {"config_file": config_file_path}
             if backend == "db"
             else {"results_file_path": results_file_path}
         )
@@ -244,7 +244,7 @@ class TestRetrieval:
     ):
         args = dict(schema_path=schema_file_path)
         backend_data = (
-            {"config": config_file_path}
+            {"config_file": config_file_path}
             if backend == "db"
             else {"results_file_path": results_file_path}
         )
@@ -271,7 +271,7 @@ class TestRemoval:
     ):
         args = dict(schema_path=schema_file_path, database_only=False)
         backend_data = (
-            {"config": config_file_path}
+            {"config_file": config_file_path}
             if backend == "db"
             else {"results_file_path": results_file_path}
         )
@@ -291,7 +291,7 @@ class TestRemoval:
     ):
         args = dict(schema_path=schema_file_path, database_only=False)
         backend_data = (
-            {"config": config_file_path}
+            {"config_file": config_file_path}
             if backend == "db"
             else {"results_file_path": results_file_path}
         )
@@ -319,7 +319,7 @@ class TestRemoval:
     ):
         args = dict(schema_path=schema_file_path)
         backend_data = (
-            {"config": config_file_path}
+            {"config_file": config_file_path}
             if backend == "db"
             else {"results_file_path": results_file_path}
         )
@@ -334,7 +334,7 @@ class TestRemoval:
     ):
         args = dict(schema_path=schema_file_path)
         backend_data = (
-            {"config": config_file_path}
+            {"config_file": config_file_path}
             if backend == "db"
             else {"results_file_path": results_file_path}
         )
@@ -355,7 +355,7 @@ class TestRemoval:
     ):
         args = dict(schema_path=schema_file_path, database_only=False)
         backend_data = (
-            {"config": config_file_path}
+            {"config_file": config_file_path}
             if backend == "db"
             else {"results_file_path": results_file_path}
         )
@@ -392,7 +392,7 @@ class TestNoRecordID:
         )
         # TODO: combine this with the fixture in conftest.py
         backend_data = (
-            {"config": config_file_path}
+            {"config_file": config_file_path}
             if backend == "db"
             else {"results_file_path": results_file_path}
         )
@@ -421,7 +421,7 @@ class TestNoRecordID:
     ):
         args = dict(schema_path=schema_file_path, record_identifier=CONST_REC_ID)
         backend_data = (
-            {"config": config_file_path}
+            {"config_file": config_file_path}
             if backend == "db"
             else {"results_file_path": results_file_path}
         )
@@ -444,7 +444,7 @@ class TestNoRecordID:
     ):
         args = dict(schema_path=schema_file_path, record_identifier=CONST_REC_ID)
         backend_data = (
-            {"config": config_file_path}
+            {"config_file": config_file_path}
             if backend == "db"
             else {"results_file_path": results_file_path}
         )
@@ -484,6 +484,7 @@ class TestEnvVars:
         except Exception as e:
             pytest.fail(f"Error during pipestat manager creation: {e}")
 
+    # @pytest.mark.skip(reason="known failure for now with config file")
     def test_config__psm_is_built_from_config_file_env_var(
         self, monkeypatch, config_file_path
     ):
