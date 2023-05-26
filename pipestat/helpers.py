@@ -127,6 +127,7 @@ def mk_abs_via_cfg(
         return joined
     raise OSError(f"Could not make this path absolute: {path}")
 
+
 def select_value(
     arg_name: str,
     cfg: dict,
@@ -147,13 +148,14 @@ def select_value(
             if arg is not None:
                 _LOGGER.debug(f"Value '{arg}' sourced from '{env_var}' env var")
                 return expandpath(arg)
-        message = f"Value for the required '{arg_name}' argument could not be determined."
+        message = (
+            f"Value for the required '{arg_name}' argument could not be determined."
+        )
         if strict:
             raise PipestatError(message)
         _LOGGER.warning(message)
         return
     return cfg[arg_name]
-
 
 
 def dynamic_filter(

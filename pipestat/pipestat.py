@@ -75,8 +75,6 @@ class PipestatManager(dict):
             with the config file content
         """
 
-
-
         super(PipestatManager, self).__init__()
         # read config or config data
         config = config or os.getenv(ENV_VARS["config"])
