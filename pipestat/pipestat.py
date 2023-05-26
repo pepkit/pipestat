@@ -75,24 +75,7 @@ class PipestatManager(dict):
             with the config file content
         """
 
-        def _select_value(
-            arg_name: str,
-            cfg: dict,
-            strict: bool = True,
-            env_var: str = None,
-        ) -> Any:
-            if cfg.get(arg_name) is None:
-                if env_var is not None:
-                    arg = os.getenv(env_var, None)
-                    if arg is not None:
-                        _LOGGER.debug(f"Value '{arg}' sourced from '{env_var}' env var")
-                        return expandpath(arg)
-                message = f"Value for the required '{arg_name}' argument could not be determined."
-                if strict:
-                    raise PipestatError(message)
-                _LOGGER.warning(message)
-                return
-            return cfg[arg_name]
+
 
         super(PipestatManager, self).__init__()
         # read config or config data
@@ -118,7 +101,7 @@ class PipestatManager(dict):
 
         # Finalize results file.
         results_file_path = mk_abs_via_cfg(
-            _select_value(
+            select_value(
                 "results_file_path",
                 self[CONFIG_KEY],
                 False,
@@ -164,7 +147,7 @@ class PipestatManager(dict):
                 )
             )
 
-        self[RECORD_ID_KEY] = record_identifier or _select_value(
+        self[RECORD_ID_KEY] = record_identifier or select_value(
             "record_identifier",
             self[CONFIG_KEY],
             False,
@@ -172,13 +155,13 @@ class PipestatManager(dict):
         )
         self[DB_ONLY_KEY] = database_only
 
-        self.project_level = _select_value("project_level", self[CONFIG_KEY], False)
+        self.project_level = select_value("project_level", self[CONFIG_KEY], False)
         if self.project_level == None:
             self.project_level = project_level
 
         # read schema
         self._schema_path = (
-            _select_value(
+            select_value(
                 "schema_path",
                 self[CONFIG_KEY],
                 False,
@@ -223,7 +206,7 @@ class PipestatManager(dict):
                 _LOGGER.debug(f"Loading results file: {self.file}")
                 self._load_results_file()
             flag_file_dir = (
-                _select_value("flag_file_dir", self[CONFIG_KEY], False)
+                select_value("flag_file_dir", self[CONFIG_KEY], False)
                 if flag_file_dir is None
                 else flag_file_dir
             ) or os.path.dirname(self.file)

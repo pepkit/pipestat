@@ -106,8 +106,8 @@ def mk_abs_via_cfg(
 
     Assumes a relative path is relative to cfg_path, or to current working directory if cfg_path is None.
 
-    : param path: The path to make absolute.
-    : param cfg_path: Relative paths will be relative the containing folder of this pat
+    : param str path: The path to make absolute.
+    : param str cfg_path: Relative paths will be relative the containing folder of this pat
     """
     if path is None:
         return path
@@ -126,6 +126,34 @@ def mk_abs_via_cfg(
     if os.path.isabs(joined):
         return joined
     raise OSError(f"Could not make this path absolute: {path}")
+
+def select_value(
+    arg_name: str,
+    cfg: dict,
+    strict: bool = True,
+    env_var: str = None,
+) -> Any:
+    """
+    Helper function to select a value from a config, or, if missing, then go to an env var.
+
+    :param str arg_name: Argument to retrieve
+    :param dict cfg: Config dictionary to retrieve from (highest priority)
+    :param bool strict: Should missing args raise an error? False=warning
+    :param env_var: Env var to retrieve from should it be missing from the cfg
+    """
+    if cfg.get(arg_name) is None:
+        if env_var is not None:
+            arg = os.getenv(env_var, None)
+            if arg is not None:
+                _LOGGER.debug(f"Value '{arg}' sourced from '{env_var}' env var")
+                return expandpath(arg)
+        message = f"Value for the required '{arg_name}' argument could not be determined."
+        if strict:
+            raise PipestatError(message)
+        _LOGGER.warning(message)
+        return
+    return cfg[arg_name]
+
 
 
 def dynamic_filter(
