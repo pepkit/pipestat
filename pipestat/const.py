@@ -18,6 +18,18 @@ __all__ = [
     "SCHEMA_ITEMS_KEY",
     "STATUS",
     "STATUS_SCHEMA",
+    "CFG_DATABASE_KEY",
+    "CONFIG_KEY",
+    "DATA_KEY",
+    "DB_COLUMN_KEY",
+    "DB_ENGINE_KEY",
+    "DB_ONLY_KEY",
+    "DB_ORMS_KEY",
+    "FILE_KEY",
+    "SCHEMA_KEY",
+    "STATUS_FILE_DIR",
+    "STATUS_SCHEMA_SOURCE_KEY",
+    "STATUS_SCHEMA_KEY",
 ]
 
 PKG_NAME = "pipestat"
@@ -84,3 +96,17 @@ CFG_SCHEMA = os.path.join(
 STATUS_SCHEMA = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "schemas", "status_schema.yaml"
 )
+
+
+CFG_DATABASE_KEY = "database"
+CONFIG_KEY = "_config"
+DATA_KEY = "_data"
+DB_COLUMN_KEY = "db_column"
+DB_ENGINE_KEY = "_db_engine"
+DB_ONLY_KEY = "_database_only"
+DB_ORMS_KEY = "_orms"
+FILE_KEY = "_file"
+SCHEMA_KEY = "_schema"
+STATUS_FILE_DIR = "_status_file_dir"
+STATUS_SCHEMA_KEY = "_status_schema"
+STATUS_SCHEMA_SOURCE_KEY = "_status_schema_source"

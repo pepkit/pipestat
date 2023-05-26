@@ -20,20 +20,6 @@ from .exceptions import *
 from .helpers import *
 from .parsed_schema import ParsedSchema
 
-CFG_DATABASE_KEY = "database"
-CONFIG_KEY = "_config"
-DATA_KEY = "_data"
-DB_COLUMN_KEY = "db_column"
-DB_ENGINE_KEY = "_db_engine"
-DB_ONLY_KEY = "_database_only"
-DB_ORMS_KEY = "_orms"
-FILE_KEY = "_file"
-SCHEMA_KEY = "_schema"
-STATUS_FILE_DIR = "_status_file_dir"
-STATUS_SCHEMA_KEY = "_status_schema"
-STATUS_SCHEMA_SOURCE_KEY = "_status_schema_source"
-
-
 _LOGGER = getLogger(PKG_NAME)
 
 

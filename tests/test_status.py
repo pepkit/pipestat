@@ -3,7 +3,7 @@
 import os
 import pytest
 from pipestat import PipestatManager
-from pipestat.pipestat import STATUS_FILE_DIR
+from pipestat.const import STATUS_FILE_DIR
 from .conftest import BACKEND_KEY_DB, BACKEND_KEY_FILE, DB_URL
 
 from .test_db_only_mode import ContextManagerDBTesting
