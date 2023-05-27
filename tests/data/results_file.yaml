@@ -1,5 +1,2 @@
 test_pipe:
-  constant_record_id:
-    name_of_something: test_name
-    number_of_things: 1
-    percentage_of_things: 10.1
+  Sample: {}
