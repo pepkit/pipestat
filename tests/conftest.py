@@ -32,7 +32,7 @@ _, DEFAULT_STATUS_DATA = read_yaml_data(
 @pytest.fixture
 def backend_data(request, config_file_path, results_file_path):
     if request.param == BACKEND_KEY_DB:
-        return {"config": config_file_path}
+        return {"config_file": config_file_path}
     elif request.param == BACKEND_KEY_FILE:
         return {"results_file_path": results_file_path}
     raise Exception(
