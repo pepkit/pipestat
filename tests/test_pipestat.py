@@ -18,7 +18,7 @@ from .conftest import (
 )
 
 CONST_REC_ID = "constant_record_id"
-PROJECT_SAMPLE_LEVEL = 'Sample'
+PROJECT_SAMPLE_LEVEL = "Sample"
 
 
 def assert_is_in_files(fs, s):
@@ -70,7 +70,10 @@ class TestReporting:
         print(backend)
         assert rec_id in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
         print("Test if", list(val.keys())[0], " is in ", rec_id)
-        assert list(val.keys())[0] in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
+        assert (
+            list(val.keys())[0]
+            in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
+        )
         if backend == "file":
             assert_is_in_files(results_file_path, str(list(val.values())[0]))
 
@@ -131,7 +134,10 @@ class TestReporting:
         psm = PipestatManager(**args)
         psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
         assert rec_id in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
-        assert list(val.keys())[0] in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
+        assert (
+            list(val.keys())[0]
+            in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
+        )
         if backend == "file":
             assert_is_in_files(results_file_path, str(list(val.values())[0]))
 
@@ -279,7 +285,10 @@ class TestRemoval:
         psm = PipestatManager(**args)
         psm.remove(result_identifier=res_id, record_identifier=rec_id)
         if backend != "db":
-            assert res_id not in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
+            assert (
+                res_id
+                not in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
+            )
         else:
             # TODO write something here to query db
             pass
@@ -402,7 +411,10 @@ class TestNoRecordID:
         if backend == "file":
             assert_is_in_files(results_file_path, str(list(val.values())[0]))
             assert CONST_REC_ID in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
-            assert list(val.keys())[0] in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][CONST_REC_ID]
+            assert (
+                list(val.keys())[0]
+                in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][CONST_REC_ID]
+            )
         if backend == "db":
             val_name = list(val.keys())[0]
             assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
