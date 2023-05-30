@@ -21,6 +21,7 @@ from .parsed_schema import ParsedSchema
 
 _LOGGER = getLogger(PKG_NAME)
 
+from .abstract import FileBackend, DBBackend
 
 class PipestatManager(dict):
     """
@@ -87,7 +88,8 @@ class PipestatManager(dict):
             self._config_path,
         )
 
-        if self[FILE_KEY]:
+        if self[FILE_KEY]:  # file backend
+            self.backend = FileBackend(record_identifier, schema_path, results_file_path, self.namespace)
             _LOGGER.debug(f"Determined file as backend: {results_file_path}")
             if self[DB_ONLY_KEY]:
                 _LOGGER.debug(
@@ -106,8 +108,9 @@ class PipestatManager(dict):
                 "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.file)
             )
             self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path)
-        else:
+        else:  # database backend
             _LOGGER.debug("Determined database as backend")
+            self.backend = DBBackend(record_identifier, schema_path, results_file_path, config_file, config_dict, flag_file_dir, show_db_logs, pipeline_type)
             if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
                 raise NoBackendSpecifiedError()
             try:
@@ -1117,7 +1120,6 @@ class PipestatManager(dict):
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
-
         values = deepcopy(values)
 
         record_identifier = self._strict_record_id(record_identifier)
@@ -1150,12 +1152,15 @@ class PipestatManager(dict):
 
         _LOGGER.warning("Writing to locked data...")
 
+        self.backend.report(values, record_identifier, force_overwrite, strict_type, return_id, pipeline_type)
+
         if not self[DB_ONLY_KEY]:
             self._report_data_element(
                 record_identifier=record_identifier,
                 values=values,
                 pipeline_type=pipeline_type,
             )
+
         if self.file is not None:
             with self.data as locked_data:
                 locked_data.write()
@@ -1219,35 +1224,7 @@ class PipestatManager(dict):
                 returned_id = record_to_update.id
         return returned_id
 
-    def _report_data_element(
-        self,
-        record_identifier: str,
-        values: Dict[str, Any],
-        pipeline_type: Optional[str] = None,
-        table_name: Optional[bool] = None,
-    ) -> None:
-        """
-        Update the value of a result in a current namespace.
-
-        This method overwrites any existing data and creates the required
-         hierarchical mapping structure if needed.
-
-        :param str record_identifier: unique identifier of the record
-        :param Dict[str, Any] values: dict of results identifiers and values
-            to be reported
-        :param str table_name: name of the table to report the result in
-        """
-
-        pipeline_type = pipeline_type or self.pipeline_type
-
-        # TODO: update to disambiguate sample- / project-level
-        self[DATA_KEY].setdefault(self.namespace, {})
-        # self[DATA_KEY][self.namespace].setdefault(record_identifier, {})
-        self[DATA_KEY][self.namespace].setdefault(pipeline_type, {})
-        self[DATA_KEY][self.namespace][pipeline_type].setdefault(record_identifier, {})
-        for res_id, val in values.items():
-            self[DATA_KEY][self.namespace][pipeline_type][record_identifier][res_id] = val
-            # self[DATA_KEY][self.namespace][record_identifier][res_id] = val
+ 
 
     def remove(
         self,
