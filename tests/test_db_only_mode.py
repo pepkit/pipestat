@@ -28,9 +28,7 @@ class ContextManagerDBTesting:
 
 class TestDatabaseOnly:
     # TODO: parameterize this against different schemas.
-    def test_manager_can_be_built_without_exception(
-        self, config_file_path, schema_file_path
-    ):
+    def test_manager_can_be_built_without_exception(self, config_file_path, schema_file_path):
         with ContextManagerDBTesting(DB_URL) as connection:
             try:
                 PipestatManager(
@@ -101,9 +99,7 @@ class TestDatabaseOnly:
                         strict_type=False,
                         pipeline_type=pipeline_type,
                     )
-                    assert psm.select(
-                        filter_conditions=[(val_name, "eq", val[val_name])]
-                    )
+                    assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
                 else:
                     pass
                     # assert that this would fail to report otherwise.
@@ -116,9 +112,7 @@ class TestDatabaseOnly:
                         pipeline_type=pipeline_type,
                     )
                     val_name = list(val.keys())[0]
-                    assert psm.select(
-                        filter_conditions=[(val_name, "eq", val[val_name])]
-                    )
+                    assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
                 else:
                     pass
                     # assert that this would fail to report otherwise.
@@ -153,9 +147,7 @@ class TestDatabaseOnly:
             {
                 "output_file_in_object": {
                     "properties": {
-                        "prop1": {
-                            "properties": {"path": "pathstring", "title": "titlestring"}
-                        }
+                        "prop1": {"properties": {"path": "pathstring", "title": "titlestring"}}
                     }
                 }
             },

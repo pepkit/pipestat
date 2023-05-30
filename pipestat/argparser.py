@@ -40,9 +40,7 @@ def _env_txt(arg_name):
     """
     arg_val = os.environ.get(ENV_VARS[arg_name])
     txt = f"If not provided '{ENV_VARS[arg_name]}' env var will be used. "
-    return txt + (
-        "Currently not set" if arg_val is None else f"Currently set to: {arg_val}"
-    )
+    return txt + ("Currently not set" if arg_val is None else f"Currently set to: {arg_val}")
 
 
 def build_argparser(desc):
@@ -145,8 +143,7 @@ def build_argparser(desc):
             "--flag-dir",
             type=str,
             metavar="FD",
-            help=f"Path to the flag directory in case YAML file is "
-            f"the pipestat backend.",
+            help=f"Path to the flag directory in case YAML file is " f"the pipestat backend.",
         )
         status_sps[cmd].add_argument(
             "-r",
@@ -199,8 +196,7 @@ def build_argparser(desc):
             "--flag-dir",
             type=str,
             metavar="FD",
-            help=f"Path to the flag directory in case YAML file is "
-            f"the pipestat backend.",
+            help=f"Path to the flag directory in case YAML file is " f"the pipestat backend.",
         )
 
     # remove and report
@@ -234,8 +230,7 @@ def build_argparser(desc):
         "-o",
         "--overwrite",
         action="store_true",
-        help="Whether the result should override existing ones in "
-        "case of name clashes",
+        help="Whether the result should override existing ones in " "case of name clashes",
     )
 
     sps[REPORT_CMD].add_argument(

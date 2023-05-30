@@ -23,9 +23,7 @@ class TestPipestatManagerInstantiation:
 
     def test_obj_creation_db(self, config_file_path):
         """Object constructor works with database as backend"""
-        assert isinstance(
-            PipestatManager(config_file=config_file_path), PipestatManager
-        )
+        assert isinstance(PipestatManager(config_file=config_file_path), PipestatManager)
 
     def test_schema_is_required_to_create_manager(self, results_file_path):
         """
@@ -44,15 +42,11 @@ class TestPipestatManagerInstantiation:
         )
         assert (
             "path"
-            in psm.result_schemas["output_file_in_object"]["properties"]["prop1"][
-                "properties"
-            ]
+            in psm.result_schemas["output_file_in_object"]["properties"]["prop1"]["properties"]
         )
         assert (
             "thumbnail_path"
-            in psm.result_schemas["output_file_in_object"]["properties"]["prop2"][
-                "properties"
-            ]
+            in psm.result_schemas["output_file_in_object"]["properties"]["prop2"]["properties"]
         )
 
     def test_missing_cfg_data(self, schema_file_path):
@@ -124,7 +118,5 @@ class TestPipestatManagerInstantiation:
     @pytest.mark.xfail(reason="Need to re-implement record count")
     def test_str_representation(self, results_file_path, schema_file_path):
         """Test string representation identifies number of records"""
-        psm = PipestatManager(
-            results_file_path=results_file_path, schema_path=schema_file_path
-        )
+        psm = PipestatManager(results_file_path=results_file_path, schema_path=schema_file_path)
         assert f"Records count: {len(psm.data[psm.namespace])}" in str(psm)

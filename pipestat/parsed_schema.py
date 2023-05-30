@@ -75,28 +75,20 @@ class ParsedSchema(object):
             )
 
         # Parse sample-level data item declarations.
-        sample_data = _safe_pop_one_mapping(
-            key="samples", data=data, info_name="sample-level"
-        )
+        sample_data = _safe_pop_one_mapping(key="samples", data=data, info_name="sample-level")
 
         self._sample_level_data = _recursively_replace_custom_types(sample_data)
 
         # Parse project-level data item declarations.
-        prj_data = _safe_pop_one_mapping(
-            key="project", data=data, info_name="project-level"
-        )
+        prj_data = _safe_pop_one_mapping(key="project", data=data, info_name="project-level")
         self._project_level_data = _recursively_replace_custom_types(prj_data)
 
         # Sample- and/or project-level data must be declared.
         if not self._sample_level_data and not self._project_level_data:
-            raise SchemaError(
-                "Neither sample-level nor project-level data items are declared."
-            )
+            raise SchemaError("Neither sample-level nor project-level data items are declared.")
 
         # Parse custom status declaration if present.
-        self._status_data = _safe_pop_one_mapping(
-            key="status", data=data, info_name="status"
-        )
+        self._status_data = _safe_pop_one_mapping(key="status", data=data, info_name="status")
 
         if data:
             raise SchemaError(
@@ -114,9 +106,7 @@ class ParsedSchema(object):
             )
 
         # Check that no data item name overlap exists between project- and sample-level data.
-        project_sample_overlap = set(self.project_level_data) & set(
-            self.sample_level_data
-        )
+        project_sample_overlap = set(self.project_level_data) & set(self.sample_level_data)
         if project_sample_overlap:
             raise SchemaError(
                 f"Overlap between project- and sample-level keys: {', '.join(project_sample_overlap)}"
@@ -159,18 +149,13 @@ class ParsedSchema(object):
                 typename = subdata[SCHEMA_TYPE_KEY]
             except KeyError:
                 if require_type:
-                    _LOGGER.error(
-                        f"'{SCHEMA_TYPE_KEY}' is required for each schema element"
-                    )
+                    _LOGGER.error(f"'{SCHEMA_TYPE_KEY}' is required for each schema element")
                     raise
                 else:
                     data_type = str
             else:
                 data_type = self._get_data_type(typename)
-            if (
-                data_type == CLASSES_BY_TYPE["object"]
-                or data_type == CLASSES_BY_TYPE["array"]
-            ):
+            if data_type == CLASSES_BY_TYPE["object"] or data_type == CLASSES_BY_TYPE["array"]:
                 defs[name] = (
                     data_type,
                     Field(sa_column=Column(JSONB), default={}),
@@ -224,9 +209,7 @@ class ParsedSchema(object):
     def _add_namespace_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
         id_key = "namespace"  # TODO disambiguate namespace and piepline_id within PSM
         if id_key in field_defs:
-            raise SchemaError(
-                f"'{id_key}' is reserved as identifier and can't be part of schema."
-            )
+            raise SchemaError(f"'{id_key}' is reserved as identifier and can't be part of schema.")
         field_defs[id_key] = (str, Field(default=None))
 
         return field_defs
@@ -248,9 +231,7 @@ class ParsedSchema(object):
     def _add_record_identifier_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
         id_key = "record_identifier"
         if id_key in field_defs:
-            raise SchemaError(
-                f"'{id_key}' is reserved as identifier and can't be part of schema."
-            )
+            raise SchemaError(f"'{id_key}' is reserved as identifier and can't be part of schema.")
         # field_defs[id_key] = (str, Field(unique=True))
         # TODO: ensure this is required AND unique
         # field_defs[id_key] = (str, ...)
@@ -289,9 +270,7 @@ def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:
     :return dict: schema with types replaced
     """
     for k, v in s.items():
-        missing_req_keys = [
-            req for req in [SCHEMA_TYPE_KEY, SCHEMA_DESC_KEY] if req not in v
-        ]
+        missing_req_keys = [req for req in [SCHEMA_TYPE_KEY, SCHEMA_DESC_KEY] if req not in v]
         if missing_req_keys:
             raise SchemaError(
                 f"Result '{k}' is missing required key(s): {', '.join(missing_req_keys)}"

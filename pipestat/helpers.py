@@ -47,13 +47,10 @@ def validate_type(value, schema, strict_type=False):
                     cls_fun = CLASSES_BY_TYPE[prop_dict[SCHEMA_TYPE_KEY]]
                     value[prop] = cls_fun(value[prop])
                 except Exception as e:
-                    _LOGGER.error(
-                        f"Could not cast the result into " f"required type: {str(e)}"
-                    )
+                    _LOGGER.error(f"Could not cast the result into " f"required type: {str(e)}")
                 else:
                     _LOGGER.debug(
-                        f"Casted the reported result into required "
-                        f"type: {str(cls_fun)}"
+                        f"Casted the reported result into required " f"type: {str(cls_fun)}"
                     )
         jsonschema.validate(value, schema)
     else:
@@ -74,9 +71,7 @@ def read_yaml_data(path: Union[str, Path], what: str) -> Tuple[str, Dict[str, An
         path = expandpath(path)
         test = os.path.isfile
     else:
-        raise TypeError(
-            f"Alleged path to YAML file to read is neither path nor string: {path}"
-        )
+        raise TypeError(f"Alleged path to YAML file to read is neither path nor string: {path}")
     assert test(path), FileNotFoundError(f"File not found: {path}")
     _LOGGER.debug(f"Reading {what} from '{path}'")
     with open(path, "r") as f:
@@ -118,9 +113,7 @@ def mk_abs_via_cfg(
         return path
     if cfg_path is None:
         rel_to_cwd = os.path.join(os.getcwd(), path)
-        if os.path.exists(rel_to_cwd) or os.access(
-            os.path.dirname(rel_to_cwd), os.W_OK
-        ):
+        if os.path.exists(rel_to_cwd) or os.access(os.path.dirname(rel_to_cwd), os.W_OK):
             return rel_to_cwd
         else:
             raise OSError(f"File not found: {path}")
@@ -143,13 +136,9 @@ def construct_db_url(dbconf):
             driver=dbconf["driver"],
         )  # driver = sqlite, mysql, postgresql, oracle, or mssql
     except KeyError as e:
-        raise MissingConfigDataError(
-            f"Could not determine database URL. Caught error: {str(e)}"
-        )
+        raise MissingConfigDataError(f"Could not determine database URL. Caught error: {str(e)}")
     parsed_creds = {k: quote_plus(str(v)) for k, v in creds.items()}
-    return "{dialect}+{driver}://{user}:{passwd}@{host}:{port}/{name}".format(
-        **parsed_creds
-    )
+    return "{dialect}+{driver}://{user}:{passwd}@{host}:{port}/{name}".format(**parsed_creds)
 
 
 def dynamic_filter(
@@ -190,9 +179,7 @@ def dynamic_filter(
             if column is None:
                 raise ValueError(f"Selected filter column does not exist: {key}")
             if op == "in":
-                filt = column.in_(
-                    value if isinstance(value, list) else value.split(",")
-                )
+                filt = column.in_(value if isinstance(value, list) else value.split(","))
             else:
                 attr = next(
                     filter(lambda a: hasattr(column, a), [op, op + "_", f"__{op}__"]),

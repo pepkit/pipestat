@@ -149,9 +149,7 @@ EXPECTED_SUBDATA_BY_EXAMPLE_FILE = [
         for attr, exp in attr_exp_pairs
     ],
 )
-def test_parsed_schema__has_correct_data(
-    prepare_schema_from_file, filename, attr_name, expected
-):
+def test_parsed_schema__has_correct_data(prepare_schema_from_file, filename, attr_name, expected):
     data_file = get_data_file_path(filename)
     raw_schema = prepare_schema_from_file(data_file)
     schema = ParsedSchema(raw_schema)
@@ -202,18 +200,13 @@ SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_ID = [
     ]
     + [
         (
-            dict(
-                data
-                + [(SCHEMA_PIPELINE_ID_KEY, "test_pipe"), ("extra_key", "placeholder")]
-            ),
+            dict(data + [(SCHEMA_PIPELINE_ID_KEY, "test_pipe"), ("extra_key", "placeholder")]),
             "Extra top-level key(s) in given schema data: extra_key",
         )
         for data in SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_ID
     ],
 )
-def test_insufficient_schema__raises_expected_error_and_message(
-    schema_data, expected_message
-):
+def test_insufficient_schema__raises_expected_error_and_message(schema_data, expected_message):
     with pytest.raises(SchemaError) as err_ctx:
         ParsedSchema(schema_data)
     observed_message = str(err_ctx.value)
@@ -221,9 +214,7 @@ def test_insufficient_schema__raises_expected_error_and_message(
 
 
 SIMPLE_ID_SECTION = [(SCHEMA_PIPELINE_ID_KEY, "test_pipe")]
-SIMPLE_SAMPLES_DATA = [
-    ("count", {"type": "integer", "description": "number of things"})
-]
+SIMPLE_SAMPLES_DATA = [("count", {"type": "integer", "description": "number of things"})]
 SIMPLE_PROJECT_DATA = [("pct", {"type": "number", "description": "percentage"})]
 
 

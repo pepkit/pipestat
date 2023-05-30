@@ -26,9 +26,7 @@ extra["install_requires"] = DEPENDENCIES
 def get_static(name, condition=None):
     static = [
         os.path.join(name, f)
-        for f in os.listdir(
-            os.path.join(os.path.dirname(os.path.realpath(__file__)), name)
-        )
+        for f in os.listdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), name))
     ]
     if condition is None:
         return static
@@ -79,8 +77,6 @@ setup(
     include_package_data=True,
     test_suite="tests",
     tests_require=(["mock", "pytest"]),
-    setup_requires=(
-        ["pytest-runner"] if {"test", "pytest", "ptr"} & set(sys.argv) else []
-    ),
-    **extra
+    setup_requires=(["pytest-runner"] if {"test", "pytest", "ptr"} & set(sys.argv) else []),
+    **extra,
 )
