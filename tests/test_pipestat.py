@@ -493,7 +493,7 @@ class TestEnvVars:
 
 def test_no_constructor_args__raises_expected_exception():
     """See Issue #3 in the repository."""
-    with pytest.raises(NoBackendSpecifiedError):
+    with pytest.raises(SchemaNotFoundError):
         PipestatManager()
 
 

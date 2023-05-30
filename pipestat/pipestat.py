@@ -66,24 +66,48 @@ class PipestatManager(dict):
         # Load and validate database configuration
         # If results_file_path is truthy, backend is a file
         # Otherwise, backend is a database.
-        config = select_config(config_file, ENV_VARS["config"])
-        _LOGGER.info(
-            f"Config path: {config}; env: {ENV_VARS['config']}, config_file: {config_file}"
-        )
-        self._config_path = config
-        self[CONFIG_KEY] = YAMLConfigManager(entries=config_dict, filepath=config)
-        cfg = self[CONFIG_KEY].exp
+        self._config_path = select_config(config_file, ENV_VARS["config"])
+        _LOGGER.info(f"Config: {self._config_path}.")
+        self[CONFIG_KEY] = YAMLConfigManager(entries=config_dict, filepath=self._config_path)
         _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
-        validate(cfg, cfg_schema)
+        validate(self[CONFIG_KEY].exp, cfg_schema)
 
-        results_file_path = mk_abs_via_cfg(
+        self.process_schema(schema_path)
+
+        self[RECORD_ID_KEY] = self[CONFIG_KEY].priority_get(
+            "record_identifier", env_var=ENV_VARS["record_identifier"], override=record_identifier
+        )
+        self[DB_ONLY_KEY] = database_only
+        self.pipeline_type = self[CONFIG_KEY].priority_get("pipeline_type", default="sample")
+
+        self[FILE_KEY] = mk_abs_via_cfg(
             self[CONFIG_KEY].priority_get(
                 "results_file_path", env_var=ENV_VARS["results_file"], override=results_file_path
             ),
-            self.config_path,
+            self._config_path,
         )
 
-        if not results_file_path:
+        if self[FILE_KEY]:
+            _LOGGER.debug(f"Determined file as backend: {results_file_path}")
+            if self[DB_ONLY_KEY]:
+                _LOGGER.debug(
+                    "Running in database only mode does not make sense with a YAML file as a backend. "
+                    "Changing back to using memory."
+                )
+                self[DB_ONLY_KEY] = False
+
+            if not os.path.exists(self.file):
+                _LOGGER.debug(f"Results file doesn't yet exist. Initializing: {self.file}")
+                self._init_results_file()
+            else:
+                _LOGGER.debug(f"Loading results file: {self.file}")
+                self._load_results_file()
+            flag_file_dir = self[CONFIG_KEY].priority_get(
+                "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.file)
+            )
+            self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path)
+        else:
+            _LOGGER.debug("Determined database as backend")
             if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
                 raise NoBackendSpecifiedError()
             try:
@@ -93,59 +117,6 @@ class PipestatManager(dict):
                 raise PipestatDatabaseError(
                     f"No database section ('{CFG_DATABASE_KEY}') in config"
                 )
-
-        self[RECORD_ID_KEY] = self[CONFIG_KEY].priority_get(
-            "record_identifier", env_var=ENV_VARS["record_identifier"], override=record_identifier
-        )
-        self[DB_ONLY_KEY] = database_only
-
-        self.pipeline_type = self[CONFIG_KEY].priority_get(
-            "pipeline_type", default="sample"
-        )  # sample or project
-
-        # Load pipestat schema in two parts: 1) main and 2) status
-        self._schema_path = self[CONFIG_KEY].priority_get(
-            "schema_path", env_var=ENV_VARS["schema"], override=schema_path
-        )
-
-        if self._schema_path is None:
-            raise SchemaNotFoundError("PipestatManager creation failed; no schema")
-
-        # Main schema
-        schema_to_read = mk_abs_via_cfg(self._schema_path, self.config_path)
-        parsed_schema = ParsedSchema(schema_to_read)
-        self[SCHEMA_KEY] = parsed_schema
-
-        # Status schema
-        self[STATUS_SCHEMA_KEY] = parsed_schema.status_data
-        if not self[STATUS_SCHEMA_KEY]:
-            self[STATUS_SCHEMA_SOURCE_KEY], self[STATUS_SCHEMA_KEY] = read_yaml_data(
-                path=STATUS_SCHEMA, what="default status schema"
-            )
-        else:
-            self[STATUS_SCHEMA_SOURCE_KEY] = schema_to_read
-
-        if results_file_path:
-            _LOGGER.debug(f"Determined file as backend: {results_file_path}")
-            if self[DB_ONLY_KEY]:
-                _LOGGER.debug(
-                    "Running in database only mode does not make sense with a YAML file as a backend. "
-                    "Changing back to using memory."
-                )
-                self[DB_ONLY_KEY] = False
-            self[FILE_KEY] = results_file_path
-            if not os.path.exists(self.file):
-                _LOGGER.debug(f"Results file doesn't yet exist. Initializing: {self.file}")
-                self._init_results_file()
-            else:
-                _LOGGER.debug(f"Loading results file: {self.file}")
-                self._load_results_file()
-            flag_file_dir = (
-                self[CONFIG_KEY].get("flag_file_dir") if flag_file_dir is None else flag_file_dir
-            ) or os.path.dirname(self.file)
-            self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path)
-        else:
-            _LOGGER.debug("Determined database as backend")
             self[DATA_KEY] = YAMLConfigManager()
             self._show_db_logs = show_db_logs
             self[DB_ORMS_KEY] = self._create_orms()
@@ -170,6 +141,29 @@ class PipestatManager(dict):
         if high_res:
             res += f"\nHighlighted results: {', '.join(high_res)}"
         return res
+
+    def process_schema(self, schema_path):
+        # Load pipestat schema in two parts: 1) main and 2) status
+        self._schema_path = self[CONFIG_KEY].priority_get(
+            "schema_path", env_var=ENV_VARS["schema"], override=schema_path
+        )
+
+        if self._schema_path is None:
+            raise SchemaNotFoundError("PipestatManager creation failed; no schema")
+
+        # Main schema
+        schema_to_read = mk_abs_via_cfg(self._schema_path, self.config_path)
+        parsed_schema = ParsedSchema(schema_to_read)
+        self[SCHEMA_KEY] = parsed_schema
+
+        # Status schema
+        self[STATUS_SCHEMA_KEY] = parsed_schema.status_data
+        if not self[STATUS_SCHEMA_KEY]:
+            self[STATUS_SCHEMA_SOURCE_KEY], self[STATUS_SCHEMA_KEY] = read_yaml_data(
+                path=STATUS_SCHEMA, what="default status schema"
+            )
+        else:
+            self[STATUS_SCHEMA_SOURCE_KEY] = schema_to_read
 
     @property
     def record_count(self) -> int:
