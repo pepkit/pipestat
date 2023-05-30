@@ -77,8 +77,10 @@ class PipestatManager(dict):
         validate(cfg, cfg_schema)
 
         results_file_path = mk_abs_via_cfg(
-            self[CONFIG_KEY].priority_get("results_file_path", env_var=ENV_VARS["results_file"], override=results_file_path),
-            self.config_path
+            self[CONFIG_KEY].priority_get(
+                "results_file_path", env_var=ENV_VARS["results_file"], override=results_file_path
+            ),
+            self.config_path,
         )
 
         if not results_file_path:
@@ -93,13 +95,13 @@ class PipestatManager(dict):
                 )
 
         self[RECORD_ID_KEY] = self[CONFIG_KEY].priority_get(
-            "record_identifier",
-            env_var=ENV_VARS["record_identifier"],
-            override=record_identifier
+            "record_identifier", env_var=ENV_VARS["record_identifier"], override=record_identifier
         )
         self[DB_ONLY_KEY] = database_only
 
-        self.pipeline_type = self[CONFIG_KEY].priority_get("pipeline_type", default="sample")  # sample or project
+        self.pipeline_type = self[CONFIG_KEY].priority_get(
+            "pipeline_type", default="sample"
+        )  # sample or project
 
         # Load pipestat schema in two parts: 1) main and 2) status
         self._schema_path = self[CONFIG_KEY].priority_get(
@@ -325,7 +327,6 @@ class PipestatManager(dict):
             session.close()
         _LOGGER.debug("Ending session")
 
-
     def _get_flag_file(self, record_identifier: str = None) -> Union[str, List[str], None]:
         """
         Get path to the status flag file for the specified record
@@ -397,7 +398,9 @@ class PipestatManager(dict):
                     f"Cannot determine table suffix with 2 models present and no project-level flag"
                 )
             prelim = (
-                self.schema.project_table_name if pipeline_type == "project" else self.schema.sample_table_name
+                self.schema.project_table_name
+                if pipeline_type == "project"
+                else self.schema.sample_table_name
             )
             if prelim in mods:
                 return prelim
@@ -1118,7 +1121,7 @@ class PipestatManager(dict):
         :return bool | int: whether the result has been reported or the ID of
             the updated record in the table, if requested
         """
-        
+
         pipeline_type = pipeline_type or self.pipeline_type
 
         values = deepcopy(values)
