@@ -167,7 +167,10 @@ class ParsedSchema(object):
                     data_type = str
             else:
                 data_type = self._get_data_type(typename)
-            if data_type == dict or data_type == list[dict]:
+            if (
+                data_type == CLASSES_BY_TYPE["object"]
+                or data_type == CLASSES_BY_TYPE["array"]
+            ):
                 defs[name] = (
                     data_type,
                     Field(sa_column=Column(JSONB), default={}),

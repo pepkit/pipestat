@@ -18,7 +18,7 @@ from .conftest import (
 )
 
 CONST_REC_ID = "constant_record_id"
-PROJECT_SAMPLE_LEVEL = "Sample"
+PROJECT_SAMPLE_LEVEL = "sample"
 
 
 def assert_is_in_files(fs, s):
@@ -384,7 +384,7 @@ class TestNoRecordID:
         ],
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
-    @pytest.mark.parametrize("project_level", [False])
+    @pytest.mark.parametrize("pipeline_type", ["sample"])
     def test_report(
         self,
         val,
@@ -392,7 +392,7 @@ class TestNoRecordID:
         schema_file_path,
         results_file_path,
         backend,
-        project_level,
+        pipeline_type,
     ):
         args = dict(
             schema_path=schema_file_path,
@@ -407,7 +407,7 @@ class TestNoRecordID:
         )
         args.update(backend_data)
         psm = PipestatManager(**args)
-        psm.report(values=val, project_level=project_level)
+        psm.report(values=val, pipeline_type=pipeline_type)
         if backend == "file":
             assert_is_in_files(results_file_path, str(list(val.values())[0]))
             assert CONST_REC_ID in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]

@@ -77,13 +77,13 @@ class TestDatabaseOnly:
             {"percentage_of_things": 10.1},
         ],
     )
-    @pytest.mark.parametrize("project_level", [True, False])
+    @pytest.mark.parametrize("pipeline_type", ["project", "sample"])
     def test_report_samples_and_project(
         self,
         val,
         config_file_path,
         schema_with_project_with_samples_without_status,
-        project_level,
+        pipeline_type,
     ):
         with ContextManagerDBTesting(DB_URL) as connection:
             psm = PipestatManager(
@@ -93,13 +93,13 @@ class TestDatabaseOnly:
                 config_file=config_file_path,
             )
             val_name = list(val.keys())[0]
-            if project_level is True:
+            if pipeline_type is True:
                 if val_name in psm.schema.project_level_data:
                     psm.report(
                         values=val,
                         force_overwrite=True,
                         strict_type=False,
-                        project_level=project_level,
+                        pipeline_type=pipeline_type,
                     )
                     assert psm.select(
                         filter_conditions=[(val_name, "eq", val[val_name])]
@@ -107,13 +107,13 @@ class TestDatabaseOnly:
                 else:
                     pass
                     # assert that this would fail to report otherwise.
-            if project_level is False:
+            if pipeline_type == "sample":
                 if val_name in psm.schema.sample_level_data:
                     psm.report(
                         values=val,
                         force_overwrite=True,
                         strict_type=False,
-                        project_level=project_level,
+                        pipeline_type=pipeline_type,
                     )
                     val_name = list(val.keys())[0]
                     assert psm.select(
