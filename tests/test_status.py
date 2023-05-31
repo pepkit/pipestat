@@ -33,23 +33,17 @@ def test_status_not_configured(schema_file_path, config_file_path, backend_data,
         assert psm.get_status(record_identifier="sample1") == status_id
 
 
-@pytest.mark.skip(
-    reason="need to reimplement with combinatorial pairing of custom status schema with other schema elements"
-)
 @pytest.mark.parametrize("backend_data", [BACKEND_KEY_FILE, BACKEND_KEY_DB], indirect=True)
 @pytest.mark.parametrize("status_id", ["running_custom", "failed_custom", "completed_custom"])
-@pytest.mark.parametrize(
-    "custom_status_schema", ["This is just a placeholder until reimplemented."]
-)
 def test_custom_status_schema(
     backend_data,
     status_id,
-    custom_status_schema,
+    custom_status_schema2,
 ):
     """Status management works even in case it has not been configured."""
     # TODO: reimplement
     args = dict(
-        schema_path=custom_status_schema,
+        schema_path=custom_status_schema2,
     )
     args.update(backend_data)
     psm = PipestatManager(**args)

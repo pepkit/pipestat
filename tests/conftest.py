@@ -71,3 +71,13 @@ def schema_with_project_with_samples_without_status():
     return get_data_file_path(
         "sample_output_schema__with_project_with_samples_without_status.yaml"
     )
+
+
+@pytest.fixture
+def custom_status_schema():
+    return get_data_file_path("custom_status_schema.yaml")
+
+
+@pytest.fixture
+def custom_status_schema2():
+    return get_data_file_path("custom_status_schema_2.yaml")

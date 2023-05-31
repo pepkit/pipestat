@@ -8,6 +8,7 @@ from yaml import dump
 from pipestat import PipestatManager
 from pipestat.exceptions import *
 from pipestat.parsed_schema import SCHEMA_PIPELINE_ID_KEY
+from tempfile import NamedTemporaryFile
 
 
 class TestPipestatManagerInstantiation:
@@ -107,17 +108,39 @@ class TestPipestatManagerInstantiation:
         with pytest.raises((TypeError, AssertionError)):
             PipestatManager(results_file_path=pth, schema_path=schema_file_path)
 
-    @pytest.mark.xfail(reason="Re-implement after context manager usage in test_pipestat")
     def test_results_file_contents_loaded(self, results_file_path, schema_file_path):
         """Contents of the results file are present after loading"""
-        psm = PipestatManager(
-            results_file_path=results_file_path,
-            schema_path=schema_file_path,
-        )
-        assert "test_pipe" in psm.data
+        with NamedTemporaryFile() as f:
+            results_file_path = f.name
+            psm = PipestatManager(
+                results_file_path=results_file_path,
+                schema_path=schema_file_path,
+            )
+            val_dict = {
+                "sample1": {"name_of_something": "test_name"},
+                "sample1": {"number_of_things": 2},
+            }
+            for k, v in val_dict.items():
+                psm.report(record_identifier=k, values=v, force_overwrite=True)
+            # Check that a new pipestatmanager object can correctly read the results_file.
+            psm2 = PipestatManager(
+                results_file_path=results_file_path,
+                schema_path=schema_file_path,
+            )
+            assert "test_pipe" in psm2.data
 
-    @pytest.mark.xfail(reason="Re-implement after context manager usage in test_pipestat")
     def test_str_representation(self, results_file_path, schema_file_path):
         """Test string representation identifies number of records"""
-        psm = PipestatManager(results_file_path=results_file_path, schema_path=schema_file_path)
-        assert f"Records count: {len(psm.data[psm.namespace])}" in str(psm)
+        with NamedTemporaryFile() as f:
+            results_file_path = f.name
+            psm = PipestatManager(
+                results_file_path=results_file_path,
+                schema_path=schema_file_path,
+            )
+            val_dict = {
+                "sample1": {"name_of_something": "test_name"},
+                "sample1": {"number_of_things": 2},
+            }
+            for k, v in val_dict.items():
+                psm.report(record_identifier=k, values=v, force_overwrite=True)
+            assert f"Records count: {len(psm.data[psm.namespace])}" in str(psm)
