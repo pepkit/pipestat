@@ -45,6 +45,12 @@ class PipestatBackend(ABC):
     ) -> Union[bool, int]:
         _LOGGER.warning("report not implemented yet for this backend")
 
+    def check_result_exists():
+        pass
+
+    def check_which_results_exist():
+        pass
+
     def retrieve():
         pass
 
@@ -188,11 +194,11 @@ class FileBackend(PipestatBackend):
         # ):
         #     _LOGGER.error(f"Record '{r_id}' not found")
         #     return False
-        # if result_identifier and not self.check_result_exists(
-        #     result_identifier, r_id, pipeline_type=pipeline_type
-        # ):
-        #     _LOGGER.error(f"'{result_identifier}' has not been reported for '{r_id}'")
-        #     return False
+        if result_identifier and not self.check_result_exists(
+            result_identifier, record_identifier, pipeline_type=pipeline_type
+        ):
+            _LOGGER.error(f"'{result_identifier}' has not been reported for '{record_identifier}'")
+            return False
 
         if rm_record:
             _LOGGER.info(f"Removing '{record_identifier}' record")
@@ -233,6 +239,60 @@ class FileBackend(PipestatBackend):
         #             ] = val_backup
         #         raise
         return True
+
+    def check_which_results_exist(
+        self,
+        results: List[str],
+        result_identifier: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
+    ) -> List[str]:
+        """
+        Check which results have been reported
+
+        :param List[str] results: names of the results to check
+        :param str rid: unique identifier of the record
+        :param str table_name: name of the table for which to check results
+        :return List[str]: names of results which exist
+        """
+
+        # pipeline_type = pipeline_type or self.pipeline_type
+        # rid = self._strict_record_id(rid)
+
+        if self.project_name not in self.DATA_KEY:
+            return []
+
+        return [
+            r
+            for r in results
+            if result_identifier in self.DATA_KEY[self.project_name][pipeline_type]
+            and r in self.DATA_KEY[self.project_name][pipeline_type][result_identifier]
+        ]
+
+    def check_result_exists(
+        self,
+        result_identifier: str,
+        record_identifier: str = None,
+        pipeline_type: Optional[str] = None,
+    ) -> bool:
+        """
+        Check if the result has been reported
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to check
+        :return bool: whether the specified result has been reported for the
+            indicated record in current namespace
+        """
+        # record_identifier = self._strict_record_id(record_identifier)
+        return (
+            len(
+                self.check_which_results_exist(
+                    results=[result_identifier],
+                    result_identifier=record_identifier,
+                    pipeline_type=pipeline_type,
+                )
+            )
+            > 0
+        )
 
 
 class DBBackend(PipestatBackend):
