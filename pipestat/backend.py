@@ -71,23 +71,28 @@ class PipestatBackend(ABC):
             > 0
         )
 
-    def check_which_results_exist():
+    def check_which_results_exist(self) -> List[str]:
         pass
 
-    def retrieve():
+    def retrieve(self):
         pass
 
-    def set_status():
+    def set_status(self):
         pass
 
-    def get_status():
+    def get_status(self):
         pass
 
-    def clear_status():
+    def clear_status(self):
         pass
 
-    def remove():
-        pass
+    def remove(
+        self,
+        record_identifier: Optional[str] = None,
+        result_identifier: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
+    ) -> bool:
+        _LOGGER.warning("debug remove function abstract class")
 
 
 class FileBackend(PipestatBackend):
@@ -205,18 +210,20 @@ class FileBackend(PipestatBackend):
         pipeline_type = pipeline_type or self.pipeline_type
         record_identifier = record_identifier or self.record_identifier
 
+        # TODO revisit strict_record_id here
+
         # r_id = self._strict_record_id(record_identifier)
         # r_id = record_identifier
 
         rm_record = True if result_identifier is None else False
 
-        # if not self.check_record_exists(
-        #     record_identifier=r_id,
-        #     table_name=self.namespace,
-        #     pipeline_type=pipeline_type,
-        # ):
-        #     _LOGGER.error(f"Record '{r_id}' not found")
-        #     return False
+        if not self.check_record_exists(
+            record_identifier=record_identifier,
+            pipeline_type=pipeline_type,
+        ):
+            _LOGGER.error(f"Record '{record_identifier}' not found")
+            return False
+
         if result_identifier and not self.check_result_exists(
             result_identifier, record_identifier, pipeline_type=pipeline_type
         ):
@@ -247,20 +254,6 @@ class FileBackend(PipestatBackend):
 
             with self.DATA_KEY as locked_data:
                 locked_data.write()
-
-        # if self.file is None:
-        #     try:
-        #         self._remove_db(
-        #             record_identifier=r_id,
-        #             result_identifier=None if rm_record else result_identifier,
-        #         )
-        #     except Exception as e:
-        #         _LOGGER.error(f"Could not remove the result from the database. Exception: {e}")
-        #         if not self[DB_ONLY_KEY] and not rm_record:
-        #             self[DATA_KEY][self.namespace][pipeline_type][r_id][
-        #                 result_identifier
-        #             ] = val_backup
-        #         raise
         return True
 
     def check_which_results_exist(
@@ -290,6 +283,25 @@ class FileBackend(PipestatBackend):
             if result_identifier in self.DATA_KEY[self.project_name][pipeline_type]
             and r in self.DATA_KEY[self.project_name][pipeline_type][result_identifier]
         ]
+
+    def check_record_exists(
+        self,
+        record_identifier: str,
+        pipeline_type: Optional[str] = None,
+    ) -> bool:
+        """
+        Check if the specified record exists in the table
+
+        :param str record_identifier: record to check for
+        :param str table_name: table name to check
+        :return bool: whether the record exists in the table
+        """
+        pipeline_type = pipeline_type or self.pipeline_type
+
+        return (
+            self.project_name in self.DATA_KEY
+            and record_identifier in self.DATA_KEY[self.project_name][pipeline_type]
+        )
 
 
 class DBBackend(PipestatBackend):

@@ -1340,8 +1340,13 @@ class PipestatManager(dict):
                     ] = val_backup
                 raise
 
+        # if self.backend:
+        #     return self.backend.remove(record_identifier, result_identifier, pipeline_type)
+        # else:
+        #     return True
+
         if self.backend:
-            self.backend.remove(record_identifier, result_identifier)
+            self.backend.remove(record_identifier, result_identifier, pipeline_type)
 
         return True
 
