@@ -30,15 +30,16 @@ class FileBackend(PipestatBackend):
 
     def __init__(
         self,
+        results_file_path: str,
         record_identifier: Optional[str] = None,
         schema_path: Optional[str] = None,
-        results_file_path: Optional[str] = None,
         namespace: Optional[str] = None
     ):
         _LOGGER.warning("Initialize FileBackend")
-        _LOGGER.info(f"Initializing results file '{results_file_path}'")
+        self.results_file_path = results_file_path + ".new"
+        _LOGGER.info(f"Initializing results file '{self.results_file_path}'")
         data = YAMLConfigManager(
-            entries={namespace: "{}"}, filepath=results_file_path, create_file=True
+            entries={namespace: "{}"}, filepath=self.results_file_path, create_file=True
         )
         with data as data_locked:
             data_locked.write()

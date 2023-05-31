@@ -89,7 +89,7 @@ class PipestatManager(dict):
         )
 
         if self[FILE_KEY]:  # file backend
-            # self.backend = FileBackend(record_identifier, schema_path, results_file_path, self.namespace)
+            self.backend = FileBackend(results_file_path, record_identifier, schema_path, self.namespace)
             _LOGGER.debug(f"Determined file as backend: {results_file_path}")
             if self[DB_ONLY_KEY]:
                 _LOGGER.debug(
