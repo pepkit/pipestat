@@ -155,6 +155,85 @@ class FileBackend(PipestatBackend):
             result_identifier
         ]
 
+    def remove(
+        self,
+        record_identifier: Optional[str] = None,
+        result_identifier: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
+    ) -> bool:
+        """
+        Remove a result.
+
+        If no result ID specified or last result is removed, the entire record
+        will be removed.
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to be removed or None
+             if the record should be removed.
+        :return bool: whether the result has been removed
+        """
+
+        pipeline_type = pipeline_type or self.pipeline_type
+        record_identifier = record_identifier or self.record_identifier
+
+        # r_id = self._strict_record_id(record_identifier)
+        # r_id = record_identifier
+
+        rm_record = True if result_identifier is None else False
+
+        # if not self.check_record_exists(
+        #     record_identifier=r_id,
+        #     table_name=self.namespace,
+        #     pipeline_type=pipeline_type,
+        # ):
+        #     _LOGGER.error(f"Record '{r_id}' not found")
+        #     return False
+        # if result_identifier and not self.check_result_exists(
+        #     result_identifier, r_id, pipeline_type=pipeline_type
+        # ):
+        #     _LOGGER.error(f"'{result_identifier}' has not been reported for '{r_id}'")
+        #     return False
+
+        if rm_record:
+            _LOGGER.info(f"Removing '{record_identifier}' record")
+            del self.DATA_KEY[self.project_name][pipeline_type][record_identifier]
+        else:
+            val_backup = self.DATA_KEY[self.project_name][pipeline_type][record_identifier][
+                result_identifier
+            ]
+            # self.DATA_KEY[self.project_name][pipeline_type][record_identifier][res_id] = val
+            del self.DATA_KEY[self.project_name][pipeline_type][record_identifier][
+                result_identifier
+            ]
+            _LOGGER.info(
+                f"Removed result '{result_identifier}' for record "
+                f"'{record_identifier}' from '{self.project_name}' namespace"
+            )
+            if not self.DATA_KEY[self.project_name][pipeline_type][record_identifier]:
+                _LOGGER.info(
+                    f"Last result removed for '{record_identifier}'. " f"Removing the record"
+                )
+                del self.DATA_KEY[self.project_name][pipeline_type][record_identifier]
+                rm_record = True
+
+            with self.DATA_KEY as locked_data:
+                locked_data.write()
+
+        # if self.file is None:
+        #     try:
+        #         self._remove_db(
+        #             record_identifier=r_id,
+        #             result_identifier=None if rm_record else result_identifier,
+        #         )
+        #     except Exception as e:
+        #         _LOGGER.error(f"Could not remove the result from the database. Exception: {e}")
+        #         if not self[DB_ONLY_KEY] and not rm_record:
+        #             self[DATA_KEY][self.namespace][pipeline_type][r_id][
+        #                 result_identifier
+        #             ] = val_backup
+        #         raise
+        return True
+
 
 class DBBackend(PipestatBackend):
     def __init__(

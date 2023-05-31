@@ -1339,6 +1339,10 @@ class PipestatManager(dict):
                         result_identifier
                     ] = val_backup
                 raise
+
+        if self.backend:
+            self.backend.remove(record_identifier, result_identifier)
+
         return True
 
     def _remove_db(
