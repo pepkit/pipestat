@@ -9,6 +9,8 @@ from .exceptions import *
 
 if int(sys.version.split(".")[1]) < 9:
     from typing import List, Dict, Any, Optional, Union
+else:
+    from typing import *
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -58,6 +60,7 @@ class PipestatBackend(ABC):
     def remove():
         pass
 
+
 class FileBackend(PipestatBackend):
     def __init__(
         self,
@@ -105,7 +108,7 @@ class FileBackend(PipestatBackend):
 
         pipeline_type = pipeline_type or self.pipeline_type
         record_identifier = record_identifier or self.record_identifier
-        
+
         self.DATA_KEY[self.project_name][pipeline_type].setdefault(record_identifier, {})
         # self.DATA_KEY[self.project_name].setdefault(pipeline_type, {})
         # self.DATA_KEY[self.project_name][pipeline_type].setdefault(record_identifier, {})
