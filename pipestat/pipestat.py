@@ -23,6 +23,7 @@ _LOGGER = getLogger(PKG_NAME)
 
 from .backend import FileBackend, DBBackend
 
+
 class PipestatManager(dict):
     """
     Pipestat standardizes reporting of pipeline results and
@@ -79,7 +80,9 @@ class PipestatManager(dict):
             "record_identifier", env_var=ENV_VARS["record_identifier"], override=record_identifier
         )
         self[DB_ONLY_KEY] = database_only
-        self.pipeline_type = self[CONFIG_KEY].priority_get("pipeline_type", default="sample", override=pipeline_type)
+        self.pipeline_type = self[CONFIG_KEY].priority_get(
+            "pipeline_type", default="sample", override=pipeline_type
+        )
 
         self[FILE_KEY] = mk_abs_via_cfg(
             self[CONFIG_KEY].priority_get(
@@ -103,14 +106,25 @@ class PipestatManager(dict):
             else:
                 _LOGGER.debug(f"Loading results file: {self.file}")
                 self._load_results_file()
-            self.backend = FileBackend(self.file, record_identifier, schema_path, self.namespace, self.pipeline_type)
+            self.backend = FileBackend(
+                self.file, record_identifier, schema_path, self.namespace, self.pipeline_type
+            )
             flag_file_dir = self[CONFIG_KEY].priority_get(
                 "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.file)
             )
             self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path)
         else:  # database backend
             _LOGGER.debug("Determined database as backend")
-            self.backend = DBBackend(record_identifier, schema_path, results_file_path, config_file, config_dict, flag_file_dir, show_db_logs, pipeline_type)
+            self.backend = DBBackend(
+                record_identifier,
+                schema_path,
+                results_file_path,
+                config_file,
+                config_dict,
+                flag_file_dir,
+                show_db_logs,
+                pipeline_type,
+            )
             if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
                 raise NoBackendSpecifiedError()
             try:
@@ -954,6 +968,7 @@ class PipestatManager(dict):
         pipeline_type = pipeline_type or self.pipeline_type
 
         r_id = self._strict_record_id(record_identifier)
+        # should change to simpler: record_identifier = record_identifier or self.record_identifier
         if self.file is None:
             results = self._retrieve_db(
                 result_identifier=result_identifier, record_identifier=r_id
@@ -962,6 +977,7 @@ class PipestatManager(dict):
                 return results[result_identifier]
             return results
         else:
+            return self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
             if r_id not in self.data[self.namespace][pipeline_type]:
                 raise PipestatDatabaseError(f"Record '{r_id}' not found")
             if result_identifier is None:
