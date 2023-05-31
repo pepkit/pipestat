@@ -3,7 +3,8 @@ from .const import *
 
 from logging import getLogger
 from yacman import YAMLConfigManager
-import sys 
+import sys
+
 if int(sys.version.split(".")[1]) < 9:
     from typing import List, Dict, Any, Optional, Union
 
@@ -42,7 +43,6 @@ class FileBackend(PipestatBackend):
         with data as data_locked:
             data_locked.write()
         self.DATA_KEY = data
-        self.DATA_KEY = YAMLConfigManager()
 
 
     def _report_data_element(
