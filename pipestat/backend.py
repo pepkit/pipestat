@@ -12,8 +12,10 @@ _LOGGER = getLogger(PKG_NAME)
 
 class PipestatBackend(ABC):
     """ Abstract class representing a pipestat backend"""
-    def __init__(self):
-        pass
+
+    def __init__(self, pipeline_type):
+        _LOGGER.warning("Initialize PipestatBackend")
+        self.pipeline_type = pipeline_type
 
     def report(
         self,
@@ -24,7 +26,9 @@ class PipestatBackend(ABC):
         return_id: bool = False,
         pipeline_type: Optional[str] = None,
     ) -> Union[bool, int]:
-        _LOGGER.warning("Initialize PipestatBackend")
+
+        _LOGGER.warning("report not implemented yet for this backend")
+        
 
 class FileBackend(PipestatBackend):
 
@@ -32,26 +36,31 @@ class FileBackend(PipestatBackend):
         self,
         results_file_path: str,
         record_identifier: Optional[str] = None,
-        schema_path: Optional[str] = None,
-        namespace: Optional[str] = None
+        schema_path = None,
+        pipeline_name: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
     ):
         _LOGGER.warning("Initialize FileBackend")
         self.results_file_path = results_file_path + ".new"
+        self.pipeline_name = pipeline_name
+        self.pipeline_type = pipeline_type
+        # From: _init_results_file
         _LOGGER.info(f"Initializing results file '{self.results_file_path}'")
-        data = YAMLConfigManager(
-            entries={namespace: "{}"}, filepath=self.results_file_path, create_file=True
+        self.DATA_KEY = YAMLConfigManager(
+            entries={pipeline_name: {}}, filepath=self.results_file_path, create_file=True
         )
-        with data as data_locked:
+        self.DATA_KEY.setdefault(self.pipeline_name, {})
+        self.DATA_KEY[self.pipeline_name].setdefault("project", {})
+        self.DATA_KEY[self.pipeline_name].setdefault("sample", {})
+        with self.DATA_KEY as data_locked:
             data_locked.write()
-        self.DATA_KEY = data
 
 
-    def _report_data_element(
+    def report(
         self,
-        record_identifier: str,
         values: Dict[str, Any],
+        record_identifier: str,
         pipeline_type: Optional[str] = None,
-        table_name: Optional[bool] = None,
     ) -> None:
         """
         Update the value of a result in a current namespace.
@@ -66,15 +75,15 @@ class FileBackend(PipestatBackend):
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
-
-        # TODO: update to disambiguate sample- / project-level
-        self.DATA_KEY.setdefault(self.namespace, {})
-        # self.DATA_KEY[self.namespace].setdefault(record_identifier, {})
-        self.DATA_KEY[self.namespace].setdefault(pipeline_type, {})
-        self.DATA_KEY[self.namespace][pipeline_type].setdefault(record_identifier, {})
+        self.DATA_KEY[self.pipeline_name][pipeline_type].setdefault(record_identifier, {})
+        # self.DATA_KEY[self.pipeline_name].setdefault(pipeline_type, {})
+        # self.DATA_KEY[self.pipeline_name][pipeline_type].setdefault(record_identifier, {})
         for res_id, val in values.items():
-            self.DATA_KEY[self.namespace][pipeline_type][record_identifier][res_id] = val
-            # self.DATA_KEY[self.namespace][record_identifier][res_id] = val
+            self.DATA_KEY[self.pipeline_name][pipeline_type][record_identifier][res_id] = val
+            # self.DATA_KEY[self.pipeline_name][record_identifier][res_id] = val
+            
+        with self.DATA_KEY as locked_data:
+            locked_data.write()            
 
 class DBBackend(PipestatBackend):
 

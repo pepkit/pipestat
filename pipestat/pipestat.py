@@ -44,7 +44,7 @@ class PipestatManager(dict):
         config_dict: Optional[dict] = None,
         flag_file_dir: Optional[str] = None,
         show_db_logs: bool = False,
-        pipeline_type: Optional[str] = False,
+        pipeline_type: Optional[str] = None,
     ):
         """
         Initialize the PipestatManager object
@@ -89,7 +89,6 @@ class PipestatManager(dict):
         )
 
         if self[FILE_KEY]:  # file backend
-            self.backend = FileBackend(results_file_path, record_identifier, schema_path, self.namespace)
             _LOGGER.debug(f"Determined file as backend: {results_file_path}")
             if self[DB_ONLY_KEY]:
                 _LOGGER.debug(
@@ -104,13 +103,14 @@ class PipestatManager(dict):
             else:
                 _LOGGER.debug(f"Loading results file: {self.file}")
                 self._load_results_file()
+            self.backend = FileBackend(self.file, record_identifier, schema_path, self.namespace, self.pipeline_type)
             flag_file_dir = self[CONFIG_KEY].priority_get(
                 "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.file)
             )
             self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path)
         else:  # database backend
             _LOGGER.debug("Determined database as backend")
-            # self.backend = DBBackend(record_identifier, schema_path, results_file_path, config_file, config_dict, flag_file_dir, show_db_logs, pipeline_type)
+            self.backend = DBBackend(record_identifier, schema_path, results_file_path, config_file, config_dict, flag_file_dir, show_db_logs, pipeline_type)
             if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
                 raise NoBackendSpecifiedError()
             try:
@@ -1152,7 +1152,8 @@ class PipestatManager(dict):
 
         _LOGGER.warning("Writing to locked data...")
 
-        # self.backend.report(values, record_identifier, force_overwrite, strict_type, return_id, pipeline_type)
+        if self.backend:
+            self.backend.report(values, record_identifier)
 
         if not self[DB_ONLY_KEY]:
             self._report_data_element(
