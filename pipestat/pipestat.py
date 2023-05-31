@@ -21,8 +21,6 @@ from .parsed_schema import ParsedSchema
 
 _LOGGER = getLogger(PKG_NAME)
 
-from .backend import FileBackend, DBBackend
-
 class PipestatManager(dict):
     """
     Pipestat standardizes reporting of pipeline results and
@@ -79,7 +77,7 @@ class PipestatManager(dict):
             "record_identifier", env_var=ENV_VARS["record_identifier"], override=record_identifier
         )
         self[DB_ONLY_KEY] = database_only
-        self.pipeline_type = self[CONFIG_KEY].priority_get("pipeline_type", default="sample", override=pipeline_type)
+        self.pipeline_type = self[CONFIG_KEY].priority_get("pipeline_type", default="sample")
 
         self[FILE_KEY] = mk_abs_via_cfg(
             self[CONFIG_KEY].priority_get(
@@ -88,8 +86,7 @@ class PipestatManager(dict):
             self._config_path,
         )
 
-        if self[FILE_KEY]:  # file backend
-            # self.backend = FileBackend(record_identifier, schema_path, results_file_path, self.namespace)
+        if self[FILE_KEY]:
             _LOGGER.debug(f"Determined file as backend: {results_file_path}")
             if self[DB_ONLY_KEY]:
                 _LOGGER.debug(
@@ -108,9 +105,8 @@ class PipestatManager(dict):
                 "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.file)
             )
             self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path)
-        else:  # database backend
+        else:
             _LOGGER.debug("Determined database as backend")
-            # self.backend = DBBackend(record_identifier, schema_path, results_file_path, config_file, config_dict, flag_file_dir, show_db_logs, pipeline_type)
             if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
                 raise NoBackendSpecifiedError()
             try:
@@ -1233,10 +1229,8 @@ class PipestatManager(dict):
     ) -> None:
         """
         Update the value of a result in a current namespace.
-
         This method overwrites any existing data and creates the required
          hierarchical mapping structure if needed.
-
         :param str record_identifier: unique identifier of the record
         :param Dict[str, Any] values: dict of results identifiers and values
             to be reported
