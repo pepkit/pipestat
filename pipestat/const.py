@@ -7,6 +7,7 @@ from pathlib import Path
 # Can be removed when 3.8 is deprecated
 if int(sys.version.split(".")[1]) < 9:
     from typing import List, Dict
+    
     list_of_dicts = List[Dict]
 else:
     list_of_dicts = list[dict]
