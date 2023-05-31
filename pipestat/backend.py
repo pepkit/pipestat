@@ -45,8 +45,31 @@ class PipestatBackend(ABC):
     ) -> Union[bool, int]:
         _LOGGER.warning("report not implemented yet for this backend")
 
-    def check_result_exists():
-        pass
+    def check_result_exists(
+        self,
+        result_identifier: str,
+        record_identifier: str = None,
+        pipeline_type: Optional[str] = None,
+    ) -> bool:
+        """
+        Check if the result has been reported
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to check
+        :return bool: whether the specified result has been reported for the
+            indicated record in current namespace
+        """
+        # record_identifier = self._strict_record_id(record_identifier)
+        return (
+            len(
+                self.check_which_results_exist(
+                    results=[result_identifier],
+                    result_identifier=record_identifier,
+                    pipeline_type=pipeline_type,
+                )
+            )
+            > 0
+        )
 
     def check_which_results_exist():
         pass
@@ -267,32 +290,6 @@ class FileBackend(PipestatBackend):
             if result_identifier in self.DATA_KEY[self.project_name][pipeline_type]
             and r in self.DATA_KEY[self.project_name][pipeline_type][result_identifier]
         ]
-
-    def check_result_exists(
-        self,
-        result_identifier: str,
-        record_identifier: str = None,
-        pipeline_type: Optional[str] = None,
-    ) -> bool:
-        """
-        Check if the result has been reported
-
-        :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to check
-        :return bool: whether the specified result has been reported for the
-            indicated record in current namespace
-        """
-        # record_identifier = self._strict_record_id(record_identifier)
-        return (
-            len(
-                self.check_which_results_exist(
-                    results=[result_identifier],
-                    result_identifier=record_identifier,
-                    pipeline_type=pipeline_type,
-                )
-            )
-            > 0
-        )
 
 
 class DBBackend(PipestatBackend):
