@@ -203,8 +203,10 @@ class PipestatManager(dict):
 
         :return int: number of records reported
         """
-
+        # records = self.backend.count_record()
+        # return records
         return len(self.data[self.namespace]) if self.file else self._count_rows(self.namespace)
+        # return len(self.backend.DATA_KEY[self.namespace]) if self.file else self._count_rows(self.namespace)
 
     @property
     def highlighted_results(self) -> List[str]:
@@ -1167,21 +1169,23 @@ class PipestatManager(dict):
         if self.schema is None:
             raise SchemaNotFoundError("report results")
         updated_ids = False
+
         result_identifiers = list(values.keys())
-        self.assert_results_defined(results=result_identifiers, pipeline_type=pipeline_type)
-        existing = self.check_which_results_exist(
-            rid=record_identifier,
-            results=result_identifiers,
-            pipeline_type=pipeline_type,
-        )
-        if existing:
-            existing_str = ", ".join(existing)
-            _LOGGER.warning(f"These results exist for '{record_identifier}': {existing_str}")
-            if not force_overwrite:
-                return False
-            _LOGGER.info(f"Overwriting existing results: {existing_str}")
         for r in result_identifiers:
             validate_type(value=values[r], schema=self.result_schemas[r], strict_type=strict_type)
+        #
+        # self.assert_results_defined(results=result_identifiers, pipeline_type=pipeline_type)
+        # existing = self.check_which_results_exist(
+        #     rid=record_identifier,
+        #     results=result_identifiers,
+        #     pipeline_type=pipeline_type,
+        # )
+        # if existing:
+        #     existing_str = ", ".join(existing)
+        #     _LOGGER.warning(f"These results exist for '{record_identifier}': {existing_str}")
+        #     if not force_overwrite:
+        #         return False
+        #     _LOGGER.info(f"Overwriting existing results: {existing_str}")
 
         # if self.file is not None:
         # self.data.make_writable()
@@ -1201,19 +1205,20 @@ class PipestatManager(dict):
         if self.file is not None:
             with self.data as locked_data:
                 locked_data.write()
-        # else:
-        #     _LOGGER.warning("ELSE...")
-        #     try:
-        #         tn = self._get_table_name(pipeline_type=pipeline_type)
-        #         updated_ids = self._report_db(
-        #             record_identifier=record_identifier, values=values, table_name=tn
-        #         )
-        #     except Exception as e:
-        #         _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")
-        #         if not self[DB_ONLY_KEY]:
-        #             for r in result_identifiers:
-        #                 del self[DATA_KEY][self.namespace][record_identifier][r]
-        #         raise
+        else:
+            _LOGGER.warning("ELSE...")
+            try:
+                tn = self._get_table_name(pipeline_type=pipeline_type)
+                updated_ids = self._report_db(
+                    record_identifier=record_identifier, values=values, table_name=tn
+                )
+            except Exception as e:
+                _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")
+                if not self[DB_ONLY_KEY]:
+                    for r in result_identifiers:
+                        del self[DATA_KEY][self.namespace][record_identifier][r]
+                raise
+
         nl = "\n"
         _LOGGER.warning("TEST HERE")
         rep_strs = [f"{k}: {v}" for k, v in values.items()]

@@ -11,6 +11,7 @@ from sqlmodel import Session, select as sql_select
 
 from .const import *
 from .exceptions import *
+from .helpers import *
 
 if int(sys.version.split(".")[1]) < 9:
     from typing import List, Dict, Any, Optional, Union
@@ -79,6 +80,31 @@ class PipestatBackend(ABC):
     def check_which_results_exist(self) -> List[str]:
         pass
 
+    def assert_results_defined(self, results: List[str], pipeline_type: str) -> None:
+        """
+        Assert provided list of results is defined in the schema
+
+        :param List[str] results: list of results to
+            check for existence in the schema
+        :raises SchemaError: if any of the results is not defined in the schema
+        """
+
+        # take project level input and look for keys in the specific schema.
+        # warn if you are trying to report a sample to a project level and vice versa.
+
+        if pipeline_type == "sample":
+            known_results = self.parsed_schema.sample_level_data.keys()
+        if pipeline_type == "project":
+            known_results = self.parsed_schema.project_level_data.keys()
+
+        # known_results = self.result_schemas.keys()
+
+        for r in results:
+            assert r in known_results, SchemaError(
+                f"'{r}' is not a known result. Results defined in the "
+                f"schema are: {list(known_results)}."
+            )
+
     def retrieve(self):
         pass
 
@@ -105,6 +131,9 @@ class PipestatBackend(ABC):
         pipeline_type: Optional[str] = None,
     ) -> bool:
         _LOGGER.warning("debug remove function abstract class")
+
+    def count_record(self):
+        pass
 
 
 class FileBackend(PipestatBackend):
@@ -145,6 +174,8 @@ class FileBackend(PipestatBackend):
         values: Dict[str, Any],
         record_identifier: str,
         pipeline_type: Optional[str] = None,
+        force_overwrite: bool = False,
+        # strict_type: bool = True,
     ) -> None:
         """
         Update the value of a result in a current namespace.
@@ -161,12 +192,27 @@ class FileBackend(PipestatBackend):
         pipeline_type = pipeline_type or self.pipeline_type
         record_identifier = record_identifier or self.record_identifier
 
+        result_identifiers = list(values.keys())
+        self.assert_results_defined(results=result_identifiers, pipeline_type=pipeline_type)
+        existing = self.check_which_results_exist(
+            result_identifier=record_identifier,
+            results=result_identifiers,
+            pipeline_type=pipeline_type,
+        )
+        if existing:
+            existing_str = ", ".join(existing)
+            _LOGGER.warning(f"These results exist for '{record_identifier}': {existing_str}")
+            if not force_overwrite:
+                return False
+            _LOGGER.info(f"Overwriting existing results: {existing_str}")
+        # for r in result_identifiers:
+        #     validate_type(value=values[r], schema=self.parsed_schema.results_data[r], strict_type=strict_type)
+
+        _LOGGER.warning("Writing to locked data...")
+
         self.DATA_KEY[self.project_name][pipeline_type].setdefault(record_identifier, {})
-        # self.DATA_KEY[self.project_name].setdefault(pipeline_type, {})
-        # self.DATA_KEY[self.project_name][pipeline_type].setdefault(record_identifier, {})
         for res_id, val in values.items():
             self.DATA_KEY[self.project_name][pipeline_type][record_identifier][res_id] = val
-            # self.DATA_KEY[self.project_name][record_identifier][res_id] = val
 
         with self.DATA_KEY as locked_data:
             locked_data.write()
@@ -453,6 +499,9 @@ class FileBackend(PipestatBackend):
             self.status_file_dir, f"{self.project_name}_{r_id}_{status_identifier}.flag"
         )
 
+    def count_record(self):
+        return len(self.DATA_KEY[self.project_name])
+
 
 class DBBackend(PipestatBackend):
     def __init__(
@@ -486,6 +535,7 @@ class DBBackend(PipestatBackend):
         values: Dict[str, Any],
         record_identifier: str,
         pipeline_type: Optional[str] = None,
+        force_overwrite: bool = False,
     ) -> None:
         """
         Update the value of a result in a current namespace.
@@ -501,10 +551,26 @@ class DBBackend(PipestatBackend):
 
         pipeline_type = pipeline_type or self.pipeline_type
         record_identifier = record_identifier or self.record_identifier
+        result_identifiers = list(values.keys())
+        self.assert_results_defined(results=result_identifiers, pipeline_type=pipeline_type)
 
-        #check if results exist here
+        tn = self.get_table_name(pipeline_type=pipeline_type)
+
+        existing = self.check_which_results_exist(
+            record_identifier=record_identifier,
+            results=result_identifiers,
+            table_name=tn,
+        )
+        if existing:
+            existing_str = ", ".join(existing)
+            _LOGGER.warning(f"These results exist for '{record_identifier}': {existing_str}")
+            if not force_overwrite:
+                return False
+            _LOGGER.info(f"Overwriting existing results: {existing_str}")
+        # for r in result_identifiers:
+        #     validate_type(value=values[r], schema=self.parsed_schema.results_data[r], strict_type=strict_type)
+        # check if results exist here
         try:
-            tn = self.get_table_name(pipeline_type=pipeline_type)
             updated_ids = self.report_db(
                 record_identifier=record_identifier, values=values, table_name=tn
             )
@@ -630,6 +696,37 @@ class DBBackend(PipestatBackend):
                 # )
                 if record:
                     return record
+
+    def check_which_results_exist(
+        self, results: List[str], record_identifier: str = None, table_name: str = None
+    ) -> List[str]:
+        """
+        Check if the specified results exist in the table
+
+        :param List[str] results: results identifiers to check for
+        :param str rid: record to check for
+        :param str table_name: name of the table to search for results in
+        :return List[str]: results identifiers that exist
+        """
+        # table_name = table_name or self.namespace
+        # rid = self._strict_record_id(rid)
+        rid = record_identifier
+        record = self.get_one_record(rid=rid, table_name=table_name)
+        return [r for r in results if getattr(record, r, None) is not None] if record else []
+
+    def count_record(self):
+        """
+        Count rows in a selected table
+
+        :param str table_name: table to count rows for
+        :return int: number of rows in the selected table
+        """
+        table_name = self.get_table_name()
+        mod = self.get_model(table_name=table_name, strict=True)
+        with self.session as s:
+            stmt = sql_select(mod)
+            records = s.exec(stmt).all()
+            return len(records)
 
     @property
     @contextmanager
