@@ -55,3 +55,10 @@ def test_custom_status_schema(
 def test_status_not_in_schema__raises_expected_error():
     """A status to set must be a value declared in the active schema, whether default or custom."""
     pass
+
+
+@pytest.mark.skip(reason="not implemented")
+def test_clear_status():
+    # TODO write pytest for clearing statuses
+    """Test clearing flag files"""
+    pass

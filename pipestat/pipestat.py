@@ -583,6 +583,9 @@ class PipestatManager(dict):
         else:
             return self._clear_status_db(record_identifier=r_id)
 
+        if self.backend:
+            self.backend.clear_status(record_identifier=r_id, flag_names=flag_names)
+
     def _clear_status_file(
         self, record_identifier: str = None, flag_names: List[str] = None
     ) -> List[Union[str, None]]:

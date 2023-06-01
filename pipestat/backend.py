@@ -90,8 +90,10 @@ class PipestatBackend(ABC):
     def get_status(self, record_identifier: str) -> Optional[str]:
         _LOGGER.warning("report not implemented yet for this backend")
 
-    def clear_status(self):
-        pass
+    def clear_status(
+        self, record_identifier: str = None, flag_names: List[str] = None
+    ) -> List[Union[str, None]]:
+        _LOGGER.warning("report not implemented yet for this backend")
 
     def remove(
         self,
@@ -334,6 +336,35 @@ class FileBackend(PipestatBackend):
             f"No flags found in: {self.status_file_dir}"
         )
         return None
+
+    def clear_status(
+        self, record_identifier: str = None, flag_names: List[str] = None
+    ) -> List[Union[str, None]]:
+        """
+        Remove status flags
+
+        :param str record_identifier: name of the record to remove flags for
+        :param Iterable[str] flag_names: Names of flags to remove, optional; if
+            unspecified, all schema-defined flag names will be used.
+        :return List[str]: Collection of names of flags removed
+        """
+
+        flag_names = flag_names or list(self.status_schema.keys())
+        if isinstance(flag_names, str):
+            flag_names = [flag_names]
+        removed = []
+        for f in flag_names:
+            path_flag_file = self.get_status_flag_path(
+                status_identifier=f, record_identifier=record_identifier
+            )
+            try:
+                os.remove(path_flag_file)
+            except:
+                pass
+            else:
+                _LOGGER.info(f"Removed existing flag: {path_flag_file}")
+                removed.append(f)
+        return removed
 
     def check_which_results_exist(
         self,
