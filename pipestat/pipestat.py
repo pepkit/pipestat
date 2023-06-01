@@ -123,16 +123,6 @@ class PipestatManager(dict):
             )
         else:  # database backend
             _LOGGER.debug("Determined database as backend")
-            self.backend = DBBackend(
-                record_identifier,
-                schema_path,
-                results_file_path,
-                config_file,
-                config_dict,
-                flag_file_dir,
-                show_db_logs,
-                pipeline_type,
-            )
             if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
                 raise NoBackendSpecifiedError()
             try:
@@ -146,6 +136,22 @@ class PipestatManager(dict):
             self._show_db_logs = show_db_logs
             self[DB_ORMS_KEY] = self._create_orms()
             SQLModel.metadata.create_all(self._engine)
+
+            self.backend = DBBackend(
+                record_identifier,
+                schema_path,
+                self.namespace,
+                config_file,
+                config_dict,
+                show_db_logs,
+                pipeline_type,
+                self[SCHEMA_KEY],
+                self[STATUS_SCHEMA_KEY],
+                self[DB_ORMS_KEY],
+                self._engine
+                # self.session,
+            )
+            print("debug")
 
     def __str__(self):
         """
@@ -1183,7 +1189,7 @@ class PipestatManager(dict):
         _LOGGER.warning("Writing to locked data...")
 
         if self.backend:
-            self.backend.report(values, record_identifier)
+            self.backend.report(values, record_identifier, pipeline_type)
 
         if not self[DB_ONLY_KEY]:
             self._report_data_element(
@@ -1195,19 +1201,19 @@ class PipestatManager(dict):
         if self.file is not None:
             with self.data as locked_data:
                 locked_data.write()
-        else:
-            _LOGGER.warning("ELSE...")
-            try:
-                tn = self._get_table_name(pipeline_type=pipeline_type)
-                updated_ids = self._report_db(
-                    record_identifier=record_identifier, values=values, table_name=tn
-                )
-            except Exception as e:
-                _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")
-                if not self[DB_ONLY_KEY]:
-                    for r in result_identifiers:
-                        del self[DATA_KEY][self.namespace][record_identifier][r]
-                raise
+        # else:
+        #     _LOGGER.warning("ELSE...")
+        #     try:
+        #         tn = self._get_table_name(pipeline_type=pipeline_type)
+        #         updated_ids = self._report_db(
+        #             record_identifier=record_identifier, values=values, table_name=tn
+        #         )
+        #     except Exception as e:
+        #         _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")
+        #         if not self[DB_ONLY_KEY]:
+        #             for r in result_identifiers:
+        #                 del self[DATA_KEY][self.namespace][record_identifier][r]
+        #         raise
         nl = "\n"
         _LOGGER.warning("TEST HERE")
         rep_strs = [f"{k}: {v}" for k, v in values.items()]

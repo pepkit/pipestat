@@ -5,6 +5,9 @@ from glob import glob
 from logging import getLogger
 from yacman import YAMLConfigManager
 from ubiquerg import create_lock, remove_lock, expandpath
+from contextlib import contextmanager
+
+from sqlmodel import Session, select as sql_select
 
 from .const import *
 from .exceptions import *
@@ -456,11 +459,194 @@ class DBBackend(PipestatBackend):
         self,
         record_identifier: Optional[str] = None,
         schema_path: Optional[str] = None,
-        results_file_path: Optional[str] = None,
+        project_name: Optional[str] = None,
         config_file: Optional[str] = None,
         config_dict: Optional[dict] = None,
-        flag_file_dir: Optional[str] = None,
         show_db_logs: bool = False,
         pipeline_type: Optional[str] = False,
+        parsed_schema: Optional[str] = None,
+        status_schema: Optional[str] = None,
+        orms: Optional[dict] = None,
+        _engine: Any = None,
     ):
         _LOGGER.warning("Initialize DBBackend")
+        self.project_name = project_name
+        self.pipeline_type = pipeline_type
+        self.record_identifier = record_identifier
+        self.parsed_schema = parsed_schema
+        self.status_schema = status_schema
+        self.orms = orms
+        self._engine = _engine
+        # self.schema =parsed_schema
+
+        print("DEBUG")
+
+    def report(
+        self,
+        values: Dict[str, Any],
+        record_identifier: str,
+        pipeline_type: Optional[str] = None,
+    ) -> None:
+        """
+        Update the value of a result in a current namespace.
+
+        This method overwrites any existing data and creates the required
+         hierarchical mapping structure if needed.
+
+        :param str record_identifier: unique identifier of the record
+        :param Dict[str, Any] values: dict of results identifiers and values
+            to be reported
+        :param str table_name: name of the table to report the result in
+        """
+
+        pipeline_type = pipeline_type or self.pipeline_type
+        record_identifier = record_identifier or self.record_identifier
+
+        #check if results exist here
+        try:
+            tn = self.get_table_name(pipeline_type=pipeline_type)
+            updated_ids = self.report_db(
+                record_identifier=record_identifier, values=values, table_name=tn
+            )
+        except Exception as e:
+            _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")
+            raise
+
+    def get_table_name(self, pipeline_type: Optional[str] = None):
+        pipeline_type = pipeline_type or self.pipeline_type
+
+        mods = self.orms
+        if len(mods) == 1:
+            return list(mods.keys())[0]
+        elif len(mods) == 2:
+            if pipeline_type is None:
+                raise Exception(
+                    f"Cannot determine table suffix with 2 models present and no project-level flag"
+                )
+            prelim = (
+                self.parsed_schema.project_table_name
+                if pipeline_type == "project"
+                else self.parsed_schema.sample_table_name
+            )
+            if prelim in mods:
+                return prelim
+            raise Exception(
+                f"Determined table name '{prelim}', which is not stored among these: {', '.join(mods.keys())}"
+            )
+        raise Exception(f"Cannot determine table suffix with {len(mods)} model(s) present.")
+
+    def report_db(self, values: Dict[str, Any], record_identifier: str, table_name: str) -> int:
+        """
+        Report a result to a database.
+
+        :param Dict[str, Any] values: values to report
+        :param str record_identifier: record to report the result for
+        :param str table_name: name of the table to report the result in
+        :return int: updated/inserted row
+        """
+        # record_identifier = self._strict_record_id(record_identifier)
+        record_identifier = record_identifier
+        ORMClass = self.get_orm(table_name=table_name)
+        values.update({RECORD_ID: record_identifier})
+        values.update({"project_name": self.project_name})
+
+        if not self.check_record_exists(
+            record_identifier=record_identifier, table_name=table_name
+        ):
+            new_record = ORMClass(**values)
+            with self.session as s:
+                s.add(new_record)
+                s.commit()
+                returned_id = new_record.id
+        else:
+            with self.session as s:
+                record_to_update = (
+                    s.query(ORMClass)
+                    .filter(getattr(ORMClass, RECORD_ID) == record_identifier)
+                    .first()
+                )
+                for result_id, result_value in values.items():
+                    setattr(record_to_update, result_id, result_value)
+                s.commit()
+                returned_id = record_to_update.id
+        return returned_id
+
+    def get_orm(self, table_name: str) -> Any:
+        """
+        Get an object relational mapper class
+
+        :param str table_name: table name to get a class for
+        :return Any: Object relational mapper class
+        """
+        if self.orms is None:
+            raise PipestatDatabaseError("Object relational mapper classes not defined")
+        mod = self.get_model(table_name=table_name, strict=True)
+        return mod
+
+    def get_model(self, table_name: str, strict: bool):
+        orms = self.orms
+
+        # table_name = self.get_table_name()
+
+        mod = orms.get(table_name)
+
+        if strict and mod is None:
+            raise PipestatDatabaseError(
+                f"No object relational mapper class defined for table '{table_name}'. "
+                f"{len(orms)} defined: {', '.join(orms.keys())}"
+            )
+        return mod
+
+    def check_record_exists(
+        self,
+        record_identifier: str,
+        table_name: str,
+        pipeline_type: Optional[str] = None,
+    ) -> bool:
+        """
+        Check if the specified record exists in the table
+
+        :param str record_identifier: record to check for
+        :param str table_name: table name to check
+        :return bool: whether the record exists in the table
+        """
+        pipeline_type = pipeline_type or self.pipeline_type
+        query_hit = self.get_one_record(rid=record_identifier, table_name=table_name)
+        return query_hit is not None
+
+    def get_one_record(self, table_name: str, rid: Optional[str] = None):
+        models = [self.get_orm(table_name=table_name)] if table_name else list(self.orms.values())
+        with self.session as s:
+            for mod in models:
+                # record = sql_select(mod).where(mod.record_identifier == rid).first()
+                # record = s.query(mod).where(mod.record_identifier == rid).first()
+                stmt = sql_select(mod).where(mod.record_identifier == rid)
+                # stmt = sql_select(mod)
+                record = s.exec(stmt).first()
+                # record = (
+                #     s.query(mod)
+                #     .filter_by(record_identifier=rid)
+                #     .first()
+                # )
+                if record:
+                    return record
+
+    @property
+    @contextmanager
+    def session(self):
+        """
+        Provide a transactional scope around a series of query
+        operations.
+        """
+        session = Session(self._engine)
+        _LOGGER.debug("Created session")
+        try:
+            yield session
+        except:
+            _LOGGER.info("session.rollback")
+            session.rollback()
+            raise
+        finally:
+            _LOGGER.info("session.close")
+            session.close()
+        _LOGGER.debug("Ending session")

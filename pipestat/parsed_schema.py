@@ -203,10 +203,21 @@ class ParsedSchema(object):
         field_defs = self._add_record_identifier_field(field_defs)
         field_defs = self._add_id_field(field_defs)
         field_defs = self._add_namespace_field(field_defs)
+        field_defs = self._add_project_name_field(field_defs)
         return _create_model(self.sample_table_name, **field_defs)
 
     @staticmethod
     def _add_namespace_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
+        # TODO Deprecate use of namespace
+        id_key = "project_name"
+        if id_key in field_defs:
+            raise SchemaError(f"'{id_key}' is reserved as identifier and can't be part of schema.")
+        field_defs[id_key] = (str, Field(default=None))
+
+        return field_defs
+
+    @staticmethod
+    def _add_project_name_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
         id_key = "namespace"  # TODO disambiguate namespace and piepline_id within PSM
         if id_key in field_defs:
             raise SchemaError(f"'{id_key}' is reserved as identifier and can't be part of schema.")
