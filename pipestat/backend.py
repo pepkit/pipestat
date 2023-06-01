@@ -1,8 +1,10 @@
 import sys
-
+import os
 from abc import ABC
+from glob import glob
 from logging import getLogger
 from yacman import YAMLConfigManager
+from ubiquerg import create_lock, remove_lock, expandpath
 
 from .const import *
 from .exceptions import *
@@ -77,11 +79,16 @@ class PipestatBackend(ABC):
     def retrieve(self):
         pass
 
-    def set_status(self):
-        pass
+    def set_status(
+        self,
+        status_identifier: str,
+        record_identifier: str = None,
+        pipeline_type: Optional[str] = None,
+    ) -> None:
+        _LOGGER.warning("report not implemented yet for this backend")
 
-    def get_status(self):
-        pass
+    def get_status(self, record_identifier: str) -> Optional[str]:
+        _LOGGER.warning("report not implemented yet for this backend")
 
     def clear_status(self):
         pass
@@ -103,6 +110,9 @@ class FileBackend(PipestatBackend):
         schema_path=None,
         project_name: Optional[str] = None,
         pipeline_type: Optional[str] = None,
+        parsed_schema: Optional[str] = None,
+        status_schema: Optional[str] = None,
+        status_file_dir: Optional[str] = None,
     ):
         _LOGGER.warning("Initialize FileBackend")
 
@@ -110,6 +120,9 @@ class FileBackend(PipestatBackend):
         self.project_name = project_name
         self.pipeline_type = pipeline_type
         self.record_identifier = record_identifier
+        self.parsed_schema = parsed_schema
+        self.status_schema = status_schema
+        self.status_file_dir = status_file_dir
 
         # From: _init_results_file
         _LOGGER.info(f"Initializing results file '{self.results_file_path}'")
@@ -256,6 +269,72 @@ class FileBackend(PipestatBackend):
                 locked_data.write()
         return True
 
+    def set_status(
+        self,
+        status_identifier: str,
+        record_identifier: str = None,
+        pipeline_type: Optional[str] = None,
+    ) -> None:
+        """
+        Set pipeline run status.
+
+        The status identifier needs to match one of identifiers specified in
+        the status schema. A basic, ready to use, status schema is shipped with
+        this package.
+
+        :param str status_identifier: status to set, one of statuses defined
+            in the status schema
+        :param str record_identifier: record identifier to set the
+            pipeline status for
+        :param str pipeline_type: whether status is being set for a project-level pipeline, or sample-level
+        """
+        pipeline_type = pipeline_type or self.pipeline_type
+        # r_id = self._strict_record_id(record_identifier)
+
+        r_id = record_identifier
+        known_status_identifiers = self.status_schema.keys()
+        if status_identifier not in known_status_identifiers:
+            raise PipestatError(
+                f"'{status_identifier}' is not a defined status identifier. "
+                f"These are allowed: {known_status_identifiers}"
+            )
+        prev_status = self.get_status(r_id)
+
+        # TODO: manage project-level flag here.
+        if prev_status is not None:
+            prev_flag_path = self.get_status_flag_path(prev_status, record_identifier)
+            os.remove(prev_flag_path)
+        flag_path = self.get_status_flag_path(status_identifier, record_identifier)
+        create_lock(flag_path)
+        with open(flag_path, "w") as f:
+            f.write(status_identifier)
+        remove_lock(flag_path)
+
+        if prev_status:
+            _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
+
+    def get_status(self, record_identifier: str) -> Optional[str]:
+        """
+        Get the current pipeline status
+
+        :return str: status identifier, like 'running'
+        """
+        # r_id = self._strict_record_id(record_identifier)
+        r_id = record_identifier
+        flag_file = self.get_flag_file(record_identifier=record_identifier)
+        if flag_file is not None:
+            assert isinstance(flag_file, str), TypeError(
+                "Flag file path is expected to be a str, were multiple flags found?"
+            )
+            with open(flag_file, "r") as f:
+                status = f.read()
+            return status
+        _LOGGER.debug(
+            f"Could not determine status for '{r_id}' record. "
+            f"No flags found in: {self.status_file_dir}"
+        )
+        return None
+
     def check_which_results_exist(
         self,
         results: List[str],
@@ -301,6 +380,43 @@ class FileBackend(PipestatBackend):
         return (
             self.project_name in self.DATA_KEY
             and record_identifier in self.DATA_KEY[self.project_name][pipeline_type]
+        )
+
+    def get_flag_file(self, record_identifier: str = None) -> Union[str, List[str], None]:
+        """
+        Get path to the status flag file for the specified record
+
+        :param str record_identifier: unique record identifier
+        :return str | list[str] | None: path to the status flag file
+        """
+        # r_id = self._strict_record_id(record_identifier)
+        r_id = record_identifier
+        regex = os.path.join(self.status_file_dir, f"{self.project_name}_{r_id}_*.flag")
+        file_list = glob(regex)
+        if len(file_list) > 1:
+            _LOGGER.warning("Multiple flag files found")
+            return file_list
+        elif len(file_list) == 1:
+            return file_list[0]
+        else:
+            _LOGGER.debug("No flag files found")
+            return None
+        pass
+
+    def get_status_flag_path(self, status_identifier: str, record_identifier=None) -> str:
+        """
+        Get the path to the status file flag
+
+        :param str status_identifier: one of the defined status IDs in schema
+        :param str record_identifier: unique record ID, optional if
+            specified in the object constructor
+        :return str: absolute path to the flag file or None if object is
+            backed by a DB
+        """
+        # r_id = self._strict_record_id(record_identifier)
+        r_id = record_identifier
+        return os.path.join(
+            self.status_file_dir, f"{self.project_name}_{r_id}_{status_identifier}.flag"
         )
 
 

@@ -106,13 +106,21 @@ class PipestatManager(dict):
             else:
                 _LOGGER.debug(f"Loading results file: {self.file}")
                 self._load_results_file()
-            self.backend = FileBackend(
-                self.file, record_identifier, schema_path, self.namespace, self.pipeline_type
-            )
+
             flag_file_dir = self[CONFIG_KEY].priority_get(
                 "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.file)
             )
             self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path)
+            self.backend = FileBackend(
+                self.file,
+                record_identifier,
+                schema_path,
+                self.namespace,
+                self.pipeline_type,
+                self[SCHEMA_KEY],
+                self[STATUS_SCHEMA_KEY],
+                self[STATUS_FILE_DIR],
+            )
         else:  # database backend
             _LOGGER.debug("Determined database as backend")
             self.backend = DBBackend(
@@ -465,6 +473,9 @@ class PipestatManager(dict):
             )
         if prev_status:
             _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
+
+        if self.backend:
+            self.backend.set_status(status_identifier, record_identifier, pipeline_type)
 
     def get_status_flag_path(self, status_identifier: str, record_identifier=None) -> str:
         """
