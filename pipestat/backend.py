@@ -569,7 +569,7 @@ class DBBackend(PipestatBackend):
         result_identifiers = list(values.keys())
         self.assert_results_defined(results=result_identifiers, pipeline_type=pipeline_type)
 
-        tn = self.get_table_name(pipeline_type=pipeline_type)
+        table_name = self.get_table_name(pipeline_type=pipeline_type)
 
         existing = self.list_existing_results(
             record_identifier=record_identifier,
@@ -586,9 +586,29 @@ class DBBackend(PipestatBackend):
         #     validate_type(value=values[r], schema=self.parsed_schema.results_data[r], strict_type=strict_type)
         # check if results exist here
         try:
-            updated_ids = self.report_db(
-                record_identifier=record_identifier, values=values, table_name=tn
-            )
+            ORMClass = self.get_orm(table_name=table_name)
+            values.update({RECORD_ID: record_identifier})
+            values.update({"project_name": self.project_name})
+
+            if not self.check_record_exists(
+                record_identifier=record_identifier, table_name=table_name
+            ):
+                new_record = ORMClass(**values)
+                with self.session as s:
+                    s.add(new_record)
+                    s.commit()
+                    # returned_id = new_record.id
+            else:
+                with self.session as s:
+                    record_to_update = (
+                        s.query(ORMClass)
+                        .filter(getattr(ORMClass, RECORD_ID) == record_identifier)
+                        .first()
+                    )
+                    for result_id, result_value in values.items():
+                        setattr(record_to_update, result_id, result_value)
+                    s.commit()
+                    # returned_id = record_to_update.id
         except Exception as e:
             _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")
             raise
@@ -739,42 +759,6 @@ class DBBackend(PipestatBackend):
                 f"Determined table name '{prelim}', which is not stored among these: {', '.join(mods.keys())}"
             )
         raise Exception(f"Cannot determine table suffix with {len(mods)} model(s) present.")
-
-    def report_db(self, values: Dict[str, Any], record_identifier: str, table_name: str) -> int:
-        """
-        Report a result to a database.
-
-        :param Dict[str, Any] values: values to report
-        :param str record_identifier: record to report the result for
-        :param str table_name: name of the table to report the result in
-        :return int: updated/inserted row
-        """
-        # record_identifier = self._strict_record_id(record_identifier)
-        record_identifier = record_identifier
-        ORMClass = self.get_orm(table_name=table_name)
-        values.update({RECORD_ID: record_identifier})
-        values.update({"project_name": self.project_name})
-
-        if not self.check_record_exists(
-            record_identifier=record_identifier, table_name=table_name
-        ):
-            new_record = ORMClass(**values)
-            with self.session as s:
-                s.add(new_record)
-                s.commit()
-                returned_id = new_record.id
-        else:
-            with self.session as s:
-                record_to_update = (
-                    s.query(ORMClass)
-                    .filter(getattr(ORMClass, RECORD_ID) == record_identifier)
-                    .first()
-                )
-                for result_id, result_value in values.items():
-                    setattr(record_to_update, result_id, result_value)
-                s.commit()
-                returned_id = record_to_update.id
-        return returned_id
 
     def get_orm(self, table_name: str) -> Any:
         """
