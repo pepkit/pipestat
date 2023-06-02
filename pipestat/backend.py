@@ -138,6 +138,14 @@ class PipestatBackend(ABC):
     ) -> bool:
         _LOGGER.warning("debug remove function abstract class")
 
+    def remove_record(
+        self,
+        record_identifier: Optional[str] = None,
+        result_identifier: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
+    ) -> bool:
+        _LOGGER.warning("debug remove function abstract class")
+
     def count_record(self):
         _LOGGER.warning("report not implemented yet for this backend")
         pass
@@ -302,8 +310,13 @@ class FileBackend(PipestatBackend):
             return False
 
         if rm_record:
-            _LOGGER.info(f"Removing '{record_identifier}' record")
-            del self.DATA_KEY[self.project_name][pipeline_type][record_identifier]
+            # _LOGGER.info(f"Removing '{record_identifier}' record")
+            # del self.DATA_KEY[self.project_name][pipeline_type][record_identifier]
+            self.remove_record(
+                record_identifier=record_identifier,
+                pipeline_type=pipeline_type,
+                rm_record=rm_record,
+            )
         else:
             val_backup = self.DATA_KEY[self.project_name][pipeline_type][record_identifier][
                 result_identifier
@@ -326,6 +339,24 @@ class FileBackend(PipestatBackend):
             with self.DATA_KEY as locked_data:
                 locked_data.write()
         return True
+
+    def remove_record(
+        self,
+        record_identifier: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
+        project_name: Optional[str] = None,
+        rm_record: Optional[bool] = False,
+    ) -> bool:
+        if rm_record:
+            try:
+                _LOGGER.info(f"Removing '{record_identifier}' record")
+                del self.DATA_KEY[self.project_name][pipeline_type][record_identifier]
+                return True
+            except:
+                # raise exception
+                return False
+        else:
+            _LOGGER.info(f" rm_record flag False, aborting Removing '{record_identifier}' record")
 
     def set_status(
         self,
@@ -715,7 +746,11 @@ class DBBackend(PipestatBackend):
                     # if result_identifier is None:
                     if rm_record is True:
                         # delete row
-                        records.delete()
+                        self.remove_record(
+                            record_identifier=record_identifier,
+                            pipeline_type=pipeline_type,
+                            rm_record=rm_record,
+                        )
                     else:
                         # set the value to None
                         if not self.check_result_exists(
@@ -736,6 +771,35 @@ class DBBackend(PipestatBackend):
             raise
 
         return True
+
+    def remove_record(
+        self,
+        record_identifier: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
+        rm_record: Optional[bool] = False,
+    ) -> bool:
+        table_name = self.get_table_name(pipeline_type=pipeline_type)
+        pipeline_type = pipeline_type or self.pipeline_type
+        record_identifier = record_identifier or self.record_identifier
+        if rm_record:
+            try:
+                ORMClass = self.get_orm(table_name=table_name)
+                if self.check_record_exists(
+                    record_identifier=record_identifier, table_name=table_name
+                ):
+                    with self.session as s:
+                        records = s.query(ORMClass).filter(
+                            getattr(ORMClass, RECORD_ID) == record_identifier
+                        )
+                        records.delete()
+                        s.commit()
+                else:
+                    raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
+            except Exception as e:
+                _LOGGER.error(f"Could not remove the result from the database. Exception: {e}")
+                raise
+        else:
+            _LOGGER.info(f" rm_record flag False, aborting Removing '{record_identifier}' record")
 
     def get_table_name(self, pipeline_type: Optional[str] = None):
         pipeline_type = pipeline_type or self.pipeline_type
