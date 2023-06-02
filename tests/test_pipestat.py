@@ -309,7 +309,8 @@ class TestRemoval:
                 psm.remove(result_identifier=res_id, record_identifier=rec_id)
                 if backend != "db":
                     assert (
-                        res_id not in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
+                        #res_id not in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
+                        res_id not in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
                     )
                 else:
                     col_name = list(vals[0].keys())[0]
