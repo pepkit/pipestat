@@ -1353,25 +1353,25 @@ class PipestatManager(dict):
                 with self.data as locked_data:
                     locked_data.write()
 
-        if self.file is None:
-            try:
-                self._remove_db(
-                    record_identifier=r_id,
-                    result_identifier=None if rm_record else result_identifier,
-                )
-            except Exception as e:
-                _LOGGER.error(f"Could not remove the result from the database. Exception: {e}")
-                if not self[DB_ONLY_KEY] and not rm_record:
-                    self[DATA_KEY][self.namespace][pipeline_type][r_id][
-                        result_identifier
-                    ] = val_backup
-                raise
+        # if self.file is None:
+        #     try:
+        #         self._remove_db(
+        #             record_identifier=r_id,
+        #             result_identifier=None if rm_record else result_identifier,
+        #         )
+        #     except Exception as e:
+        #         _LOGGER.error(f"Could not remove the result from the database. Exception: {e}")
+        #         if not self[DB_ONLY_KEY] and not rm_record:
+        #             self[DATA_KEY][self.namespace][pipeline_type][r_id][
+        #                 result_identifier
+        #             ] = val_backup
+        #         raise
 
         # if self.backend:
         #     return self.backend.remove(record_identifier, result_identifier, pipeline_type)
         # else:
         #     return True
-
+        #
         if self.backend:
             self.backend.remove(record_identifier, result_identifier, pipeline_type)
 

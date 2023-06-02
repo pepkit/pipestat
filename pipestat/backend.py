@@ -557,9 +557,9 @@ class DBBackend(PipestatBackend):
         tn = self.get_table_name(pipeline_type=pipeline_type)
 
         existing = self.check_which_results_exist(
-            record_identifier=record_identifier,
+            result_identifier=record_identifier,
             results=result_identifiers,
-            table_name=tn,
+            pipeline_type=pipeline_type,
         )
         if existing:
             existing_str = ", ".join(existing)
@@ -602,9 +602,9 @@ class DBBackend(PipestatBackend):
 
         if result_identifier is not None:
             existing = self.check_which_results_exist(
+                result_identifier=record_identifier,
                 results=[result_identifier],
-                record_identifier=record_identifier,
-                table_name=tn,
+                pipeline_type=pipeline_type,
             )
             if not existing:
                 raise PipestatDatabaseError(
@@ -627,6 +627,77 @@ class DBBackend(PipestatBackend):
                 if getattr(record, column, None) is not None
             }
         raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
+
+    def remove(
+        self,
+        record_identifier: Optional[str] = None,
+        result_identifier: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
+    ) -> bool:
+        """
+        Remove a result.
+
+        If no result ID specified or last result is removed, the entire record
+        will be removed.
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to be removed or None
+             if the record should be removed.
+        :return bool: whether the result has been removed
+        """
+
+        pipeline_type = pipeline_type or self.pipeline_type
+        record_identifier = record_identifier or self.record_identifier
+
+        rm_record = True if result_identifier is None else False
+
+        table_name = self.get_table_name(pipeline_type=pipeline_type)
+
+        if not self.check_record_exists(
+            record_identifier=record_identifier,
+            pipeline_type=pipeline_type,
+            table_name=table_name,
+        ):
+            _LOGGER.error(f"Record '{record_identifier}' not found")
+            return False
+
+        if result_identifier and not self.check_result_exists(
+            result_identifier=result_identifier, record_identifier=record_identifier, pipeline_type=pipeline_type
+        ):
+            _LOGGER.error(f"'{result_identifier}' has not been reported for '{record_identifier}'")
+            return False
+
+        try:
+            ORMClass = self.get_orm(table_name=table_name)
+            if self.check_record_exists(record_identifier=record_identifier, table_name=table_name):
+                with self.session as s:
+                    records = s.query(ORMClass).filter(
+                        getattr(ORMClass, RECORD_ID) == record_identifier
+                    )
+                    #if result_identifier is None:
+                    if rm_record is True:
+                        # delete row
+                        records.delete()
+                    else:
+                        # set the value to None
+                        if not self.check_result_exists(
+                            record_identifier=record_identifier,
+                            result_identifier=result_identifier,
+                            pipeline_type=pipeline_type,
+                        ):
+                            raise PipestatDatabaseError(
+                                f"Result '{result_identifier}' not found for record "
+                                f"'{record_identifier}'"
+                            )
+                        setattr(records.first(), result_identifier, None)
+                    s.commit()
+            else:
+                raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
+        except Exception as e:
+            _LOGGER.error(f"Could not remove the result from the database. Exception: {e}")
+            raise
+
+        return True
 
     def get_table_name(self, pipeline_type: Optional[str] = None):
         pipeline_type = pipeline_type or self.pipeline_type
@@ -748,7 +819,7 @@ class DBBackend(PipestatBackend):
                     return record
 
     def check_which_results_exist(
-        self, results: List[str], record_identifier: str = None, table_name: str = None
+        self, results: List[str], result_identifier: str = None, pipeline_type: str = None
     ) -> List[str]:
         """
         Check if the specified results exist in the table
@@ -760,10 +831,37 @@ class DBBackend(PipestatBackend):
         """
         # table_name = table_name or self.namespace
         # rid = self._strict_record_id(rid)
-        rid = record_identifier
+        table_name = self.get_table_name(pipeline_type=pipeline_type)
+        rid = result_identifier
         record = self.get_one_record(rid=rid, table_name=table_name)
+        debugreturn = [r for r in results if getattr(record, r, None) is not None] if record else []
         return [r for r in results if getattr(record, r, None) is not None] if record else []
 
+    # def check_result_exists(
+    #     self,
+    #     result_identifier: str,
+    #     record_identifier: str = None,
+    #     pipeline_type: Optional[str] = None,
+    # ) -> bool:
+    #     """
+    #     Check if the result has been reported
+    #
+    #     :param str record_identifier: unique identifier of the record
+    #     :param str result_identifier: name of the result to check
+    #     :return bool: whether the specified result has been reported for the
+    #         indicated record in current namespace
+    #     """
+    #     # record_identifier = self._strict_record_id(record_identifier)
+    #     return (
+    #         len(
+    #             self.check_which_results_exist(
+    #                 results=[result_identifier],
+    #                 result_identifier=record_identifier,
+    #                 pipeline_type=pipeline_type,
+    #             )
+    #         )
+    #         > 0
+    #     )
     def count_record(self):
         """
         Count rows in a selected table
