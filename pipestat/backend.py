@@ -77,7 +77,12 @@ class PipestatBackend(ABC):
             > 0
         )
 
+    def check_record_exists(self) -> bool:
+        _LOGGER.warning("report not implemented yet for this backend")
+        pass
+
     def check_which_results_exist(self) -> List[str]:
+        _LOGGER.warning("report not implemented yet for this backend")
         pass
 
     def assert_results_defined(self, results: List[str], pipeline_type: str) -> None:
@@ -106,6 +111,7 @@ class PipestatBackend(ABC):
             )
 
     def retrieve(self):
+        _LOGGER.warning("report not implemented yet for this backend")
         pass
 
     def set_status(
@@ -133,6 +139,7 @@ class PipestatBackend(ABC):
         _LOGGER.warning("debug remove function abstract class")
 
     def count_record(self):
+        _LOGGER.warning("report not implemented yet for this backend")
         pass
 
 
@@ -449,10 +456,10 @@ class FileBackend(PipestatBackend):
         pipeline_type: Optional[str] = None,
     ) -> bool:
         """
-        Check if the specified record exists in the table
+        Check if the specified record exists in self.DATA_KEY
 
         :param str record_identifier: record to check for
-        :param str table_name: table name to check
+        :param str pipeline_type: project or sample pipeline
         :return bool: whether the record exists in the table
         """
         pipeline_type = pipeline_type or self.pipeline_type
@@ -655,26 +662,29 @@ class DBBackend(PipestatBackend):
 
         if not self.check_record_exists(
             record_identifier=record_identifier,
-            pipeline_type=pipeline_type,
             table_name=table_name,
         ):
             _LOGGER.error(f"Record '{record_identifier}' not found")
             return False
 
         if result_identifier and not self.check_result_exists(
-            result_identifier=result_identifier, record_identifier=record_identifier, pipeline_type=pipeline_type
+            result_identifier=result_identifier,
+            record_identifier=record_identifier,
+            pipeline_type=pipeline_type,
         ):
             _LOGGER.error(f"'{result_identifier}' has not been reported for '{record_identifier}'")
             return False
 
         try:
             ORMClass = self.get_orm(table_name=table_name)
-            if self.check_record_exists(record_identifier=record_identifier, table_name=table_name):
+            if self.check_record_exists(
+                record_identifier=record_identifier, table_name=table_name
+            ):
                 with self.session as s:
                     records = s.query(ORMClass).filter(
                         getattr(ORMClass, RECORD_ID) == record_identifier
                     )
-                    #if result_identifier is None:
+                    # if result_identifier is None:
                     if rm_record is True:
                         # delete row
                         records.delete()
@@ -788,7 +798,6 @@ class DBBackend(PipestatBackend):
         self,
         record_identifier: str,
         table_name: str,
-        pipeline_type: Optional[str] = None,
     ) -> bool:
         """
         Check if the specified record exists in the table
@@ -797,7 +806,6 @@ class DBBackend(PipestatBackend):
         :param str table_name: table name to check
         :return bool: whether the record exists in the table
         """
-        pipeline_type = pipeline_type or self.pipeline_type
         query_hit = self.get_one_record(rid=record_identifier, table_name=table_name)
         return query_hit is not None
 
@@ -834,7 +842,9 @@ class DBBackend(PipestatBackend):
         table_name = self.get_table_name(pipeline_type=pipeline_type)
         rid = result_identifier
         record = self.get_one_record(rid=rid, table_name=table_name)
-        debugreturn = [r for r in results if getattr(record, r, None) is not None] if record else []
+        debugreturn = (
+            [r for r in results if getattr(record, r, None) is not None] if record else []
+        )
         return [r for r in results if getattr(record, r, None) is not None] if record else []
 
     # def check_result_exists(
