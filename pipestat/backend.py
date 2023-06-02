@@ -55,7 +55,7 @@ class PipestatBackend(ABC):
         # record_identifier = self._strict_record_id(record_identifier)
         return (
             len(
-                self.list_existing_results(
+                self.list_results(
                     results=[result_identifier],
                     record_identifier=record_identifier,
                     pipeline_type=pipeline_type,
@@ -68,7 +68,7 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
-    def list_existing_results(self) -> List[str]:
+    def list_results(self) -> List[str]:
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
@@ -196,7 +196,7 @@ class FileBackend(PipestatBackend):
 
         result_identifiers = list(values.keys())
         self.assert_results_defined(results=result_identifiers, pipeline_type=pipeline_type)
-        existing = self.list_existing_results(
+        existing = self.list_results(
             record_identifier=record_identifier,
             results=result_identifiers,
             pipeline_type=pipeline_type,
@@ -440,7 +440,7 @@ class FileBackend(PipestatBackend):
                 removed.append(f)
         return removed
 
-    def list_existing_results(
+    def list_results(
         self,
         results: Optional[List[str]] = None,
         record_identifier: Optional[str] = None,
@@ -579,7 +579,7 @@ class DBBackend(PipestatBackend):
 
         table_name = self.get_table_name(pipeline_type=pipeline_type)
 
-        existing = self.list_existing_results(
+        existing = self.list_results(
             record_identifier=record_identifier,
             results=result_identifiers,
             pipeline_type=pipeline_type,
@@ -644,7 +644,7 @@ class DBBackend(PipestatBackend):
         tn = self.get_table_name(pipeline_type=pipeline_type)
 
         if result_identifier is not None:
-            existing = self.list_existing_results(
+            existing = self.list_results(
                 record_identifier=record_identifier,
                 results=[result_identifier],
                 pipeline_type=pipeline_type,
@@ -859,7 +859,7 @@ class DBBackend(PipestatBackend):
                 if record:
                     return record
 
-    def list_existing_results(
+    def list_results(
         self,
         results: Optional[List[str]] = None,
         record_identifier: str = None,
