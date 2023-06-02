@@ -449,9 +449,8 @@ class FileBackend(PipestatBackend):
         """
         Lists all, or a selected set of, reported results
 
-        :param List[str] filter: names of the results to list.
+        :param List[str] results: selected subset of names of results to list
         :param str record_identifier: unique identifier of the record
-        :param str table_name: name of the table for which to check results
         :return List[str]: names of results which exist
         """
 
