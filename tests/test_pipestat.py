@@ -37,6 +37,48 @@ def assert_is_in_files(fs, s):
             assert s in fh.read()
 
 
+class TestSplitClasses:
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("sample1", {"name_of_something": "test_name"}),
+            ("sample1", {"number_of_things": 1}),
+            ("sample2", {"number_of_things": 2}),
+            ("sample2", {"percentage_of_things": 10.1}),
+            ("sample2", {"name_of_something": "test_name"}),
+            ("sample3", {"name_of_something": "test_name"}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_basics(
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f:
+            with ContextManagerDBTesting(DB_URL) as connection:
+                results_file_path = f.name
+                args = dict(schema_path=schema_file_path, database_only=False)
+                backend_data = (
+                    {"config_file": config_file_path}
+                    if backend == "db"
+                    else {"results_file_path": results_file_path}
+                )
+                args.update(backend_data)
+                psm = PipestatManager(**args)
+                psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+                val_name = list(val.keys())[0]
+                assert val_name in psm.retrieve(record_identifier=rec_id)
+
+                psm.remove(record_identifier=rec_id)
+                with pytest.raises(PipestatDatabaseError):
+                    psm.retrieve(record_identifier=rec_id)
+
+
 class TestReporting:
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -309,8 +351,11 @@ class TestRemoval:
                 psm.remove(result_identifier=res_id, record_identifier=rec_id)
                 if backend != "db":
                     assert (
-                        #res_id not in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
-                        res_id not in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
+                        # res_id not in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
+                        res_id
+                        not in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][
+                            rec_id
+                        ]
                     )
                 else:
                     col_name = list(vals[0].keys())[0]
