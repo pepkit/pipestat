@@ -20,6 +20,7 @@ else:
 
 _LOGGER = getLogger(PKG_NAME)
 
+
 class PipestatBackend(ABC):
     """Abstract class representing a pipestat backend"""
 
@@ -459,14 +460,15 @@ class FileBackend(PipestatBackend):
         pipeline_type = pipeline_type or self.pipeline_type
         record_identifier = record_identifier or self.record_identifier
 
-        try: 
-            results = list(self.DATA_KEY[self.project_name][pipeline_type][record_identifier].keys())
+        try:
+            results = list(
+                self.DATA_KEY[self.project_name][pipeline_type][record_identifier].keys()
+            )
         except KeyError:
             return []
         if restrict_to:
             return [r for r in restrict_to if r in results]
         return results
-
 
     def check_record_exists(
         self,
@@ -891,7 +893,9 @@ class DBBackend(PipestatBackend):
                         existing.append({key: getattr(record, key, None)})
                 return existing
         else:
-            return [r for r in restrict_to if getattr(record, r, None) is not None] if record else []
+            return (
+                [r for r in restrict_to if getattr(record, r, None) is not None] if record else []
+            )
 
     def count_record(self):
         """
