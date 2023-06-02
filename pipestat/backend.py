@@ -424,7 +424,7 @@ class FileBackend(PipestatBackend):
 
     def list_existing_results(
         self,
-        results: List[str],
+        results: Optional[List[str]] = None,
         record_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> List[str]:
@@ -434,6 +434,7 @@ class FileBackend(PipestatBackend):
         :param List[str] results: names of the results to check
         :param str rid: unique identifier of the record
         :param str table_name: name of the table for which to check results
+        :return List[str] existing: if no result identifier specified, return all results for the record
         :return List[str]: names of results which exist
         """
 
@@ -442,6 +443,13 @@ class FileBackend(PipestatBackend):
 
         if self.project_name not in self.DATA_KEY:
             return []
+
+        if results is None:
+            existing = []
+            for key in self.parsed_schema.results_data.keys():
+                if getattr(record, key, None) is not None:
+                    existing.append({key: getattr(record, key, None)})
+            return existing
 
         return [
             r
