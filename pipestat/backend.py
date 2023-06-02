@@ -56,7 +56,7 @@ class PipestatBackend(ABC):
         return (
             len(
                 self.list_results(
-                    results=[result_identifier],
+                    restrict_to=[result_identifier],
                     record_identifier=record_identifier,
                     pipeline_type=pipeline_type,
                 )
@@ -198,7 +198,7 @@ class FileBackend(PipestatBackend):
         self.assert_results_defined(results=result_identifiers, pipeline_type=pipeline_type)
         existing = self.list_results(
             record_identifier=record_identifier,
-            results=result_identifiers,
+            restrict_to=result_identifiers,
             pipeline_type=pipeline_type,
         )
         if existing:
@@ -442,14 +442,14 @@ class FileBackend(PipestatBackend):
 
     def list_results(
         self,
-        results: Optional[List[str]] = None,
+        restrict_to: Optional[List[str]] = None,
         record_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> List[str]:
         """
         Lists all, or a selected set of, reported results
 
-        :param List[str] results: selected subset of names of results to list
+        :param List[str] restrict_to: selected subset of names of results to list
         :param str record_identifier: unique identifier of the record
         :return List[str]: names of results which exist
         """
@@ -458,11 +458,11 @@ class FileBackend(PipestatBackend):
         record_identifier = record_identifier or self.record_identifier
 
         try: 
-            res = list(self.DATA_KEY[self.project_name][pipeline_type][record_identifier].keys())
+            results = list(self.DATA_KEY[self.project_name][pipeline_type][record_identifier].keys())
         except KeyError:
             return []
-        if results:
-            return [r for r in results if r in res]
+        if restrict_to:
+            return [r for r in restrict_to if r in results]
         return results
 
 
@@ -581,7 +581,7 @@ class DBBackend(PipestatBackend):
 
         existing = self.list_results(
             record_identifier=record_identifier,
-            results=result_identifiers,
+            restrict_to=result_identifiers,
             pipeline_type=pipeline_type,
         )
         if existing:
@@ -646,7 +646,7 @@ class DBBackend(PipestatBackend):
         if result_identifier is not None:
             existing = self.list_results(
                 record_identifier=record_identifier,
-                results=[result_identifier],
+                restrict_to=[result_identifier],
                 pipeline_type=pipeline_type,
             )
             if not existing:
@@ -861,14 +861,14 @@ class DBBackend(PipestatBackend):
 
     def list_results(
         self,
-        results: Optional[List[str]] = None,
+        restrict_to: Optional[List[str]] = None,
         record_identifier: str = None,
         pipeline_type: str = None,
     ) -> List[str]:
         """
         Check if the specified results exist in the table
 
-        :param List[str] results: results identifiers to check for
+        :param List[str] restrict_to: results identifiers to check for
         :param str record_identifier: record to check for
         :param str pipeline_type: name of the table to search for results in
         :return List[str] existing: if no result identifier specified, return all results for the record
@@ -879,7 +879,7 @@ class DBBackend(PipestatBackend):
         rid = record_identifier
         record = self.get_one_record(rid=rid, table_name=table_name)
 
-        if results is None:
+        if restrict_to is None:
             existing = []
             if not record:
                 return []
@@ -889,7 +889,7 @@ class DBBackend(PipestatBackend):
                         existing.append({key: getattr(record, key, None)})
                 return existing
         else:
-            return [r for r in results if getattr(record, r, None) is not None] if record else []
+            return [r for r in restrict_to if getattr(record, r, None) is not None] if record else []
 
     def count_record(self):
         """
