@@ -992,23 +992,24 @@ class PipestatManager(dict):
         r_id = self._strict_record_id(record_identifier)
         # should change to simpler: record_identifier = record_identifier or self.record_identifier
         if self.file is None:
-            results = self._retrieve_db(
-                result_identifier=result_identifier, record_identifier=r_id
-            )
+            # results = self._retrieve_db(
+            #     result_identifier=result_identifier, record_identifier=r_id
+            # )
+            results = self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
             if result_identifier is not None:
                 return results[result_identifier]
             return results
         else:
             return self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
-            if r_id not in self.data[self.namespace][pipeline_type]:
-                raise PipestatDatabaseError(f"Record '{r_id}' not found")
-            if result_identifier is None:
-                return self.data.exp[self.namespace][pipeline_type][r_id]
-            if result_identifier not in self.data[self.namespace][pipeline_type][r_id]:
-                raise PipestatDatabaseError(
-                    f"Result '{result_identifier}' not found for record '{r_id}'"
-                )
-            return self.data[self.namespace][pipeline_type][r_id][result_identifier]
+            # if r_id not in self.data[self.namespace][pipeline_type]:
+            #     raise PipestatDatabaseError(f"Record '{r_id}' not found")
+            # if result_identifier is None:
+            #     return self.data.exp[self.namespace][pipeline_type][r_id]
+            # if result_identifier not in self.data[self.namespace][pipeline_type][r_id]:
+            #     raise PipestatDatabaseError(
+            #         f"Result '{result_identifier}' not found for record '{r_id}'"
+            #     )
+            # return self.data[self.namespace][pipeline_type][r_id][result_identifier]
 
     def _retrieve_db(
         self,
@@ -1205,19 +1206,19 @@ class PipestatManager(dict):
         if self.file is not None:
             with self.data as locked_data:
                 locked_data.write()
-        else:
-            _LOGGER.warning("ELSE...")
-            try:
-                tn = self._get_table_name(pipeline_type=pipeline_type)
-                updated_ids = self._report_db(
-                    record_identifier=record_identifier, values=values, table_name=tn
-                )
-            except Exception as e:
-                _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")
-                if not self[DB_ONLY_KEY]:
-                    for r in result_identifiers:
-                        del self[DATA_KEY][self.namespace][record_identifier][r]
-                raise
+        # else:
+        #     _LOGGER.warning("ELSE...")
+        #     try:
+        #         tn = self._get_table_name(pipeline_type=pipeline_type)
+        #         updated_ids = self._report_db(
+        #             record_identifier=record_identifier, values=values, table_name=tn
+        #         )
+        #     except Exception as e:
+        #         _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")
+        #         if not self[DB_ONLY_KEY]:
+        #             for r in result_identifiers:
+        #                 del self[DATA_KEY][self.namespace][record_identifier][r]
+        #         raise
 
         nl = "\n"
         _LOGGER.warning("TEST HERE")
@@ -1227,6 +1228,7 @@ class PipestatManager(dict):
             f"namespace:{nl} - {(nl + ' - ').join(rep_strs)}"
         )
         _LOGGER.warning(self.data)
+        #_LOGGER.warning(self.backend.DATA_KEY)
         _LOGGER.warning(updated_ids)
         _LOGGER.info(record_identifier, values)
         return True if not return_id else updated_ids

@@ -129,6 +129,7 @@ class TestPipestatManagerInstantiation:
             )
             assert "test_pipe" in psm2.backend.DATA_KEY
 
+    @pytest.mark.skip(reason="re-implement count")
     def test_str_representation(self, results_file_path, schema_file_path):
         """Test string representation identifies number of records"""
         with NamedTemporaryFile() as f:

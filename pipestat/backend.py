@@ -578,6 +578,56 @@ class DBBackend(PipestatBackend):
             _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")
             raise
 
+    def retrieve(
+        self,
+        record_identifier: Optional[str] = None,
+        result_identifier: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
+    ) -> Union[Any, Dict[str, Any]]:
+        """
+        Retrieve a result for a record.
+
+        If no result ID specified, results for the entire record will
+        be returned.
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to be retrieved
+        :return any | Dict[str, any]: a single result or a mapping with all the
+            results reported for the record
+        """
+
+        pipeline_type = pipeline_type or self.pipeline_type
+        record_identifier = record_identifier or self.record_identifier
+        tn = self.get_table_name(pipeline_type=pipeline_type)
+
+        if result_identifier is not None:
+            existing = self.check_which_results_exist(
+                results=[result_identifier],
+                record_identifier=record_identifier,
+                table_name=tn,
+            )
+            if not existing:
+                raise PipestatDatabaseError(
+                    f"Result '{result_identifier}' not found for record " f"'{record_identifier}'"
+                )
+
+        with self.session as s:
+            record = (
+                s.query(self.get_orm(table_name=tn))
+                .filter_by(record_identifier=record_identifier)
+                .first()
+            )
+
+        if record is not None:
+            if result_identifier is not None:
+                return {result_identifier: getattr(record, result_identifier)}
+            return {
+                column: getattr(record, column)
+                for column in [c.name for c in record.__table__.columns]
+                if getattr(record, column, None) is not None
+            }
+        raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
+
     def get_table_name(self, pipeline_type: Optional[str] = None):
         pipeline_type = pipeline_type or self.pipeline_type
 
