@@ -52,7 +52,9 @@ class PipestatBackend(ABC):
         :return bool: whether the specified result has been reported for the
             indicated record in current namespace
         """
-        # record_identifier = self._strict_record_id(record_identifier)
+        pipeline_type = pipeline_type or self.pipeline_type
+        record_identifier = record_identifier or self.record_identifier
+
         return (
             len(
                 self.list_results(
