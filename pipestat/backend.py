@@ -68,9 +68,9 @@ class PipestatBackend(ABC):
         # record_identifier = self._strict_record_id(record_identifier)
         return (
             len(
-                self.check_which_results_exist(
+                self.list_existing_results(
                     results=[result_identifier],
-                    result_identifier=record_identifier,
+                    record_identifier=record_identifier,
                     pipeline_type=pipeline_type,
                 )
             )
@@ -81,7 +81,7 @@ class PipestatBackend(ABC):
         _LOGGER.warning("report not implemented yet for this backend")
         pass
 
-    def check_which_results_exist(self) -> List[str]:
+    def list_existing_results(self) -> List[str]:
         _LOGGER.warning("report not implemented yet for this backend")
         pass
 
@@ -201,8 +201,8 @@ class FileBackend(PipestatBackend):
 
         result_identifiers = list(values.keys())
         self.assert_results_defined(results=result_identifiers, pipeline_type=pipeline_type)
-        existing = self.check_which_results_exist(
-            result_identifier=record_identifier,
+        existing = self.list_existing_results(
+            record_identifier=record_identifier,
             results=result_identifiers,
             pipeline_type=pipeline_type,
         )
@@ -422,10 +422,10 @@ class FileBackend(PipestatBackend):
                 removed.append(f)
         return removed
 
-    def check_which_results_exist(
+    def list_existing_results(
         self,
         results: List[str],
-        result_identifier: Optional[str] = None,
+        record_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> List[str]:
         """
@@ -446,8 +446,8 @@ class FileBackend(PipestatBackend):
         return [
             r
             for r in results
-            if result_identifier in self.DATA_KEY[self.project_name][pipeline_type]
-            and r in self.DATA_KEY[self.project_name][pipeline_type][result_identifier]
+            if record_identifier in self.DATA_KEY[self.project_name][pipeline_type]
+            and r in self.DATA_KEY[self.project_name][pipeline_type][record_identifier]
         ]
 
     def check_record_exists(
@@ -563,8 +563,8 @@ class DBBackend(PipestatBackend):
 
         tn = self.get_table_name(pipeline_type=pipeline_type)
 
-        existing = self.check_which_results_exist(
-            result_identifier=record_identifier,
+        existing = self.list_existing_results(
+            record_identifier=record_identifier,
             results=result_identifiers,
             pipeline_type=pipeline_type,
         )
@@ -608,8 +608,8 @@ class DBBackend(PipestatBackend):
         tn = self.get_table_name(pipeline_type=pipeline_type)
 
         if result_identifier is not None:
-            existing = self.check_which_results_exist(
-                result_identifier=record_identifier,
+            existing = self.list_existing_results(
+                record_identifier=record_identifier,
                 results=[result_identifier],
                 pipeline_type=pipeline_type,
             )
@@ -826,8 +826,8 @@ class DBBackend(PipestatBackend):
                 if record:
                     return record
 
-    def check_which_results_exist(
-        self, results: List[str], result_identifier: str = None, pipeline_type: str = None
+    def list_existing_results(
+        self, results: List[str], record_identifier: str = None, pipeline_type: str = None
     ) -> List[str]:
         """
         Check if the specified results exist in the table
@@ -837,41 +837,12 @@ class DBBackend(PipestatBackend):
         :param str table_name: name of the table to search for results in
         :return List[str]: results identifiers that exist
         """
-        # table_name = table_name or self.namespace
         # rid = self._strict_record_id(rid)
         table_name = self.get_table_name(pipeline_type=pipeline_type)
-        rid = result_identifier
+        rid = record_identifier
         record = self.get_one_record(rid=rid, table_name=table_name)
-        debugreturn = (
-            [r for r in results if getattr(record, r, None) is not None] if record else []
-        )
         return [r for r in results if getattr(record, r, None) is not None] if record else []
 
-    # def check_result_exists(
-    #     self,
-    #     result_identifier: str,
-    #     record_identifier: str = None,
-    #     pipeline_type: Optional[str] = None,
-    # ) -> bool:
-    #     """
-    #     Check if the result has been reported
-    #
-    #     :param str record_identifier: unique identifier of the record
-    #     :param str result_identifier: name of the result to check
-    #     :return bool: whether the specified result has been reported for the
-    #         indicated record in current namespace
-    #     """
-    #     # record_identifier = self._strict_record_id(record_identifier)
-    #     return (
-    #         len(
-    #             self.check_which_results_exist(
-    #                 results=[result_identifier],
-    #                 result_identifier=record_identifier,
-    #                 pipeline_type=pipeline_type,
-    #             )
-    #         )
-    #         > 0
-    #     )
     def count_record(self):
         """
         Count rows in a selected table
