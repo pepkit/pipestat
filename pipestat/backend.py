@@ -827,21 +827,36 @@ class DBBackend(PipestatBackend):
                     return record
 
     def list_existing_results(
-        self, results: List[str], record_identifier: str = None, pipeline_type: str = None
+        self,
+        results: Optional[List[str]] = None,
+        record_identifier: str = None,
+        pipeline_type: str = None,
     ) -> List[str]:
         """
         Check if the specified results exist in the table
 
         :param List[str] results: results identifiers to check for
-        :param str rid: record to check for
-        :param str table_name: name of the table to search for results in
+        :param str record_identifier: record to check for
+        :param str pipeline_type: name of the table to search for results in
+        :return List[str] existing: if no result identifier specified, return all results for the record
         :return List[str]: results identifiers that exist
         """
         # rid = self._strict_record_id(rid)
         table_name = self.get_table_name(pipeline_type=pipeline_type)
         rid = record_identifier
         record = self.get_one_record(rid=rid, table_name=table_name)
-        return [r for r in results if getattr(record, r, None) is not None] if record else []
+
+        if results is None:
+            existing = []
+            if not record:
+                return []
+            else:
+                for key in self.parsed_schema.results_data.keys():
+                    if getattr(record, key, None) is not None:
+                        existing.append({key: getattr(record, key, None)})
+                return existing
+        else:
+            return [r for r in results if getattr(record, r, None) is not None] if record else []
 
     def count_record(self):
         """
