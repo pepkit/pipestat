@@ -1170,55 +1170,14 @@ class PipestatManager(dict):
         if self.schema is None:
             raise SchemaNotFoundError("report results")
         updated_ids = False
-
         result_identifiers = list(values.keys())
         for r in result_identifiers:
             validate_type(value=values[r], schema=self.result_schemas[r], strict_type=strict_type)
-        #
-        # self.assert_results_defined(results=result_identifiers, pipeline_type=pipeline_type)
-        # existing = self.check_which_results_exist(
-        #     rid=record_identifier,
-        #     results=result_identifiers,
-        #     pipeline_type=pipeline_type,
-        # )
-        # if existing:
-        #     existing_str = ", ".join(existing)
-        #     _LOGGER.warning(f"These results exist for '{record_identifier}': {existing_str}")
-        #     if not force_overwrite:
-        #         return False
-        #     _LOGGER.info(f"Overwriting existing results: {existing_str}")
-
-        # if self.file is not None:
-        # self.data.make_writable()
 
         _LOGGER.warning("Writing to locked data...")
 
         if self.backend:
             self.backend.report(values, record_identifier, pipeline_type)
-
-        if not self[DB_ONLY_KEY]:
-            self._report_data_element(
-                record_identifier=record_identifier,
-                values=values,
-                pipeline_type=pipeline_type,
-            )
-
-        if self.file is not None:
-            with self.data as locked_data:
-                locked_data.write()
-        # else:
-        #     _LOGGER.warning("ELSE...")
-        #     try:
-        #         tn = self._get_table_name(pipeline_type=pipeline_type)
-        #         updated_ids = self._report_db(
-        #             record_identifier=record_identifier, values=values, table_name=tn
-        #         )
-        #     except Exception as e:
-        #         _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")
-        #         if not self[DB_ONLY_KEY]:
-        #             for r in result_identifiers:
-        #                 del self[DATA_KEY][self.namespace][record_identifier][r]
-        #         raise
 
         nl = "\n"
         _LOGGER.warning("TEST HERE")
@@ -1227,9 +1186,6 @@ class PipestatManager(dict):
             f"Reported records for '{record_identifier}' in '{self.namespace}' "
             f"namespace:{nl} - {(nl + ' - ').join(rep_strs)}"
         )
-        _LOGGER.warning(self.data)
-        # _LOGGER.warning(self.backend.DATA_KEY)
-        _LOGGER.warning(updated_ids)
         _LOGGER.info(record_identifier, values)
         return True if not return_id else updated_ids
 

@@ -222,6 +222,8 @@ class FileBackend(PipestatBackend):
         with self.DATA_KEY as locked_data:
             locked_data.write()
 
+        _LOGGER.warning(self.DATA_KEY)
+
     def retrieve(
         self,
         record_identifier: Optional[str] = None,
@@ -613,7 +615,7 @@ class DBBackend(PipestatBackend):
                 with self.session as s:
                     s.add(new_record)
                     s.commit()
-                    # returned_id = new_record.id
+                    returned_id = new_record.id
             else:
                 with self.session as s:
                     record_to_update = (
@@ -624,7 +626,9 @@ class DBBackend(PipestatBackend):
                     for result_id, result_value in values.items():
                         setattr(record_to_update, result_id, result_value)
                     s.commit()
-                    # returned_id = record_to_update.id
+                    returned_id = record_to_update.id
+            _LOGGER.warning(returned_id)
+            # return returned_id
         except Exception as e:
             _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")
             raise
