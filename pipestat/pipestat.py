@@ -1043,12 +1043,13 @@ class PipestatManager(dict):
         table_name: Optional[str] = None,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
+        pipeline_type: Optional[str] = None,
     ) -> List[Any]:
         """
         Execute a query with a textual filter. Returns all results.
 
         To retrieve all table contents, leave the filter arguments out.
-        Table name defaults to the namespace
+        Table name uses pipeline_type
 
         :param str filter_templ: filter template with value placeholders,
              formatted as follows `id<:value and name=:name`
@@ -1057,28 +1058,15 @@ class PipestatManager(dict):
         :param str table_name: name of the table to query
         :param int offset: skip this number of rows
         :param int limit: include this number of rows
+        :param str pipeline_type: sample vs project pipeline
         :return List[Any]: a list of matched records
         """
-        if self.file:
-            raise PipestatDatabaseError(
-                f"The {self.__class__.__name__} object is not backed by a database. "
-                f"This operation is not supported for file backend."
+        pipeline_type = pipeline_type or self.pipeline_type
+        if self.backend:
+            results = self.backend.select_txt(
+                columns, filter_templ, filter_params, table_name, offset, limit, pipeline_type
             )
-        ORM = self.get_orm(table_name=table_name or self.namespace)
-        with self.session as s:
-            if columns is not None:
-                q = (
-                    s.query(*[getattr(ORM, column) for column in columns])
-                    .filter(text(filter_templ))
-                    .params(**filter_params)
-                )
-            else:
-                q = s.query(ORM).filter(text(filter_templ)).params(**filter_params)
-            if isinstance(offset, int):
-                q = q.offset(offset)
-            if isinstance(limit, int):
-                q = q.limit(limit)
-            results = q.all()
+
         return results
 
     def assert_results_defined(self, results: List[str], pipeline_type: str) -> None:
