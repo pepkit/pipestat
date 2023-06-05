@@ -992,24 +992,12 @@ class PipestatManager(dict):
         record_identifier = self._strict_record_id(record_identifier)
         # should change to simpler: record_identifier = record_identifier or self.record_identifier
         if self.file is None:
-            # results = self._retrieve_db(
-            #     result_identifier=result_identifier, record_identifier=r_id
-            # )
             results = self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
             if result_identifier is not None:
                 return results[result_identifier]
             return results
         else:
             return self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
-            # if r_id not in self.data[self.namespace][pipeline_type]:
-            #     raise PipestatDatabaseError(f"Record '{r_id}' not found")
-            # if result_identifier is None:
-            #     return self.data.exp[self.namespace][pipeline_type][r_id]
-            # if result_identifier not in self.data[self.namespace][pipeline_type][r_id]:
-            #     raise PipestatDatabaseError(
-            #         f"Result '{result_identifier}' not found for record '{r_id}'"
-            #     )
-            # return self.data[self.namespace][pipeline_type][r_id][result_identifier]
 
     def _retrieve_db(
         self,
@@ -1275,59 +1263,6 @@ class PipestatManager(dict):
         pipeline_type = pipeline_type or self.pipeline_type
 
         r_id = self._strict_record_id(record_identifier)
-        # rm_record = True if result_identifier is None else False
-        # if not self.check_record_exists(
-        #     record_identifier=r_id,
-        #     table_name=self.namespace,
-        #     pipeline_type=pipeline_type,
-        # ):
-        #     _LOGGER.error(f"Record '{r_id}' not found")
-        #     return False
-        # if result_identifier and not self.check_result_exists(
-        #     result_identifier, r_id, pipeline_type=pipeline_type
-        # ):
-        #     _LOGGER.error(f"'{result_identifier}' has not been reported for '{r_id}'")
-        #     return False
-
-        # if not self[DB_ONLY_KEY] and self.file:
-        #     if rm_record:
-        #         _LOGGER.info(f"Removing '{r_id}' record")
-        #         del self[DATA_KEY][self.namespace][pipeline_type][r_id]
-        #     else:
-        #         val_backup = self[DATA_KEY][self.namespace][pipeline_type][r_id][result_identifier]
-        #         del self[DATA_KEY][self.namespace][pipeline_type][r_id][result_identifier]
-        #         _LOGGER.info(
-        #             f"Removed result '{result_identifier}' for record "
-        #             f"'{r_id}' from '{self.namespace}' namespace"
-        #         )
-        #         if not self[DATA_KEY][self.namespace][pipeline_type][r_id]:
-        #             _LOGGER.info(f"Last result removed for '{r_id}'. " f"Removing the record")
-        #             del self[DATA_KEY][self.namespace][pipeline_type][r_id]
-        #             rm_record = True
-        #
-        #     if self.file:
-        #         with self.data as locked_data:
-        #             locked_data.write()
-
-        # if self.file is None:
-        #     try:
-        #         self._remove_db(
-        #             record_identifier=r_id,
-        #             result_identifier=None if rm_record else result_identifier,
-        #         )
-        #     except Exception as e:
-        #         _LOGGER.error(f"Could not remove the result from the database. Exception: {e}")
-        #         if not self[DB_ONLY_KEY] and not rm_record:
-        #             self[DATA_KEY][self.namespace][pipeline_type][r_id][
-        #                 result_identifier
-        #             ] = val_backup
-        #         raise
-
-        # if self.backend:
-        #     return self.backend.remove(record_identifier, result_identifier, pipeline_type)
-        # else:
-        #     return True
-        #
         if self.backend:
             return self.backend.remove(record_identifier, result_identifier, pipeline_type)
         else:
