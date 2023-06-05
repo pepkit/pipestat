@@ -37,7 +37,7 @@ class PipestatBackend(ABC):
         return_id: bool = False,
         pipeline_type: Optional[str] = None,
     ) -> Union[bool, int]:
-        _LOGGER.warning("report not implemented yet for this backend")
+        _LOGGER.warning("Not implemented yet for this backend")
 
     def check_result_exists(
         self,
@@ -101,7 +101,7 @@ class PipestatBackend(ABC):
             )
 
     def retrieve(self):
-        _LOGGER.warning("report not implemented yet for this backend")
+        _LOGGER.warning("Not implemented yet for this backend")
         pass
 
     def set_status(
@@ -110,15 +110,15 @@ class PipestatBackend(ABC):
         record_identifier: str = None,
         pipeline_type: Optional[str] = None,
     ) -> None:
-        _LOGGER.warning("report not implemented yet for this backend")
+        _LOGGER.warning("Not implemented yet for this backend")
 
     def get_status(self, record_identifier: str) -> Optional[str]:
-        _LOGGER.warning("report not implemented yet for this backend")
+        _LOGGER.warning("Not implemented yet for this backend")
 
     def clear_status(
         self, record_identifier: str = None, flag_names: List[str] = None
     ) -> List[Union[str, None]]:
-        _LOGGER.warning("report not implemented yet for this backend")
+        _LOGGER.warning("Not implemented yet for this backend")
 
     def remove(
         self,
@@ -126,7 +126,7 @@ class PipestatBackend(ABC):
         result_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> bool:
-        _LOGGER.warning("debug remove function abstract class")
+        _LOGGER.warning("Not implemented yet for this backend")
 
     def remove_record(
         self,
@@ -134,10 +134,22 @@ class PipestatBackend(ABC):
         result_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> bool:
-        _LOGGER.warning("debug remove function abstract class")
+        _LOGGER.warning("Not implemented yet for this backend")
+
+    def select(
+        self,
+        table_name: Optional[str] = None,
+        columns: Optional[List[str]] = None,
+        filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
+        json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        pipeline_type: Optional[str] = None,
+    ) -> List[Any]:
+        _LOGGER.warning("Not implemented yet for this backend")
 
     def count_record(self):
-        _LOGGER.warning("report not implemented yet for this backend")
+        _LOGGER.warning("Not implemented yet for this backend")
         pass
 
 
@@ -905,6 +917,60 @@ class DBBackend(PipestatBackend):
             return (
                 [r for r in restrict_to if getattr(record, r, None) is not None] if record else []
             )
+
+    def select(
+        self,
+        table_name: Optional[str] = None,
+        columns: Optional[List[str]] = None,
+        filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
+        json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        pipeline_type: Optional[str] = None,
+    ) -> List[Any]:
+        """
+        Perform a `SELECT` on the table
+
+        :param str table_name: name of the table to SELECT from
+        :param List[str] columns: columns to include in the result
+        :param [(key,operator,value)] filter_conditions: e.g. [("id", "eq", 1)], operator list:
+            - eq for ==
+            - lt for <
+            - ge for >=
+            - in for in_
+            - like for like
+        :param [(col,key,value)] json_filter_conditions: conditions for JSONB column to
+            query that include JSON column name, key withing the JSON object in that
+            column and the value to check the identity against. Therefore only '==' is
+            supported in non-nested checks, e.g. [("other", "genome", "hg38")]
+        :param int offset: skip this number of rows
+        :param int limit: include this number of rows
+        """
+        pipeline_type = pipeline_type or self.pipeline_type
+        table_name = table_name or self.get_table_name(pipeline_type)
+
+        ORM = self.get_orm(table_name=table_name)
+
+        with self.session as s:
+            if columns is not None:
+                statement = sqlmodel.select(*[getattr(ORM, column) for column in columns])
+            else:
+                statement = sqlmodel.select(ORM)
+
+            statement = dynamic_filter(
+                ORM=ORM,
+                statement=statement,
+                filter_conditions=filter_conditions,
+                json_filter_conditions=json_filter_conditions,
+            )
+            if isinstance(offset, int):
+                statement = statement.offset(offset)
+            if isinstance(limit, int):
+                statement = statement.limit(limit)
+            results = s.exec(statement)
+            result = results.all()
+
+        return result
 
     def count_record(self):
         """

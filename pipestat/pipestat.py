@@ -927,30 +927,18 @@ class PipestatManager(dict):
         :param int offset: skip this number of rows
         :param int limit: include this number of rows
         """
+        pipeline_type = pipeline_type or self.pipeline_type
 
-        if table_name == None:
-            table_name = self._get_table_name(self.pipeline_type)
-
-        ORM = self.get_orm(table_name=table_name or self.namespace)
-
-        with self.session as s:
-            if columns is not None:
-                statement = sqlmodel.select(*[getattr(ORM, column) for column in columns])
-            else:
-                statement = sqlmodel.select(ORM)
-
-            statement = dynamic_filter(
-                ORM=ORM,
-                statement=statement,
-                filter_conditions=filter_conditions,
-                json_filter_conditions=json_filter_conditions,
+        if self.backend:
+            result = self.backend.select(
+                table_name,
+                columns,
+                filter_conditions,
+                json_filter_conditions,
+                offset,
+                limit,
+                pipeline_type,
             )
-            if isinstance(offset, int):
-                statement = statement.offset(offset)
-            if isinstance(limit, int):
-                statement = statement.limit(limit)
-            results = s.exec(statement)
-            result = results.all()
 
         return result
 
