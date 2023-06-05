@@ -115,7 +115,9 @@ class PipestatBackend(ABC):
     ) -> None:
         _LOGGER.warning("Not implemented yet for this backend")
 
-    def get_status(self, record_identifier: str) -> Optional[str]:
+    def get_status(
+        self, record_identifier: str, pipeline_type: Optional[str] = None
+    ) -> Optional[str]:
         _LOGGER.warning("Not implemented yet for this backend")
 
     def clear_status(
@@ -428,7 +430,9 @@ class FileBackend(PipestatBackend):
         if prev_status:
             _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
 
-    def get_status(self, record_identifier: str) -> Optional[str]:
+    def get_status(
+        self, record_identifier: str, pipeline_type: Optional[str] = None
+    ) -> Optional[str]:
         """
         Get the current pipeline status
 
@@ -1084,7 +1088,7 @@ class DBBackend(PipestatBackend):
                 f"'{status_identifier}' is not a defined status identifier. "
                 f"These are allowed: {known_status_identifiers}"
             )
-        prev_status = self.get_status(record_identifier)
+        prev_status = self.get_status(record_identifier, pipeline_type)
         try:
             self.report(
                 values={STATUS: status_identifier},
@@ -1098,6 +1102,20 @@ class DBBackend(PipestatBackend):
             raise
         if prev_status:
             _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
+
+    def get_status(
+        self, record_identifier: str, pipeline_type: Optional[str] = None
+    ) -> Optional[str]:
+        pipeline_type = pipeline_type or self.pipeline_type
+        try:
+            result = self.retrieve(
+                result_identifier=STATUS,
+                record_identifier=record_identifier,
+                pipeline_type=pipeline_type,
+            )
+        except PipestatDatabaseError:
+            return None
+        return result[STATUS]
 
     @property
     @contextmanager

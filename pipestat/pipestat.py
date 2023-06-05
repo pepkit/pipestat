@@ -517,10 +517,9 @@ class PipestatManager(dict):
         :return str: status identifier, like 'running'
         """
         r_id = self._strict_record_id(record_identifier)
-        if self.file is None:
-            return self._get_status_db(record_identifier=r_id)
-        else:
-            return self._get_status_file(record_identifier=r_id)
+        pipeline_type = self.pipeline_type
+        if self.backend:
+            return self.backend.get_status(record_identifier=r_id, pipeline_type=pipeline_type)
 
     def _get_status_file(self, record_identifier: str) -> Optional[str]:
         r_id = self._strict_record_id(record_identifier)
