@@ -92,6 +92,8 @@ class PipestatBackend(ABC):
             known_results = self.parsed_schema.sample_level_data.keys()
         if pipeline_type == "project":
             known_results = self.parsed_schema.project_level_data.keys()
+        if "status" in results:
+            known_results = ["status"]
 
         # known_results = self.result_schemas.keys()
 
@@ -1052,6 +1054,50 @@ class DBBackend(PipestatBackend):
             stmt = sql_select(mod)
             records = s.exec(stmt).all()
             return len(records)
+
+    def set_status(
+        self,
+        status_identifier: str,
+        record_identifier: str = None,
+        pipeline_type: Optional[str] = None,
+    ) -> None:
+        """
+        Set pipeline run status.
+
+        The status identifier needs to match one of identifiers specified in
+        the status schema. A basic, ready to use, status schema is shipped with
+        this package.
+
+        :param str status_identifier: status to set, one of statuses defined
+            in the status schema
+        :param str record_identifier: record identifier to set the
+            pipeline status for
+        :param str pipeline_type: whether status is being set for a project-level pipeline, or sample-level
+        """
+        pipeline_type = pipeline_type or self.pipeline_type
+        table_name = self.get_table_name(pipeline_type)
+        record_identifier = record_identifier or self.record_identifier
+        # r_id = self._strict_record_id(record_identifier)
+        known_status_identifiers = self.status_schema.keys()
+        if status_identifier not in known_status_identifiers:
+            raise PipestatError(
+                f"'{status_identifier}' is not a defined status identifier. "
+                f"These are allowed: {known_status_identifiers}"
+            )
+        prev_status = self.get_status(record_identifier)
+        try:
+            self.report(
+                values={STATUS: status_identifier},
+                record_identifier=record_identifier,
+                pipeline_type=pipeline_type,
+            )
+        except Exception as e:
+            _LOGGER.error(
+                f"Could not insert into the status table ('{table_name}'). Exception: {e}"
+            )
+            raise
+        if prev_status:
+            _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
 
     @property
     @contextmanager

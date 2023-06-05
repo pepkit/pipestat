@@ -455,31 +455,6 @@ class PipestatManager(dict):
         :param str pipeline_type: whether status is being set for a project-level pipeline, or sample-level
         """
         pipeline_type = pipeline_type or self.pipeline_type
-        r_id = self._strict_record_id(record_identifier)
-        known_status_identifiers = self.status_schema.keys()
-        if status_identifier not in known_status_identifiers:
-            raise PipestatError(
-                f"'{status_identifier}' is not a defined status identifier. "
-                f"These are allowed: {known_status_identifiers}"
-            )
-        prev_status = self.get_status(r_id)
-        if self.file is not None:
-            # TODO: manage project-level flag here.
-            self._set_status_file(
-                status_identifier=status_identifier,
-                record_identifier=r_id,
-                prev_status=prev_status,
-            )
-            # TODO: support project / sample distinction for file backend?
-        else:
-            tn = self._get_table_name(pipeline_type=pipeline_type)
-            self._set_status_db(
-                status_identifier=status_identifier,
-                record_identifier=r_id,
-                table_name=tn,
-            )
-        if prev_status:
-            _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
 
         if self.backend:
             self.backend.set_status(status_identifier, record_identifier, pipeline_type)
@@ -549,6 +524,8 @@ class PipestatManager(dict):
 
     def _get_status_file(self, record_identifier: str) -> Optional[str]:
         r_id = self._strict_record_id(record_identifier)
+        # if self.backend:
+        #     flag_file = self.backend.get_flag_file(record_identifier=r_id)
         flag_file = self._get_flag_file(record_identifier=record_identifier)
         if flag_file is not None:
             assert isinstance(flag_file, str), TypeError(
