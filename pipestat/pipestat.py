@@ -492,24 +492,6 @@ class PipestatManager(dict):
             f.write(status_identifier)
         remove_lock(flag_path)
 
-    def _set_status_db(
-        self,
-        status_identifier: str,
-        record_identifier: str,
-        table_name: str,
-    ) -> None:
-        try:
-            self._report_db(
-                values={STATUS: status_identifier},
-                record_identifier=record_identifier,
-                table_name=table_name,
-            )
-        except Exception as e:
-            _LOGGER.error(
-                f"Could not insert into the status table ('{table_name}'). Exception: {e}"
-            )
-            raise
-
     def get_status(self, record_identifier: str = None) -> Optional[str]:
         """
         Get the current pipeline status
@@ -520,34 +502,6 @@ class PipestatManager(dict):
         pipeline_type = self.pipeline_type
         if self.backend:
             return self.backend.get_status(record_identifier=r_id, pipeline_type=pipeline_type)
-
-    def _get_status_file(self, record_identifier: str) -> Optional[str]:
-        r_id = self._strict_record_id(record_identifier)
-        # if self.backend:
-        #     flag_file = self.backend.get_flag_file(record_identifier=r_id)
-        flag_file = self._get_flag_file(record_identifier=record_identifier)
-        if flag_file is not None:
-            assert isinstance(flag_file, str), TypeError(
-                "Flag file path is expected to be a str, were multiple flags found?"
-            )
-            with open(flag_file, "r") as f:
-                status = f.read()
-            return status
-        _LOGGER.debug(
-            f"Could not determine status for '{r_id}' record. "
-            f"No flags found in: {self[STATUS_FILE_DIR]}"
-        )
-        return None
-
-    def _get_status_db(self, record_identifier: str) -> Optional[str]:
-        try:
-            result = self._retrieve_db(
-                result_identifier=STATUS,
-                record_identifier=record_identifier,
-            )
-        except PipestatDatabaseError:
-            return None
-        return result[STATUS]
 
     def clear_status(
         self, record_identifier: str = None, flag_names: List[str] = None
@@ -561,43 +515,9 @@ class PipestatManager(dict):
         :return List[str]: Collection of names of flags removed
         """
         r_id = self._strict_record_id(record_identifier)
-        if self.file is not None:
-            return self._clear_status_file(record_identifier=r_id, flag_names=flag_names)
-        else:
-            return self._clear_status_db(record_identifier=r_id)
 
         if self.backend:
             self.backend.clear_status(record_identifier=r_id, flag_names=flag_names)
-
-    def _clear_status_file(
-        self, record_identifier: str = None, flag_names: List[str] = None
-    ) -> List[Union[str, None]]:
-        flag_names = flag_names or list(self.status_schema.keys())
-        if isinstance(flag_names, str):
-            flag_names = [flag_names]
-        removed = []
-        for f in flag_names:
-            path_flag_file = self.get_status_flag_path(
-                status_identifier=f, record_identifier=record_identifier
-            )
-            try:
-                os.remove(path_flag_file)
-            except:
-                pass
-            else:
-                _LOGGER.info(f"Removed existing flag: {path_flag_file}")
-                removed.append(f)
-        return removed
-
-    def _clear_status_db(self, record_identifier: str = None) -> List[Union[str, None]]:
-        removed = self.get_status(record_identifier)
-        try:
-            self._remove_db(record_identifier=record_identifier)
-        except Exception as e:
-            _LOGGER.error(f"Could not remove the status from the database. Exception: {e}")
-            return []
-        else:
-            return [removed]
 
     def validate_schema(self) -> None:
         """
@@ -680,22 +600,6 @@ class PipestatManager(dict):
             self[DB_ENGINE_KEY] = create_engine(self.db_url, echo=self._show_db_logs)
             return self[DB_ENGINE_KEY]
 
-    def _table_to_dict(self) -> None:
-        """
-        Create a dictionary from the database table data
-        """
-        with self.session as s:
-            records = s.query(self.get_orm(table_name=self.namespace)).all()
-        _LOGGER.debug(f"Reading data from database for '{self.namespace}' namespace")
-        for record in records:
-            record_id = getattr(record, RECORD_ID)
-            for column in record.__table__.columns:
-                val = getattr(record, column.name, None)
-                if val is not None:
-                    self._report_data_element(
-                        record_identifier=record_id, values={column.name: val}
-                    )
-
     def _get_attr(self, attr: str) -> Any:
         """
         Safely get the name of the selected attribute of this object
@@ -742,19 +646,6 @@ class PipestatManager(dict):
             result = self.backend.count_records(pipeline_type)
         return result
 
-    def _count_rows(self, table_name: str) -> int:
-        """
-        Count rows in a selected table
-
-        :param str table_name: table to count rows for
-        :return int: number of rows in the selected table
-        """
-        mod = self._get_model(table_name=table_name, strict=True)
-        with self.session as s:
-            stmt = sql_select(mod)
-            records = s.exec(stmt).all()
-            return len(records)
-
     def get_orm(self, table_name: str) -> Any:
         """
         Get an object relational mapper class
@@ -766,124 +657,6 @@ class PipestatManager(dict):
             raise PipestatDatabaseError("Object relational mapper classes not defined")
         mod = self._get_model(table_name=table_name, strict=True)
         return mod
-
-    def check_record_exists(
-        self,
-        record_identifier: str,
-        table_name: str,
-        pipeline_type: Optional[str] = None,
-    ) -> bool:
-        """
-        Check if the specified record exists in the table
-
-        :param str record_identifier: record to check for
-        :param str table_name: table name to check
-        :return bool: whether the record exists in the table
-        """
-        pipeline_type = pipeline_type or self.pipeline_type
-        if self.file is None:
-            query_hit = self.get_one_record(rid=record_identifier, table_name=table_name)
-            return query_hit is not None
-        else:
-            return (
-                self.namespace in self.data
-                and record_identifier in self.data[table_name][pipeline_type]
-            )
-
-    def check_which_results_exist(
-        self,
-        results: List[str],
-        rid: Optional[str] = None,
-        table_name: Optional[str] = None,
-        pipeline_type: Optional[str] = None,
-    ) -> List[str]:
-        """
-        Check which results have been reported
-
-        :param List[str] results: names of the results to check
-        :param str rid: unique identifier of the record
-        :param str table_name: name of the table for which to check results
-        :return List[str]: names of results which exist
-        """
-
-        pipeline_type = pipeline_type or self.pipeline_type
-
-        rid = self._strict_record_id(rid)
-        if self.file is None:
-            return self._check_which_results_exist_db(
-                results=results, rid=rid, table_name=table_name
-            )
-        if self.namespace not in self.data:
-            return []
-        return [
-            r
-            for r in results
-            if rid in self.data[self.namespace][pipeline_type]
-            and r in self.data[self.namespace][pipeline_type][rid]
-        ]
-
-    def _check_which_results_exist_db(
-        self, results: List[str], rid: str = None, table_name: str = None
-    ) -> List[str]:
-        """
-        Check if the specified results exist in the table
-
-        :param List[str] results: results identifiers to check for
-        :param str rid: record to check for
-        :param str table_name: name of the table to search for results in
-        :return List[str]: results identifiers that exist
-        """
-        # table_name = table_name or self.namespace
-        rid = self._strict_record_id(rid)
-        record = self.get_one_record(rid=rid, table_name=table_name)
-        return [r for r in results if getattr(record, r, None) is not None] if record else []
-
-    def get_one_record(self, table_name: str, rid: Optional[str] = None):
-        models = (
-            [self.get_orm(table_name=table_name)]
-            if table_name
-            else list(self[DB_ORMS_KEY].values())
-        )
-        with self.session as s:
-            for mod in models:
-                # record = sql_select(mod).where(mod.record_identifier == rid).first()
-                # record = s.query(mod).where(mod.record_identifier == rid).first()
-                stmt = sql_select(mod).where(mod.record_identifier == rid)
-                # stmt = sql_select(mod)
-                record = s.exec(stmt).first()
-                # record = (
-                #     s.query(mod)
-                #     .filter_by(record_identifier=rid)
-                #     .first()
-                # )
-                if record:
-                    return record
-
-    def check_result_exists(
-        self,
-        result_identifier: str,
-        record_identifier: str = None,
-        pipeline_type: Optional[str] = None,
-    ) -> bool:
-        """
-        Check if the result has been reported
-
-        :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to check
-        :return bool: whether the specified result has been reported for the
-            indicated record in current namespace
-        """
-        record_identifier = self._strict_record_id(record_identifier)
-        return (
-            len(
-                self.check_which_results_exist(
-                    results=[result_identifier],
-                    rid=record_identifier,
-                    pipeline_type=pipeline_type,
-                )
-            )
-            > 0
-        )
 
     def select(
         self,
@@ -973,54 +746,6 @@ class PipestatManager(dict):
         else:
             return self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
 
-    def _retrieve_db(
-        self,
-        result_identifier: str = None,
-        record_identifier: str = None,
-        table_name: str = None,
-    ) -> Dict[str, Any]:
-        """
-        Retrieve a result for a record.
-
-        If no result ID specified, results for the entire record will
-        be returned.
-
-        :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to be retrieved
-        :param str table_name: name of the table to search for results in
-        :return Dict[str, any]: a single result or a mapping with all the results
-            reported for the record
-        """
-        table_name = table_name or self.namespace
-        record_identifier = self._strict_record_id(record_identifier)
-        if result_identifier is not None:
-            existing = self.check_which_results_exist(
-                results=[result_identifier],
-                rid=record_identifier,
-                table_name=table_name,
-            )
-            if not existing:
-                raise PipestatDatabaseError(
-                    f"Result '{result_identifier}' not found for record " f"'{record_identifier}'"
-                )
-
-        with self.session as s:
-            record = (
-                s.query(self.get_orm(table_name=table_name))
-                .filter_by(record_identifier=record_identifier)
-                .first()
-            )
-
-        if record is not None:
-            if result_identifier is not None:
-                return {result_identifier: getattr(record, result_identifier)}
-            return {
-                column: getattr(record, column)
-                for column in [c.name for c in record.__table__.columns]
-                if getattr(record, column, None) is not None
-            }
-        raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
-
     def select_txt(
         self,
         columns: Optional[List[str]] = None,
@@ -1054,31 +779,6 @@ class PipestatManager(dict):
             )
 
         return results
-
-    def assert_results_defined(self, results: List[str], pipeline_type: str) -> None:
-        """
-        Assert provided list of results is defined in the schema
-
-        :param List[str] results: list of results to
-            check for existence in the schema
-        :raises SchemaError: if any of the results is not defined in the schema
-        """
-
-        # take project level input and look for keys in the specific schema.
-        # warn if you are trying to report a sample to a project level and vice versa.
-
-        if pipeline_type == "sample":
-            known_results = self["_schema"].sample_level_data.keys()
-        if pipeline_type == "project":
-            known_results = self["_schema"].project_level_data.keys()
-
-        # known_results = self.result_schemas.keys()
-
-        for r in results:
-            assert r in known_results, SchemaError(
-                f"'{r}' is not a known result. Results defined in the "
-                f"schema are: {list(known_results)}."
-            )
 
     def report(
         self,
@@ -1139,71 +839,6 @@ class PipestatManager(dict):
         _LOGGER.info(record_identifier, values)
         return True if not return_id else updated_ids
 
-    def _report_db(self, values: Dict[str, Any], record_identifier: str, table_name: str) -> int:
-        """
-        Report a result to a database.
-
-        :param Dict[str, Any] values: values to report
-        :param str record_identifier: record to report the result for
-        :param str table_name: name of the table to report the result in
-        :return int: updated/inserted row
-        """
-        record_identifier = self._strict_record_id(record_identifier)
-        ORMClass = self.get_orm(table_name=table_name)
-        values.update({RECORD_ID: record_identifier})
-        values.update({"namespace": self["_config"]["namespace"]})
-
-        if not self.check_record_exists(
-            record_identifier=record_identifier, table_name=table_name
-        ):
-            new_record = ORMClass(**values)
-            with self.session as s:
-                s.add(new_record)
-                s.commit()
-                returned_id = new_record.id
-        else:
-            with self.session as s:
-                record_to_update = (
-                    s.query(ORMClass)
-                    .filter(getattr(ORMClass, RECORD_ID) == record_identifier)
-                    .first()
-                )
-                for result_id, result_value in values.items():
-                    setattr(record_to_update, result_id, result_value)
-                s.commit()
-                returned_id = record_to_update.id
-        return returned_id
-
-    def _report_data_element(
-        self,
-        record_identifier: str,
-        values: Dict[str, Any],
-        pipeline_type: Optional[str] = None,
-        table_name: Optional[bool] = None,
-    ) -> None:
-        """
-        Update the value of a result in a current namespace.
-
-        This method overwrites any existing data and creates the required
-         hierarchical mapping structure if needed.
-
-        :param str record_identifier: unique identifier of the record
-        :param Dict[str, Any] values: dict of results identifiers and values
-            to be reported
-        :param str table_name: name of the table to report the result in
-        """
-
-        pipeline_type = pipeline_type or self.pipeline_type
-
-        # TODO: update to disambiguate sample- / project-level
-        self[DATA_KEY].setdefault(self.namespace, {})
-        # self[DATA_KEY][self.namespace].setdefault(record_identifier, {})
-        self[DATA_KEY][self.namespace].setdefault(pipeline_type, {})
-        self[DATA_KEY][self.namespace][pipeline_type].setdefault(record_identifier, {})
-        for res_id, val in values.items():
-            self[DATA_KEY][self.namespace][pipeline_type][record_identifier][res_id] = val
-            # self[DATA_KEY][self.namespace][record_identifier][res_id] = val
-
     def remove(
         self,
         record_identifier: str = None,
@@ -1229,48 +864,3 @@ class PipestatManager(dict):
             return self.backend.remove(record_identifier, result_identifier, pipeline_type)
         else:
             return True
-
-    def _remove_db(
-        self,
-        record_identifier: str = None,
-        result_identifier: str = None,
-        table_name: str = None,
-    ) -> bool:
-        """
-        Remove a result.
-
-        If no result ID specified or last result is removed, the entire record
-        will be removed.
-
-        :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to be removed or None
-             if the record should be removed.
-        :param str table_name: name of the table to report the result in
-        :return bool: whether the result has been removed
-        :raise PipestatDatabaseError: if either record or result specified are not found
-        """
-        table_name = table_name or self.namespace
-        record_identifier = self._strict_record_id(record_identifier)
-        ORMClass = self.get_orm(table_name=table_name)
-        if self.check_record_exists(record_identifier=record_identifier, table_name=table_name):
-            with self.session as s:
-                records = s.query(ORMClass).filter(
-                    getattr(ORMClass, RECORD_ID) == record_identifier
-                )
-                if result_identifier is None:
-                    # delete row
-                    records.delete()
-                else:
-                    # set the value to None
-                    if not self.check_result_exists(
-                        record_identifier=record_identifier,
-                        result_identifier=result_identifier,
-                    ):
-                        raise PipestatDatabaseError(
-                            f"Result '{result_identifier}' not found for record "
-                            f"'{record_identifier}'"
-                        )
-                    setattr(records.first(), result_identifier, None)
-                s.commit()
-        else:
-            raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
