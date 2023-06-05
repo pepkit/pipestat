@@ -136,6 +136,7 @@ class TestReporting:
                     if backend == "file":
                         assert_is_in_files(results_file_path + ".new", str(list(val.values())[0]))
                 if backend == "db":
+                    # This is being captured in TestSplitClasses
                     pass
 
     @pytest.mark.parametrize(
@@ -213,7 +214,7 @@ class TestReporting:
                     if backend == "file":
                         assert_is_in_files(results_file_path + ".new", str(list(val.values())[0]))
                 if backend == "db":
-                    pass
+                    assert list(val.keys())[0] in psm.retrieve(record_identifier=rec_id)
 
     @pytest.mark.parametrize(
         ["rec_id", "val", "success"],
