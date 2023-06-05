@@ -21,18 +21,6 @@ else:
 _LOGGER = getLogger(PKG_NAME)
 
 
-def set_var_priority(func):
-    """Decorator to set variable priority."""
-
-    def inner_func(self, *args, **kwargs):
-        for i in args.items():
-            if args[i] in ["pipeline_type", "record_identifier"]:
-                args[i] = args[i] or getattr(self, args[i])
-        return func(self, *args, **kwargs)
-
-    return inner_func
-
-
 class PipestatBackend(ABC):
     """Abstract class representing a pipestat backend"""
 
@@ -65,11 +53,13 @@ class PipestatBackend(ABC):
         :return bool: whether the specified result has been reported for the
             indicated record in current namespace
         """
-        # record_identifier = self._strict_record_id(record_identifier)
+        pipeline_type = pipeline_type or self.pipeline_type
+        record_identifier = record_identifier or self.record_identifier
+
         return (
             len(
-                self.list_existing_results(
-                    results=[result_identifier],
+                self.list_results(
+                    restrict_to=[result_identifier],
                     record_identifier=record_identifier,
                     pipeline_type=pipeline_type,
                 )
@@ -78,11 +68,11 @@ class PipestatBackend(ABC):
         )
 
     def check_record_exists(self) -> bool:
-        _LOGGER.warning("report not implemented yet for this backend")
+        _LOGGER.warning("Not implemented yet for this backend")
         pass
 
-    def list_existing_results(self) -> List[str]:
-        _LOGGER.warning("report not implemented yet for this backend")
+    def list_results(self) -> List[str]:
+        _LOGGER.warning("Not implemented yet for this backend")
         pass
 
     def assert_results_defined(self, results: List[str], pipeline_type: str) -> None:
@@ -209,9 +199,9 @@ class FileBackend(PipestatBackend):
 
         result_identifiers = list(values.keys())
         self.assert_results_defined(results=result_identifiers, pipeline_type=pipeline_type)
-        existing = self.list_existing_results(
+        existing = self.list_results(
             record_identifier=record_identifier,
-            results=result_identifiers,
+            restrict_to=result_identifiers,
             pipeline_type=pipeline_type,
         )
         if existing:
@@ -453,41 +443,32 @@ class FileBackend(PipestatBackend):
                 removed.append(f)
         return removed
 
-    def list_existing_results(
+    def list_results(
         self,
-        results: Optional[List[str]] = None,
+        restrict_to: Optional[List[str]] = None,
         record_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> List[str]:
         """
-        Check which results have been reported
+        Lists all, or a selected set of, reported results
 
-        :param List[str] results: names of the results to check
-        :param str rid: unique identifier of the record
-        :param str table_name: name of the table for which to check results
-        :return List[str] existing: if no result identifier specified, return all results for the record
+        :param List[str] restrict_to: selected subset of names of results to list
+        :param str record_identifier: unique identifier of the record
         :return List[str]: names of results which exist
         """
 
-        # pipeline_type = pipeline_type or self.pipeline_type
-        # rid = self._strict_record_id(rid)
+        pipeline_type = pipeline_type or self.pipeline_type
+        record_identifier = record_identifier or self.record_identifier
 
-        if self.project_name not in self.DATA_KEY:
+        try:
+            results = list(
+                self.DATA_KEY[self.project_name][pipeline_type][record_identifier].keys()
+            )
+        except KeyError:
             return []
-
-        if results is None:
-            existing = []
-            for key in self.parsed_schema.results_data.keys():
-                if getattr(record, key, None) is not None:
-                    existing.append({key: getattr(record, key, None)})
-            return existing
-
-        return [
-            r
-            for r in results
-            if record_identifier in self.DATA_KEY[self.project_name][pipeline_type]
-            and r in self.DATA_KEY[self.project_name][pipeline_type][record_identifier]
-        ]
+        if restrict_to:
+            return [r for r in restrict_to if r in results]
+        return results
 
     def check_record_exists(
         self,
@@ -602,9 +583,9 @@ class DBBackend(PipestatBackend):
 
         table_name = self.get_table_name(pipeline_type=pipeline_type)
 
-        existing = self.list_existing_results(
+        existing = self.list_results(
             record_identifier=record_identifier,
-            results=result_identifiers,
+            restrict_to=result_identifiers,
             pipeline_type=pipeline_type,
         )
         if existing:
@@ -667,9 +648,9 @@ class DBBackend(PipestatBackend):
         tn = self.get_table_name(pipeline_type=pipeline_type)
 
         if result_identifier is not None:
-            existing = self.list_existing_results(
+            existing = self.list_results(
                 record_identifier=record_identifier,
-                results=[result_identifier],
+                restrict_to=[result_identifier],
                 pipeline_type=pipeline_type,
             )
             if not existing:
@@ -882,16 +863,16 @@ class DBBackend(PipestatBackend):
                 if record:
                     return record
 
-    def list_existing_results(
+    def list_results(
         self,
-        results: Optional[List[str]] = None,
+        restrict_to: Optional[List[str]] = None,
         record_identifier: str = None,
         pipeline_type: str = None,
     ) -> List[str]:
         """
         Check if the specified results exist in the table
 
-        :param List[str] results: results identifiers to check for
+        :param List[str] restrict_to: results identifiers to check for
         :param str record_identifier: record to check for
         :param str pipeline_type: name of the table to search for results in
         :return List[str] existing: if no result identifier specified, return all results for the record
@@ -902,17 +883,20 @@ class DBBackend(PipestatBackend):
         rid = record_identifier
         record = self.get_one_record(rid=rid, table_name=table_name)
 
-        if results is None:
-            existing = []
-            if not record:
-                return []
-            else:
-                for key in self.parsed_schema.results_data.keys():
-                    if getattr(record, key, None) is not None:
-                        existing.append({key: getattr(record, key, None)})
-                return existing
+        if restrict_to is None:
+            return (
+                [
+                    key
+                    for key in self.parsed_schema.results_data.keys()
+                    if getattr(record, key, None) is not None
+                ]
+                if record
+                else []
+            )
         else:
-            return [r for r in results if getattr(record, r, None) is not None] if record else []
+            return (
+                [r for r in restrict_to if getattr(record, r, None) is not None] if record else []
+            )
 
     def count_record(self):
         """

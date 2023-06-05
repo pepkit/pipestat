@@ -1228,7 +1228,7 @@ class PipestatManager(dict):
             f"namespace:{nl} - {(nl + ' - ').join(rep_strs)}"
         )
         _LOGGER.warning(self.data)
-        #_LOGGER.warning(self.backend.DATA_KEY)
+        # _LOGGER.warning(self.backend.DATA_KEY)
         _LOGGER.warning(updated_ids)
         _LOGGER.info(record_identifier, values)
         return True if not return_id else updated_ids
@@ -1319,7 +1319,7 @@ class PipestatManager(dict):
         pipeline_type = pipeline_type or self.pipeline_type
 
         r_id = self._strict_record_id(record_identifier)
-        #rm_record = True if result_identifier is None else False
+        # rm_record = True if result_identifier is None else False
         # if not self.check_record_exists(
         #     record_identifier=r_id,
         #     table_name=self.namespace,
