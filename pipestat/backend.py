@@ -300,8 +300,6 @@ class FileBackend(PipestatBackend):
             return False
 
         if rm_record:
-            # _LOGGER.info(f"Removing '{record_identifier}' record")
-            # del self.DATA_KEY[self.project_name][pipeline_type][record_identifier]
             self.remove_record(
                 record_identifier=record_identifier,
                 pipeline_type=pipeline_type,
@@ -323,9 +321,13 @@ class FileBackend(PipestatBackend):
                 _LOGGER.info(
                     f"Last result removed for '{record_identifier}'. " f"Removing the record"
                 )
-                del self.DATA_KEY[self.project_name][pipeline_type][record_identifier]
                 rm_record = True
-
+                self.remove_record(
+                    record_identifier=record_identifier,
+                    pipeline_type=pipeline_type,
+                    rm_record=rm_record,
+                )
+                # del self.DATA_KEY[self.project_name][pipeline_type][record_identifier]
             with self.DATA_KEY as locked_data:
                 locked_data.write()
         return True
@@ -341,6 +343,8 @@ class FileBackend(PipestatBackend):
             try:
                 _LOGGER.info(f"Removing '{record_identifier}' record")
                 del self.DATA_KEY[self.project_name][pipeline_type][record_identifier]
+                with self.DATA_KEY as locked_data:
+                    locked_data.write()
                 return True
             except:
                 # raise exception

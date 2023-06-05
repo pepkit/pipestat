@@ -73,10 +73,15 @@ class TestSplitClasses:
                 psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
                 val_name = list(val.keys())[0]
                 assert val_name in psm.retrieve(record_identifier=rec_id)
-
-                psm.remove(record_identifier=rec_id)
-                with pytest.raises(PipestatDatabaseError):
-                    psm.retrieve(record_identifier=rec_id)
+                psm.remove(record_identifier=rec_id, result_identifier=val_name)
+                if backend == "file":
+                    with pytest.raises(PipestatDatabaseError):
+                        psm.retrieve(record_identifier=rec_id)
+                if backend == "db":
+                    assert getattr(psm.retrieve(record_identifier=rec_id), val_name, None) is None
+                    psm.remove(record_identifier=rec_id)
+                    with pytest.raises(PipestatDatabaseError):
+                        psm.retrieve(record_identifier=rec_id)
 
 
 class TestReporting:
