@@ -161,7 +161,10 @@ class PipestatBackend(ABC):
     ) -> List[Any]:
         _LOGGER.warning("Not implemented yet for this backend")
 
-    def count_record(self):
+    def count_records(
+        self,
+        pipeline_type: Optional[str] = None,
+    ):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
@@ -557,7 +560,13 @@ class FileBackend(PipestatBackend):
             self.status_file_dir, f"{self.project_name}_{r_id}_{status_identifier}.flag"
         )
 
-    def count_record(self):
+    def count_records(self, pipeline_type: Optional[str] = None):
+        """
+        Count records
+        :param str pipeline_type: sample vs project designator needed to count records
+        :return int: number of records
+        """
+
         return len(self.DATA_KEY[self.project_name])
 
 
@@ -1030,14 +1039,14 @@ class DBBackend(PipestatBackend):
             results = q.all()
         return results
 
-    def count_record(self):
+    def count_records(self, pipeline_type: Optional[str] = None):
         """
         Count rows in a selected table
-
-        :param str table_name: table to count rows for
-        :return int: number of rows in the selected table
+        :param str pipeline_type: sample vs project designator needed to count records in table
+        :return int: number of records
         """
-        table_name = self.get_table_name()
+        pipeline_type = pipeline_type or self.pipeline_type
+        table_name = self.get_table_name(pipeline_type)
         mod = self.get_model(table_name=table_name, strict=True)
         with self.session as s:
             stmt = sql_select(mod)

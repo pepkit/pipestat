@@ -129,7 +129,6 @@ class TestPipestatManagerInstantiation:
             )
             assert "test_pipe" in psm2.backend.DATA_KEY
 
-    @pytest.mark.skip(reason="re-implement count")
     def test_str_representation(self, results_file_path, schema_file_path):
         """Test string representation identifies number of records"""
         with NamedTemporaryFile() as f:
@@ -144,5 +143,4 @@ class TestPipestatManagerInstantiation:
             }
             for k, v in val_dict.items():
                 psm.report(record_identifier=k, values=v, force_overwrite=True)
-            assert f"Records count: {len(psm.data[psm.namespace])}" in str(psm)
-            # assert f"Records count: {len(psm.backend.DATA_KEY[psm.backend.project_name])}" in str(psm)
+            assert f"Records count: {len(psm.backend.DATA_KEY['test_pipe'])}" in str(psm)

@@ -230,7 +230,6 @@ class TestDatabaseOnly:
             assert len(result) <= limit
 
     @pytest.mark.parametrize("offset", [0, 1, 2, 3, 15555])
-    @pytest.mark.skip(reason="reimplement count")
     def test_select_offset(
         self,
         config_file_path,
@@ -247,7 +246,6 @@ class TestDatabaseOnly:
     @pytest.mark.parametrize(
         ["offset", "limit"], [(0, 0), (0, 1), (0, 2), (0, 11111), (1, 1), (1, 0)]
     )
-    @pytest.mark.skip(reason="reimplement count")
     def test_select_pagination(
         self,
         config_file_path,

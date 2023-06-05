@@ -203,10 +203,9 @@ class PipestatManager(dict):
 
         :return int: number of records reported
         """
-        # records = self.backend.count_record()
-        # return records
-        return len(self.data[self.namespace]) if self.file else self._count_rows(self.namespace)
-        # return len(self.backend.DATA_KEY[self.namespace]) if self.file else self._count_rows(self.namespace)
+        count = self.count_records()
+
+        return count
 
     @property
     def highlighted_results(self) -> List[str]:
@@ -755,6 +754,17 @@ class PipestatManager(dict):
                 f"{len(orms)} defined: {', '.join(orms.keys())}"
             )
         return mod
+
+    def count_records(self, pipeline_type: Optional[str] = None) -> int:
+        """
+        Count records
+        :param str pipeline_type: sample vs project designator needed to count records
+        :return int: number of records
+        """
+        pipeline_type = pipeline_type or self.pipeline_type
+        if self.backend:
+            result = self.backend.count_records(pipeline_type)
+        return result
 
     def _count_rows(self, table_name: str) -> int:
         """
