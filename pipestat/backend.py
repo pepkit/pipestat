@@ -884,14 +884,15 @@ class DBBackend(PipestatBackend):
         record = self.get_one_record(rid=rid, table_name=table_name)
 
         if restrict_to is None:
-            existing = []
-            if not record:
-                return []
-            else:
-                for key in self.parsed_schema.results_data.keys():
-                    if getattr(record, key, None) is not None:
-                        existing.append({key: getattr(record, key, None)})
-                return existing
+            return (
+                [
+                    key
+                    for key in self.parsed_schema.results_data.keys()
+                    if getattr(record, key, None) is not None
+                ]
+                if record
+                else []
+            )
         else:
             return (
                 [r for r in restrict_to if getattr(record, r, None) is not None] if record else []
