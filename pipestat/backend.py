@@ -32,7 +32,7 @@ class PipestatBackend(ABC):
     def report(
         self,
         values: Dict[str, Any],
-        record_identifier: str = None,
+        record_identifier: Optional[str] = None,
         force_overwrite: bool = False,
         strict_type: bool = True,
         return_id: bool = False,
@@ -43,7 +43,7 @@ class PipestatBackend(ABC):
     def check_result_exists(
         self,
         result_identifier: str,
-        record_identifier: str = None,
+        record_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> bool:
         """
@@ -112,7 +112,7 @@ class PipestatBackend(ABC):
     def set_status(
         self,
         status_identifier: str,
-        record_identifier: str = None,
+        record_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> None:
         _LOGGER.warning("Not implemented yet for this backend")
