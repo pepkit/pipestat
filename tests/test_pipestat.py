@@ -461,7 +461,7 @@ class TestRemoval:
                 record_identifier=rec_id, values={res_id: "something"}, force_overwrite=True
             )
             assert psm.remove(record_identifier=rec_id, result_identifier=res_id)
-            assert psm.data is None
+            assert rec_id not in psm._data
 
 
 class TestNoRecordID:
