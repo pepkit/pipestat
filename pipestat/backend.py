@@ -94,8 +94,8 @@ class PipestatBackend(ABC):
             known_results = self.parsed_schema.sample_level_data.keys()
         if pipeline_type == "project":
             known_results = self.parsed_schema.project_level_data.keys()
-        if "status" in results:
-            known_results = ["status"]
+        if STATUS in results:
+            known_results = [STATUS]
 
         # known_results = self.result_schemas.keys()
 
