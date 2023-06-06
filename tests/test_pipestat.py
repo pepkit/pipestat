@@ -59,29 +59,28 @@ class TestSplitClasses:
         results_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f:
-            with ContextManagerDBTesting(DB_URL) as connection:
-                results_file_path = f.name
-                args = dict(schema_path=schema_file_path, database_only=False)
-                backend_data = (
-                    {"config_file": config_file_path}
-                    if backend == "db"
-                    else {"results_file_path": results_file_path}
-                )
-                args.update(backend_data)
-                psm = PipestatManager(**args)
-                psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
-                val_name = list(val.keys())[0]
-                assert val_name in psm.retrieve(record_identifier=rec_id)
-                psm.remove(record_identifier=rec_id, result_identifier=val_name)
-                if backend == "file":
-                    with pytest.raises(PipestatDatabaseError):
-                        psm.retrieve(record_identifier=rec_id)
-                if backend == "db":
-                    assert getattr(psm.retrieve(record_identifier=rec_id), val_name, None) is None
-                    psm.remove(record_identifier=rec_id)
-                    with pytest.raises(PipestatDatabaseError):
-                        psm.retrieve(record_identifier=rec_id)
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            val_name = list(val.keys())[0]
+            assert val_name in psm.retrieve(record_identifier=rec_id)
+            psm.remove(record_identifier=rec_id, result_identifier=val_name)
+            if backend == "file":
+                with pytest.raises(PipestatDatabaseError):
+                    psm.retrieve(record_identifier=rec_id)
+            if backend == "db":
+                assert getattr(psm.retrieve(record_identifier=rec_id), val_name, None) is None
+                psm.remove(record_identifier=rec_id)
+                with pytest.raises(PipestatDatabaseError):
+                    psm.retrieve(record_identifier=rec_id)
 
 
 class TestReporting:
@@ -106,38 +105,37 @@ class TestReporting:
         results_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f:
-            with ContextManagerDBTesting(DB_URL) as connection:
-                results_file_path = f.name
-                args = dict(schema_path=schema_file_path, database_only=False)
-                backend_data = (
-                    {"config_file": config_file_path}
-                    if backend == "db"
-                    else {"results_file_path": results_file_path}
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            if backend == "file":
+                print(psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID])
+                print(
+                    "Test if", rec_id, " is in ", psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID]
                 )
-                args.update(backend_data)
-                psm = PipestatManager(**args)
-                psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+                assert (
+                    rec_id in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
+                )
+                print("Test if", list(val.keys())[0], " is in ", rec_id)
+                assert (
+                    list(val.keys())[0]
+                    in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][
+                        rec_id
+                    ]
+                )
                 if backend == "file":
-                    print(psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID])
-                    print(
-                        "Test if", rec_id, " is in ", psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID]
-                    )
-                    assert (
-                        rec_id in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
-                    )
-                    print("Test if", list(val.keys())[0], " is in ", rec_id)
-                    assert (
-                        list(val.keys())[0]
-                        in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][
-                            rec_id
-                        ]
-                    )
-                    if backend == "file":
-                        assert_is_in_files(results_file_path, str(list(val.values())[0]))
-                if backend == "db":
-                    # This is being captured in TestSplitClasses
-                    pass
+                    assert_is_in_files(results_file_path, str(list(val.values())[0]))
+            if backend == "db":
+                # This is being captured in TestSplitClasses
+                pass
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -162,18 +160,17 @@ class TestReporting:
         instantiation stage since there is no way to init relational DB table
         with no columns predefined
         """
-        with NamedTemporaryFile() as f:
-            with ContextManagerDBTesting(DB_URL) as connection:
-                results_file_path = f.name
-                args = dict()
-                backend_data = (
-                    {"config_file": config_no_schema_file_path}
-                    if backend == "db"
-                    else {"results_file_path": results_file_path}
-                )
-                args.update(backend_data)
-                with pytest.raises(SchemaNotFoundError):
-                    psm = PipestatManager(**args)
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict()
+            backend_data = (
+                {"config_file": config_no_schema_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            with pytest.raises(SchemaNotFoundError):
+                psm = PipestatManager(**args)
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -189,32 +186,31 @@ class TestReporting:
         results_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f:
-            with ContextManagerDBTesting(DB_URL) as connection:
-                results_file_path = f.name
-                args = dict(schema_path=schema_file_path, database_only=False)
-                backend_data = (
-                    {"config_file": config_file_path}
-                    if backend == "db"
-                    else {"results_file_path": results_file_path}
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            if backend == "file":
+                assert (
+                    rec_id in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
                 )
-                args.update(backend_data)
-                psm = PipestatManager(**args)
-                psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+                assert (
+                    list(val.keys())[0]
+                    in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][
+                        rec_id
+                    ]
+                )
                 if backend == "file":
-                    assert (
-                        rec_id in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
-                    )
-                    assert (
-                        list(val.keys())[0]
-                        in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][
-                            rec_id
-                        ]
-                    )
-                    if backend == "file":
-                        assert_is_in_files(results_file_path, str(list(val.values())[0]))
-                if backend == "db":
-                    assert list(val.keys())[0] in psm.retrieve(record_identifier=rec_id)
+                    assert_is_in_files(results_file_path, str(list(val.values())[0]))
+            if backend == "db":
+                assert list(val.keys())[0] in psm.retrieve(record_identifier=rec_id)
 
     @pytest.mark.parametrize(
         ["rec_id", "val", "success"],
@@ -235,32 +231,31 @@ class TestReporting:
         backend,
         success,
     ):
-        with NamedTemporaryFile() as f:
-            with ContextManagerDBTesting(DB_URL) as connection:
-                results_file_path = f.name
-                args = dict(schema_path=schema_file_path)
-                backend_data = (
-                    {"config_file": config_file_path}
-                    if backend == "db"
-                    else {"results_file_path": results_file_path}
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            if success:
+                psm.report(
+                    record_identifier=rec_id,
+                    values=val,
+                    strict_type=False,
+                    force_overwrite=True,
                 )
-                args.update(backend_data)
-                psm = PipestatManager(**args)
-                if success:
+            else:
+                with pytest.raises((ValidationError, TypeError)):
                     psm.report(
                         record_identifier=rec_id,
                         values=val,
                         strict_type=False,
                         force_overwrite=True,
                     )
-                else:
-                    with pytest.raises((ValidationError, TypeError)):
-                        psm.report(
-                            record_identifier=rec_id,
-                            values=val,
-                            strict_type=False,
-                            force_overwrite=True,
-                        )
 
 
 class TestRetrieval:
@@ -284,25 +279,24 @@ class TestRetrieval:
         schema_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f:
-            with ContextManagerDBTesting(DB_URL) as connection:
-                results_file_path = f.name
-                args = dict(schema_path=schema_file_path, database_only=False)
-                backend_data = (
-                    {"config_file": config_file_path}
-                    if backend == "db"
-                    else {"results_file_path": results_file_path}
-                )
-                args.update(backend_data)
-                psm = PipestatManager(**args)
-                psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
-                retrieved_val = psm.retrieve(
-                    record_identifier=rec_id, result_identifier=list(val.keys())[0]
-                )
-                # Test Retrieve Basic
-                assert str(retrieved_val) == str(list(val.values())[0])
-                # Test Retrieve Whole Record
-                assert isinstance(psm.retrieve(record_identifier=rec_id), Mapping)
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            retrieved_val = psm.retrieve(
+                record_identifier=rec_id, result_identifier=list(val.keys())[0]
+            )
+            # Test Retrieve Basic
+            assert str(retrieved_val) == str(list(val.values())[0])
+            # Test Retrieve Whole Record
+            assert isinstance(psm.retrieve(record_identifier=rec_id), Mapping)
 
     @pytest.mark.parametrize(
         ["rec_id", "res_id"],
@@ -318,25 +312,24 @@ class TestRetrieval:
         schema_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f:
-            with ContextManagerDBTesting(DB_URL) as connection:
-                results_file_path = f.name
-                val_dict = {
-                    "sample1": {"name_of_something": "test_name"},
-                    "sample1": {"number_of_things": 2},
-                }
-                backend_data = (
-                    {"config_file": config_file_path}
-                    if backend == "db"
-                    else {"results_file_path": results_file_path}
-                )
-                args = dict(schema_path=schema_file_path)
-                args.update(backend_data)
-                psm = PipestatManager(**args)
-                for k, v in val_dict.items():
-                    psm.report(record_identifier=k, values=v, force_overwrite=True)
-                with pytest.raises(PipestatDatabaseError):
-                    psm.retrieve(result_identifier=res_id, record_identifier=rec_id)
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            val_dict = {
+                "sample1": {"name_of_something": "test_name"},
+                "sample1": {"number_of_things": 2},
+            }
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args = dict(schema_path=schema_file_path)
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            for k, v in val_dict.items():
+                psm.report(record_identifier=k, values=v, force_overwrite=True)
+            with pytest.raises(PipestatDatabaseError):
+                psm.retrieve(result_identifier=res_id, record_identifier=rec_id)
 
 
 class TestRemoval:
@@ -352,68 +345,66 @@ class TestRemoval:
         schema_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f:
-            with ContextManagerDBTesting(DB_URL) as connection:
-                results_file_path = f.name
-                vals = [
-                    {"number_of_things": 1},
-                    {"name_of_something": "test_name"},
-                ]
-                args = dict(schema_path=schema_file_path, database_only=False)
-                backend_data = (
-                    {"config_file": config_file_path}
-                    if backend == "db"
-                    else {"results_file_path": results_file_path}
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            vals = [
+                {"number_of_things": 1},
+                {"name_of_something": "test_name"},
+            ]
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            for v in vals:
+                psm.report(record_identifier=rec_id, values=v, force_overwrite=True)
+            psm.remove(result_identifier=res_id, record_identifier=rec_id)
+            if backend != "db":
+                assert (
+                    # res_id not in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
+                    res_id
+                    not in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][
+                        rec_id
+                    ]
                 )
-                args.update(backend_data)
-                psm = PipestatManager(**args)
-                for v in vals:
-                    psm.report(record_identifier=rec_id, values=v, force_overwrite=True)
-                psm.remove(result_identifier=res_id, record_identifier=rec_id)
-                if backend != "db":
-                    assert (
-                        # res_id not in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
-                        res_id
-                        not in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][
-                            rec_id
-                        ]
-                    )
-                else:
-                    col_name = list(vals[0].keys())[0]
-                    value = list(vals[0].values())[0]
-                    result = psm.select(filter_conditions=[(col_name, "eq", value)])
-                    assert len(result) == 0
+            else:
+                col_name = list(vals[0].keys())[0]
+                value = list(vals[0].values())[0]
+                result = psm.select(filter_conditions=[(col_name, "eq", value)])
+                assert len(result) == 0
 
     @pytest.mark.parametrize("rec_id", ["sample1", "sample2"])
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_remove_record(
         self, rec_id, schema_file_path, config_file_path, results_file_path, backend
     ):
-        with NamedTemporaryFile() as f:
-            with ContextManagerDBTesting(DB_URL) as connection:
-                results_file_path = f.name
-                vals = [
-                    {"number_of_things": 1},
-                    {"name_of_something": "test_name"},
-                ]
-                args = dict(schema_path=schema_file_path, database_only=False)
-                backend_data = (
-                    {"config_file": config_file_path}
-                    if backend == "db"
-                    else {"results_file_path": results_file_path}
-                )
-                args.update(backend_data)
-                psm = PipestatManager(**args)
-                for v in vals:
-                    psm.report(record_identifier=rec_id, values=v, force_overwrite=True)
-                psm.remove(record_identifier=rec_id)
-                if backend != "db":
-                    assert rec_id not in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID]
-                else:
-                    col_name = list(vals[0].keys())[0]
-                    value = list(vals[0].values())[0]
-                    result = psm.select(filter_conditions=[(col_name, "eq", value)])
-                    assert len(result) == 0
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            vals = [
+                {"number_of_things": 1},
+                {"name_of_something": "test_name"},
+            ]
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            for v in vals:
+                psm.report(record_identifier=rec_id, values=v, force_overwrite=True)
+            psm.remove(record_identifier=rec_id)
+            if backend != "db":
+                assert rec_id not in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID]
+            else:
+                col_name = list(vals[0].keys())[0]
+                value = list(vals[0].values())[0]
+                result = psm.select(filter_conditions=[(col_name, "eq", value)])
+                assert len(result) == 0
 
     @pytest.mark.parametrize(
         ["rec_id", "res_id"], [("sample2", "nonexistent"), ("sample2", "bogus")]
@@ -428,36 +419,34 @@ class TestRemoval:
         results_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f:
-            with ContextManagerDBTesting(DB_URL) as connection:
-                results_file_path = f.name
-                args = dict(schema_path=schema_file_path)
-                backend_data = (
-                    {"config_file": config_file_path}
-                    if backend == "db"
-                    else {"results_file_path": results_file_path}
-                )
-                args.update(backend_data)
-                psm = PipestatManager(**args)
-                assert not psm.remove(record_identifier=rec_id, result_identifier=res_id)
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            assert not psm.remove(record_identifier=rec_id, result_identifier=res_id)
 
     @pytest.mark.parametrize("rec_id", ["nonexistent", "bogus"])
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_remove_nonexistent_record(
         self, rec_id, schema_file_path, config_file_path, results_file_path, backend
     ):
-        with NamedTemporaryFile() as f:
-            with ContextManagerDBTesting(DB_URL) as connection:
-                results_file_path = f.name
-                args = dict(schema_path=schema_file_path)
-                backend_data = (
-                    {"config_file": config_file_path}
-                    if backend == "db"
-                    else {"results_file_path": results_file_path}
-                )
-                args.update(backend_data)
-                psm = PipestatManager(**args)
-                assert not psm.remove(record_identifier=rec_id)
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            assert not psm.remove(record_identifier=rec_id)
 
     @pytest.mark.parametrize(["rec_id", "res_id"], [("sample3", "name_of_something")])
     @pytest.mark.parametrize("backend", ["file", "db"])
@@ -470,22 +459,21 @@ class TestRemoval:
         results_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f:
-            with ContextManagerDBTesting(DB_URL) as connection:
-                results_file_path = f.name
-                args = dict(schema_path=schema_file_path, database_only=False)
-                backend_data = (
-                    {"config_file": config_file_path}
-                    if backend == "db"
-                    else {"results_file_path": results_file_path}
-                )
-                args.update(backend_data)
-                psm = PipestatManager(**args)
-                psm.report(
-                    record_identifier=rec_id, values={res_id: "something"}, force_overwrite=True
-                )
-                assert psm.remove(record_identifier=rec_id, result_identifier=res_id)
-                assert rec_id not in psm.data
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            psm.report(
+                record_identifier=rec_id, values={res_id: "something"}, force_overwrite=True
+            )
+            assert psm.remove(record_identifier=rec_id, result_identifier=res_id)
+            assert rec_id not in psm.data
 
 
 class TestNoRecordID:
@@ -508,37 +496,36 @@ class TestNoRecordID:
         backend,
         pipeline_type,
     ):
-        with NamedTemporaryFile() as f:
-            with ContextManagerDBTesting(DB_URL) as connection:
-                results_file_path = f.name
-                args = dict(
-                    schema_path=schema_file_path,
-                    record_identifier=CONST_REC_ID,
-                    database_only=False,
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(
+                schema_path=schema_file_path,
+                record_identifier=CONST_REC_ID,
+                database_only=False,
+            )
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            psm.report(values=val, pipeline_type=pipeline_type)
+            if backend == "file":
+                assert_is_in_files(results_file_path, str(list(val.values())[0]))
+                assert (
+                    CONST_REC_ID
+                    in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
                 )
-                backend_data = (
-                    {"config_file": config_file_path}
-                    if backend == "db"
-                    else {"results_file_path": results_file_path}
-                )
-                args.update(backend_data)
-                psm = PipestatManager(**args)
-                psm.report(values=val, pipeline_type=pipeline_type)
-                if backend == "file":
-                    assert_is_in_files(results_file_path, str(list(val.values())[0]))
-                    assert (
+                assert (
+                    list(val.keys())[0]
+                    in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][
                         CONST_REC_ID
-                        in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
-                    )
-                    assert (
-                        list(val.keys())[0]
-                        in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][
-                            CONST_REC_ID
-                        ]
-                    )
-                if backend == "db":
-                    val_name = list(val.keys())[0]
-                    assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
+                    ]
+                )
+            if backend == "db":
+                val_name = list(val.keys())[0]
+                assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
 
     @pytest.mark.parametrize(
         "val",
@@ -550,22 +537,21 @@ class TestNoRecordID:
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_retrieve(self, val, config_file_path, schema_file_path, results_file_path, backend):
-        with NamedTemporaryFile() as f:
-            with ContextManagerDBTesting(DB_URL) as connection:
-                results_file_path = f.name
-                args = dict(schema_path=schema_file_path, record_identifier=CONST_REC_ID)
-                backend_data = (
-                    {"config_file": config_file_path}
-                    if backend == "db"
-                    else {"results_file_path": results_file_path}
-                )
-                args.update(backend_data)
-                psm = PipestatManager(**args)
-                psm.report(
-                    record_identifier="constant_record_id", values=val, force_overwrite=True
-                )
-                retrieved_val = psm.retrieve(result_identifier=list(val.keys())[0])
-                assert str(retrieved_val) == str(list(val.values())[0])
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, record_identifier=CONST_REC_ID)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            psm.report(
+                record_identifier="constant_record_id", values=val, force_overwrite=True
+            )
+            retrieved_val = psm.retrieve(result_identifier=list(val.keys())[0])
+            assert str(retrieved_val) == str(list(val.values())[0])
 
     @pytest.mark.parametrize(
         "val",
@@ -577,21 +563,20 @@ class TestNoRecordID:
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_remove(self, val, config_file_path, schema_file_path, results_file_path, backend):
-        with NamedTemporaryFile() as f:
-            with ContextManagerDBTesting(DB_URL) as connection:
-                results_file_path = f.name
-                args = dict(schema_path=schema_file_path, record_identifier=CONST_REC_ID)
-                backend_data = (
-                    {"config_file": config_file_path}
-                    if backend == "db"
-                    else {"results_file_path": results_file_path}
-                )
-                args.update(backend_data)
-                psm = PipestatManager(**args)
-                psm.report(
-                    record_identifier="constant_record_id", values=val, force_overwrite=True
-                )
-                assert psm.remove(result_identifier=list(val.keys())[0])
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, record_identifier=CONST_REC_ID)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            psm.report(
+                record_identifier="constant_record_id", values=val, force_overwrite=True
+            )
+            assert psm.remove(result_identifier=list(val.keys())[0])
 
 
 def test_highlighting_works(highlight_schema_file_path, results_file_path):

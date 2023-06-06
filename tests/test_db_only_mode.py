@@ -29,7 +29,7 @@ class ContextManagerDBTesting:
 class TestDatabaseOnly:
     # TODO: parameterize this against different schemas.
     def test_manager_can_be_built_without_exception(self, config_file_path, schema_file_path):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             try:
                 PipestatManager(
                     schema_path=schema_file_path,
@@ -55,7 +55,7 @@ class TestDatabaseOnly:
         config_file_path,
         schema_file_path,
     ):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             psm = PipestatManager(
                 schema_path=schema_file_path,
                 record_identifier="constant_record_id",
@@ -63,8 +63,6 @@ class TestDatabaseOnly:
                 config_file=config_file_path,
             )
             psm.report(values=val, force_overwrite=True)
-            # assert len(psm.data) == 0 #Asserting this is not necessary with the new changes
-            # assert len(psm.backend.data) == 0 #could load nothing with dbbacken
             val_name = list(val.keys())[0]
             assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
 
@@ -84,7 +82,7 @@ class TestDatabaseOnly:
         schema_with_project_with_samples_without_status,
         pipeline_type,
     ):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             psm = PipestatManager(
                 schema_path=schema_with_project_with_samples_without_status,
                 record_identifier="constant_record_id",
@@ -160,7 +158,7 @@ class TestDatabaseOnly:
         config_file_path,
         recursive_schema_file_path,
     ):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             REC_ID = "constant_record_id"
             psm = PipestatManager(
                 schema_path=recursive_schema_file_path,
@@ -182,7 +180,7 @@ class TestDatabaseOnly:
         config_file_path,
         schema_file_path,
     ):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = PipestatManager(**args)
             with pytest.raises(ValueError):
@@ -200,7 +198,7 @@ class TestDatabaseOnly:
         schema_file_path,
         filter_condition,
     ):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = PipestatManager(**args)
             with pytest.raises((ValueError, TypeError)):
@@ -219,7 +217,7 @@ class TestDatabaseOnly:
         schema_file_path,
         limit,
     ):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = PipestatManager(**args)
             result = psm.select(
@@ -236,7 +234,7 @@ class TestDatabaseOnly:
         schema_file_path,
         offset,
     ):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = PipestatManager(**args)
             result = psm.select(offset=offset)
@@ -253,7 +251,7 @@ class TestDatabaseOnly:
         offset,
         limit,
     ):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = PipestatManager(**args)
             result = psm.select(offset=offset, limit=limit)
