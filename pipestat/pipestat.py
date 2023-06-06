@@ -437,6 +437,8 @@ class PipestatManager(dict):
 
         if self.backend:
             self.backend.set_status(status_identifier, record_identifier, pipeline_type)
+        else:
+            raise NoBackendSpecifiedError
 
     def get_status_flag_path(self, status_identifier: str, record_identifier=None) -> str:
         """
@@ -456,7 +458,9 @@ class PipestatManager(dict):
             self[STATUS_FILE_DIR], f"{self.namespace}_{r_id}_{status_identifier}.flag"
         )
 
-    def get_status(self, record_identifier: str = None, pipeline_type: Optional[str] = None) -> Optional[str]:
+    def get_status(
+        self, record_identifier: str = None, pipeline_type: Optional[str] = None
+    ) -> Optional[str]:
         """
         Get the current pipeline status
         :param str record_identifier: name of the record
@@ -467,6 +471,8 @@ class PipestatManager(dict):
         pipeline_type = pipeline_type or self.pipeline_type
         if self.backend:
             return self.backend.get_status(record_identifier=r_id, pipeline_type=pipeline_type)
+        else:
+            raise NoBackendSpecifiedError
 
     def clear_status(
         self, record_identifier: str = None, flag_names: List[str] = None
@@ -483,6 +489,8 @@ class PipestatManager(dict):
 
         if self.backend:
             return self.backend.clear_status(record_identifier=r_id, flag_names=flag_names)
+        else:
+            raise NoBackendSpecifiedError
 
     def validate_schema(self) -> None:
         """
@@ -583,6 +591,9 @@ class PipestatManager(dict):
         pipeline_type = pipeline_type or self.pipeline_type
         if self.backend:
             result = self.backend.count_records(pipeline_type)
+        else:
+            raise NoBackendSpecifiedError
+
         return result
 
     def select(
@@ -627,6 +638,8 @@ class PipestatManager(dict):
                 limit,
                 pipeline_type,
             )
+        else:
+            raise NoBackendSpecifiedError
 
         return result
 
@@ -649,6 +662,8 @@ class PipestatManager(dict):
             result = self.backend.select_distinct(
                 table_name=table_name, columns=columns, pipeline_type=pipeline_type
             )
+        else:
+            raise NoBackendSpecifiedError
 
         return result
 
@@ -675,13 +690,18 @@ class PipestatManager(dict):
 
         record_identifier = self._strict_record_id(record_identifier)
         # should change to simpler: record_identifier = record_identifier or self.record_identifier
-        if self.file is None:
-            results = self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
-            if result_identifier is not None:
-                return results[result_identifier]
-            return results
+        if self.backend:
+            if self.file is None:
+                results = self.backend.retrieve(
+                    record_identifier, result_identifier, pipeline_type
+                )
+                if result_identifier is not None:
+                    return results[result_identifier]
+                return results
+            else:
+                return self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
         else:
-            return self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
+            raise NoBackendSpecifiedError
 
     def select_txt(
         self,
@@ -714,6 +734,8 @@ class PipestatManager(dict):
             results = self.backend.select_txt(
                 columns, filter_templ, filter_params, table_name, offset, limit, pipeline_type
             )
+        else:
+            raise NoBackendSpecifiedError
 
         return results
 
@@ -765,6 +787,8 @@ class PipestatManager(dict):
 
         if self.backend:
             self.backend.report(values, record_identifier, pipeline_type)
+        else:
+            raise NoBackendSpecifiedError
 
         nl = "\n"
         _LOGGER.warning("TEST HERE")
@@ -801,4 +825,4 @@ class PipestatManager(dict):
         if self.backend:
             return self.backend.remove(record_identifier, result_identifier, pipeline_type)
         else:
-            return True
+            raise NoBackendSpecifiedError
