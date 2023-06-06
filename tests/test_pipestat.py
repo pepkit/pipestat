@@ -117,13 +117,13 @@ class TestReporting:
             psm = PipestatManager(**args)
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
             if backend == "file":
-                print(psm.backend.data[STANDARD_TEST_PIPE_ID])
-                print("Test if", rec_id, " is in ", psm.backend.data[STANDARD_TEST_PIPE_ID])
-                assert rec_id in psm.backend.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
+                print(psm.backend._data[STANDARD_TEST_PIPE_ID])
+                print("Test if", rec_id, " is in ", psm.backend._data[STANDARD_TEST_PIPE_ID])
+                assert rec_id in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
                 print("Test if", list(val.keys())[0], " is in ", rec_id)
                 assert (
                     list(val.keys())[0]
-                    in psm.backend.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
+                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
                 )
                 if backend == "file":
                     assert_is_in_files(results_file_path, str(list(val.values())[0]))
@@ -192,10 +192,10 @@ class TestReporting:
             psm = PipestatManager(**args)
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
             if backend == "file":
-                assert rec_id in psm.backend.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
+                assert rec_id in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
                 assert (
                     list(val.keys())[0]
-                    in psm.backend.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
+                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
                 )
                 if backend == "file":
                     assert_is_in_files(results_file_path, str(list(val.values())[0]))
@@ -356,7 +356,7 @@ class TestRemoval:
                 assert (
                     # res_id not in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
                     res_id
-                    not in psm.backend.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
+                    not in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
                 )
             else:
                 col_name = list(vals[0].keys())[0]
@@ -387,7 +387,7 @@ class TestRemoval:
                 psm.report(record_identifier=rec_id, values=v, force_overwrite=True)
             psm.remove(record_identifier=rec_id)
             if backend != "db":
-                assert rec_id not in psm.backend.data[STANDARD_TEST_PIPE_ID]
+                assert rec_id not in psm.backend._data[STANDARD_TEST_PIPE_ID]
             else:
                 col_name = list(vals[0].keys())[0]
                 value = list(vals[0].values())[0]
@@ -502,11 +502,11 @@ class TestNoRecordID:
             if backend == "file":
                 assert_is_in_files(results_file_path, str(list(val.values())[0]))
                 assert (
-                    CONST_REC_ID in psm.backend.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
+                    CONST_REC_ID in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
                 )
                 assert (
                     list(val.keys())[0]
-                    in psm.backend.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][CONST_REC_ID]
+                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][CONST_REC_ID]
                 )
             if backend == "db":
                 val_name = list(val.keys())[0]
