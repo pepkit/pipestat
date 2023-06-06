@@ -831,8 +831,8 @@ class DBBackend(PipestatBackend):
         :param bool rm_record: bool for removing record.
         :return bool: whether the result has been removed
         """
-        table_name = self.get_table_name(pipeline_type=pipeline_type)
         pipeline_type = pipeline_type or self.pipeline_type
+        table_name = self.get_table_name(pipeline_type=pipeline_type)
         record_identifier = record_identifier or self.record_identifier
         if rm_record:
             try:
