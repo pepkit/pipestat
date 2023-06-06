@@ -118,18 +118,12 @@ class TestReporting:
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
             if backend == "file":
                 print(psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID])
-                print(
-                    "Test if", rec_id, " is in ", psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID]
-                )
-                assert (
-                    rec_id in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
-                )
+                print("Test if", rec_id, " is in ", psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID])
+                assert rec_id in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
                 print("Test if", list(val.keys())[0], " is in ", rec_id)
                 assert (
                     list(val.keys())[0]
-                    in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][
-                        rec_id
-                    ]
+                    in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
                 )
                 if backend == "file":
                     assert_is_in_files(results_file_path, str(list(val.values())[0]))
@@ -198,14 +192,10 @@ class TestReporting:
             psm = PipestatManager(**args)
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
             if backend == "file":
-                assert (
-                    rec_id in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
-                )
+                assert rec_id in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
                 assert (
                     list(val.keys())[0]
-                    in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][
-                        rec_id
-                    ]
+                    in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
                 )
                 if backend == "file":
                     assert_is_in_files(results_file_path, str(list(val.values())[0]))
@@ -547,9 +537,7 @@ class TestNoRecordID:
             )
             args.update(backend_data)
             psm = PipestatManager(**args)
-            psm.report(
-                record_identifier="constant_record_id", values=val, force_overwrite=True
-            )
+            psm.report(record_identifier="constant_record_id", values=val, force_overwrite=True)
             retrieved_val = psm.retrieve(result_identifier=list(val.keys())[0])
             assert str(retrieved_val) == str(list(val.values())[0])
 
@@ -573,9 +561,7 @@ class TestNoRecordID:
             )
             args.update(backend_data)
             psm = PipestatManager(**args)
-            psm.report(
-                record_identifier="constant_record_id", values=val, force_overwrite=True
-            )
+            psm.report(record_identifier="constant_record_id", values=val, force_overwrite=True)
             assert psm.remove(result_identifier=list(val.keys())[0])
 
 
