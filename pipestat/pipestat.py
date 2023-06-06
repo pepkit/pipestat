@@ -205,9 +205,7 @@ class PipestatManager(dict):
 
         :return int: number of records reported
         """
-        count = self.count_records()
-
-        return count
+        return self.count_records()
 
     @property
     def highlighted_results(self) -> List[str]:
