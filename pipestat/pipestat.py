@@ -61,6 +61,9 @@ class PipestatManager(dict):
             stored in the memory, but only in the database
         :param str | dict config: path to the configuration file or a mapping
             with the config file content
+        :param str flag_file_dir: path to directory containing flag files
+        :param bool show_db_logs: Defaults to False, toggles showing database logs
+        :param str pipeline_type: "sample" or "project"
         """
 
         super(PipestatManager, self).__init__()
@@ -151,7 +154,6 @@ class PipestatManager(dict):
                 self._engine
                 # self.session,
             )
-            print("debug")
 
     def __str__(self):
         """
@@ -412,29 +414,6 @@ class PipestatManager(dict):
                 f"Neither project nor samples model could be built from schema source: {self.status_schema_source}"
             )
 
-    def _get_table_name(self, pipeline_type: Optional[str] = None):
-        pipeline_type = pipeline_type or self.pipeline_type
-
-        mods = self[DB_ORMS_KEY]
-        if len(mods) == 1:
-            return list(mods.keys())[0]
-        elif len(mods) == 2:
-            if pipeline_type is None:
-                raise Exception(
-                    f"Cannot determine table suffix with 2 models present and no project-level flag"
-                )
-            prelim = (
-                self.schema.project_table_name
-                if pipeline_type == "project"
-                else self.schema.sample_table_name
-            )
-            if prelim in mods:
-                return prelim
-            raise Exception(
-                f"Determined table name '{prelim}', which is not stored among these: {', '.join(mods.keys())}"
-            )
-        raise Exception(f"Cannot determine table suffix with {len(mods)} model(s) present.")
-
     def set_status(
         self,
         status_identifier: str,
@@ -452,7 +431,7 @@ class PipestatManager(dict):
             in the status schema
         :param str record_identifier: record identifier to set the
             pipeline status for
-        :param str pipeline_type: whether status is being set for a project-level pipeline, or sample-level
+        :param str pipeline_type: "sample" or "project"
         """
         pipeline_type = pipeline_type or self.pipeline_type
 
@@ -477,29 +456,15 @@ class PipestatManager(dict):
             self[STATUS_FILE_DIR], f"{self.namespace}_{r_id}_{status_identifier}.flag"
         )
 
-    def _set_status_file(
-        self,
-        status_identifier: str,
-        record_identifier: str,
-        prev_status: Optional[str] = None,
-    ) -> None:
-        if prev_status is not None:
-            prev_flag_path = self.get_status_flag_path(prev_status, record_identifier)
-            os.remove(prev_flag_path)
-        flag_path = self.get_status_flag_path(status_identifier, record_identifier)
-        create_lock(flag_path)
-        with open(flag_path, "w") as f:
-            f.write(status_identifier)
-        remove_lock(flag_path)
-
-    def get_status(self, record_identifier: str = None) -> Optional[str]:
+    def get_status(self, record_identifier: str = None, pipeline_type: Optional[str] = None) -> Optional[str]:
         """
         Get the current pipeline status
-
+        :param str record_identifier: name of the record
+        :param str pipeline_type: "sample" or "project"
         :return str: status identifier, like 'running'
         """
         r_id = self._strict_record_id(record_identifier)
-        pipeline_type = self.pipeline_type
+        pipeline_type = pipeline_type or self.pipeline_type
         if self.backend:
             return self.backend.get_status(record_identifier=r_id, pipeline_type=pipeline_type)
 
@@ -517,7 +482,7 @@ class PipestatManager(dict):
         r_id = self._strict_record_id(record_identifier)
 
         if self.backend:
-            self.backend.clear_status(record_identifier=r_id, flag_names=flag_names)
+            return self.backend.clear_status(record_identifier=r_id, flag_names=flag_names)
 
     def validate_schema(self) -> None:
         """
@@ -609,54 +574,16 @@ class PipestatManager(dict):
         """
         return self.get(attr)
 
-    def _check_table_exists(self, table_name: str) -> bool:
-        """
-        Check if the specified table exists
-
-        :param str table_name: table name to be checked
-        :return bool: whether the specified table exists
-        """
-        from sqlalchemy import inspect
-
-        with self.session as s:
-            return inspect(s.bind).has_table(table_name=table_name)
-
-    def _get_model(self, table_name: str, strict: bool):
-        orms = self[DB_ORMS_KEY]
-
-        table_name = self._get_table_name()
-
-        mod = orms.get(table_name)
-
-        if strict and mod is None:
-            raise PipestatDatabaseError(
-                f"No object relational mapper class defined for table '{table_name}'. "
-                f"{len(orms)} defined: {', '.join(orms.keys())}"
-            )
-        return mod
-
     def count_records(self, pipeline_type: Optional[str] = None) -> int:
         """
         Count records
-        :param str pipeline_type: sample vs project designator needed to count records
+        :param str pipeline_type: "sample" or "project"
         :return int: number of records
         """
         pipeline_type = pipeline_type or self.pipeline_type
         if self.backend:
             result = self.backend.count_records(pipeline_type)
         return result
-
-    def get_orm(self, table_name: str) -> Any:
-        """
-        Get an object relational mapper class
-
-        :param str table_name: table name to get a class for
-        :return Any: Object relational mapper class
-        """
-        if DB_ORMS_KEY not in self:
-            raise PipestatDatabaseError("Object relational mapper classes not defined")
-        mod = self._get_model(table_name=table_name, strict=True)
-        return mod
 
     def select(
         self,
@@ -685,6 +612,8 @@ class PipestatManager(dict):
             supported in non-nested checks, e.g. [("other", "genome", "hg38")]
         :param int offset: skip this number of rows
         :param int limit: include this number of rows
+        :param str pipeline_type: "sample" or "project"
+        :return List [Any]: list of results
         """
         pipeline_type = pipeline_type or self.pipeline_type
 
@@ -712,6 +641,8 @@ class PipestatManager(dict):
 
         :param str table_name: name of the table to SELECT from
         :param List[str] columns: columns to include in the result
+        :param str pipeline_type: "sample" or "project"
+        :return List[Any]: list of results
         """
         pipeline_type = pipeline_type or self.pipeline_type
         if self.backend:
@@ -735,6 +666,7 @@ class PipestatManager(dict):
 
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be retrieved
+        :param str pipeline_type: "sample" or "project"
         :return any | Dict[str, any]: a single result or a mapping with all the
             results reported for the record
         """
@@ -859,6 +791,7 @@ class PipestatManager(dict):
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be removed or None
              if the record should be removed.
+        :param str pipeline_type: "sample" or "project"
         :return bool: whether the result has been removed
         """
 
