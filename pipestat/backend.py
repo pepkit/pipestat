@@ -153,6 +153,9 @@ class PipestatBackend(ABC):
     ) -> List[Any]:
         _LOGGER.warning("Not implemented yet for this backend")
 
+    def select_distinct(self, table_name, columns) -> List[Any]:
+        _LOGGER.warning("Not implemented yet for this backend")
+
     def select_txt(
         self,
         columns: Optional[List[str]] = None,
@@ -1044,6 +1047,28 @@ class DBBackend(PipestatBackend):
                 q = q.limit(limit)
             results = q.all()
         return results
+
+    def select_distinct(
+        self,
+        table_name,
+        columns,
+        pipeline_type: Optional[str] = None,
+    ) -> List[Any]:
+        """
+        Perform a `SELECT DISTINCT` on given table and column
+
+        :param str table_name: name of the table to SELECT from
+        :param List[str] columns: columns to include in the result
+        :return List[Any]: returns distinct values.
+        """
+        pipeline_type = pipeline_type or self.pipeline_type
+        table_name = table_name or self.get_table_name(pipeline_type)
+        ORM = self.get_orm(table_name=table_name)
+        with self.session as s:
+            query = s.query(*[getattr(ORM, column) for column in columns])
+            query = query.distinct()
+            result = query.all()
+        return result
 
     def count_records(self, pipeline_type: Optional[str] = None):
         """

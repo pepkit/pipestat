@@ -701,19 +701,24 @@ class PipestatManager(dict):
 
         return result
 
-    def select_distinct(self, table_name, columns) -> List[Any]:
+    def select_distinct(
+        self,
+        table_name,
+        columns,
+        pipeline_type: Optional[str] = None,
+    ) -> List[Any]:
         """
         Perform a `SELECT DISTINCT` on given table and column
 
         :param str table_name: name of the table to SELECT from
         :param List[str] columns: columns to include in the result
         """
+        pipeline_type = pipeline_type or self.pipeline_type
+        if self.backend:
+            result = self.backend.select_distinct(
+                table_name=table_name, columns=columns, pipeline_type=pipeline_type
+            )
 
-        ORM = self.get_orm(table_name or self.namespace)
-        with self.session as s:
-            query = s.query(*[getattr(ORM, column) for column in columns])
-            query = query.distinct()
-            result = query.all()
         return result
 
     def retrieve(
