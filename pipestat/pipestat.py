@@ -24,6 +24,17 @@ _LOGGER = getLogger(PKG_NAME)
 from .backend import FileBackend, DBBackend
 
 
+def require_backend(func):
+    """Decorator to ensure a backend exists for functions that require one"""
+
+    def inner(self, *args, **kwargs):
+        if not self.backend:
+            raise NoBackendSpecifiedError
+        return func(self, *args, **kwargs)
+
+    return inner
+
+
 class PipestatManager(dict):
     """
     Pipestat standardizes reporting of pipeline results and
@@ -412,6 +423,7 @@ class PipestatManager(dict):
                 f"Neither project nor samples model could be built from schema source: {self.status_schema_source}"
             )
 
+    @require_backend
     def set_status(
         self,
         status_identifier: str,
@@ -432,11 +444,7 @@ class PipestatManager(dict):
         :param str pipeline_type: "sample" or "project"
         """
         pipeline_type = pipeline_type or self.pipeline_type
-
-        if self.backend:
-            self.backend.set_status(status_identifier, record_identifier, pipeline_type)
-        else:
-            raise NoBackendSpecifiedError
+        self.backend.set_status(status_identifier, record_identifier, pipeline_type)
 
     def get_status_flag_path(self, status_identifier: str, record_identifier=None) -> str:
         """
@@ -456,6 +464,7 @@ class PipestatManager(dict):
             self[STATUS_FILE_DIR], f"{self.namespace}_{r_id}_{status_identifier}.flag"
         )
 
+    @require_backend
     def get_status(
         self, record_identifier: str = None, pipeline_type: Optional[str] = None
     ) -> Optional[str]:
@@ -467,11 +476,9 @@ class PipestatManager(dict):
         """
         r_id = self._strict_record_id(record_identifier)
         pipeline_type = pipeline_type or self.pipeline_type
-        if self.backend:
-            return self.backend.get_status(record_identifier=r_id, pipeline_type=pipeline_type)
-        else:
-            raise NoBackendSpecifiedError
+        return self.backend.get_status(record_identifier=r_id, pipeline_type=pipeline_type)
 
+    @require_backend
     def clear_status(
         self, record_identifier: str = None, flag_names: List[str] = None
     ) -> List[Union[str, None]]:
@@ -484,11 +491,7 @@ class PipestatManager(dict):
         :return List[str]: Collection of names of flags removed
         """
         r_id = self._strict_record_id(record_identifier)
-
-        if self.backend:
-            return self.backend.clear_status(record_identifier=r_id, flag_names=flag_names)
-        else:
-            raise NoBackendSpecifiedError
+        return self.backend.clear_status(record_identifier=r_id, flag_names=flag_names)
 
     def validate_schema(self) -> None:
         """
@@ -580,6 +583,7 @@ class PipestatManager(dict):
         """
         return self.get(attr)
 
+    @require_backend
     def count_records(self, pipeline_type: Optional[str] = None) -> int:
         """
         Count records
@@ -587,13 +591,9 @@ class PipestatManager(dict):
         :return int: number of records
         """
         pipeline_type = pipeline_type or self.pipeline_type
-        if self.backend:
-            result = self.backend.count_records(pipeline_type)
-        else:
-            raise NoBackendSpecifiedError
+        return self.backend.count_records(pipeline_type)
 
-        return result
-
+    @require_backend
     def select(
         self,
         table_name: Optional[str] = None,
@@ -625,22 +625,17 @@ class PipestatManager(dict):
         :return List [Any]: list of results
         """
         pipeline_type = pipeline_type or self.pipeline_type
+        return self.backend.select(
+            table_name,
+            columns,
+            filter_conditions,
+            json_filter_conditions,
+            offset,
+            limit,
+            pipeline_type,
+        )
 
-        if self.backend:
-            result = self.backend.select(
-                table_name,
-                columns,
-                filter_conditions,
-                json_filter_conditions,
-                offset,
-                limit,
-                pipeline_type,
-            )
-        else:
-            raise NoBackendSpecifiedError
-
-        return result
-
+    @require_backend
     def select_distinct(
         self,
         table_name,
@@ -656,15 +651,11 @@ class PipestatManager(dict):
         :return List[Any]: list of results
         """
         pipeline_type = pipeline_type or self.pipeline_type
-        if self.backend:
-            result = self.backend.select_distinct(
-                table_name=table_name, columns=columns, pipeline_type=pipeline_type
-            )
-        else:
-            raise NoBackendSpecifiedError
+        return self.backend.select_distinct(
+            table_name=table_name, columns=columns, pipeline_type=pipeline_type
+        )
 
-        return result
-
+    @require_backend
     def retrieve(
         self,
         record_identifier: Optional[str] = None,
@@ -688,19 +679,16 @@ class PipestatManager(dict):
 
         record_identifier = self._strict_record_id(record_identifier)
         # should change to simpler: record_identifier = record_identifier or self.record_identifier
-        if self.backend:
-            if self.file is None:
-                results = self.backend.retrieve(
-                    record_identifier, result_identifier, pipeline_type
-                )
-                if result_identifier is not None:
-                    return results[result_identifier]
-                return results
-            else:
-                return self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
-        else:
-            raise NoBackendSpecifiedError
 
+        if self.file is None:
+            results = self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
+            if result_identifier is not None:
+                return results[result_identifier]
+            return results
+        else:
+            return self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
+
+    @require_backend
     def select_txt(
         self,
         columns: Optional[List[str]] = None,
@@ -728,14 +716,9 @@ class PipestatManager(dict):
         :return List[Any]: a list of matched records
         """
         pipeline_type = pipeline_type or self.pipeline_type
-        if self.backend:
-            results = self.backend.select_txt(
-                columns, filter_templ, filter_params, table_name, offset, limit, pipeline_type
-            )
-        else:
-            raise NoBackendSpecifiedError
-
-        return results
+        return self.backend.select_txt(
+            columns, filter_templ, filter_params, table_name, offset, limit, pipeline_type
+        )
 
     def report(
         self,
@@ -798,6 +781,7 @@ class PipestatManager(dict):
         _LOGGER.info(record_identifier, values)
         return True if not return_id else updated_ids
 
+    @require_backend
     def remove(
         self,
         record_identifier: str = None,
@@ -820,7 +804,4 @@ class PipestatManager(dict):
         pipeline_type = pipeline_type or self.pipeline_type
 
         r_id = self._strict_record_id(record_identifier)
-        if self.backend:
-            return self.backend.remove(record_identifier, result_identifier, pipeline_type)
-        else:
-            raise NoBackendSpecifiedError
+        return self.backend.remove(record_identifier, result_identifier, pipeline_type)
