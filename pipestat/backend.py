@@ -143,33 +143,6 @@ class PipestatBackend(ABC):
     ) -> bool:
         _LOGGER.warning("Not implemented yet for this backend")
 
-    def select(
-        self,
-        table_name: Optional[str] = None,
-        columns: Optional[List[str]] = None,
-        filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
-        json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
-        offset: Optional[int] = None,
-        limit: Optional[int] = None,
-        pipeline_type: Optional[str] = None,
-    ) -> List[Any]:
-        _LOGGER.warning("Not implemented yet for this backend")
-
-    def select_distinct(self, table_name, columns) -> List[Any]:
-        _LOGGER.warning("Not implemented yet for this backend")
-
-    def select_txt(
-        self,
-        columns: Optional[List[str]] = None,
-        filter_templ: Optional[str] = "",
-        filter_params: Optional[Dict[str, Any]] = {},
-        table_name: Optional[str] = None,
-        offset: Optional[int] = None,
-        limit: Optional[int] = None,
-        pipeline_type: Optional[str] = None,
-    ) -> List[Any]:
-        _LOGGER.warning("Not implemented yet for this backend")
-
     def count_records(
         self,
         pipeline_type: Optional[str] = None,
@@ -606,7 +579,7 @@ class DBBackend(PipestatBackend):
     ):
         _LOGGER.warning("Initialize DBBackend")
         self.project_name = project_name
-        self.pipeline_type = pipeline_type
+        self.pipeline_type = pipeline_type or "sample"
         self.record_identifier = record_identifier
         self.parsed_schema = parsed_schema
         self.status_schema = status_schema

@@ -361,7 +361,7 @@ class TestRemoval:
             else:
                 col_name = list(vals[0].keys())[0]
                 value = list(vals[0].values())[0]
-                result = psm.select(filter_conditions=[(col_name, "eq", value)])
+                result = psm.backend.select(filter_conditions=[(col_name, "eq", value)])
                 assert len(result) == 0
 
     @pytest.mark.parametrize("rec_id", ["sample1", "sample2"])
@@ -391,7 +391,7 @@ class TestRemoval:
             else:
                 col_name = list(vals[0].keys())[0]
                 value = list(vals[0].values())[0]
-                result = psm.select(filter_conditions=[(col_name, "eq", value)])
+                result = psm.backend.select(filter_conditions=[(col_name, "eq", value)])
                 assert len(result) == 0
 
     @pytest.mark.parametrize(
@@ -510,7 +510,7 @@ class TestNoRecordID:
                 )
             if backend == "db":
                 val_name = list(val.keys())[0]
-                assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
+                assert psm.backend.select(filter_conditions=[(val_name, "eq", val[val_name])])
 
     @pytest.mark.parametrize(
         "val",

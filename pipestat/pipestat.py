@@ -594,68 +594,6 @@ class PipestatManager(dict):
         return self.backend.count_records(pipeline_type)
 
     @require_backend
-    def select(
-        self,
-        table_name: Optional[str] = None,
-        columns: Optional[List[str]] = None,
-        filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
-        json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
-        offset: Optional[int] = None,
-        limit: Optional[int] = None,
-        pipeline_type: Optional[str] = None,
-    ) -> List[Any]:
-        """
-        Perform a `SELECT` on the table
-
-        :param str table_name: name of the table to SELECT from
-        :param List[str] columns: columns to include in the result
-        :param [(key,operator,value)] filter_conditions: e.g. [("id", "eq", 1)], operator list:
-            - eq for ==
-            - lt for <
-            - ge for >=
-            - in for in_
-            - like for like
-        :param [(col,key,value)] json_filter_conditions: conditions for JSONB column to
-            query that include JSON column name, key withing the JSON object in that
-            column and the value to check the identity against. Therefore only '==' is
-            supported in non-nested checks, e.g. [("other", "genome", "hg38")]
-        :param int offset: skip this number of rows
-        :param int limit: include this number of rows
-        :param str pipeline_type: "sample" or "project"
-        :return List [Any]: list of results
-        """
-        pipeline_type = pipeline_type or self.pipeline_type
-        return self.backend.select(
-            table_name,
-            columns,
-            filter_conditions,
-            json_filter_conditions,
-            offset,
-            limit,
-            pipeline_type,
-        )
-
-    @require_backend
-    def select_distinct(
-        self,
-        table_name,
-        columns,
-        pipeline_type: Optional[str] = None,
-    ) -> List[Any]:
-        """
-        Perform a `SELECT DISTINCT` on given table and column
-
-        :param str table_name: name of the table to SELECT from
-        :param List[str] columns: columns to include in the result
-        :param str pipeline_type: "sample" or "project"
-        :return List[Any]: list of results
-        """
-        pipeline_type = pipeline_type or self.pipeline_type
-        return self.backend.select_distinct(
-            table_name=table_name, columns=columns, pipeline_type=pipeline_type
-        )
-
-    @require_backend
     def retrieve(
         self,
         record_identifier: Optional[str] = None,
@@ -689,37 +627,6 @@ class PipestatManager(dict):
             return self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
 
     @require_backend
-    def select_txt(
-        self,
-        columns: Optional[List[str]] = None,
-        filter_templ: Optional[str] = "",
-        filter_params: Optional[Dict[str, Any]] = {},
-        table_name: Optional[str] = None,
-        offset: Optional[int] = None,
-        limit: Optional[int] = None,
-        pipeline_type: Optional[str] = None,
-    ) -> List[Any]:
-        """
-        Execute a query with a textual filter. Returns all results.
-
-        To retrieve all table contents, leave the filter arguments out.
-        Table name uses pipeline_type
-
-        :param str filter_templ: filter template with value placeholders,
-             formatted as follows `id<:value and name=:name`
-        :param Dict[str, Any] filter_params: a mapping keys specified in the `filter_templ`
-            to parameters that are supposed to replace the placeholders
-        :param str table_name: name of the table to query
-        :param int offset: skip this number of rows
-        :param int limit: include this number of rows
-        :param str pipeline_type: sample vs project pipeline
-        :return List[Any]: a list of matched records
-        """
-        pipeline_type = pipeline_type or self.pipeline_type
-        return self.backend.select_txt(
-            columns, filter_templ, filter_params, table_name, offset, limit, pipeline_type
-        )
-
     def report(
         self,
         values: Dict[str, Any],
@@ -766,10 +673,7 @@ class PipestatManager(dict):
 
         _LOGGER.warning("Writing to locked data...")
 
-        if self.backend:
-            self.backend.report(values, record_identifier, pipeline_type)
-        else:
-            raise NoBackendSpecifiedError
+        self.backend.report(values, record_identifier, pipeline_type)
 
         nl = "\n"
         _LOGGER.warning("TEST HERE")
