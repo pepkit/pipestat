@@ -209,7 +209,7 @@ class ParsedSchema(object):
     @staticmethod
     def _add_namespace_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
         # TODO Deprecate use of namespace
-        id_key = "project_name"
+        id_key = PROJECT_NAME
         if id_key in field_defs:
             raise SchemaError(f"'{id_key}' is reserved as identifier and can't be part of schema.")
         field_defs[id_key] = (str, Field(default=None))

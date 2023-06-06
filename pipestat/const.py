@@ -40,6 +40,7 @@ __all__ = [
     "STATUS_FILE_DIR",
     "STATUS_SCHEMA_SOURCE_KEY",
     "STATUS_SCHEMA_KEY",
+    "PROJECT_NAME",
 ]
 
 PKG_NAME = "pipestat"
@@ -120,3 +121,4 @@ SCHEMA_KEY = "_schema"
 STATUS_FILE_DIR = "_status_file_dir"
 STATUS_SCHEMA_KEY = "_status_schema"
 STATUS_SCHEMA_SOURCE_KEY = "_status_schema_source"
+PROJECT_NAME = "project_name"
