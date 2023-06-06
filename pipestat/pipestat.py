@@ -135,7 +135,7 @@ class PipestatManager(dict):
                 raise PipestatDatabaseError(
                     f"No database section ('{CFG_DATABASE_KEY}') in config"
                 )
-            self[DATA_KEY] = YAMLConfigManager()
+            self._data = YAMLConfigManager()
             self._show_db_logs = show_db_logs
             self[DB_ORMS_KEY] = self._create_orms()
             SQLModel.metadata.create_all(self._engine)
@@ -541,7 +541,7 @@ class PipestatManager(dict):
         )
         with data as data_locked:
             data_locked.write()
-        self[DATA_KEY] = data
+        self._data = data
 
     def _load_results_file(self) -> None:
         _LOGGER.debug(f"Reading data from '{self.file}'")
@@ -549,13 +549,13 @@ class PipestatManager(dict):
         namespaces_reported = [k for k in data.keys() if not k.startswith("_")]
         num_namespaces = len(namespaces_reported)
         if num_namespaces == 0:
-            self[DATA_KEY] = data
+            self._data = data
         elif num_namespaces == 1:
             previous = namespaces_reported[0]
             if self.namespace != previous:
                 msg = f"'{self.file}' is already used to report results for a different (not {self.namespace}) namespace: {previous}"
                 raise PipestatError(msg)
-            self[DATA_KEY] = data
+            self._data = data
         else:
             raise PipestatError(
                 f"'{self.file}' is in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)}"

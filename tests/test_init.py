@@ -127,7 +127,7 @@ class TestPipestatManagerInstantiation:
                 results_file_path=results_file_path,
                 schema_path=schema_file_path,
             )
-            assert "test_pipe" in psm2.backend.DATA_KEY
+            assert "test_pipe" in psm2.backend.data
 
     def test_str_representation(self, results_file_path, schema_file_path):
         """Test string representation identifies number of records"""
@@ -143,4 +143,4 @@ class TestPipestatManagerInstantiation:
             }
             for k, v in val_dict.items():
                 psm.report(record_identifier=k, values=v, force_overwrite=True)
-            assert f"Records count: {len(psm.backend.DATA_KEY['test_pipe'])}" in str(psm)
+            assert f"Records count: {len(psm.backend.data['test_pipe'])}" in str(psm)
