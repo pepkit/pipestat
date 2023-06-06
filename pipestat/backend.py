@@ -51,6 +51,7 @@ class PipestatBackend(ABC):
 
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to check
+        :param str pipeline_type: "sample" or "project"
         :return bool: whether the specified result has been reported for the
             indicated record in current namespace
         """
@@ -82,6 +83,7 @@ class PipestatBackend(ABC):
 
         :param List[str] results: list of results to
             check for existence in the schema
+        :param str pipeline_type: "sample" or "project"
         :raises SchemaError: if any of the results is not defined in the schema
         """
 
@@ -223,10 +225,11 @@ class FileBackend(PipestatBackend):
         This method overwrites any existing data and creates the required
          hierarchical mapping structure if needed.
 
-        :param str record_identifier: unique identifier of the record
         :param Dict[str, Any] values: dict of results identifiers and values
             to be reported
-        :param str table_name: name of the table to report the result in
+        :param str record_identifier: unique identifier of the record
+        :param str pipeline_type: "sample" or "project"
+        :param bool force_overwrite: Toggles force overwriting results, defaults to False
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
@@ -273,6 +276,7 @@ class FileBackend(PipestatBackend):
 
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be retrieved
+        :param str pipeline_type: "sample" or "project"
         :return any | Dict[str, any]: a single result or a mapping with all the
             results reported for the record
         """
@@ -310,6 +314,7 @@ class FileBackend(PipestatBackend):
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be removed or None
              if the record should be removed.
+        :param str pipeline_type: "sample" or "project"
         :return bool: whether the result has been removed
         """
 
@@ -376,6 +381,16 @@ class FileBackend(PipestatBackend):
         project_name: Optional[str] = None,
         rm_record: Optional[bool] = False,
     ) -> bool:
+        """
+        Remove a record, requires rm_record to be True
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to be removed or None
+             if the record should be removed.
+        :param str pipeline_type: "sample" or "project"
+        :param bool rm_record: bool for removing record.
+        :return bool: whether the result has been removed
+        """
         if rm_record:
             try:
                 _LOGGER.info(f"Removing '{record_identifier}' record")
@@ -406,12 +421,10 @@ class FileBackend(PipestatBackend):
             in the status schema
         :param str record_identifier: record identifier to set the
             pipeline status for
-        :param str pipeline_type: whether status is being set for a project-level pipeline, or sample-level
+        :param str pipeline_type: "sample" or "project"
         """
         pipeline_type = pipeline_type or self.pipeline_type
-        # r_id = self._strict_record_id(record_identifier)
-
-        r_id = record_identifier
+        r_id = record_identifier or self.record_identifier
         known_status_identifiers = self.status_schema.keys()
         if status_identifier not in known_status_identifiers:
             raise PipestatError(
@@ -439,10 +452,12 @@ class FileBackend(PipestatBackend):
         """
         Get the current pipeline status
 
+        :param str record_identifier: record identifier to set the
+            pipeline status for
+        :param str pipeline_type: "sample" or "project"
         :return str: status identifier, like 'running'
         """
-        # r_id = self._strict_record_id(record_identifier)
-        r_id = record_identifier
+        r_id = record_identifier or self.record_identifier
         flag_file = self.get_flag_file(record_identifier=record_identifier)
         if flag_file is not None:
             assert isinstance(flag_file, str), TypeError(
@@ -497,6 +512,7 @@ class FileBackend(PipestatBackend):
 
         :param List[str] restrict_to: selected subset of names of results to list
         :param str record_identifier: unique identifier of the record
+        :param str pipeline_type: "sample" or "project"
         :return List[str]: names of results which exist
         """
 
@@ -622,7 +638,8 @@ class DBBackend(PipestatBackend):
         :param str record_identifier: unique identifier of the record
         :param Dict[str, Any] values: dict of results identifiers and values
             to be reported
-        :param str table_name: name of the table to report the result in
+        :param str pipeline_type: "sample" or "project"
+        :param bool force_overwrite: force overwriting of results, defaults to False.
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
@@ -690,6 +707,7 @@ class DBBackend(PipestatBackend):
 
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be retrieved
+        :param str pipeline_type: "sample" or "project"
         :return any | Dict[str, any]: a single result or a mapping with all the
             results reported for the record
         """
@@ -741,6 +759,7 @@ class DBBackend(PipestatBackend):
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be removed or None
              if the record should be removed.
+        :param str pipeline_type: "sample" or "project"
         :return bool: whether the result has been removed
         """
 
@@ -810,6 +829,14 @@ class DBBackend(PipestatBackend):
         pipeline_type: Optional[str] = None,
         rm_record: Optional[bool] = False,
     ) -> bool:
+        """
+        Remove a record, requires rm_record to be True
+
+        :param str record_identifier: unique identifier of the record
+        :param str pipeline_type: "sample" or "project"
+        :param bool rm_record: bool for removing record.
+        :return bool: whether the result has been removed
+        """
         table_name = self.get_table_name(pipeline_type=pipeline_type)
         pipeline_type = pipeline_type or self.pipeline_type
         record_identifier = record_identifier or self.record_identifier
@@ -834,6 +861,12 @@ class DBBackend(PipestatBackend):
             _LOGGER.info(f" rm_record flag False, aborting Removing '{record_identifier}' record")
 
     def get_table_name(self, pipeline_type: Optional[str] = None):
+        """
+        Get tablename based on pipeline_type
+        :param str pipeline_type: "sample" or "project"
+        :return str table name: "pipeline_id__sample" or "pipeline_id__project"
+        """
+
         pipeline_type = pipeline_type or self.pipeline_type
 
         mods = self.orms
@@ -869,6 +902,11 @@ class DBBackend(PipestatBackend):
         return mod
 
     def get_model(self, table_name: str, strict: bool):
+        """
+        Get model based on table_name
+        :param str table_name: "sample" or "project"
+        :return model
+        """
         orms = self.orms
 
         # table_name = self.get_table_name()
@@ -898,6 +936,14 @@ class DBBackend(PipestatBackend):
         return query_hit is not None
 
     def get_one_record(self, table_name: str, rid: Optional[str] = None):
+        """
+        Retrieve single record from SQL table
+
+        :param str rid: record to check for
+        :param str table_name: table name to check
+        :return bool: whether the record exists in the table
+        """
+
         models = [self.get_orm(table_name=table_name)] if table_name else list(self.orms.values())
         with self.session as s:
             for mod in models:
@@ -925,7 +971,7 @@ class DBBackend(PipestatBackend):
 
         :param List[str] restrict_to: results identifiers to check for
         :param str record_identifier: record to check for
-        :param str pipeline_type: name of the table to search for results in
+        :param str pipeline_type: "sample" or "project"
         :return List[str] existing: if no result identifier specified, return all results for the record
         :return List[str]: results identifiers that exist
         """
@@ -976,6 +1022,7 @@ class DBBackend(PipestatBackend):
             supported in non-nested checks, e.g. [("other", "genome", "hg38")]
         :param int offset: skip this number of rows
         :param int limit: include this number of rows
+        :param str pipeline_type: "sample" or "project"
         """
         pipeline_type = pipeline_type or self.pipeline_type
         table_name = table_name or self.get_table_name(pipeline_type)
@@ -1059,6 +1106,7 @@ class DBBackend(PipestatBackend):
 
         :param str table_name: name of the table to SELECT from
         :param List[str] columns: columns to include in the result
+        :param str pipeline_type: "sample" or "project"
         :return List[Any]: returns distinct values.
         """
         pipeline_type = pipeline_type or self.pipeline_type
@@ -1131,6 +1179,14 @@ class DBBackend(PipestatBackend):
     def get_status(
         self, record_identifier: str, pipeline_type: Optional[str] = None
     ) -> Optional[str]:
+        """
+        Get pipeline status
+
+        :param str record_identifier: record identifier to set the
+            pipeline status for
+        :param str pipeline_type: whether status is being set for a project-level pipeline, or sample-level
+        :return str status
+        """
         pipeline_type = pipeline_type or self.pipeline_type
         try:
             result = self.retrieve(
