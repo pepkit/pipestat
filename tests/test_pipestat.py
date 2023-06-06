@@ -134,7 +134,7 @@ class TestReporting:
                         ]
                     )
                     if backend == "file":
-                        assert_is_in_files(results_file_path + ".new", str(list(val.values())[0]))
+                        assert_is_in_files(results_file_path, str(list(val.values())[0]))
                 if backend == "db":
                     # This is being captured in TestSplitClasses
                     pass
@@ -212,7 +212,7 @@ class TestReporting:
                         ]
                     )
                     if backend == "file":
-                        assert_is_in_files(results_file_path + ".new", str(list(val.values())[0]))
+                        assert_is_in_files(results_file_path, str(list(val.values())[0]))
                 if backend == "db":
                     assert list(val.keys())[0] in psm.retrieve(record_identifier=rec_id)
 
@@ -525,7 +525,7 @@ class TestNoRecordID:
                 psm = PipestatManager(**args)
                 psm.report(values=val, pipeline_type=pipeline_type)
                 if backend == "file":
-                    assert_is_in_files(results_file_path + ".new", str(list(val.values())[0]))
+                    assert_is_in_files(results_file_path, str(list(val.values())[0]))
                     assert (
                         CONST_REC_ID
                         in psm.backend.DATA_KEY[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]

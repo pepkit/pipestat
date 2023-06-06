@@ -192,7 +192,7 @@ class FileBackend(PipestatBackend):
     ):
         _LOGGER.warning("Initialize FileBackend")
 
-        self.results_file_path = results_file_path + ".new"
+        self.results_file_path = results_file_path
         self.project_name = project_name
         self.pipeline_type = pipeline_type
         self.record_identifier = record_identifier
