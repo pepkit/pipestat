@@ -74,7 +74,7 @@ class TestSplitClasses:
             assert val_name in psm.retrieve(record_identifier=rec_id)
             psm.remove(record_identifier=rec_id, result_identifier=val_name)
             if backend == "file":
-                with pytest.raises(PipestatDatabaseError):
+                with pytest.raises(PipestatDataError):
                     psm.retrieve(record_identifier=rec_id)
             if backend == "db":
                 assert getattr(psm.retrieve(record_identifier=rec_id), val_name, None) is None
@@ -318,8 +318,12 @@ class TestRetrieval:
             psm = PipestatManager(**args)
             for k, v in val_dict.items():
                 psm.report(record_identifier=k, values=v, force_overwrite=True)
-            with pytest.raises(PipestatDatabaseError):
-                psm.retrieve(result_identifier=res_id, record_identifier=rec_id)
+            if backend == "db":
+                with pytest.raises(PipestatDatabaseError):
+                    psm.retrieve(result_identifier=res_id, record_identifier=rec_id)
+            else:
+                with pytest.raises(PipestatDataError):
+                    psm.retrieve(result_identifier=res_id, record_identifier=rec_id)
 
 
 class TestRemoval:
@@ -461,7 +465,9 @@ class TestRemoval:
                 record_identifier=rec_id, values={res_id: "something"}, force_overwrite=True
             )
             assert psm.remove(record_identifier=rec_id, result_identifier=res_id)
-            assert rec_id not in psm._data
+            if backend == "file":
+                with pytest.raises(PipestatDataError):
+                    psm.retrieve(record_identifier=rec_id)
 
 
 class TestNoRecordID:

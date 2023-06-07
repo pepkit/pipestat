@@ -114,13 +114,6 @@ class PipestatManager(dict):
                 )
                 self[DB_ONLY_KEY] = False
 
-            if not os.path.exists(self.file):
-                _LOGGER.debug(f"Results file doesn't yet exist. Initializing: {self.file}")
-                self._init_results_file()
-            else:
-                _LOGGER.debug(f"Loading results file: {self.file}")
-                self._load_results_file()
-
             flag_file_dir = self[CONFIG_KEY].priority_get(
                 "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.file)
             )
@@ -135,6 +128,7 @@ class PipestatManager(dict):
                 self[STATUS_SCHEMA_KEY],
                 self[STATUS_FILE_DIR],
             )
+
         else:  # database backend
             _LOGGER.debug("Determined database as backend")
             if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
@@ -528,39 +522,6 @@ class PipestatManager(dict):
                 s[k].setdefault("required", []).extend(curr_type_spec["required"])
                 s[k][SCHEMA_TYPE_KEY] = curr_type_spec[SCHEMA_TYPE_KEY]
             return s
-
-    def _init_results_file(self) -> None:
-        """
-        Initialize YAML results file if it does not exist.
-        Read the data stored in the existing file into the memory otherwise.
-
-        :return bool: whether the file has been created
-        """
-        _LOGGER.info(f"Initializing results file '{self.file}'")
-        data = YAMLConfigManager(
-            entries={self.namespace: "{}"}, filepath=self.file, create_file=True
-        )
-        with data as data_locked:
-            data_locked.write()
-        self._data = data
-
-    def _load_results_file(self) -> None:
-        _LOGGER.debug(f"Reading data from '{self.file}'")
-        data = YAMLConfigManager(filepath=self.file)
-        namespaces_reported = [k for k in data.keys() if not k.startswith("_")]
-        num_namespaces = len(namespaces_reported)
-        if num_namespaces == 0:
-            self._data = data
-        elif num_namespaces == 1:
-            previous = namespaces_reported[0]
-            if self.namespace != previous:
-                msg = f"'{self.file}' is already used to report results for a different (not {self.namespace}) namespace: {previous}"
-                raise PipestatError(msg)
-            self._data = data
-        else:
-            raise PipestatError(
-                f"'{self.file}' is in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)}"
-            )
 
     @property
     def _engine(self):

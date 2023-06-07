@@ -173,16 +173,56 @@ class FileBackend(PipestatBackend):
         self.status_schema = status_schema
         self.status_file_dir = status_file_dir
 
-        # From: _init_results_file
+        if not os.path.exists(self.results_file_path):
+            _LOGGER.debug(
+                f"Results file doesn't yet exist. Initializing: {self.results_file_path}"
+            )
+            self._init_results_file()
+        else:
+            _LOGGER.debug(f"Loading results file: {self.results_file_path}")
+            self._load_results_file()
+
+    def _init_results_file(self) -> None:
+        """
+        Initialize YAML results file if it does not exist.
+        Read the data stored in the existing file into the memory otherwise.
+
+        :return bool: whether the file has been created
+        """
         _LOGGER.info(f"Initializing results file '{self.results_file_path}'")
         self._data = YAMLConfigManager(
-            entries={project_name: {}}, filepath=self.results_file_path, create_file=True
+            entries={self.project_name: {}}, filepath=self.results_file_path, create_file=True
         )
         self._data.setdefault(self.project_name, {})
         self._data[self.project_name].setdefault("project", {})
         self._data[self.project_name].setdefault("sample", {})
         with self._data as data_locked:
             data_locked.write()
+
+    def _load_results_file(self) -> None:
+        _LOGGER.debug(f"Reading data from '{self.results_file_path}'")
+        data = YAMLConfigManager(filepath=self.results_file_path)
+        if not bool(data):
+            self._data = data
+            self._data.setdefault(self.project_name, {})
+            self._data[self.project_name].setdefault("project", {})
+            self._data[self.project_name].setdefault("sample", {})
+            with self._data as data_locked:
+                data_locked.write()
+        namespaces_reported = [k for k in data.keys() if not k.startswith("_")]
+        num_namespaces = len(namespaces_reported)
+        if num_namespaces == 0:
+            self._data = data
+        elif num_namespaces == 1:
+            previous = namespaces_reported[0]
+            if self.project_name != previous:
+                msg = f"'{self.results_file_path}' is already used to report results for a different (not {self.project_name}) namespace: {previous}"
+                raise PipestatError(msg)
+            self._data = data
+        else:
+            raise PipestatError(
+                f"'{self.results_file_path}' is in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)}"
+            )
 
     def report(
         self,
@@ -258,14 +298,14 @@ class FileBackend(PipestatBackend):
         record_identifier = record_identifier or self.record_identifier
 
         if record_identifier not in self._data[self.project_name][pipeline_type]:
-            raise PipestatDatabaseError(f"Record '{record_identifier}' not found")
+            raise PipestatDataError(f"Record '{record_identifier}' not found")
         if result_identifier is None:
             return self._data.exp[self.project_name][pipeline_type][record_identifier]
         if (
             result_identifier
             not in self._data[self.project_name][pipeline_type][record_identifier]
         ):
-            raise PipestatDatabaseError(
+            raise PipestatDataError(
                 f"Result '{result_identifier}' not found for record '{record_identifier}'"
             )
         return self._data[self.project_name][pipeline_type][record_identifier][result_identifier]
