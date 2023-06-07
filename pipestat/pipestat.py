@@ -90,7 +90,7 @@ class PipestatManager(dict):
 
         self.process_schema(schema_path)
 
-        self[PIPELINE_NAME] = self.namespace
+        self[PIPELINE_NAME] = self.schema.pipeline_name
 
         self[RECORD_ID_KEY] = self[CONFIG_KEY].priority_get(
             "record_identifier", env_var=ENV_VARS["record_identifier"], override=record_identifier
@@ -234,15 +234,6 @@ class PipestatManager(dict):
             for result_id in (self.schema or {}).keys()
             if DB_COLUMN_KEY in self.schema[result_id]
         }
-
-    @property
-    def namespace(self) -> str:
-        """
-        Namespace the object writes the results to
-
-        :return str: namespace the object writes the results to
-        """
-        return self.schema.pipeline_id
 
     @property
     def projectname(self) -> str:

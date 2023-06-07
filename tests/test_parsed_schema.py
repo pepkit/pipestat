@@ -10,7 +10,7 @@ from pipestat.exceptions import SchemaError
 from pipestat.parsed_schema import (
     NULL_MAPPING_VALUE,
     ParsedSchema,
-    SCHEMA_PIPELINE_ID_KEY,
+    SCHEMA_PIPELINE_NAME_KEY,
 )
 from .conftest import COMMON_CUSTOM_STATUS_DATA, DEFAULT_STATUS_DATA, get_data_file_path
 
@@ -175,32 +175,32 @@ SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_ID = [
     ["schema_data", "expected_message"],
     [
         (
-            {SCHEMA_PIPELINE_ID_KEY: "test_pipe"},
+            {SCHEMA_PIPELINE_NAME_KEY: "test_pipe"},
             "Neither sample-level nor project-level data items are declared.",
         ),
         (
-            {SCHEMA_PIPELINE_ID_KEY: "test_pipe", STATUS: DEFAULT_STATUS_DATA},
+            {SCHEMA_PIPELINE_NAME_KEY: "test_pipe", STATUS: DEFAULT_STATUS_DATA},
             "Neither sample-level nor project-level data items are declared.",
         ),
         (
-            {SCHEMA_PIPELINE_ID_KEY: "test_pipe", "samples": ["s1", "s2"]},
+            {SCHEMA_PIPELINE_NAME_KEY: "test_pipe", "samples": ["s1", "s2"]},
             f"sample-level info in schema definition has invalid type: list",
         ),
         (
-            {SCHEMA_PIPELINE_ID_KEY: "test_pipe", "samples": "sample1"},
+            {SCHEMA_PIPELINE_NAME_KEY: "test_pipe", "samples": "sample1"},
             f"sample-level info in schema definition has invalid type: str",
         ),
     ]
     + [
         (
             dict(data),
-            f"Could not find valid pipeline identifier (key '{SCHEMA_PIPELINE_ID_KEY}') in given schema data",
+            f"Could not find valid pipeline identifier (key '{SCHEMA_PIPELINE_NAME_KEY}') in given schema data",
         )
         for data in SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_ID
     ]
     + [
         (
-            dict(data + [(SCHEMA_PIPELINE_ID_KEY, "test_pipe"), ("extra_key", "placeholder")]),
+            dict(data + [(SCHEMA_PIPELINE_NAME_KEY, "test_pipe"), ("extra_key", "placeholder")]),
             "Extra top-level key(s) in given schema data: extra_key",
         )
         for data in SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_ID
@@ -213,7 +213,7 @@ def test_insufficient_schema__raises_expected_error_and_message(schema_data, exp
     assert observed_message == expected_message
 
 
-SIMPLE_ID_SECTION = [(SCHEMA_PIPELINE_ID_KEY, "test_pipe")]
+SIMPLE_ID_SECTION = [(SCHEMA_PIPELINE_NAME_KEY, "test_pipe")]
 SIMPLE_SAMPLES_DATA = [("count", {"type": "integer", "description": "number of things"})]
 SIMPLE_PROJECT_DATA = [("pct", {"type": "number", "description": "percentage"})]
 
@@ -246,7 +246,7 @@ def test_reserved_keyword_use_in_schema__raises_expected_error_and_message(schem
 def test_sample_project_data_item_name_overlap__raises_expected_error_and_message():
     common_key = "shared_key"
     schema_data = {
-        SCHEMA_PIPELINE_ID_KEY: "test_pipe",
+        SCHEMA_PIPELINE_NAME_KEY: "test_pipe",
         "samples": {
             "just_in_sample": {"type": "string", "description": "placeholder"},
             common_key: {"type": "string", "description": "in samples"},

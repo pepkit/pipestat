@@ -21,7 +21,7 @@ __all__ = ["ParsedSchema", "SCHEMA_PIPELINE_ID_KEY"]
 
 
 NULL_MAPPING_VALUE = {}
-SCHEMA_PIPELINE_ID_KEY = "pipeline_id"
+SCHEMA_PIPELINE_NAME_KEY = "pipeline_name"
 
 
 # The columns associated with the file and image types
@@ -68,10 +68,10 @@ class ParsedSchema(object):
         data = copy.deepcopy(data)
 
         # pipeline identifier
-        self._pipeline_id = data.pop(SCHEMA_PIPELINE_ID_KEY, None)
-        if not isinstance(self._pipeline_id, str):
+        self._pipeline_name = data.pop(SCHEMA_PIPELINE_NAME_KEY, None)
+        if not isinstance(self._pipeline_name, str):
             raise SchemaError(
-                f"Could not find valid pipeline identifier (key '{SCHEMA_PIPELINE_ID_KEY}') in given schema data"
+                f"Could not find valid pipeline identifier (key '{SCHEMA_PIPELINE_NAME_KEY}') in given schema data"
             )
 
         # Parse sample-level data item declarations.
@@ -113,8 +113,8 @@ class ParsedSchema(object):
             )
 
     @property
-    def pipeline_id(self):
-        return self._pipeline_id
+    def pipeline_name(self):
+        return self._pipeline_name
 
     @property
     def project_level_data(self):
@@ -259,7 +259,7 @@ class ParsedSchema(object):
         return field_defs
 
     def _table_name(self, suffix: str) -> str:
-        return f"{self.pipeline_id}__{suffix}"
+        return f"{self.pipeline_name}__{suffix}"
 
 
 def _create_model(table_name: str, **kwargs):
