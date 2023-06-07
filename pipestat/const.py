@@ -43,6 +43,8 @@ __all__ = [
     "PROJECT_NAME",
     "PIPELINE_NAME",
     "PIPELINE_TYPE",
+    "DB_URL",
+    "SCHEMA_PATH",
 ]
 
 PKG_NAME = "pipestat"
@@ -126,3 +128,5 @@ STATUS_SCHEMA_SOURCE_KEY = "_status_schema_source"
 PROJECT_NAME = "project_name"
 PIPELINE_NAME = "_pipeline_name"
 PIPELINE_TYPE = "_pipeline_type"
+DB_URL = "_db_url"
+SCHEMA_PATH = "_schema_path"

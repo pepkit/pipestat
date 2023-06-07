@@ -137,7 +137,7 @@ class PipestatManager(dict):
                 raise NoBackendSpecifiedError()
             try:
                 dbconf = self[CONFIG_KEY][CFG_DATABASE_KEY]
-                self._db_url = construct_db_url(dbconf)
+                self[DB_URL] = construct_db_url(dbconf)
             except KeyError:
                 raise PipestatDatabaseError(
                     f"No database section ('{CFG_DATABASE_KEY}') in config"
@@ -255,7 +255,7 @@ class PipestatManager(dict):
 
         :return dict: schema that formalizes the pipeline status structure
         """
-        return self[STATUS_SCHEMA_KEY]
+        return self.get(STATUS_SCHEMA_KEY)
 
     @property
     def status_schema_source(self) -> Dict:
@@ -274,7 +274,7 @@ class PipestatManager(dict):
 
         :return str: path to the provided schema
         """
-        return self._schema_path
+        return self.get(SCHEMA_PATH)
 
     @property
     def config_path(self) -> str:
@@ -322,7 +322,7 @@ class PipestatManager(dict):
         :return str: database URL
         :raise PipestatDatabaseError: if the object is not backed by a database
         """
-        return self._db_url
+        return self.get(DB_URL)
 
     @property
     def _engine(self):
@@ -333,7 +333,7 @@ class PipestatManager(dict):
             # Do it this way rather than .setdefault to avoid evaluating
             # the expression for the default argument (i.e., building
             # the engine) if it's not necessary.
-            self[DB_ENGINE_KEY] = create_engine(self.db_url, echo=self._show_db_logs)
+            self[DB_ENGINE_KEY] = create_engine(self[DB_URL], echo=self._show_db_logs)
             return self[DB_ENGINE_KEY]
 
     @property
