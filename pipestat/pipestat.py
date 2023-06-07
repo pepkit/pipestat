@@ -604,17 +604,8 @@ class PipestatManager(dict):
         """
 
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-
-        record_identifier = self._strict_record_id(record_identifier)
-        # should change to simpler: record_identifier = record_identifier or self.record_identifier
-
-        if self.file is None:
-            results = self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
-            if result_identifier is not None:
-                return results[result_identifier]
-            return results
-        else:
-            return self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
+        record_identifier = record_identifier or self.record_identifier
+        return self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
 
     @require_backend
     def remove(

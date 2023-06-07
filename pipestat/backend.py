@@ -743,7 +743,7 @@ class DBBackend(PipestatBackend):
 
         if record is not None:
             if result_identifier is not None:
-                return {result_identifier: getattr(record, result_identifier)}
+                return getattr(record, result_identifier)
             return {
                 column: getattr(record, column)
                 for column in [c.name for c in record.__table__.columns]
@@ -1203,7 +1203,7 @@ class DBBackend(PipestatBackend):
             )
         except PipestatDatabaseError:
             return None
-        return result[STATUS]
+        return result
 
     @property
     @contextmanager
