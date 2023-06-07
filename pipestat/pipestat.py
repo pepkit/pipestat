@@ -180,29 +180,6 @@ class PipestatManager(dict):
             res += f"\nHighlighted results: {', '.join(high_res)}"
         return res
 
-    def process_schema(self, schema_path):
-        # Load pipestat schema in two parts: 1) main and 2) status
-        self._schema_path = self[CONFIG_KEY].priority_get(
-            "schema_path", env_var=ENV_VARS["schema"], override=schema_path
-        )
-
-        if self._schema_path is None:
-            raise SchemaNotFoundError("PipestatManager creation failed; no schema")
-
-        # Main schema
-        schema_to_read = mk_abs_via_cfg(self._schema_path, self.config_path)
-        parsed_schema = ParsedSchema(schema_to_read)
-        self[SCHEMA_KEY] = parsed_schema
-
-        # Status schema
-        self[STATUS_SCHEMA_KEY] = parsed_schema.status_data
-        if not self[STATUS_SCHEMA_KEY]:
-            self[STATUS_SCHEMA_SOURCE_KEY], self[STATUS_SCHEMA_KEY] = read_yaml_data(
-                path=STATUS_SCHEMA, what="default status schema"
-            )
-        else:
-            self[STATUS_SCHEMA_SOURCE_KEY] = schema_to_read
-
     @property
     def record_count(self) -> int:
         """
@@ -348,6 +325,18 @@ class PipestatManager(dict):
         return self._db_url
 
     @property
+    def _engine(self):
+        """Access the database engine backing this manager."""
+        try:
+            return self[DB_ENGINE_KEY]
+        except KeyError:
+            # Do it this way rather than .setdefault to avoid evaluating
+            # the expression for the default argument (i.e., building
+            # the engine) if it's not necessary.
+            self[DB_ENGINE_KEY] = create_engine(self.db_url, echo=self._show_db_logs)
+            return self[DB_ENGINE_KEY]
+
+    @property
     @contextmanager
     def session(self):
         """
@@ -366,46 +355,6 @@ class PipestatManager(dict):
             _LOGGER.info("session.close")
             session.close()
         _LOGGER.debug("Ending session")
-
-    def _get_flag_file(self, record_identifier: str = None) -> Union[str, List[str], None]:
-        """
-        Get path to the status flag file for the specified record
-
-        :param str record_identifier: unique record identifier
-        :return str | list[str] | None: path to the status flag file
-        """
-
-        r_id = self._strict_record_id(record_identifier)
-        if self.file is None:
-            return
-        if self.file is not None:
-            regex = os.path.join(self[STATUS_FILE_DIR], f"{self.namespace}_{r_id}_*.flag")
-            file_list = glob(regex)
-            if len(file_list) > 1:
-                _LOGGER.warning("Multiple flag files found")
-                return file_list
-            elif len(file_list) == 1:
-                return file_list[0]
-            else:
-                _LOGGER.debug("No flag files found")
-                return None
-
-    def _strict_record_id(self, forced_value: str = None) -> str:
-        """
-        Get record identifier from the outer source or stored with this object
-
-        :param str forced_value: return this value
-        :return str: record identifier
-        """
-        if forced_value is not None:
-            return forced_value
-        if self.record_identifier is not None:
-            return self.record_identifier
-        raise PipestatError(
-            f"You must provide the record identifier you want to perform "
-            f"the action on. Either in the {self.__class__.__name__} "
-            f"constructor or as an argument to the method."
-        )
 
     def _create_orms(self):
         """Create ORMs."""
@@ -427,6 +376,61 @@ class PipestatManager(dict):
             raise SchemaError(
                 f"Neither project nor samples model could be built from schema source: {self.status_schema_source}"
             )
+
+    def _get_attr(self, attr: str) -> Any:
+        """
+        Safely get the name of the selected attribute of this object
+
+        :param str attr: attr to select
+        :return:
+        """
+        return self.get(attr)
+
+    def _strict_record_id(self, forced_value: str = None) -> str:
+        """
+        Get record identifier from the outer source or stored with this object
+
+        :param str forced_value: return this value
+        :return str: record identifier
+        """
+        if forced_value is not None:
+            return forced_value
+        if self.record_identifier is not None:
+            return self.record_identifier
+        raise PipestatError(
+            f"You must provide the record identifier you want to perform "
+            f"the action on. Either in the {self.__class__.__name__} "
+            f"constructor or as an argument to the method."
+        )
+
+    @require_backend
+    def clear_status(
+        self, record_identifier: str = None, flag_names: List[str] = None
+    ) -> List[Union[str, None]]:
+        """
+        Remove status flags
+
+        :param str record_identifier: name of the record to remove flags for
+        :param Iterable[str] flag_names: Names of flags to remove, optional; if
+            unspecified, all schema-defined flag names will be used.
+        :return List[str]: Collection of names of flags removed
+        """
+        r_id = self._strict_record_id(record_identifier)
+        return self.backend.clear_status(record_identifier=r_id, flag_names=flag_names)
+
+    @require_backend
+    def get_status(
+        self, record_identifier: str = None, pipeline_type: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        Get the current pipeline status
+        :param str record_identifier: name of the record
+        :param str pipeline_type: "sample" or "project"
+        :return str: status identifier, like 'running'
+        """
+        r_id = self._strict_record_id(record_identifier)
+        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
+        return self.backend.get_status(record_identifier=r_id, pipeline_type=pipeline_type)
 
     @require_backend
     def set_status(
@@ -451,52 +455,28 @@ class PipestatManager(dict):
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
         self.backend.set_status(status_identifier, record_identifier, pipeline_type)
 
-    def get_status_flag_path(self, status_identifier: str, record_identifier=None) -> str:
-        """
-        Get the path to the status file flag
-
-        :param str status_identifier: one of the defined status IDs in schema
-        :param str record_identifier: unique record ID, optional if
-            specified in the object constructor
-        :return str: absolute path to the flag file or None if object is
-            backed by a DB
-        """
-        if self.file is None:
-            # DB as the backend
-            return
-        r_id = self._strict_record_id(record_identifier)
-        return os.path.join(
-            self[STATUS_FILE_DIR], f"{self.namespace}_{r_id}_{status_identifier}.flag"
+    def process_schema(self, schema_path):
+        # Load pipestat schema in two parts: 1) main and 2) status
+        self._schema_path = self[CONFIG_KEY].priority_get(
+            "schema_path", env_var=ENV_VARS["schema"], override=schema_path
         )
 
-    @require_backend
-    def get_status(
-        self, record_identifier: str = None, pipeline_type: Optional[str] = None
-    ) -> Optional[str]:
-        """
-        Get the current pipeline status
-        :param str record_identifier: name of the record
-        :param str pipeline_type: "sample" or "project"
-        :return str: status identifier, like 'running'
-        """
-        r_id = self._strict_record_id(record_identifier)
-        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        return self.backend.get_status(record_identifier=r_id, pipeline_type=pipeline_type)
+        if self._schema_path is None:
+            raise SchemaNotFoundError("PipestatManager creation failed; no schema")
 
-    @require_backend
-    def clear_status(
-        self, record_identifier: str = None, flag_names: List[str] = None
-    ) -> List[Union[str, None]]:
-        """
-        Remove status flags
+        # Main schema
+        schema_to_read = mk_abs_via_cfg(self._schema_path, self.config_path)
+        parsed_schema = ParsedSchema(schema_to_read)
+        self[SCHEMA_KEY] = parsed_schema
 
-        :param str record_identifier: name of the record to remove flags for
-        :param Iterable[str] flag_names: Names of flags to remove, optional; if
-            unspecified, all schema-defined flag names will be used.
-        :return List[str]: Collection of names of flags removed
-        """
-        r_id = self._strict_record_id(record_identifier)
-        return self.backend.clear_status(record_identifier=r_id, flag_names=flag_names)
+        # Status schema
+        self[STATUS_SCHEMA_KEY] = parsed_schema.status_data
+        if not self[STATUS_SCHEMA_KEY]:
+            self[STATUS_SCHEMA_SOURCE_KEY], self[STATUS_SCHEMA_KEY] = read_yaml_data(
+                path=STATUS_SCHEMA, what="default status schema"
+            )
+        else:
+            self[STATUS_SCHEMA_SOURCE_KEY] = schema_to_read
 
     def validate_schema(self) -> None:
         """
@@ -534,27 +514,6 @@ class PipestatManager(dict):
                 s[k][SCHEMA_TYPE_KEY] = curr_type_spec[SCHEMA_TYPE_KEY]
             return s
 
-    @property
-    def _engine(self):
-        """Access the database engine backing this manager."""
-        try:
-            return self[DB_ENGINE_KEY]
-        except KeyError:
-            # Do it this way rather than .setdefault to avoid evaluating
-            # the expression for the default argument (i.e., building
-            # the engine) if it's not necessary.
-            self[DB_ENGINE_KEY] = create_engine(self.db_url, echo=self._show_db_logs)
-            return self[DB_ENGINE_KEY]
-
-    def _get_attr(self, attr: str) -> Any:
-        """
-        Safely get the name of the selected attribute of this object
-
-        :param str attr: attr to select
-        :return:
-        """
-        return self.get(attr)
-
     @require_backend
     def count_records(self, pipeline_type: Optional[str] = None) -> int:
         """
@@ -564,39 +523,6 @@ class PipestatManager(dict):
         """
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
         return self.backend.count_records(pipeline_type)
-
-    @require_backend
-    def retrieve(
-        self,
-        record_identifier: Optional[str] = None,
-        result_identifier: Optional[str] = None,
-        pipeline_type: Optional[str] = None,
-    ) -> Union[Any, Dict[str, Any]]:
-        """
-        Retrieve a result for a record.
-
-        If no result ID specified, results for the entire record will
-        be returned.
-
-        :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to be retrieved
-        :param str pipeline_type: "sample" or "project"
-        :return any | Dict[str, any]: a single result or a mapping with all the
-            results reported for the record
-        """
-
-        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-
-        record_identifier = self._strict_record_id(record_identifier)
-        # should change to simpler: record_identifier = record_identifier or self.record_identifier
-
-        if self.file is None:
-            results = self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
-            if result_identifier is not None:
-                return results[result_identifier]
-            return results
-        else:
-            return self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
 
     @require_backend
     def report(
@@ -656,6 +582,39 @@ class PipestatManager(dict):
         )
         _LOGGER.info(record_identifier, values)
         return True if not return_id else updated_ids
+
+    @require_backend
+    def retrieve(
+        self,
+        record_identifier: Optional[str] = None,
+        result_identifier: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
+    ) -> Union[Any, Dict[str, Any]]:
+        """
+        Retrieve a result for a record.
+
+        If no result ID specified, results for the entire record will
+        be returned.
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to be retrieved
+        :param str pipeline_type: "sample" or "project"
+        :return any | Dict[str, any]: a single result or a mapping with all the
+            results reported for the record
+        """
+
+        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
+
+        record_identifier = self._strict_record_id(record_identifier)
+        # should change to simpler: record_identifier = record_identifier or self.record_identifier
+
+        if self.file is None:
+            results = self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
+            if result_identifier is not None:
+                return results[result_identifier]
+            return results
+        else:
+            return self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
 
     @require_backend
     def remove(

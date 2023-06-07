@@ -29,16 +29,33 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Initialize PipestatBackend")
         self.pipeline_type = pipeline_type
 
-    def report(
-        self,
-        values: Dict[str, Any],
-        record_identifier: Optional[str] = None,
-        force_overwrite: bool = False,
-        strict_type: bool = True,
-        return_id: bool = False,
-        pipeline_type: Optional[str] = None,
-    ) -> Union[bool, int]:
-        _LOGGER.warning("Not implemented yet for this backend")
+    def assert_results_defined(self, results: List[str], pipeline_type: str) -> None:
+        """
+        Assert provided list of results is defined in the schema
+
+        :param List[str] results: list of results to
+            check for existence in the schema
+        :param str pipeline_type: "sample" or "project"
+        :raises SchemaError: if any of the results is not defined in the schema
+        """
+
+        # take project level input and look for keys in the specific schema.
+        # warn if you are trying to report a sample to a project level and vice versa.
+
+        if pipeline_type == "sample":
+            known_results = self.parsed_schema.sample_level_data.keys()
+        if pipeline_type == "project":
+            known_results = self.parsed_schema.project_level_data.keys()
+        if STATUS in results:
+            known_results = [STATUS]
+
+        # known_results = self.result_schemas.keys()
+
+        for r in results:
+            assert r in known_results, SchemaError(
+                f"'{r}' is not a known result. Results defined in the "
+                f"schema are: {list(known_results)}."
+            )
 
     def check_result_exists(
         self,
@@ -73,49 +90,12 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
-    def list_results(self) -> List[str]:
-        _LOGGER.warning("Not implemented yet for this backend")
-        pass
-
-    def assert_results_defined(self, results: List[str], pipeline_type: str) -> None:
-        """
-        Assert provided list of results is defined in the schema
-
-        :param List[str] results: list of results to
-            check for existence in the schema
-        :param str pipeline_type: "sample" or "project"
-        :raises SchemaError: if any of the results is not defined in the schema
-        """
-
-        # take project level input and look for keys in the specific schema.
-        # warn if you are trying to report a sample to a project level and vice versa.
-
-        if pipeline_type == "sample":
-            known_results = self.parsed_schema.sample_level_data.keys()
-        if pipeline_type == "project":
-            known_results = self.parsed_schema.project_level_data.keys()
-        if STATUS in results:
-            known_results = [STATUS]
-
-        # known_results = self.result_schemas.keys()
-
-        for r in results:
-            assert r in known_results, SchemaError(
-                f"'{r}' is not a known result. Results defined in the "
-                f"schema are: {list(known_results)}."
-            )
-
-    def retrieve(self):
-        _LOGGER.warning("Not implemented yet for this backend")
-        pass
-
-    def set_status(
+    def count_records(
         self,
-        status_identifier: str,
-        record_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
-    ) -> None:
+    ):
         _LOGGER.warning("Not implemented yet for this backend")
+        pass
 
     def get_status(
         self, record_identifier: str, pipeline_type: Optional[str] = None
@@ -126,6 +106,33 @@ class PipestatBackend(ABC):
         self, record_identifier: str = None, flag_names: List[str] = None
     ) -> List[Union[str, None]]:
         _LOGGER.warning("Not implemented yet for this backend")
+
+    def set_status(
+        self,
+        status_identifier: str,
+        record_identifier: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
+    ) -> None:
+        _LOGGER.warning("Not implemented yet for this backend")
+
+    def list_results(self) -> List[str]:
+        _LOGGER.warning("Not implemented yet for this backend")
+        pass
+
+    def report(
+        self,
+        values: Dict[str, Any],
+        record_identifier: Optional[str] = None,
+        force_overwrite: bool = False,
+        strict_type: bool = True,
+        return_id: bool = False,
+        pipeline_type: Optional[str] = None,
+    ) -> Union[bool, int]:
+        _LOGGER.warning("Not implemented yet for this backend")
+
+    def retrieve(self):
+        _LOGGER.warning("Not implemented yet for this backend")
+        pass
 
     def remove(
         self,
@@ -142,13 +149,6 @@ class PipestatBackend(ABC):
         pipeline_type: Optional[str] = None,
     ) -> bool:
         _LOGGER.warning("Not implemented yet for this backend")
-
-    def count_records(
-        self,
-        pipeline_type: Optional[str] = None,
-    ):
-        _LOGGER.warning("Not implemented yet for this backend")
-        pass
 
 
 class FileBackend(PipestatBackend):
@@ -413,6 +413,61 @@ class FileBackend(PipestatBackend):
         else:
             _LOGGER.info(f" rm_record flag False, aborting Removing '{record_identifier}' record")
 
+    def clear_status(
+        self, record_identifier: str = None, flag_names: List[str] = None
+    ) -> List[Union[str, None]]:
+        """
+        Remove status flags
+
+        :param str record_identifier: name of the record to remove flags for
+        :param Iterable[str] flag_names: Names of flags to remove, optional; if
+            unspecified, all schema-defined flag names will be used.
+        :return List[str]: Collection of names of flags removed
+        """
+
+        flag_names = flag_names or list(self.status_schema.keys())
+        if isinstance(flag_names, str):
+            flag_names = [flag_names]
+        removed = []
+        for f in flag_names:
+            path_flag_file = self.get_status_flag_path(
+                status_identifier=f, record_identifier=record_identifier
+            )
+            try:
+                os.remove(path_flag_file)
+            except:
+                pass
+            else:
+                _LOGGER.info(f"Removed existing flag: {path_flag_file}")
+                removed.append(f)
+        return removed
+
+    def get_status(
+        self, record_identifier: str, pipeline_type: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        Get the current pipeline status
+
+        :param str record_identifier: record identifier to set the
+            pipeline status for
+        :param str pipeline_type: "sample" or "project"
+        :return str: status identifier, like 'running'
+        """
+        r_id = record_identifier or self.record_identifier
+        flag_file = self.get_flag_file(record_identifier=record_identifier)
+        if flag_file is not None:
+            assert isinstance(flag_file, str), TypeError(
+                "Flag file path is expected to be a str, were multiple flags found?"
+            )
+            with open(flag_file, "r") as f:
+                status = f.read()
+            return status
+        _LOGGER.debug(
+            f"Could not determine status for '{r_id}' record. "
+            f"No flags found in: {self.status_file_dir}"
+        )
+        return None
+
     def set_status(
         self,
         status_identifier: str,
@@ -455,86 +510,14 @@ class FileBackend(PipestatBackend):
         if prev_status:
             _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
 
-    def get_status(
-        self, record_identifier: str, pipeline_type: Optional[str] = None
-    ) -> Optional[str]:
+    def count_records(self, pipeline_type: Optional[str] = None):
         """
-        Get the current pipeline status
-
-        :param str record_identifier: record identifier to set the
-            pipeline status for
-        :param str pipeline_type: "sample" or "project"
-        :return str: status identifier, like 'running'
-        """
-        r_id = record_identifier or self.record_identifier
-        flag_file = self.get_flag_file(record_identifier=record_identifier)
-        if flag_file is not None:
-            assert isinstance(flag_file, str), TypeError(
-                "Flag file path is expected to be a str, were multiple flags found?"
-            )
-            with open(flag_file, "r") as f:
-                status = f.read()
-            return status
-        _LOGGER.debug(
-            f"Could not determine status for '{r_id}' record. "
-            f"No flags found in: {self.status_file_dir}"
-        )
-        return None
-
-    def clear_status(
-        self, record_identifier: str = None, flag_names: List[str] = None
-    ) -> List[Union[str, None]]:
-        """
-        Remove status flags
-
-        :param str record_identifier: name of the record to remove flags for
-        :param Iterable[str] flag_names: Names of flags to remove, optional; if
-            unspecified, all schema-defined flag names will be used.
-        :return List[str]: Collection of names of flags removed
+        Count records
+        :param str pipeline_type: sample vs project designator needed to count records
+        :return int: number of records
         """
 
-        flag_names = flag_names or list(self.status_schema.keys())
-        if isinstance(flag_names, str):
-            flag_names = [flag_names]
-        removed = []
-        for f in flag_names:
-            path_flag_file = self.get_status_flag_path(
-                status_identifier=f, record_identifier=record_identifier
-            )
-            try:
-                os.remove(path_flag_file)
-            except:
-                pass
-            else:
-                _LOGGER.info(f"Removed existing flag: {path_flag_file}")
-                removed.append(f)
-        return removed
-
-    def list_results(
-        self,
-        restrict_to: Optional[List[str]] = None,
-        record_identifier: Optional[str] = None,
-        pipeline_type: Optional[str] = None,
-    ) -> List[str]:
-        """
-        Lists all, or a selected set of, reported results
-
-        :param List[str] restrict_to: selected subset of names of results to list
-        :param str record_identifier: unique identifier of the record
-        :param str pipeline_type: "sample" or "project"
-        :return List[str]: names of results which exist
-        """
-
-        pipeline_type = pipeline_type or self.pipeline_type
-        record_identifier = record_identifier or self.record_identifier
-
-        try:
-            results = list(self._data[self.pipeline_name][pipeline_type][record_identifier].keys())
-        except KeyError:
-            return []
-        if restrict_to:
-            return [r for r in restrict_to if r in results]
-        return results
+        return len(self._data[self.pipeline_name])
 
     def check_record_exists(
         self,
@@ -592,14 +575,31 @@ class FileBackend(PipestatBackend):
             self.status_file_dir, f"{self.pipeline_name}_{r_id}_{status_identifier}.flag"
         )
 
-    def count_records(self, pipeline_type: Optional[str] = None):
+    def list_results(
+        self,
+        restrict_to: Optional[List[str]] = None,
+        record_identifier: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
+    ) -> List[str]:
         """
-        Count records
-        :param str pipeline_type: sample vs project designator needed to count records
-        :return int: number of records
+        Lists all, or a selected set of, reported results
+
+        :param List[str] restrict_to: selected subset of names of results to list
+        :param str record_identifier: unique identifier of the record
+        :param str pipeline_type: "sample" or "project"
+        :return List[str]: names of results which exist
         """
 
-        return len(self._data[self.pipeline_name])
+        pipeline_type = pipeline_type or self.pipeline_type
+        record_identifier = record_identifier or self.record_identifier
+
+        try:
+            results = list(self._data[self.pipeline_name][pipeline_type][record_identifier].keys())
+        except KeyError:
+            return []
+        if restrict_to:
+            return [r for r in restrict_to if r in results]
+        return results
 
 
 class DBBackend(PipestatBackend):
@@ -867,6 +867,62 @@ class DBBackend(PipestatBackend):
         else:
             _LOGGER.info(f" rm_record flag False, aborting Removing '{record_identifier}' record")
 
+    def get_model(self, table_name: str, strict: bool):
+        """
+        Get model based on table_name
+        :param str table_name: "sample" or "project"
+        :return model
+        """
+        orms = self.orms
+
+        # table_name = self.get_table_name()
+
+        mod = orms.get(table_name)
+
+        if strict and mod is None:
+            raise PipestatDatabaseError(
+                f"No object relational mapper class defined for table '{table_name}'. "
+                f"{len(orms)} defined: {', '.join(orms.keys())}"
+            )
+        return mod
+
+    def get_orm(self, table_name: str) -> Any:
+        """
+        Get an object relational mapper class
+
+        :param str table_name: table name to get a class for
+        :return Any: Object relational mapper class
+        """
+        if self.orms is None:
+            raise PipestatDatabaseError("Object relational mapper classes not defined")
+        mod = self.get_model(table_name=table_name, strict=True)
+        return mod
+
+    def get_one_record(self, table_name: str, rid: Optional[str] = None):
+        """
+        Retrieve single record from SQL table
+
+        :param str rid: record to check for
+        :param str table_name: table name to check
+        :return bool: whether the record exists in the table
+        """
+
+        models = [self.get_orm(table_name=table_name)] if table_name else list(self.orms.values())
+        with self.session as s:
+            for mod in models:
+                # record = sql_select(mod).where(mod.record_identifier == rid).first()
+                # record = s.query(mod).where(mod.record_identifier == rid).first()
+                stmt = sql_select(mod).where(mod.record_identifier == rid)
+                # stmt = sql_select(mod)
+                record = s.exec(stmt).first()
+                # record = (
+                #     s.query(mod)
+                #     .filter_by(record_identifier=rid)
+                #     .first()
+                # )
+                if record:
+                    return record
+
     def get_table_name(self, pipeline_type: Optional[str] = None):
         """
         Get tablename based on pipeline_type
@@ -896,37 +952,6 @@ class DBBackend(PipestatBackend):
             )
         raise Exception(f"Cannot determine table suffix with {len(mods)} model(s) present.")
 
-    def get_orm(self, table_name: str) -> Any:
-        """
-        Get an object relational mapper class
-
-        :param str table_name: table name to get a class for
-        :return Any: Object relational mapper class
-        """
-        if self.orms is None:
-            raise PipestatDatabaseError("Object relational mapper classes not defined")
-        mod = self.get_model(table_name=table_name, strict=True)
-        return mod
-
-    def get_model(self, table_name: str, strict: bool):
-        """
-        Get model based on table_name
-        :param str table_name: "sample" or "project"
-        :return model
-        """
-        orms = self.orms
-
-        # table_name = self.get_table_name()
-
-        mod = orms.get(table_name)
-
-        if strict and mod is None:
-            raise PipestatDatabaseError(
-                f"No object relational mapper class defined for table '{table_name}'. "
-                f"{len(orms)} defined: {', '.join(orms.keys())}"
-            )
-        return mod
-
     def check_record_exists(
         self,
         record_identifier: str,
@@ -942,30 +967,19 @@ class DBBackend(PipestatBackend):
         query_hit = self.get_one_record(rid=record_identifier, table_name=table_name)
         return query_hit is not None
 
-    def get_one_record(self, table_name: str, rid: Optional[str] = None):
+    def count_records(self, pipeline_type: Optional[str] = None):
         """
-        Retrieve single record from SQL table
-
-        :param str rid: record to check for
-        :param str table_name: table name to check
-        :return bool: whether the record exists in the table
+        Count rows in a selected table
+        :param str pipeline_type: sample vs project designator needed to count records in table
+        :return int: number of records
         """
-
-        models = [self.get_orm(table_name=table_name)] if table_name else list(self.orms.values())
+        pipeline_type = pipeline_type or self.pipeline_type
+        table_name = self.get_table_name(pipeline_type)
+        mod = self.get_model(table_name=table_name, strict=True)
         with self.session as s:
-            for mod in models:
-                # record = sql_select(mod).where(mod.record_identifier == rid).first()
-                # record = s.query(mod).where(mod.record_identifier == rid).first()
-                stmt = sql_select(mod).where(mod.record_identifier == rid)
-                # stmt = sql_select(mod)
-                record = s.exec(stmt).first()
-                # record = (
-                #     s.query(mod)
-                #     .filter_by(record_identifier=rid)
-                #     .first()
-                # )
-                if record:
-                    return record
+            stmt = sql_select(mod)
+            records = s.exec(stmt).all()
+            return len(records)
 
     def list_results(
         self,
@@ -1124,20 +1138,6 @@ class DBBackend(PipestatBackend):
             query = query.distinct()
             result = query.all()
         return result
-
-    def count_records(self, pipeline_type: Optional[str] = None):
-        """
-        Count rows in a selected table
-        :param str pipeline_type: sample vs project designator needed to count records in table
-        :return int: number of records
-        """
-        pipeline_type = pipeline_type or self.pipeline_type
-        table_name = self.get_table_name(pipeline_type)
-        mod = self.get_model(table_name=table_name, strict=True)
-        with self.session as s:
-            stmt = sql_select(mod)
-            records = s.exec(stmt).all()
-            return len(records)
 
     def set_status(
         self,
