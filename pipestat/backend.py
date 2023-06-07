@@ -157,7 +157,7 @@ class FileBackend(PipestatBackend):
         results_file_path: str,
         record_identifier: Optional[str] = None,
         schema_path=None,
-        project_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,
         pipeline_type: Optional[str] = None,
         parsed_schema: Optional[str] = None,
         status_schema: Optional[str] = None,
@@ -166,7 +166,7 @@ class FileBackend(PipestatBackend):
         _LOGGER.warning("Initialize FileBackend")
 
         self.results_file_path = results_file_path
-        self.project_name = project_name
+        self.pipeline_name = pipeline_name
         self.pipeline_type = pipeline_type
         self.record_identifier = record_identifier
         self.parsed_schema = parsed_schema
@@ -191,11 +191,11 @@ class FileBackend(PipestatBackend):
         """
         _LOGGER.info(f"Initializing results file '{self.results_file_path}'")
         self._data = YAMLConfigManager(
-            entries={self.project_name: {}}, filepath=self.results_file_path, create_file=True
+            entries={self.pipeline_name: {}}, filepath=self.results_file_path, create_file=True
         )
-        self._data.setdefault(self.project_name, {})
-        self._data[self.project_name].setdefault("project", {})
-        self._data[self.project_name].setdefault("sample", {})
+        self._data.setdefault(self.pipeline_name, {})
+        self._data[self.pipeline_name].setdefault("project", {})
+        self._data[self.pipeline_name].setdefault("sample", {})
         with self._data as data_locked:
             data_locked.write()
 
@@ -204,9 +204,9 @@ class FileBackend(PipestatBackend):
         data = YAMLConfigManager(filepath=self.results_file_path)
         if not bool(data):
             self._data = data
-            self._data.setdefault(self.project_name, {})
-            self._data[self.project_name].setdefault("project", {})
-            self._data[self.project_name].setdefault("sample", {})
+            self._data.setdefault(self.pipeline_name, {})
+            self._data[self.pipeline_name].setdefault("project", {})
+            self._data[self.pipeline_name].setdefault("sample", {})
             with self._data as data_locked:
                 data_locked.write()
         namespaces_reported = [k for k in data.keys() if not k.startswith("_")]
@@ -215,8 +215,8 @@ class FileBackend(PipestatBackend):
             self._data = data
         elif num_namespaces == 1:
             previous = namespaces_reported[0]
-            if self.project_name != previous:
-                msg = f"'{self.results_file_path}' is already used to report results for a different (not {self.project_name}) namespace: {previous}"
+            if self.pipeline_name != previous:
+                msg = f"'{self.results_file_path}' is already used to report results for a different (not {self.pipeline_name}) namespace: {previous}"
                 raise PipestatError(msg)
             self._data = data
         else:
@@ -266,9 +266,9 @@ class FileBackend(PipestatBackend):
 
         _LOGGER.warning("Writing to locked data...")
 
-        self._data[self.project_name][pipeline_type].setdefault(record_identifier, {})
+        self._data[self.pipeline_name][pipeline_type].setdefault(record_identifier, {})
         for res_id, val in values.items():
-            self._data[self.project_name][pipeline_type][record_identifier][res_id] = val
+            self._data[self.pipeline_name][pipeline_type][record_identifier][res_id] = val
 
         with self._data as locked_data:
             locked_data.write()
@@ -297,18 +297,18 @@ class FileBackend(PipestatBackend):
         pipeline_type = pipeline_type or self.pipeline_type
         record_identifier = record_identifier or self.record_identifier
 
-        if record_identifier not in self._data[self.project_name][pipeline_type]:
+        if record_identifier not in self._data[self.pipeline_name][pipeline_type]:
             raise PipestatDataError(f"Record '{record_identifier}' not found")
         if result_identifier is None:
-            return self._data.exp[self.project_name][pipeline_type][record_identifier]
+            return self._data.exp[self.pipeline_name][pipeline_type][record_identifier]
         if (
             result_identifier
-            not in self._data[self.project_name][pipeline_type][record_identifier]
+            not in self._data[self.pipeline_name][pipeline_type][record_identifier]
         ):
             raise PipestatDataError(
                 f"Result '{result_identifier}' not found for record '{record_identifier}'"
             )
-        return self._data[self.project_name][pipeline_type][record_identifier][result_identifier]
+        return self._data[self.pipeline_name][pipeline_type][record_identifier][result_identifier]
 
     def remove(
         self,
@@ -359,16 +359,16 @@ class FileBackend(PipestatBackend):
                 rm_record=rm_record,
             )
         else:
-            val_backup = self._data[self.project_name][pipeline_type][record_identifier][
+            val_backup = self._data[self.pipeline_name][pipeline_type][record_identifier][
                 result_identifier
             ]
             # self._data[self.project_name][pipeline_type][record_identifier][res_id] = val
-            del self._data[self.project_name][pipeline_type][record_identifier][result_identifier]
+            del self._data[self.pipeline_name][pipeline_type][record_identifier][result_identifier]
             _LOGGER.info(
                 f"Removed result '{result_identifier}' for record "
-                f"'{record_identifier}' from '{self.project_name}' namespace"
+                f"'{record_identifier}' from '{self.pipeline_name}' namespace"
             )
-            if not self._data[self.project_name][pipeline_type][record_identifier]:
+            if not self._data[self.pipeline_name][pipeline_type][record_identifier]:
                 _LOGGER.info(
                     f"Last result removed for '{record_identifier}'. " f"Removing the record"
                 )
@@ -403,7 +403,7 @@ class FileBackend(PipestatBackend):
         if rm_record:
             try:
                 _LOGGER.info(f"Removing '{record_identifier}' record")
-                del self._data[self.project_name][pipeline_type][record_identifier]
+                del self._data[self.pipeline_name][pipeline_type][record_identifier]
                 with self._data as locked_data:
                     locked_data.write()
                 return True
@@ -529,7 +529,7 @@ class FileBackend(PipestatBackend):
         record_identifier = record_identifier or self.record_identifier
 
         try:
-            results = list(self._data[self.project_name][pipeline_type][record_identifier].keys())
+            results = list(self._data[self.pipeline_name][pipeline_type][record_identifier].keys())
         except KeyError:
             return []
         if restrict_to:
@@ -551,8 +551,8 @@ class FileBackend(PipestatBackend):
         pipeline_type = pipeline_type or self.pipeline_type
 
         return (
-            self.project_name in self._data
-            and record_identifier in self._data[self.project_name][pipeline_type]
+            self.pipeline_name in self._data
+            and record_identifier in self._data[self.pipeline_name][pipeline_type]
         )
 
     def get_flag_file(self, record_identifier: str = None) -> Union[str, List[str], None]:
@@ -564,7 +564,7 @@ class FileBackend(PipestatBackend):
         """
         # r_id = self._strict_record_id(record_identifier)
         r_id = record_identifier
-        regex = os.path.join(self.status_file_dir, f"{self.project_name}_{r_id}_*.flag")
+        regex = os.path.join(self.status_file_dir, f"{self.pipeline_name}_{r_id}_*.flag")
         file_list = glob(regex)
         if len(file_list) > 1:
             _LOGGER.warning("Multiple flag files found")
@@ -589,7 +589,7 @@ class FileBackend(PipestatBackend):
         # r_id = self._strict_record_id(record_identifier)
         r_id = record_identifier
         return os.path.join(
-            self.status_file_dir, f"{self.project_name}_{r_id}_{status_identifier}.flag"
+            self.status_file_dir, f"{self.pipeline_name}_{r_id}_{status_identifier}.flag"
         )
 
     def count_records(self, pipeline_type: Optional[str] = None):
@@ -599,7 +599,7 @@ class FileBackend(PipestatBackend):
         :return int: number of records
         """
 
-        return len(self._data[self.project_name])
+        return len(self._data[self.pipeline_name])
 
 
 class DBBackend(PipestatBackend):

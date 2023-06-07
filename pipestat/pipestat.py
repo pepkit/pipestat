@@ -90,11 +90,13 @@ class PipestatManager(dict):
 
         self.process_schema(schema_path)
 
+        self[PIPELINE_NAME] = self.namespace
+
         self[RECORD_ID_KEY] = self[CONFIG_KEY].priority_get(
             "record_identifier", env_var=ENV_VARS["record_identifier"], override=record_identifier
         )
         self[DB_ONLY_KEY] = database_only
-        self.pipeline_type = self[CONFIG_KEY].priority_get(
+        self[PIPELINE_TYPE] = self[CONFIG_KEY].priority_get(
             "pipeline_type", default="sample", override=pipeline_type
         )
 
@@ -119,11 +121,11 @@ class PipestatManager(dict):
             )
             self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path)
             self.backend = FileBackend(
-                self.file,
+                self[FILE_KEY],
                 record_identifier,
                 schema_path,
-                self.namespace,
-                self.pipeline_type,
+                self[PIPELINE_NAME],
+                self[PIPELINE_TYPE],
                 self[SCHEMA_KEY],
                 self[STATUS_SCHEMA_KEY],
                 self[STATUS_FILE_DIR],
@@ -140,7 +142,6 @@ class PipestatManager(dict):
                 raise PipestatDatabaseError(
                     f"No database section ('{CFG_DATABASE_KEY}') in config"
                 )
-            self._data = YAMLConfigManager()
             self._show_db_logs = show_db_logs
             self[DB_ORMS_KEY] = self._create_orms()
             SQLModel.metadata.create_all(self._engine)
@@ -148,16 +149,15 @@ class PipestatManager(dict):
             self.backend = DBBackend(
                 record_identifier,
                 schema_path,
-                self.namespace,
+                self[PIPELINE_NAME],
                 config_file,
                 config_dict,
                 show_db_logs,
-                pipeline_type,
+                self[PIPELINE_TYPE],
                 self[SCHEMA_KEY],
                 self[STATUS_SCHEMA_KEY],
                 self[DB_ORMS_KEY],
-                self._engine
-                # self.session,
+                self._engine,
             )
 
     def __str__(self):
@@ -166,7 +166,7 @@ class PipestatManager(dict):
 
         :return str: string representation of the object
         """
-        res = f"{self.__class__.__name__} ({self.namespace})"
+        res = f"{self.__class__.__name__} ({self[PIPELINE_NAME]})"
         res += "\nBackend: {}".format(
             f"File\n - results: {self.file}\n - status: {self[STATUS_FILE_DIR]}"
             if self.file
@@ -243,6 +243,24 @@ class PipestatManager(dict):
         :return str: namespace the object writes the results to
         """
         return self.schema.pipeline_id
+
+    @property
+    def projectname(self) -> str:
+        """
+        Namespace the object writes the results to
+
+        :return str: namespace the object writes the results to
+        """
+        return self.get(PROJECT_NAME)
+
+    @property
+    def pipelinetype(self) -> str:
+        """
+        Namespace the object writes the results to
+
+        :return str: namespace the object writes the results to
+        """
+        return self.get(PIPELINE_TYPE)
 
     @property
     def record_identifier(self) -> str:
@@ -400,7 +418,9 @@ class PipestatManager(dict):
 
     def _create_orms(self):
         """Create ORMs."""
-        _LOGGER.debug(f"Creating models for '{self.namespace}' table in '{PKG_NAME}' database")
+        _LOGGER.debug(
+            f"Creating models for '{self[PIPELINE_NAME]}' table in '{PKG_NAME}' database"
+        )
         project_mod = self.schema.build_project_model()
         samples_mod = self.schema.build_sample_model()
         if project_mod and samples_mod:
@@ -409,9 +429,9 @@ class PipestatManager(dict):
                 self.schema.project_table_name: project_mod,
             }
         elif samples_mod:
-            return {self.namespace: samples_mod}
+            return {self[PIPELINE_NAME]: samples_mod}
         elif project_mod:
-            return {self.namespace: project_mod}
+            return {self[PIPELINE_NAME]: project_mod}
         else:
             raise SchemaError(
                 f"Neither project nor samples model could be built from schema source: {self.status_schema_source}"
@@ -437,7 +457,7 @@ class PipestatManager(dict):
             pipeline status for
         :param str pipeline_type: "sample" or "project"
         """
-        pipeline_type = pipeline_type or self.pipeline_type
+        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
         self.backend.set_status(status_identifier, record_identifier, pipeline_type)
 
     def get_status_flag_path(self, status_identifier: str, record_identifier=None) -> str:
@@ -469,7 +489,7 @@ class PipestatManager(dict):
         :return str: status identifier, like 'running'
         """
         r_id = self._strict_record_id(record_identifier)
-        pipeline_type = pipeline_type or self.pipeline_type
+        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
         return self.backend.get_status(record_identifier=r_id, pipeline_type=pipeline_type)
 
     @require_backend
@@ -551,7 +571,7 @@ class PipestatManager(dict):
         :param str pipeline_type: "sample" or "project"
         :return int: number of records
         """
-        pipeline_type = pipeline_type or self.pipeline_type
+        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
         return self.backend.count_records(pipeline_type)
 
     @require_backend
@@ -574,7 +594,7 @@ class PipestatManager(dict):
             results reported for the record
         """
 
-        pipeline_type = pipeline_type or self.pipeline_type
+        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
 
         record_identifier = self._strict_record_id(record_identifier)
         # should change to simpler: record_identifier = record_identifier or self.record_identifier
@@ -616,7 +636,7 @@ class PipestatManager(dict):
             the updated record in the table, if requested
         """
 
-        pipeline_type = pipeline_type or self.pipeline_type
+        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
         values = deepcopy(values)
 
         record_identifier = self._strict_record_id(record_identifier)
@@ -640,7 +660,7 @@ class PipestatManager(dict):
         _LOGGER.warning("TEST HERE")
         rep_strs = [f"{k}: {v}" for k, v in values.items()]
         _LOGGER.info(
-            f"Reported records for '{record_identifier}' in '{self.namespace}' "
+            f"Reported records for '{record_identifier}' in '{self[PIPELINE_NAME]}' "
             f"namespace:{nl} - {(nl + ' - ').join(rep_strs)}"
         )
         _LOGGER.info(record_identifier, values)
@@ -666,7 +686,7 @@ class PipestatManager(dict):
         :return bool: whether the result has been removed
         """
 
-        pipeline_type = pipeline_type or self.pipeline_type
+        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
 
         r_id = self._strict_record_id(record_identifier)
         return self.backend.remove(record_identifier, result_identifier, pipeline_type)
