@@ -161,6 +161,9 @@ class FileBackend(PipestatBackend):
         status_schema: Optional[str] = None,
         status_file_dir: Optional[str] = None,
     ):
+        """
+        Class representing a File backend
+        """
         _LOGGER.warning("Initialize FileBackend")
 
         self.results_file_path = results_file_path
@@ -608,6 +611,9 @@ class DBBackend(PipestatBackend):
         orms: Optional[dict] = None,
         _engine: Any = None,
     ):
+        """
+        Class representing a Database backend
+        """
         _LOGGER.warning("Initialize DBBackend")
         self.project_name = project_name
         self.pipeline_type = pipeline_type or "sample"
@@ -886,7 +892,7 @@ class DBBackend(PipestatBackend):
 
         :param str rid: record to check for
         :param str table_name: table name to check
-        :return bool: whether the record exists in the table
+        :return Any: Record object
         """
 
         models = [self.get_orm(table_name=table_name)] if table_name else list(self.orms.values())
