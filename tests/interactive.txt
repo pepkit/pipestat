@@ -75,3 +75,31 @@ with psm3["_db_session"]() as s:
 
 psm4.data
 
+
+
+
+
+# For new split backend refactoring
+
+import pipestat
+
+from jsonschema import ValidationError
+from tempfile import mkstemp
+
+_, temp_file = mkstemp(suffix=".yaml")
+print(temp_file)
+
+psm = pipestat.PipestatManager(
+    record_identifier="sample1",
+    results_file_path=temp_file,
+    schema_path="tests/data/sample_output_schema.yaml",
+)
+
+psm.report(values={"output_file": {"path": "/home/user/path.csv"}})
+
+
+
+with open(temp_file, 'r') as f:
+    print(f.read())
+
+print(psm)
