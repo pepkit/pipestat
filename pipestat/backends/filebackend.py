@@ -1,17 +1,10 @@
 import sys
-import os
-from abc import ABC
+
 from glob import glob
 from logging import getLogger
 from yacman import YAMLConfigManager
-from ubiquerg import create_lock, remove_lock, expandpath
-from contextlib import contextmanager
+from ubiquerg import create_lock, remove_lock
 
-from sqlalchemy import text
-from sqlmodel import Session, SQLModel, create_engine, select as sql_select
-
-from pipestat.const import *
-from pipestat.exceptions import *
 from pipestat.helpers import *
 from .abstract import PipestatBackend
 
@@ -57,131 +50,151 @@ class FileBackend(PipestatBackend):
             _LOGGER.debug(f"Loading results file: {self.results_file_path}")
             self._load_results_file()
 
-    def _init_results_file(self) -> None:
-        """
-        Initialize YAML results file if it does not exist.
-        Read the data stored in the existing file into the memory otherwise.
-
-        :return bool: whether the file has been created
-        """
-        _LOGGER.info(f"Initializing results file '{self.results_file_path}'")
-        self._data = YAMLConfigManager(
-            entries={self.pipeline_name: {}}, filepath=self.results_file_path, create_file=True
-        )
-        self._data.setdefault(self.pipeline_name, {})
-        self._data[self.pipeline_name].setdefault("project", {})
-        self._data[self.pipeline_name].setdefault("sample", {})
-        with self._data as data_locked:
-            data_locked.write()
-
-    def _load_results_file(self) -> None:
-        _LOGGER.debug(f"Reading data from '{self.results_file_path}'")
-        data = YAMLConfigManager(filepath=self.results_file_path)
-        if not bool(data):
-            self._data = data
-            self._data.setdefault(self.pipeline_name, {})
-            self._data[self.pipeline_name].setdefault("project", {})
-            self._data[self.pipeline_name].setdefault("sample", {})
-            with self._data as data_locked:
-                data_locked.write()
-        namespaces_reported = [k for k in data.keys() if not k.startswith("_")]
-        num_namespaces = len(namespaces_reported)
-        if num_namespaces == 0:
-            self._data = data
-        elif num_namespaces == 1:
-            previous = namespaces_reported[0]
-            if self.pipeline_name != previous:
-                msg = f"'{self.results_file_path}' is already used to report results for a different (not {self.pipeline_name}) namespace: {previous}"
-                raise PipestatError(msg)
-            self._data = data
-        else:
-            raise PipestatError(
-                f"'{self.results_file_path}' is in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)}"
-            )
-
-    def report(
+    def check_record_exists(
         self,
-        values: Dict[str, Any],
         record_identifier: str,
         pipeline_type: Optional[str] = None,
-        force_overwrite: bool = False,
-        # strict_type: bool = True,
-    ) -> None:
+    ) -> bool:
         """
-        Update the value of a result in a current namespace.
+        Check if the specified record exists in self._data
 
-        This method overwrites any existing data and creates the required
-         hierarchical mapping structure if needed.
-
-        :param Dict[str, Any] values: dict of results identifiers and values
-            to be reported
-        :param str record_identifier: unique identifier of the record
-        :param str pipeline_type: "sample" or "project"
-        :param bool force_overwrite: Toggles force overwriting results, defaults to False
+        :param str record_identifier: record to check for
+        :param str pipeline_type: project or sample pipeline
+        :return bool: whether the record exists in the table
         """
-
         pipeline_type = pipeline_type or self.pipeline_type
-        record_identifier = record_identifier or self.record_identifier
 
-        result_identifiers = list(values.keys())
-        self.assert_results_defined(results=result_identifiers, pipeline_type=pipeline_type)
-        existing = self.list_results(
-            record_identifier=record_identifier,
-            restrict_to=result_identifiers,
-            pipeline_type=pipeline_type,
+        return (
+            self.pipeline_name in self._data
+            and record_identifier in self._data[self.pipeline_name][pipeline_type]
         )
-        if existing:
-            existing_str = ", ".join(existing)
-            _LOGGER.warning(f"These results exist for '{record_identifier}': {existing_str}")
-            if not force_overwrite:
-                return False
-            _LOGGER.info(f"Overwriting existing results: {existing_str}")
 
-        _LOGGER.warning("Writing to locked data...")
-
-        self._data[self.pipeline_name][pipeline_type].setdefault(record_identifier, {})
-        for res_id, val in values.items():
-            self._data[self.pipeline_name][pipeline_type][record_identifier][res_id] = val
-
-        with self._data as locked_data:
-            locked_data.write()
-
-        _LOGGER.warning(self._data)
-
-    def retrieve(
-        self,
-        record_identifier: Optional[str] = None,
-        result_identifier: Optional[str] = None,
-        pipeline_type: Optional[str] = None,
-    ) -> Union[Any, Dict[str, Any]]:
+    def clear_status(
+        self, record_identifier: str = None, flag_names: List[str] = None
+    ) -> List[Union[str, None]]:
         """
-        Retrieve a result for a record.
+        Remove status flags
 
-        If no result ID specified, results for the entire record will
-        be returned.
+        :param str record_identifier: name of the record to remove flags for
+        :param Iterable[str] flag_names: Names of flags to remove, optional; if
+            unspecified, all schema-defined flag names will be used.
+        :return List[str]: Collection of names of flags removed
+        """
 
-        :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to be retrieved
+        flag_names = flag_names or list(self.status_schema.keys())
+        if isinstance(flag_names, str):
+            flag_names = [flag_names]
+        removed = []
+        for f in flag_names:
+            path_flag_file = self.get_status_flag_path(
+                status_identifier=f, record_identifier=record_identifier
+            )
+            try:
+                os.remove(path_flag_file)
+            except:
+                pass
+            else:
+                _LOGGER.info(f"Removed existing flag: {path_flag_file}")
+                removed.append(f)
+        return removed
+
+    def count_records(self, pipeline_type: Optional[str] = None):
+        """
+        Count records
+        :param str pipeline_type: sample vs project designator needed to count records
+        :return int: number of records
+        """
+
+        return len(self._data[self.pipeline_name])
+
+    def get_flag_file(self, record_identifier: str = None) -> Union[str, List[str], None]:
+        """
+        Get path to the status flag file for the specified record
+
+        :param str record_identifier: unique record identifier
+        :return str | list[str] | None: path to the status flag file
+        """
+        # r_id = self._strict_record_id(record_identifier)
+        r_id = record_identifier
+        regex = os.path.join(self.status_file_dir, f"{self.pipeline_name}_{r_id}_*.flag")
+        file_list = glob(regex)
+        if len(file_list) > 1:
+            _LOGGER.warning("Multiple flag files found")
+            return file_list
+        elif len(file_list) == 1:
+            return file_list[0]
+        else:
+            _LOGGER.debug("No flag files found")
+            return None
+        pass
+
+    def get_status(
+        self, record_identifier: str, pipeline_type: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        Get the current pipeline status
+
+        :param str record_identifier: record identifier to set the
+            pipeline status for
         :param str pipeline_type: "sample" or "project"
-        :return any | Dict[str, any]: a single result or a mapping with all the
-            results reported for the record
+        :return str: status identifier, like 'running'
+        """
+        r_id = record_identifier or self.record_identifier
+        flag_file = self.get_flag_file(record_identifier=record_identifier)
+        if flag_file is not None:
+            assert isinstance(flag_file, str), TypeError(
+                "Flag file path is expected to be a str, were multiple flags found?"
+            )
+            with open(flag_file, "r") as f:
+                status = f.read()
+            return status
+        _LOGGER.debug(
+            f"Could not determine status for '{r_id}' record. "
+            f"No flags found in: {self.status_file_dir}"
+        )
+        return None
+
+    def get_status_flag_path(self, status_identifier: str, record_identifier=None) -> str:
+        """
+        Get the path to the status file flag
+
+        :param str status_identifier: one of the defined status IDs in schema
+        :param str record_identifier: unique record ID, optional if
+            specified in the object constructor
+        :return str: absolute path to the flag file or None if object is
+            backed by a DB
+        """
+        # r_id = self._strict_record_id(record_identifier)
+        r_id = record_identifier
+        return os.path.join(
+            self.status_file_dir, f"{self.pipeline_name}_{r_id}_{status_identifier}.flag"
+        )
+
+    def list_results(
+        self,
+        restrict_to: Optional[List[str]] = None,
+        record_identifier: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
+    ) -> List[str]:
+        """
+        Lists all, or a selected set of, reported results
+
+        :param List[str] restrict_to: selected subset of names of results to list
+        :param str record_identifier: unique identifier of the record
+        :param str pipeline_type: "sample" or "project"
+        :return List[str]: names of results which exist
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
         record_identifier = record_identifier or self.record_identifier
 
-        if record_identifier not in self._data[self.pipeline_name][pipeline_type]:
-            raise PipestatDataError(f"Record '{record_identifier}' not found")
-        if result_identifier is None:
-            return self._data.exp[self.pipeline_name][pipeline_type][record_identifier]
-        if (
-            result_identifier
-            not in self._data[self.pipeline_name][pipeline_type][record_identifier]
-        ):
-            raise PipestatDataError(
-                f"Result '{result_identifier}' not found for record '{record_identifier}'"
-            )
-        return self._data[self.pipeline_name][pipeline_type][record_identifier][result_identifier]
+        try:
+            results = list(self._data[self.pipeline_name][pipeline_type][record_identifier].keys())
+        except KeyError:
+            return []
+        if restrict_to:
+            return [r for r in restrict_to if r in results]
+        return results
 
     def remove(
         self,
@@ -281,60 +294,89 @@ class FileBackend(PipestatBackend):
         else:
             _LOGGER.info(f" rm_record flag False, aborting Removing '{record_identifier}' record")
 
-    def clear_status(
-        self, record_identifier: str = None, flag_names: List[str] = None
-    ) -> List[Union[str, None]]:
+    def report(
+        self,
+        values: Dict[str, Any],
+        record_identifier: str,
+        pipeline_type: Optional[str] = None,
+        force_overwrite: bool = False,
+        # strict_type: bool = True,
+    ) -> None:
         """
-        Remove status flags
+        Update the value of a result in a current namespace.
 
-        :param str record_identifier: name of the record to remove flags for
-        :param Iterable[str] flag_names: Names of flags to remove, optional; if
-            unspecified, all schema-defined flag names will be used.
-        :return List[str]: Collection of names of flags removed
-        """
+        This method overwrites any existing data and creates the required
+         hierarchical mapping structure if needed.
 
-        flag_names = flag_names or list(self.status_schema.keys())
-        if isinstance(flag_names, str):
-            flag_names = [flag_names]
-        removed = []
-        for f in flag_names:
-            path_flag_file = self.get_status_flag_path(
-                status_identifier=f, record_identifier=record_identifier
-            )
-            try:
-                os.remove(path_flag_file)
-            except:
-                pass
-            else:
-                _LOGGER.info(f"Removed existing flag: {path_flag_file}")
-                removed.append(f)
-        return removed
-
-    def get_status(
-        self, record_identifier: str, pipeline_type: Optional[str] = None
-    ) -> Optional[str]:
-        """
-        Get the current pipeline status
-
-        :param str record_identifier: record identifier to set the
-            pipeline status for
+        :param Dict[str, Any] values: dict of results identifiers and values
+            to be reported
+        :param str record_identifier: unique identifier of the record
         :param str pipeline_type: "sample" or "project"
-        :return str: status identifier, like 'running'
+        :param bool force_overwrite: Toggles force overwriting results, defaults to False
         """
-        r_id = record_identifier or self.record_identifier
-        flag_file = self.get_flag_file(record_identifier=record_identifier)
-        if flag_file is not None:
-            assert isinstance(flag_file, str), TypeError(
-                "Flag file path is expected to be a str, were multiple flags found?"
-            )
-            with open(flag_file, "r") as f:
-                status = f.read()
-            return status
-        _LOGGER.debug(
-            f"Could not determine status for '{r_id}' record. "
-            f"No flags found in: {self.status_file_dir}"
+
+        pipeline_type = pipeline_type or self.pipeline_type
+        record_identifier = record_identifier or self.record_identifier
+
+        result_identifiers = list(values.keys())
+        self.assert_results_defined(results=result_identifiers, pipeline_type=pipeline_type)
+        existing = self.list_results(
+            record_identifier=record_identifier,
+            restrict_to=result_identifiers,
+            pipeline_type=pipeline_type,
         )
-        return None
+        if existing:
+            existing_str = ", ".join(existing)
+            _LOGGER.warning(f"These results exist for '{record_identifier}': {existing_str}")
+            if not force_overwrite:
+                return False
+            _LOGGER.info(f"Overwriting existing results: {existing_str}")
+
+        _LOGGER.warning("Writing to locked data...")
+
+        self._data[self.pipeline_name][pipeline_type].setdefault(record_identifier, {})
+        for res_id, val in values.items():
+            self._data[self.pipeline_name][pipeline_type][record_identifier][res_id] = val
+
+        with self._data as locked_data:
+            locked_data.write()
+
+        _LOGGER.warning(self._data)
+
+    def retrieve(
+        self,
+        record_identifier: Optional[str] = None,
+        result_identifier: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
+    ) -> Union[Any, Dict[str, Any]]:
+        """
+        Retrieve a result for a record.
+
+        If no result ID specified, results for the entire record will
+        be returned.
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to be retrieved
+        :param str pipeline_type: "sample" or "project"
+        :return any | Dict[str, any]: a single result or a mapping with all the
+            results reported for the record
+        """
+
+        pipeline_type = pipeline_type or self.pipeline_type
+        record_identifier = record_identifier or self.record_identifier
+
+        if record_identifier not in self._data[self.pipeline_name][pipeline_type]:
+            raise PipestatDataError(f"Record '{record_identifier}' not found")
+        if result_identifier is None:
+            return self._data.exp[self.pipeline_name][pipeline_type][record_identifier]
+        if (
+            result_identifier
+            not in self._data[self.pipeline_name][pipeline_type][record_identifier]
+        ):
+            raise PipestatDataError(
+                f"Result '{result_identifier}' not found for record '{record_identifier}'"
+            )
+        return self._data[self.pipeline_name][pipeline_type][record_identifier][result_identifier]
 
     def set_status(
         self,
@@ -378,93 +420,44 @@ class FileBackend(PipestatBackend):
         if prev_status:
             _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
 
-    def count_records(self, pipeline_type: Optional[str] = None):
+    def _init_results_file(self) -> None:
         """
-        Count records
-        :param str pipeline_type: sample vs project designator needed to count records
-        :return int: number of records
+        Initialize YAML results file if it does not exist.
+        Read the data stored in the existing file into the memory otherwise.
+
+        :return bool: whether the file has been created
         """
-
-        return len(self._data[self.pipeline_name])
-
-    def check_record_exists(
-        self,
-        record_identifier: str,
-        pipeline_type: Optional[str] = None,
-    ) -> bool:
-        """
-        Check if the specified record exists in self._data
-
-        :param str record_identifier: record to check for
-        :param str pipeline_type: project or sample pipeline
-        :return bool: whether the record exists in the table
-        """
-        pipeline_type = pipeline_type or self.pipeline_type
-
-        return (
-            self.pipeline_name in self._data
-            and record_identifier in self._data[self.pipeline_name][pipeline_type]
+        _LOGGER.info(f"Initializing results file '{self.results_file_path}'")
+        self._data = YAMLConfigManager(
+            entries={self.pipeline_name: {}}, filepath=self.results_file_path, create_file=True
         )
+        self._data.setdefault(self.pipeline_name, {})
+        self._data[self.pipeline_name].setdefault("project", {})
+        self._data[self.pipeline_name].setdefault("sample", {})
+        with self._data as data_locked:
+            data_locked.write()
 
-    def get_flag_file(self, record_identifier: str = None) -> Union[str, List[str], None]:
-        """
-        Get path to the status flag file for the specified record
-
-        :param str record_identifier: unique record identifier
-        :return str | list[str] | None: path to the status flag file
-        """
-        # r_id = self._strict_record_id(record_identifier)
-        r_id = record_identifier
-        regex = os.path.join(self.status_file_dir, f"{self.pipeline_name}_{r_id}_*.flag")
-        file_list = glob(regex)
-        if len(file_list) > 1:
-            _LOGGER.warning("Multiple flag files found")
-            return file_list
-        elif len(file_list) == 1:
-            return file_list[0]
+    def _load_results_file(self) -> None:
+        _LOGGER.debug(f"Reading data from '{self.results_file_path}'")
+        data = YAMLConfigManager(filepath=self.results_file_path)
+        if not bool(data):
+            self._data = data
+            self._data.setdefault(self.pipeline_name, {})
+            self._data[self.pipeline_name].setdefault("project", {})
+            self._data[self.pipeline_name].setdefault("sample", {})
+            with self._data as data_locked:
+                data_locked.write()
+        namespaces_reported = [k for k in data.keys() if not k.startswith("_")]
+        num_namespaces = len(namespaces_reported)
+        if num_namespaces == 0:
+            self._data = data
+        elif num_namespaces == 1:
+            previous = namespaces_reported[0]
+            if self.pipeline_name != previous:
+                msg = f"'{self.results_file_path}' is already used to report results for a different (not {self.pipeline_name}) namespace: {previous}"
+                raise PipestatError(msg)
+            self._data = data
         else:
-            _LOGGER.debug("No flag files found")
-            return None
-        pass
-
-    def get_status_flag_path(self, status_identifier: str, record_identifier=None) -> str:
-        """
-        Get the path to the status file flag
-
-        :param str status_identifier: one of the defined status IDs in schema
-        :param str record_identifier: unique record ID, optional if
-            specified in the object constructor
-        :return str: absolute path to the flag file or None if object is
-            backed by a DB
-        """
-        # r_id = self._strict_record_id(record_identifier)
-        r_id = record_identifier
-        return os.path.join(
-            self.status_file_dir, f"{self.pipeline_name}_{r_id}_{status_identifier}.flag"
-        )
-
-    def list_results(
-        self,
-        restrict_to: Optional[List[str]] = None,
-        record_identifier: Optional[str] = None,
-        pipeline_type: Optional[str] = None,
-    ) -> List[str]:
-        """
-        Lists all, or a selected set of, reported results
-
-        :param List[str] restrict_to: selected subset of names of results to list
-        :param str record_identifier: unique identifier of the record
-        :param str pipeline_type: "sample" or "project"
-        :return List[str]: names of results which exist
-        """
-
-        pipeline_type = pipeline_type or self.pipeline_type
-        record_identifier = record_identifier or self.record_identifier
-
-        try:
-            results = list(self._data[self.pipeline_name][pipeline_type][record_identifier].keys())
-        except KeyError:
-            return []
-        if restrict_to:
-            return [r for r in restrict_to if r in results]
-        return results
+            raise PipestatError(
+                f"'{self.results_file_path}' is in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)}"
+            )

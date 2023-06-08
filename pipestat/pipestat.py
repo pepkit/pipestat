@@ -1,8 +1,6 @@
 from logging import getLogger
 from copy import deepcopy
 
-from sqlmodel import create_engine
-
 from jsonschema import validate
 
 from yacman import YAMLConfigManager, select_config
@@ -170,188 +168,6 @@ class PipestatManager(dict):
             res += f"\nHighlighted results: {', '.join(high_res)}"
         return res
 
-    @property
-    def record_count(self) -> int:
-        """
-        Number of records reported
-
-        :return int: number of records reported
-        """
-        return self.count_records()
-
-    @property
-    def highlighted_results(self) -> List[str]:
-        """
-        Highlighted results
-
-        :return List[str]: a collection of highlighted results
-        """
-        return [k for k, v in self.result_schemas.items() if v.get("highlight") is True]
-
-    @property
-    def db_column_kwargs_by_result(self) -> Dict[str, Any]:
-        """
-        Database column key word arguments for every result,
-        sourced from the results schema in the `db_column` section
-
-        :return Dict[str, Any]: key word arguments for every result
-        """
-        return {
-            result_id: self.schema[result_id][DB_COLUMN_KEY]
-            for result_id in (self.schema or {}).keys()
-            if DB_COLUMN_KEY in self.schema[result_id]
-        }
-
-    @property
-    def projectname(self) -> str:
-        """
-        Namespace the object writes the results to
-
-        :return str: namespace the object writes the results to
-        """
-        return self.get(PROJECT_NAME)
-
-    @property
-    def pipelinetype(self) -> str:
-        """
-        Namespace the object writes the results to
-
-        :return str: namespace the object writes the results to
-        """
-        return self.get(PIPELINE_TYPE)
-
-    @property
-    def record_identifier(self) -> str:
-        """
-        Unique identifier of the record
-
-        :return str: unique identifier of the record
-        """
-        return self.get(RECORD_ID_KEY)
-
-    @property
-    def schema(self) -> Dict:
-        """
-        Schema mapping
-
-        :return dict: schema that formalizes the results structure
-        """
-        return self.get(SCHEMA_KEY)
-
-    @property
-    def status_schema(self) -> Dict:
-        """
-        Status schema mapping
-
-        :return dict: schema that formalizes the pipeline status structure
-        """
-        return self.get(STATUS_SCHEMA_KEY)
-
-    @property
-    def status_schema_source(self) -> Dict:
-        """
-        Status schema source
-
-        :return dict: source of the schema that formalizes
-            the pipeline status structure
-        """
-        return self.get(STATUS_SCHEMA_SOURCE_KEY)
-
-    @property
-    def schema_path(self) -> str:
-        """
-        Schema path
-
-        :return str: path to the provided schema
-        """
-        return self.get(SCHEMA_PATH)
-
-    @property
-    def config_path(self) -> str:
-        """
-        Config path. None if the config was not provided or if provided
-        as a mapping of the config contents
-
-        :return str: path to the provided config
-        """
-        return getattr(self, "_config_path", None)
-
-    @property
-    def result_schemas(self) -> Dict[str, Any]:
-        """
-        Result schema mappings
-
-        :return dict: schemas that formalize the structure of each result
-            in a canonical jsonschema way
-        """
-        return {**self.schema.project_level_data, **self.schema.sample_level_data}
-
-    @property
-    def file(self) -> str:
-        """
-        File path that the object is reporting the results into
-
-        :return str: file path that the object is reporting the results into
-        """
-        return self.get(FILE_KEY)
-
-    @property
-    def data(self) -> YAMLConfigManager:
-        """
-        Data object
-
-        :return yacman.YAMLConfigManager: the object that stores the reported data
-        """
-        return self.get(DATA_KEY)
-
-    @property
-    def db_url(self) -> str:
-        """
-        Database URL, generated based on config credentials
-
-        :return str: database URL
-        :raise PipestatDatabaseError: if the object is not backed by a database
-        """
-        return self.get(DB_URL)
-
-    @property
-    def _engine(self):
-        """Access the database engine backing this manager."""
-        try:
-            return self[DB_ENGINE_KEY]
-        except KeyError:
-            # Do it this way rather than .setdefault to avoid evaluating
-            # the expression for the default argument (i.e., building
-            # the engine) if it's not necessary.
-            self[DB_ENGINE_KEY] = create_engine(self[DB_URL], echo=self._show_db_logs)
-            return self[DB_ENGINE_KEY]
-
-    def _get_attr(self, attr: str) -> Any:
-        """
-        Safely get the name of the selected attribute of this object
-
-        :param str attr: attr to select
-        :return:
-        """
-        return self.get(attr)
-
-    def _strict_record_id(self, forced_value: str = None) -> str:
-        """
-        Get record identifier from the outer source or stored with this object
-
-        :param str forced_value: return this value
-        :return str: record identifier
-        """
-        if forced_value is not None:
-            return forced_value
-        if self.record_identifier is not None:
-            return self.record_identifier
-        raise PipestatError(
-            f"You must provide the record identifier you want to perform "
-            f"the action on. Either in the {self.__class__.__name__} "
-            f"constructor or as an argument to the method."
-        )
-
     @require_backend
     def clear_status(
         self, record_identifier: str = None, flag_names: List[str] = None
@@ -368,6 +184,16 @@ class PipestatManager(dict):
         return self.backend.clear_status(record_identifier=r_id, flag_names=flag_names)
 
     @require_backend
+    def count_records(self, pipeline_type: Optional[str] = None) -> int:
+        """
+        Count records
+        :param str pipeline_type: "sample" or "project"
+        :return int: number of records
+        """
+        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
+        return self.backend.count_records(pipeline_type)
+
+    @require_backend
     def get_status(
         self, record_identifier: str = None, pipeline_type: Optional[str] = None
     ) -> Optional[str]:
@@ -380,29 +206,6 @@ class PipestatManager(dict):
         r_id = self._strict_record_id(record_identifier)
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
         return self.backend.get_status(record_identifier=r_id, pipeline_type=pipeline_type)
-
-    @require_backend
-    def set_status(
-        self,
-        status_identifier: str,
-        record_identifier: str = None,
-        pipeline_type: Optional[str] = None,
-    ) -> None:
-        """
-        Set pipeline run status.
-
-        The status identifier needs to match one of identifiers specified in
-        the status schema. A basic, ready to use, status schema is shipped with
-        this package.
-
-        :param str status_identifier: status to set, one of statuses defined
-            in the status schema
-        :param str record_identifier: record identifier to set the
-            pipeline status for
-        :param str pipeline_type: "sample" or "project"
-        """
-        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        self.backend.set_status(status_identifier, record_identifier, pipeline_type)
 
     def process_schema(self, schema_path):
         # Load pipestat schema in two parts: 1) main and 2) status
@@ -464,14 +267,29 @@ class PipestatManager(dict):
             return s
 
     @require_backend
-    def count_records(self, pipeline_type: Optional[str] = None) -> int:
+    def remove(
+        self,
+        record_identifier: str = None,
+        result_identifier: str = None,
+        pipeline_type: Optional[str] = None,
+    ) -> bool:
         """
-        Count records
+        Remove a result.
+
+        If no result ID specified or last result is removed, the entire record
+        will be removed.
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to be removed or None
+             if the record should be removed.
         :param str pipeline_type: "sample" or "project"
-        :return int: number of records
+        :return bool: whether the result has been removed
         """
+
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        return self.backend.count_records(pipeline_type)
+
+        r_id = self._strict_record_id(record_identifier)
+        return self.backend.remove(record_identifier, result_identifier, pipeline_type)
 
     @require_backend
     def report(
@@ -557,26 +375,194 @@ class PipestatManager(dict):
         return self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
 
     @require_backend
-    def remove(
+    def set_status(
         self,
+        status_identifier: str,
         record_identifier: str = None,
-        result_identifier: str = None,
         pipeline_type: Optional[str] = None,
-    ) -> bool:
+    ) -> None:
         """
-        Remove a result.
+        Set pipeline run status.
 
-        If no result ID specified or last result is removed, the entire record
-        will be removed.
+        The status identifier needs to match one of identifiers specified in
+        the status schema. A basic, ready to use, status schema is shipped with
+        this package.
 
-        :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to be removed or None
-             if the record should be removed.
+        :param str status_identifier: status to set, one of statuses defined
+            in the status schema
+        :param str record_identifier: record identifier to set the
+            pipeline status for
         :param str pipeline_type: "sample" or "project"
-        :return bool: whether the result has been removed
         """
-
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
+        self.backend.set_status(status_identifier, record_identifier, pipeline_type)
 
-        r_id = self._strict_record_id(record_identifier)
-        return self.backend.remove(record_identifier, result_identifier, pipeline_type)
+    def _get_attr(self, attr: str) -> Any:
+        """
+        Safely get the name of the selected attribute of this object
+
+        :param str attr: attr to select
+        :return:
+        """
+        return self.get(attr)
+
+    def _strict_record_id(self, forced_value: str = None) -> str:
+        """
+        Get record identifier from the outer source or stored with this object
+
+        :param str forced_value: return this value
+        :return str: record identifier
+        """
+        if forced_value is not None:
+            return forced_value
+        if self.record_identifier is not None:
+            return self.record_identifier
+        raise PipestatError(
+            f"You must provide the record identifier you want to perform "
+            f"the action on. Either in the {self.__class__.__name__} "
+            f"constructor or as an argument to the method."
+        )
+
+    @property
+    def config_path(self) -> str:
+        """
+        Config path. None if the config was not provided or if provided
+        as a mapping of the config contents
+
+        :return str: path to the provided config
+        """
+        return getattr(self, "_config_path", None)
+
+    @property
+    def db_column_kwargs_by_result(self) -> Dict[str, Any]:
+        """
+        Database column key word arguments for every result,
+        sourced from the results schema in the `db_column` section
+
+        :return Dict[str, Any]: key word arguments for every result
+        """
+        return {
+            result_id: self.schema[result_id][DB_COLUMN_KEY]
+            for result_id in (self.schema or {}).keys()
+            if DB_COLUMN_KEY in self.schema[result_id]
+        }
+
+    @property
+    def data(self) -> YAMLConfigManager:
+        """
+        Data object
+
+        :return yacman.YAMLConfigManager: the object that stores the reported data
+        """
+        return self.get(DATA_KEY)
+
+    @property
+    def db_url(self) -> str:
+        """
+        Database URL, generated based on config credentials
+
+        :return str: database URL
+        :raise PipestatDatabaseError: if the object is not backed by a database
+        """
+        return self.get(DB_URL)
+
+    @property
+    def file(self) -> str:
+        """
+        File path that the object is reporting the results into
+
+        :return str: file path that the object is reporting the results into
+        """
+        return self.get(FILE_KEY)
+
+    @property
+    def highlighted_results(self) -> List[str]:
+        """
+        Highlighted results
+
+        :return List[str]: a collection of highlighted results
+        """
+        return [k for k, v in self.result_schemas.items() if v.get("highlight") is True]
+
+    @property
+    def projectname(self) -> str:
+        """
+        Namespace the object writes the results to
+
+        :return str: namespace the object writes the results to
+        """
+        return self.get(PROJECT_NAME)
+
+    @property
+    def pipelinetype(self) -> str:
+        """
+        Namespace the object writes the results to
+
+        :return str: namespace the object writes the results to
+        """
+        return self.get(PIPELINE_TYPE)
+
+    @property
+    def record_count(self) -> int:
+        """
+        Number of records reported
+
+        :return int: number of records reported
+        """
+        return self.count_records()
+
+    @property
+    def record_identifier(self) -> str:
+        """
+        Unique identifier of the record
+
+        :return str: unique identifier of the record
+        """
+        return self.get(RECORD_ID_KEY)
+
+    @property
+    def result_schemas(self) -> Dict[str, Any]:
+        """
+        Result schema mappings
+
+        :return dict: schemas that formalize the structure of each result
+            in a canonical jsonschema way
+        """
+        return {**self.schema.project_level_data, **self.schema.sample_level_data}
+
+    @property
+    def schema(self) -> Dict:
+        """
+        Schema mapping
+
+        :return dict: schema that formalizes the results structure
+        """
+        return self.get(SCHEMA_KEY)
+
+    @property
+    def schema_path(self) -> str:
+        """
+        Schema path
+
+        :return str: path to the provided schema
+        """
+        return self.get(SCHEMA_PATH)
+
+    @property
+    def status_schema(self) -> Dict:
+        """
+        Status schema mapping
+
+        :return dict: schema that formalizes the pipeline status structure
+        """
+        return self.get(STATUS_SCHEMA_KEY)
+
+    @property
+    def status_schema_source(self) -> Dict:
+        """
+        Status schema source
+
+        :return dict: source of the schema that formalizes
+            the pipeline status structure
+        """
+        return self.get(STATUS_SCHEMA_SOURCE_KEY)
