@@ -1,6 +1,9 @@
 from logging import getLogger
 from copy import deepcopy
 
+from pipestat.backends.filebackend import FileBackend
+from pipestat.backends.dbbackend import DBBackend
+
 from jsonschema import validate
 
 from yacman import YAMLConfigManager, select_config
@@ -10,8 +13,6 @@ from .parsed_schema import ParsedSchema
 
 _LOGGER = getLogger(PKG_NAME)
 
-from pipestat.backends.filebackend import FileBackend
-from pipestat.backends.dbbackend import DBBackend
 
 
 def require_backend(func):

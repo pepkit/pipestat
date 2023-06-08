@@ -37,7 +37,7 @@ def main():
         # namespace=args.namespace
         schema_path=args.schema,
         results_file_path=args.results_file,
-        config=args.config,
+        config_file=args.config,
         database_only=args.database_only,
         # status_schema_path=args.status_schema,
         flag_file_dir=args.flag_dir,
