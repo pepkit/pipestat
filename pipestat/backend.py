@@ -8,7 +8,7 @@ from ubiquerg import create_lock, remove_lock, expandpath
 from contextlib import contextmanager
 
 from sqlalchemy import text
-from sqlmodel import Session, select as sql_select
+from sqlmodel import Session, SQLModel, create_engine, select as sql_select
 
 from .const import *
 from .exceptions import *
@@ -608,8 +608,8 @@ class DBBackend(PipestatBackend):
         pipeline_type: Optional[str] = False,
         parsed_schema: Optional[str] = None,
         status_schema: Optional[str] = None,
-        orms: Optional[dict] = None,
-        _engine: Any = None,
+        db_url: Optional[str] = None,
+        status_schema_source: Optional[str] = None,
     ):
         """
         Class representing a Database backend
@@ -620,8 +620,63 @@ class DBBackend(PipestatBackend):
         self.record_identifier = record_identifier
         self.parsed_schema = parsed_schema
         self.status_schema = status_schema
-        self.orms = orms
-        self._engine = _engine
+        self.db_url = db_url
+        self.show_db_logs = show_db_logs
+        self.status_schema_source = status_schema_source
+
+        self.orms = self._create_orms()
+        SQLModel.metadata.create_all(self._engine)
+
+    @property
+    def _engine(self):
+        """Access the database engine backing this manager."""
+        try:
+            return self.db_engine_key
+        except AttributeError:
+            # Do it this way rather than .setdefault to avoid evaluating
+            # the expression for the default argument (i.e., building
+            # the engine) if it's not necessary.
+            self.db_engine_key = create_engine(self.db_url, echo=self.show_db_logs)
+            return self.db_engine_key
+
+    @property
+    @contextmanager
+    def session(self):
+        """
+        Provide a transactional scope around a series of query
+        operations.
+        """
+        session = Session(self._engine)
+        _LOGGER.debug("Created session")
+        try:
+            yield session
+        except:
+            _LOGGER.info("session.rollback")
+            session.rollback()
+            raise
+        finally:
+            _LOGGER.info("session.close")
+            session.close()
+        _LOGGER.debug("Ending session")
+
+    def _create_orms(self):
+        """Create ORMs."""
+        _LOGGER.debug(f"Creating models for '{self.project_name}' table in '{PKG_NAME}' database")
+        project_mod = self.parsed_schema.build_project_model()
+        samples_mod = self.parsed_schema.build_sample_model()
+        if project_mod and samples_mod:
+            return {
+                self.parsed_schema.sample_table_name: samples_mod,
+                self.parsed_schema.project_table_name: project_mod,
+            }
+        elif samples_mod:
+            return {self.project_name: samples_mod}
+        elif project_mod:
+            return {self.project_name: project_mod}
+        else:
+            raise SchemaError(
+                f"Neither project nor samples model could be built from schema source: {self.status_schema_source}"
+            )
 
     def report(
         self,

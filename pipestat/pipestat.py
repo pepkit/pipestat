@@ -143,8 +143,6 @@ class PipestatManager(dict):
                     f"No database section ('{CFG_DATABASE_KEY}') in config"
                 )
             self._show_db_logs = show_db_logs
-            self[DB_ORMS_KEY] = self._create_orms()
-            SQLModel.metadata.create_all(self._engine)
 
             self.backend = DBBackend(
                 record_identifier,
@@ -156,8 +154,8 @@ class PipestatManager(dict):
                 self[PIPELINE_TYPE],
                 self[SCHEMA_KEY],
                 self[STATUS_SCHEMA_KEY],
-                self[DB_ORMS_KEY],
-                self._engine,
+                self[DB_URL],
+                self.status_schema_source,
             )
 
     def __str__(self):
@@ -335,47 +333,6 @@ class PipestatManager(dict):
             # the engine) if it's not necessary.
             self[DB_ENGINE_KEY] = create_engine(self[DB_URL], echo=self._show_db_logs)
             return self[DB_ENGINE_KEY]
-
-    @property
-    @contextmanager
-    def session(self):
-        """
-        Provide a transactional scope around a series of query
-        operations.
-        """
-        session = Session(self._engine)
-        _LOGGER.debug("Created session")
-        try:
-            yield session
-        except:
-            _LOGGER.info("session.rollback")
-            session.rollback()
-            raise
-        finally:
-            _LOGGER.info("session.close")
-            session.close()
-        _LOGGER.debug("Ending session")
-
-    def _create_orms(self):
-        """Create ORMs."""
-        _LOGGER.debug(
-            f"Creating models for '{self[PIPELINE_NAME]}' table in '{PKG_NAME}' database"
-        )
-        project_mod = self.schema.build_project_model()
-        samples_mod = self.schema.build_sample_model()
-        if project_mod and samples_mod:
-            return {
-                self.schema.sample_table_name: samples_mod,
-                self.schema.project_table_name: project_mod,
-            }
-        elif samples_mod:
-            return {self[PIPELINE_NAME]: samples_mod}
-        elif project_mod:
-            return {self[PIPELINE_NAME]: project_mod}
-        else:
-            raise SchemaError(
-                f"Neither project nor samples model could be built from schema source: {self.status_schema_source}"
-            )
 
     def _get_attr(self, attr: str) -> Any:
         """
