@@ -49,8 +49,6 @@ class PipestatBackend(ABC):
         if STATUS in results:
             known_results = [STATUS]
 
-        # known_results = self.result_schemas.keys()
-
         for r in results:
             assert r in known_results, SchemaError(
                 f"'{r}' is not a known result. Results defined in the "
@@ -261,8 +259,6 @@ class FileBackend(PipestatBackend):
             if not force_overwrite:
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
-        # for r in result_identifiers:
-        #     validate_type(value=values[r], schema=self.parsed_schema.results_data[r], strict_type=strict_type)
 
         _LOGGER.warning("Writing to locked data...")
 
@@ -332,11 +328,6 @@ class FileBackend(PipestatBackend):
         pipeline_type = pipeline_type or self.pipeline_type
         record_identifier = record_identifier or self.record_identifier
 
-        # TODO revisit strict_record_id here
-
-        # r_id = self._strict_record_id(record_identifier)
-        # r_id = record_identifier
-
         rm_record = True if result_identifier is None else False
 
         if not self.check_record_exists(
@@ -362,7 +353,6 @@ class FileBackend(PipestatBackend):
             val_backup = self._data[self.pipeline_name][pipeline_type][record_identifier][
                 result_identifier
             ]
-            # self._data[self.project_name][pipeline_type][record_identifier][res_id] = val
             del self._data[self.pipeline_name][pipeline_type][record_identifier][result_identifier]
             _LOGGER.info(
                 f"Removed result '{result_identifier}' for record "
@@ -378,7 +368,6 @@ class FileBackend(PipestatBackend):
                     pipeline_type=pipeline_type,
                     rm_record=rm_record,
                 )
-                # del self._data[self.project_name][pipeline_type][record_identifier]
             with self._data as locked_data:
                 locked_data.write()
         return True
@@ -408,7 +397,9 @@ class FileBackend(PipestatBackend):
                     locked_data.write()
                 return True
             except:
-                # raise exception
+                _LOGGER.warning(
+                    f" Unable to remove record, aborting Removing '{record_identifier}' record"
+                )
                 return False
         else:
             _LOGGER.info(f" rm_record flag False, aborting Removing '{record_identifier}' record")
@@ -625,9 +616,6 @@ class DBBackend(PipestatBackend):
         self.status_schema = status_schema
         self.orms = orms
         self._engine = _engine
-        # self.schema =parsed_schema
-
-        print("DEBUG")
 
     def report(
         self,
@@ -667,9 +655,6 @@ class DBBackend(PipestatBackend):
             if not force_overwrite:
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
-        # for r in result_identifiers:
-        #     validate_type(value=values[r], schema=self.parsed_schema.results_data[r], strict_type=strict_type)
-        # check if results exist here
         try:
             ORMClass = self.get_orm(table_name=table_name)
             values.update({RECORD_ID: record_identifier})
@@ -683,6 +668,7 @@ class DBBackend(PipestatBackend):
                     s.add(new_record)
                     s.commit()
                     returned_id = new_record.id
+
             else:
                 with self.session as s:
                     record_to_update = (
@@ -695,7 +681,7 @@ class DBBackend(PipestatBackend):
                     s.commit()
                     returned_id = record_to_update.id
             _LOGGER.warning(returned_id)
-            # return returned_id
+            return returned_id
         except Exception as e:
             _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")
             raise
@@ -801,16 +787,14 @@ class DBBackend(PipestatBackend):
                     records = s.query(ORMClass).filter(
                         getattr(ORMClass, RECORD_ID) == record_identifier
                     )
-                    # if result_identifier is None:
+
                     if rm_record is True:
-                        # delete row
                         self.remove_record(
                             record_identifier=record_identifier,
                             pipeline_type=pipeline_type,
                             rm_record=rm_record,
                         )
                     else:
-                        # set the value to None
                         if not self.check_result_exists(
                             record_identifier=record_identifier,
                             result_identifier=result_identifier,
@@ -875,8 +859,6 @@ class DBBackend(PipestatBackend):
         """
         orms = self.orms
 
-        # table_name = self.get_table_name()
-
         mod = orms.get(table_name)
 
         if strict and mod is None:
@@ -910,16 +892,9 @@ class DBBackend(PipestatBackend):
         models = [self.get_orm(table_name=table_name)] if table_name else list(self.orms.values())
         with self.session as s:
             for mod in models:
-                # record = sql_select(mod).where(mod.record_identifier == rid).first()
-                # record = s.query(mod).where(mod.record_identifier == rid).first()
                 stmt = sql_select(mod).where(mod.record_identifier == rid)
-                # stmt = sql_select(mod)
                 record = s.exec(stmt).first()
-                # record = (
-                #     s.query(mod)
-                #     .filter_by(record_identifier=rid)
-                #     .first()
-                # )
+
                 if record:
                     return record
 

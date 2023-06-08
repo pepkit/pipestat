@@ -571,7 +571,7 @@ class PipestatManager(dict):
 
         _LOGGER.warning("Writing to locked data...")
 
-        self.backend.report(values, record_identifier, pipeline_type)
+        self.backend.report(values, record_identifier, pipeline_type, force_overwrite)
 
         nl = "\n"
         _LOGGER.warning("TEST HERE")
