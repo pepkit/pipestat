@@ -4,7 +4,14 @@ from logging import getLogger
 import logmuse
 from ubiquerg import expandpath
 
-from .argparser import build_argparser
+from .argparser import (
+    build_argparser,
+    REPORT_CMD,
+    INSPECT_CMD,
+    REMOVE_CMD,
+    RETRIEVE_CMD,
+    STATUS_CMD,
+)
 from .const import *
 from .exceptions import SchemaNotFoundError
 from .pipestat import PipestatManager
@@ -27,31 +34,30 @@ def main():
     if args.config and not args.schema and args.command != STATUS_CMD:
         parser.error("the following arguments are required: -s/--schema")
     psm = PipestatManager(
-        namespace=args.namespace,
+        # namespace=args.namespace
         schema_path=args.schema,
         results_file_path=args.results_file,
         config=args.config,
         database_only=args.database_only,
-        status_schema_path=args.status_schema,
+        # status_schema_path=args.status_schema,
         flag_file_dir=args.flag_dir,
     )
+    types_to_read_from_json = ["object"] + list(CANONICAL_TYPES.keys())
     if args.command == REPORT_CMD:
         value = args.value
         if psm.schema is None:
             raise SchemaNotFoundError(msg="report", cli=True)
-        result_metadata = psm.schema[args.result_identifier]
-        if result_metadata[SCHEMA_TYPE_KEY] in [
-            "object",
-            "image",
-            "file",
-        ] and os.path.exists(expandpath(value)):
-            from json import load
+        result_metadata = psm.schema.results_data[args.result_identifier]
+        if result_metadata[SCHEMA_TYPE_KEY] in types_to_read_from_json:
+            path_to_read = expandpath(value)
+            if os.path.exists(path_to_read):
+                from json import load
 
-            _LOGGER.info(
-                f"Reading JSON file with object type value: {expandpath(value)}"
-            )
-            with open(expandpath(value), "r") as json_file:
-                value = load(json_file)
+                _LOGGER.info(f"Reading JSON file: {path_to_read}")
+                with open(path_to_read, "r") as json_file:
+                    value = load(json_file)
+            else:
+                _LOGGER.info(f"Path to read for {value} doesn't exist: {path_to_read}")
         psm.report(
             record_identifier=args.record_identifier,
             values={args.result_identifier: value},

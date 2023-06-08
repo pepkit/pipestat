@@ -1,4 +1,4 @@
-namespace: test
+project_name: test
 record_identifier: sample1
 #schema_path: sample_output_schema.yaml #$HOME/Desktop/sample_output_schema.yaml
 results_file_path: results_file_2.yaml #$HOME/Desktop/results.yaml

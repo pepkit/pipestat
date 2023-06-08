@@ -1,1 +1,3 @@
-test: {}
+test_pipe:
+  project: {}
+  sample: {}

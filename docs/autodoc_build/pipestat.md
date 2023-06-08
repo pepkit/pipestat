@@ -29,25 +29,26 @@ h4 .content {
 
 # Package `pipestat` Documentation
 
+## <a name="PipestatError"></a> Class `PipestatError`
+Base exception type for this package
+
+
 ## <a name="PipestatManager"></a> Class `PipestatManager`
-Pipestat standardizes reporting of pipeline results and pipeline status management. It formalizes a way for pipeline developers and downstream tools developers to communicate -- results produced by a pipeline can easily and reliably become an input for downstream analyses. The object exposes API for interacting with the results and pipeline status and can be backed by either a YAML-formatted file or a database.
+Pipestat standardizes reporting of pipeline results and pipeline status management. It formalizes a way for pipeline developers and downstream tools developers to communicate -- results produced by a pipeline can easily and reliably become an input for downstream analyses. A PipestatManager object exposes an API for interacting with the results and pipeline status and can be backed by either a YAML-formatted file or a database.
 
 
 ```python
-def __init__(self, namespace: Union[str, NoneType]=None, record_identifier: Union[str, NoneType]=None, schema_path: Union[str, NoneType]=None, results_file_path: Union[str, NoneType]=None, database_only: Union[bool, NoneType]=True, config: Union[str, dict, NoneType]=None, status_schema_path: Union[str, NoneType]=None, flag_file_dir: Union[str, NoneType]=None, custom_declarative_base: Union[sqlalchemy.orm.decl_api.DeclarativeMeta, NoneType]=None, show_db_logs: bool=False)
+def __init__(self, record_identifier: Optional[str] = None, schema_path: Optional[str] = None, results_file_path: Optional[str] = None, database_only: Optional[bool] = True, config: Union[str, dict, NoneType] = None, flag_file_dir: Optional[str] = None, show_db_logs: bool = False, project_level: Optional[bool] = False)
 ```
 
 Initialize the object
 #### Parameters:
 
-- `namespace` (`str`):  namespace to report into. This will be the DBtable name if using DB as the object back-end
-- `record_identifier` (`str`):  record identifier to report for. Thiscreates a weak bound to the record, which can be overriden in this object method calls
+- `record_identifier` (`str`):  record identifier to report for. Thiscreates a weak bound to the record, which can be overridden in this object method calls
 - `schema_path` (`str`):  path to the output schema that formalizesthe results structure
 - `results_file_path` (`str`):  YAML file to report into, if file isused as the object back-end
 - `database_only` (`bool`):  whether the reported data should not bestored in the memory, but only in the database
 - `config` (`str | dict`):  path to the configuration file or a mappingwith the config file content
-- `status_schema_path` (`str`):  path to the status schema that formalizesthe status flags structure
-- `custom_declarative_base` (`sqlalchemy.orm.DeclarativeMeta`):  a declarative base touse for ORMs creation a new instance will be created if not provided
 
 
 
@@ -70,7 +71,7 @@ Assert provided list of results is defined in the schema
 
 
 ```python
-def check_record_exists(self, record_identifier: str, table_name: str=None) -> bool
+def check_record_exists(self, record_identifier: str, table_name: str) -> bool
 ```
 
 Check if the specified record exists in the table
@@ -88,7 +89,7 @@ Check if the specified record exists in the table
 
 
 ```python
-def check_result_exists(self, result_identifier: str, record_identifier: str=None) -> bool
+def check_result_exists(self, result_identifier: str, record_identifier: str = None) -> bool
 ```
 
 Check if the result has been reported
@@ -106,25 +107,26 @@ Check if the result has been reported
 
 
 ```python
-def check_which_results_exist(self, results: List[str], rid: Union[str, NoneType]=None, table_name: Union[str, NoneType]=None) -> List[str]
+def check_which_results_exist(self, results: List[str], rid: Optional[str] = None, table_name: Optional[str] = None) -> List[str]
 ```
 
 Check which results have been reported
 #### Parameters:
 
-- `rid` (`str`):  unique identifier of the record
 - `results` (`List[str]`):  names of the results to check
+- `rid` (`str`):  unique identifier of the record
+- `table_name` (`str`):  name of the table for which to check results
 
 
 #### Returns:
 
-- `List[str]`:  whether the specified result has been reported for theindicated record in current namespace
+- `List[str]`:  names of results which exist
 
 
 
 
 ```python
-def clear_status(self, record_identifier: str=None, flag_names: List[str]=None) -> List[Union[str, NoneType]]
+def clear_status(self, record_identifier: str = None, flag_names: List[str] = None) -> List[Optional[str]]
 ```
 
 Remove status flags
@@ -160,7 +162,7 @@ def data(self)
 Data object
 #### Returns:
 
-- `yacman.YacAttMap`:  the object that stores the reported data
+- `yacman.YAMLConfigManager`:  the object that stores the reported data
 
 
 
@@ -173,20 +175,6 @@ Database column key word arguments for every result, sourced from the results sc
 #### Returns:
 
 - `Dict[str, Any]`:  key word arguments for every result
-
-
-
-
-```python
-def db_column_relationships_by_result(self)
-```
-
-Database column relationships for every result, sourced from the results schema in the `relationship` section
-
-*Note: this is an experimental feature*
-#### Returns:
-
-- `Dict[str, Dict[str, str]]`:  relationships for every result
 
 
 
@@ -209,18 +197,6 @@ Database URL, generated based on config credentials
 
 
 ```python
-def establish_db_connection(self) -> bool
-```
-
-Establish DB connection using the config data
-#### Returns:
-
-- `bool`:  whether the connection has been established successfully
-
-
-
-
-```python
 def file(self)
 ```
 
@@ -233,7 +209,13 @@ File path that the object is reporting the results into
 
 
 ```python
-def get_orm(self, table_name: str=None) -> Any
+def get_one_record(self, table_name: str, rid: Optional[str] = None)
+```
+
+
+
+```python
+def get_orm(self, table_name: str) -> Any
 ```
 
 Get an object relational mapper class
@@ -250,7 +232,7 @@ Get an object relational mapper class
 
 
 ```python
-def get_status(self, record_identifier: str=None) -> Union[str, NoneType]
+def get_status(self, record_identifier: str = None) -> Optional[str]
 ```
 
 Get the current pipeline status
@@ -292,18 +274,6 @@ Highlighted results
 
 
 ```python
-def is_db_connected(self) -> bool
-```
-
-Check whether a DB connection has been established
-#### Returns:
-
-- `bool`:  whether the connection has been established
-
-
-
-
-```python
 def namespace(self)
 ```
 
@@ -340,7 +310,7 @@ Unique identifier of the record
 
 
 ```python
-def remove(self, record_identifier: str=None, result_identifier: str=None) -> bool
+def remove(self, record_identifier: str = None, result_identifier: str = None) -> bool
 ```
 
 Remove a result.
@@ -361,7 +331,7 @@ will be removed.
 
 
 ```python
-def report(self, values: Dict[str, Any], record_identifier: str=None, force_overwrite: bool=False, strict_type: bool=True, return_id: bool=False) -> Union[bool, int]
+def report(self, values: Dict[str, Any], record_identifier: str = None, force_overwrite: bool = False, strict_type: bool = True, return_id: bool = False, project_level: Optional[bool] = None) -> Union[bool, int]
 ```
 
 Report a result.
@@ -372,6 +342,7 @@ Report a result.
 - `force_overwrite` (`bool`):  whether to overwrite the existing record
 - `strict_type` (`bool`):  whether the type of the reported values shouldremain as is. Pipestat would attempt to convert to the schema-defined one otherwise
 - `return_id` (`bool`):  PostgreSQL IDs of the records that have beenupdated. Not available with results file as backend
+- `project_level` (``):  whether what's being reported pertains to project-level,rather than sample-level, attribute(s)
 
 
 #### Returns:
@@ -394,7 +365,7 @@ Result schema mappings
 
 
 ```python
-def retrieve(self, record_identifier: Union[str, NoneType]=None, result_identifier: Union[str, NoneType]=None) -> Union[Any, Dict[str, Any]]
+def retrieve(self, record_identifier: Optional[str] = None, result_identifier: Optional[str] = None) -> Union[Any, Dict[str, Any]]
 ```
 
 Retrieve a result for a record.
@@ -439,7 +410,7 @@ Schema path
 
 
 ```python
-def select(self, table_name: Union[str, NoneType]=None, columns: Union[List[str], NoneType]=None, filter_conditions: Union[List[Tuple[str, str, Union[str, List[str]]]], NoneType]=None, json_filter_conditions: Union[List[Tuple[str, str, str]], NoneType]=None, offset: Union[int, NoneType]=None, limit: Union[int, NoneType]=None) -> List[Any]
+def select(self, table_name: Optional[str] = None, columns: Optional[List[str]] = None, filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None, json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None, offset: Optional[int] = None, limit: Optional[int] = None, project_level: Optional[bool] = None) -> List[Any]
 ```
 
 Perform a `SELECT` on the table
@@ -469,7 +440,7 @@ Perform a `SELECT DISTINCT` on given table and column
 
 
 ```python
-def select_txt(self, columns: Union[List[str], NoneType]=None, filter_templ: Union[str, NoneType]='', filter_params: Union[Dict[str, Any], NoneType]={}, table_name: Union[str, NoneType]=None, offset: Union[int, NoneType]=None, limit: Union[int, NoneType]=None) -> List[Any]
+def select_txt(self, columns: Optional[List[str]] = None, filter_templ: Optional[str] = '', filter_params: Optional[Dict[str, Any]] = {}, table_name: Optional[str] = None, offset: Optional[int] = None, limit: Optional[int] = None) -> List[Any]
 ```
 
 Execute a query with a textual filter. Returns all results.
@@ -501,18 +472,19 @@ Provide a transactional scope around a series of query operations.
 
 
 ```python
-def set_status(self, status_identifier: str, record_identifier: str=None) -> None
+def set_status(self, status_identifier: str, record_identifier: str = None, project_level: Optional[bool] = None) -> None
 ```
 
 Set pipeline run status.
 
 The status identifier needs to match one of identifiers specified in
 the status schema. A basic, ready to use, status schema is shipped with
- this package.
+this package.
 #### Parameters:
 
 - `status_identifier` (`str`):  status to set, one of statuses definedin the status schema
 - `record_identifier` (`str`):  record identifier to set thepipeline status for
+- `project_level` (`bool`):  whether status is being set for a project-level pipeline, or sample-level
 
 
 
@@ -556,4 +528,4 @@ Check schema for any possible issues
 
 
 
-*Version Information: `pipestat` v0.3.0, generated by `lucidoc` v0.4.3*
+*Version Information: `pipestat` v0.3.1, generated by `lucidoc` v0.4.4*

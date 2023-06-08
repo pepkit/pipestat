@@ -1,34 +1,22 @@
+"""Assorted project utilities"""
+
 import logging
-from re import findall
+import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import jsonschema
 import sqlalchemy.orm
+import sqlmodel.sql.expression
+from sqlmodel.main import SQLModel
 from oyaml import safe_load
-from psycopg2 import sql
-from sqlalchemy.orm import DeclarativeMeta, Query
+from sqlmodel.sql.expression import SelectOfScalar
 from ubiquerg import expandpath
+from urllib.parse import quote_plus
 
 from .const import *
+from .exceptions import *
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def get_status_table_schema(status_schema: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Update and return a status_table_schema based on user-provided status schema
-
-    :param Dict[str, Any] status_schema: status schema provided by the user
-    :return Dict[str, Any]: status_schema status table scheme
-        to use as a base for status table generation
-    """
-    defined_status_codes = list(status_schema.keys())
-    _, status_table_schema = read_yaml_data(
-        path=STATUS_TABLE_SCHEMA, what="status table schema"
-    )
-    status_table_schema["status"].update({"enum": defined_status_codes})
-    _LOGGER.debug(f"Updated status table schema: {status_table_schema}")
-    return status_table_schema
 
 
 def validate_type(value, schema, strict_type=False):
@@ -43,6 +31,8 @@ def validate_type(value, schema, strict_type=False):
         against, e.g. {"type": "integer"}
     :param bool strict_type: whether the value should validate as is
     """
+    import jsonschema
+
     try:
         jsonschema.validate(value, schema)
     except jsonschema.exceptions.ValidationError as e:
@@ -57,20 +47,17 @@ def validate_type(value, schema, strict_type=False):
                     cls_fun = CLASSES_BY_TYPE[prop_dict[SCHEMA_TYPE_KEY]]
                     value[prop] = cls_fun(value[prop])
                 except Exception as e:
-                    _LOGGER.error(
-                        f"Could not cast the result into " f"required type: {str(e)}"
-                    )
+                    _LOGGER.error(f"Could not cast the result into " f"required type: {str(e)}")
                 else:
                     _LOGGER.debug(
-                        f"Casted the reported result into required "
-                        f"type: {str(cls_fun)}"
+                        f"Casted the reported result into required " f"type: {str(cls_fun)}"
                     )
         jsonschema.validate(value, schema)
     else:
         _LOGGER.debug(f"Value '{value}' validated successfully against a schema")
 
 
-def read_yaml_data(path, what):
+def read_yaml_data(path: Union[str, Path], what: str) -> Tuple[str, Dict[str, Any]]:
     """
     Safely read YAML file and log message
 
@@ -78,9 +65,14 @@ def read_yaml_data(path, what):
     :param str what: context
     :return (str, dict): absolute path to the read file and the read data
     """
-    assert isinstance(path, str), TypeError(f"Path is not a string: {path}")
-    path = expandpath(path)
-    assert os.path.exists(path), FileNotFoundError(f"File not found: {path}")
+    if isinstance(path, Path):
+        test = lambda p: p.is_file()
+    elif isinstance(path, str):
+        path = expandpath(path)
+        test = os.path.isfile
+    else:
+        raise TypeError(f"Alleged path to YAML file to read is neither path nor string: {path}")
+    assert test(path), FileNotFoundError(f"File not found: {path}")
     _LOGGER.debug(f"Reading {what} from '{path}'")
     with open(path, "r") as f:
         return path, safe_load(f)
@@ -102,12 +94,59 @@ def mk_list_of_str(x):
     )
 
 
+def mk_abs_via_cfg(
+    path: Optional[str],
+    cfg_path: Optional[str],
+) -> Optional[str]:
+    """
+    Helper function to ensure a path is absolute.
+
+    Assumes a relative path is relative to cfg_path, or to current working directory if cfg_path is None.
+
+    : param str path: The path to make absolute.
+    : param str cfg_path: Relative paths will be relative the containing folder of this pat
+    """
+    if path is None:
+        return path
+    assert isinstance(path, str), TypeError("Path is expected to be a str")
+    if os.path.isabs(path):
+        return path
+    if cfg_path is None:
+        rel_to_cwd = os.path.join(os.getcwd(), path)
+        if os.path.exists(rel_to_cwd) or os.access(os.path.dirname(rel_to_cwd), os.W_OK):
+            return rel_to_cwd
+        else:
+            raise OSError(f"File not found: {path}")
+    joined = os.path.join(os.path.dirname(cfg_path), path)
+    if os.path.isabs(joined):
+        return joined
+    raise OSError(f"Could not make this path absolute: {path}")
+
+
+def construct_db_url(dbconf):
+    """Builds database URL from config settings"""
+    try:
+        creds = dict(
+            name=dbconf["name"],
+            user=dbconf["user"],
+            passwd=dbconf["password"],
+            host=dbconf["host"],
+            port=dbconf["port"],
+            dialect=dbconf["dialect"],
+            driver=dbconf["driver"],
+        )  # driver = sqlite, mysql, postgresql, oracle, or mssql
+    except KeyError as e:
+        raise MissingConfigDataError(f"Could not determine database URL. Caught error: {str(e)}")
+    parsed_creds = {k: quote_plus(str(v)) for k, v in creds.items()}
+    return "{dialect}+{driver}://{user}:{passwd}@{host}:{port}/{name}".format(**parsed_creds)
+
+
 def dynamic_filter(
-    ORM: DeclarativeMeta,
-    query: Query,
+    ORM: SQLModel,
+    statement: SelectOfScalar,
     filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
     json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
-) -> sqlalchemy.orm.Query:
+) -> sqlmodel.sql.expression.SelectOfScalar:
     """
     Return filtered query based on condition.
 
@@ -125,16 +164,13 @@ def dynamic_filter(
     """
 
     def _unpack_tripartite(x):
-        try:
-            assert isinstance(x, List) or isinstance(x, Tuple), TypeError(
-                "Wrong filter class, a List or Tuple is required"
-            )
-            e1, e2, e3 = x
-            return e1, e2, e3
-        except Exception:
+        if not (isinstance(x, List) or isinstance(x, Tuple)):
+            raise TypeError("Wrong filter class; a List or Tuple is required")
+        if len(x) != 3:
             raise ValueError(
                 f"Invalid filter value: {x}. The filter must be a tripartite iterable"
             )
+        return tuple(x)
 
     if filter_conditions is not None:
         for filter_condition in filter_conditions:
@@ -143,30 +179,22 @@ def dynamic_filter(
             if column is None:
                 raise ValueError(f"Selected filter column does not exist: {key}")
             if op == "in":
-                if isinstance(value, list):
-                    filt = column.in_(value)
-                else:
-                    filt = column.in_(value.split(","))
+                filt = column.in_(value if isinstance(value, list) else value.split(","))
             else:
-                try:
-                    attr = (
-                        list(
-                            filter(
-                                lambda e: hasattr(column, e % op),
-                                ["%s", "%s_", "__%s__"],
-                            )
-                        )[0]
-                        % op
-                    )
-                except IndexError:
-                    raise ValueError()(f"Invalid filter operator: {op}")
+                attr = next(
+                    filter(lambda a: hasattr(column, a), [op, op + "_", f"__{op}__"]),
+                    None,
+                )
+                if attr is None:
+                    raise ValueError(f"Invalid filter operator: {op}")
                 if value == "null":
                     value = None
                 filt = getattr(column, attr)(value)
-            query = query.filter(filt)
+            statement = statement.where(filt)
 
     if json_filter_conditions is not None:
         for json_filter_condition in json_filter_conditions:
             col, key, value = _unpack_tripartite(json_filter_condition)
-            query = query.filter(getattr(ORM, col)[key].astext == value)
-    return query
+            statement = statement.where(getattr(ORM, col) == value)
+
+    return statement
