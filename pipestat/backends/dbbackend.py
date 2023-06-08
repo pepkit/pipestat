@@ -31,7 +31,7 @@ class DBBackend(PipestatBackend):
         parsed_schema: Optional[str] = None,
         status_schema: Optional[str] = None,
         db_url: Optional[str] = None,
-        status_schema_source: Optional[str] = None,
+        status_schema_source: Optional[dict] = None,
     ):
         """
         Class representing a Database backend
