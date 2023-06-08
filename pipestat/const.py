@@ -45,6 +45,7 @@ __all__ = [
     "PIPELINE_TYPE",
     "DB_URL",
     "SCHEMA_PATH",
+    "ID_KEY",
 ]
 
 PKG_NAME = "pipestat"
@@ -130,3 +131,4 @@ PIPELINE_NAME = "_pipeline_name"
 PIPELINE_TYPE = "_pipeline_type"
 DB_URL = "_db_url"
 SCHEMA_PATH = "_schema_path"
+ID_KEY = "id"

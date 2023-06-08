@@ -228,12 +228,11 @@ class ParsedSchema(object):
 
     @staticmethod
     def _add_id_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
-        id_key = "id"
-        if id_key in field_defs:
+        if ID_KEY in field_defs:
             raise SchemaError(
-                f"'{id_key}' is reserved for primary key and can't be part of schema."
+                f"'{ID_KEY}' is reserved for primary key and can't be part of schema."
             )
-        field_defs[id_key] = (
+        field_defs[ID_KEY] = (
             Optional[int],
             Field(default=None, primary_key=True),
         )
@@ -241,10 +240,11 @@ class ParsedSchema(object):
 
     @staticmethod
     def _add_record_identifier_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
-        id_key = "record_identifier"
-        if id_key in field_defs:
-            raise SchemaError(f"'{id_key}' is reserved as identifier and can't be part of schema.")
-        field_defs[id_key] = (str, Field(default=None))
+        if RECORD_ID in field_defs:
+            raise SchemaError(
+                f"'{RECORD_ID}' is reserved as identifier and can't be part of schema."
+            )
+        field_defs[RECORD_ID] = (str, Field(default=None))
         return field_defs
 
     @staticmethod
