@@ -17,7 +17,7 @@ from .helpers import read_yaml_data
 
 _LOGGER = logging.getLogger(__name__)
 
-__all__ = ["ParsedSchema", "SCHEMA_PIPELINE_ID_KEY"]
+__all__ = ["ParsedSchema", "SCHEMA_PIPELINE_NAME_KEY"]
 
 
 NULL_MAPPING_VALUE = {}
@@ -202,26 +202,27 @@ class ParsedSchema(object):
         field_defs = self._add_status_field(field_defs)
         field_defs = self._add_record_identifier_field(field_defs)
         field_defs = self._add_id_field(field_defs)
-        field_defs = self._add_namespace_field(field_defs)
         field_defs = self._add_project_name_field(field_defs)
+        field_defs = self._add_pipeline_name_field(field_defs)
         return _create_model(self.sample_table_name, **field_defs)
 
     @staticmethod
-    def _add_namespace_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
-        # TODO Deprecate use of namespace
-        id_key = PROJECT_NAME
-        if id_key in field_defs:
-            raise SchemaError(f"'{id_key}' is reserved as identifier and can't be part of schema.")
-        field_defs[id_key] = (str, Field(default=None))
+    def _add_project_name_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
+        if PROJECT_NAME in field_defs:
+            raise SchemaError(
+                f"'{PROJECT_NAME}' is reserved as identifier and can't be part of schema."
+            )
+        field_defs[PROJECT_NAME] = (str, Field(default=None))
 
         return field_defs
 
     @staticmethod
-    def _add_project_name_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
-        id_key = "namespace"  # TODO disambiguate namespace and piepline_id within PSM
-        if id_key in field_defs:
-            raise SchemaError(f"'{id_key}' is reserved as identifier and can't be part of schema.")
-        field_defs[id_key] = (str, Field(default=None))
+    def _add_pipeline_name_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
+        if PIPELINE_NAME in field_defs:
+            raise SchemaError(
+                f"'{PIPELINE_NAME}' is reserved as identifier and can't be part of schema."
+            )
+        field_defs[PIPELINE_NAME] = (str, Field(default=None))
 
         return field_defs
 
@@ -243,9 +244,6 @@ class ParsedSchema(object):
         id_key = "record_identifier"
         if id_key in field_defs:
             raise SchemaError(f"'{id_key}' is reserved as identifier and can't be part of schema.")
-        # field_defs[id_key] = (str, Field(unique=True))
-        # TODO: ensure this is required AND unique
-        # field_defs[id_key] = (str, ...)
         field_defs[id_key] = (str, Field(default=None))
         return field_defs
 
@@ -263,8 +261,6 @@ class ParsedSchema(object):
 
 
 def _create_model(table_name: str, **kwargs):
-    # return create_model(table_name, __base__=BaseModel, **kwargs)
-    # extend_existing=True allows this call even when the table model already exists.
     return create_model(
         table_name,
         __base__=get_base_model(),
