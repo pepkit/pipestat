@@ -324,7 +324,7 @@ class PipestatManager(dict):
         values = deepcopy(values)
 
         record_identifier = self._strict_record_id(record_identifier)
-        if return_id and self.file is not None:
+        if return_id and self[FILE_KEY] is not None:
             raise NotImplementedError(
                 "There is no way to return the updated object ID while using "
                 "results file as the object backend"
@@ -432,20 +432,6 @@ class PipestatManager(dict):
         :return str: path to the provided config
         """
         return getattr(self, "_config_path", None)
-
-    @property
-    def db_column_kwargs_by_result(self) -> Dict[str, Any]:
-        """
-        Database column key word arguments for every result,
-        sourced from the results schema in the `db_column` section
-
-        :return Dict[str, Any]: key word arguments for every result
-        """
-        return {
-            result_id: self.schema[result_id][DB_COLUMN_KEY]
-            for result_id in (self.schema or {}).keys()
-            if DB_COLUMN_KEY in self.schema[result_id]
-        }
 
     @property
     def data(self) -> YAMLConfigManager:
