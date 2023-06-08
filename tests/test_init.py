@@ -7,7 +7,7 @@ from yaml import dump
 
 from pipestat import PipestatManager
 from pipestat.exceptions import *
-from pipestat.parsed_schema import SCHEMA_PIPELINE_ID_KEY
+from pipestat.parsed_schema import SCHEMA_PIPELINE_NAME_KEY
 from tempfile import NamedTemporaryFile
 
 
@@ -87,10 +87,10 @@ class TestPipestatManagerInstantiation:
         assert os.path.exists(tmp_res_file)
         with open(schema_file_path, "r") as init_schema_file:
             init_schema = oyaml.safe_load(init_schema_file)
-        assert psm1.namespace == init_schema[SCHEMA_PIPELINE_ID_KEY]
+        assert psm1.schema.pipeline_name == init_schema[SCHEMA_PIPELINE_NAME_KEY]
         ns2 = "namespace2"
         temp_schema_path = str(tmp_path / "schema.yaml")
-        init_schema[SCHEMA_PIPELINE_ID_KEY] = ns2
+        init_schema[SCHEMA_PIPELINE_NAME_KEY] = ns2
         with open(temp_schema_path, "w") as temp_schema_file:
             dump(init_schema, temp_schema_file)
         with pytest.raises(PipestatError) as exc_ctx:
@@ -98,7 +98,7 @@ class TestPipestatManagerInstantiation:
                 results_file_path=tmp_res_file,
                 schema_path=temp_schema_path,
             )
-        exp_msg = f"'{tmp_res_file}' is already used to report results for a different (not {ns2}) namespace: {psm1.namespace}"
+        exp_msg = f"'{tmp_res_file}' is already used to report results for a different (not {ns2}) namespace: {psm1.schema.pipeline_name}"
         obs_msg = str(exc_ctx.value)
         assert obs_msg == exp_msg
 
@@ -127,7 +127,7 @@ class TestPipestatManagerInstantiation:
                 results_file_path=results_file_path,
                 schema_path=schema_file_path,
             )
-            assert "test_pipe" in psm2.data
+            assert "test_pipe" in psm2.backend._data
 
     def test_str_representation(self, results_file_path, schema_file_path):
         """Test string representation identifies number of records"""
@@ -143,4 +143,4 @@ class TestPipestatManagerInstantiation:
             }
             for k, v in val_dict.items():
                 psm.report(record_identifier=k, values=v, force_overwrite=True)
-            assert f"Records count: {len(psm.data[psm.namespace])}" in str(psm)
+            assert f"Records count: {len(psm.backend._data['test_pipe'])}" in str(psm)

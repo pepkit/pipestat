@@ -1,4 +1,4 @@
-pipeline_id: test_pipe
+pipeline_name: test_pipe
 samples:
   collection_of_images:
     description: "This store collection of values or objects"

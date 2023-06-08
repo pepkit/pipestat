@@ -1,4 +1,4 @@
-pipeline_id: test_pipe
+pipeline_name: test_pipe
 project:
   percentage_of_things:
     type: "number"

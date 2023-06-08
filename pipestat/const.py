@@ -40,6 +40,12 @@ __all__ = [
     "STATUS_FILE_DIR",
     "STATUS_SCHEMA_SOURCE_KEY",
     "STATUS_SCHEMA_KEY",
+    "PROJECT_NAME",
+    "PIPELINE_NAME",
+    "PIPELINE_TYPE",
+    "DB_URL",
+    "SCHEMA_PATH",
+    "ID_KEY",
 ]
 
 PKG_NAME = "pipestat"
@@ -120,3 +126,9 @@ SCHEMA_KEY = "_schema"
 STATUS_FILE_DIR = "_status_file_dir"
 STATUS_SCHEMA_KEY = "_status_schema"
 STATUS_SCHEMA_SOURCE_KEY = "_status_schema_source"
+PROJECT_NAME = "project_name"
+PIPELINE_NAME = "_pipeline_name"
+PIPELINE_TYPE = "_pipeline_type"
+DB_URL = "_db_url"
+SCHEMA_PATH = "_schema_path"
+ID_KEY = "id"

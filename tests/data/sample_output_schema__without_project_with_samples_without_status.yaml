@@ -1,4 +1,4 @@
-pipeline_id: test_pipe
+pipeline_name: test_pipe
 samples:
   smooth_bw:
     path: "aligned_{genome}/{sample_name}_smooth.bw"

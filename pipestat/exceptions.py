@@ -12,6 +12,7 @@ __all__ = [
     "MissingConfigDataError",
     "SchemaError",
     "SchemaNotFoundError",
+    "PipestatDataError",
 ]
 
 
@@ -51,6 +52,13 @@ class MissingConfigDataError(PipestatError):
         spacing = " " if msg[-1] in ["?", ".", "\n"] else "; "
         suggest = "For config format documentation please see: http://pipestat.databio.org/en/latest/db_config/"
         super(MissingConfigDataError, self).__init__(msg + spacing + suggest)
+
+
+class PipestatDataError(PipestatError):
+    """Data error for local data associated with file backend"""
+
+    def __init__(self, msg):
+        super(PipestatDataError, self).__init__(msg)
 
 
 class PipestatDatabaseError(PipestatError):

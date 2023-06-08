@@ -29,7 +29,7 @@ class ContextManagerDBTesting:
 class TestDatabaseOnly:
     # TODO: parameterize this against different schemas.
     def test_manager_can_be_built_without_exception(self, config_file_path, schema_file_path):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             try:
                 PipestatManager(
                     schema_path=schema_file_path,
@@ -55,7 +55,7 @@ class TestDatabaseOnly:
         config_file_path,
         schema_file_path,
     ):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             psm = PipestatManager(
                 schema_path=schema_file_path,
                 record_identifier="constant_record_id",
@@ -63,9 +63,8 @@ class TestDatabaseOnly:
                 config_file=config_file_path,
             )
             psm.report(values=val, force_overwrite=True)
-            assert len(psm.data) == 0
             val_name = list(val.keys())[0]
-            assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
+            assert psm.backend.select(filter_conditions=[(val_name, "eq", val[val_name])])
 
     @pytest.mark.parametrize(
         "val",
@@ -83,7 +82,7 @@ class TestDatabaseOnly:
         schema_with_project_with_samples_without_status,
         pipeline_type,
     ):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             psm = PipestatManager(
                 schema_path=schema_with_project_with_samples_without_status,
                 record_identifier="constant_record_id",
@@ -99,7 +98,7 @@ class TestDatabaseOnly:
                         strict_type=False,
                         pipeline_type=pipeline_type,
                     )
-                    assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
+                    assert psm.backend.select(filter_conditions=[(val_name, "eq", val[val_name])])
                 else:
                     pass
                     # assert that this would fail to report otherwise.
@@ -112,7 +111,7 @@ class TestDatabaseOnly:
                         pipeline_type=pipeline_type,
                     )
                     val_name = list(val.keys())[0]
-                    assert psm.select(filter_conditions=[(val_name, "eq", val[val_name])])
+                    assert psm.backend.select(filter_conditions=[(val_name, "eq", val[val_name])])
                 else:
                     pass
                     # assert that this would fail to report otherwise.
@@ -159,7 +158,7 @@ class TestDatabaseOnly:
         config_file_path,
         recursive_schema_file_path,
     ):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             REC_ID = "constant_record_id"
             psm = PipestatManager(
                 schema_path=recursive_schema_file_path,
@@ -171,7 +170,7 @@ class TestDatabaseOnly:
                 values=val, force_overwrite=True
             )  # Force overwrite so that resetting the SQL DB is unnecessary.
             val_name = list(val.keys())[0]
-            assert psm.select(json_filter_conditions=[(val_name, "eq", val[val_name])])
+            assert psm.backend.select(json_filter_conditions=[(val_name, "eq", val[val_name])])
 
     @pytest.mark.parametrize(["rec_id", "res_id"], [("sample2", "number_of_things")])
     def test_select_invalid_filter_column__raises_expected_exception(
@@ -181,11 +180,11 @@ class TestDatabaseOnly:
         config_file_path,
         schema_file_path,
     ):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = PipestatManager(**args)
             with pytest.raises(ValueError):
-                psm.select(
+                psm.backend.select(
                     filter_conditions=[("bogus_column", "eq", rec_id)],
                     columns=[res_id],
                 )
@@ -199,11 +198,11 @@ class TestDatabaseOnly:
         schema_file_path,
         filter_condition,
     ):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = PipestatManager(**args)
             with pytest.raises((ValueError, TypeError)):
-                psm.select(
+                psm.backend.select(
                     filter_conditions=[filter_condition],
                     columns=[res_id],
                 )
@@ -218,10 +217,10 @@ class TestDatabaseOnly:
         schema_file_path,
         limit,
     ):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = PipestatManager(**args)
-            result = psm.select(
+            result = psm.backend.select(
                 filter_conditions=[(RECORD_ID, "eq", rec_id)],
                 columns=[res_id],
                 limit=limit,
@@ -235,10 +234,10 @@ class TestDatabaseOnly:
         schema_file_path,
         offset,
     ):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = PipestatManager(**args)
-            result = psm.select(offset=offset)
+            result = psm.backend.select(offset=offset)
             print(result)
             assert len(result) == max((psm.record_count - offset), 0)
 
@@ -252,9 +251,9 @@ class TestDatabaseOnly:
         offset,
         limit,
     ):
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = PipestatManager(**args)
-            result = psm.select(offset=offset, limit=limit)
+            result = psm.backend.select(offset=offset, limit=limit)
             print(result)
             assert len(result) == min(max((psm.record_count - offset), 0), limit)

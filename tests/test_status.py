@@ -41,17 +41,24 @@ def test_custom_status_schema(
     custom_status_schema2,
 ):
     """Status management works even in case it has not been configured."""
-    # TODO: reimplement
-    args = dict(
-        schema_path=custom_status_schema2,
-    )
-    args.update(backend_data)
-    psm = PipestatManager(**args)
-    psm.set_status(record_identifier="sample1", status_identifier=status_id)
-    assert psm.get_status(record_identifier="sample1") == status_id
+    with ContextManagerDBTesting(DB_URL) as connection:
+        args = dict(
+            schema_path=custom_status_schema2,
+        )
+        args.update(backend_data)
+        psm = PipestatManager(**args)
+        psm.set_status(record_identifier="sample1", status_identifier=status_id)
+        assert psm.get_status(record_identifier="sample1") == status_id
 
 
 @pytest.mark.skip(reason="not implemented")
 def test_status_not_in_schema__raises_expected_error():
     """A status to set must be a value declared in the active schema, whether default or custom."""
+    pass
+
+
+@pytest.mark.skip(reason="not implemented")
+def test_clear_status():
+    # TODO write pytest for clearing statuses
+    """Test clearing flag files"""
     pass
