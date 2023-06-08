@@ -145,7 +145,7 @@ class PipestatManager(dict):
                 self[SCHEMA_KEY],
                 self[STATUS_SCHEMA_KEY],
                 self[DB_URL],
-                self.status_schema_source,
+                self[STATUS_SCHEMA_SOURCE_KEY],
             )
 
     def __str__(self):
