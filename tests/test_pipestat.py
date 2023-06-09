@@ -590,7 +590,7 @@ class TestEnvVars:
         test that the object can be created if the arguments
         are provided as env vars
         """
-        monkeypatch.setenv(ENV_VARS["namespace"], STANDARD_TEST_PIPE_ID)
+        monkeypatch.setenv(ENV_VARS["project_name"], STANDARD_TEST_PIPE_ID)
         monkeypatch.setenv(ENV_VARS["record_identifier"], "sample1")
         monkeypatch.setenv(ENV_VARS["results_file"], results_file_path)
         monkeypatch.setenv(ENV_VARS["schema"], schema_file_path)

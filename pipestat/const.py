@@ -86,7 +86,7 @@ CANONICAL_TYPES = {
 }
 
 ENV_VARS = {
-    "namespace": "PIPESTAT_NAMESPACE",
+    "project_name": "PIPESTAT_PROJECT_NAME",
     "config": "PIPESTAT_CONFIG",
     "results_file": "PIPESTAT_RESULTS_FILE",
     "schema": "PIPESTAT_RESULTS_SCHEMA",

@@ -345,7 +345,7 @@ class PipestatManager(dict):
         rep_strs = [f"{k}: {v}" for k, v in values.items()]
         _LOGGER.info(
             f"Reported records for '{record_identifier}' in '{self[PIPELINE_NAME]}' "
-            f"namespace:{nl} - {(nl + ' - ').join(rep_strs)}"
+            f"project_name:{nl} - {(nl + ' - ').join(rep_strs)}"
         )
         _LOGGER.info(record_identifier, values)
         return True if not return_id else updated_ids
@@ -473,18 +473,18 @@ class PipestatManager(dict):
     @property
     def projectname(self) -> str:
         """
-        Namespace the object writes the results to
+        Project name the object writes the results to
 
-        :return str: namespace the object writes the results to
+        :return str: project name the object writes the results to
         """
         return self.get(PROJECT_NAME)
 
     @property
     def pipelinetype(self) -> str:
         """
-        Namespace the object writes the results to
+        Pipeline type: "sample" or "project"
 
-        :return str: namespace the object writes the results to
+        :return str: pipeline type
         """
         return self.get(PIPELINE_TYPE)
 
