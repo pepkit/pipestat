@@ -12,12 +12,14 @@ INSPECT_CMD = "inspect"
 REMOVE_CMD = "remove"
 RETRIEVE_CMD = "retrieve"
 STATUS_CMD = "status"
+INIT_CMD = "init"
 SUBPARSER_MESSAGES = {
     REPORT_CMD: "Report a result.",
     INSPECT_CMD: "Inspect a database.",
     REMOVE_CMD: "Remove a result.",
     RETRIEVE_CMD: "Retrieve a result.",
     STATUS_CMD: "Manage pipeline status.",
+    INIT_CMD: "Initialize generic config file",
 }
 
 STATUS_GET_CMD = "get"
@@ -237,8 +239,15 @@ def build_argparser(desc):
         "-t",
         "--skip-convert",
         action="store_true",
-        help="Whether skip result type conversion into the reqiuired "
+        help="Whether skip result type conversion into the required "
         "class in case it does not meet the schema requirements",
+    )
+
+    sps[INIT_CMD].add_argument(
+        "-g",
+        "--generic-config",
+        action="store_true",
+        help="Creates a generic config file",
     )
 
     # inspect

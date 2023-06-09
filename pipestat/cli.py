@@ -14,10 +14,12 @@ from .argparser import (
     STATUS_CMD,
     STATUS_GET_CMD,
     STATUS_SET_CMD,
+    INIT_CMD,
 )
 from .const import *
 from .exceptions import SchemaNotFoundError, PipestatStartupError
 from .pipestat import PipestatManager
+from .helpers import init_generic_config
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -34,6 +36,8 @@ def main():
     global _LOGGER
     _LOGGER = logmuse.logger_via_cli(args, make_root=True)
     _LOGGER.debug("Args namespace:\n{}".format(args))
+    if args.command == INIT_CMD:
+        sys.exit(int(not init_generic_config()))
     if args.config and not args.schema and args.command != STATUS_CMD:
         parser.error("the following arguments are required: -s/--schema")
     if not args.config and not args.results_file:

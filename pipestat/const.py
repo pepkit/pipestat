@@ -46,6 +46,7 @@ __all__ = [
     "DB_URL",
     "SCHEMA_PATH",
     "ID_KEY",
+    "PIPESTAT_GENERIC_CONFIG",
 ]
 
 PKG_NAME = "pipestat"
@@ -132,3 +133,4 @@ PIPELINE_TYPE = "_pipeline_type"
 DB_URL = "_db_url"
 SCHEMA_PATH = "_schema_path"
 ID_KEY = "id"
+PIPESTAT_GENERIC_CONFIG = "generic_config.yaml"

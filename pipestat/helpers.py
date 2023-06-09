@@ -2,6 +2,7 @@
 
 import logging
 import os
+import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -198,3 +199,41 @@ def dynamic_filter(
             statement = statement.where(getattr(ORM, col) == value)
 
     return statement
+
+
+def init_generic_config():
+    """
+    Create generic config file for DB Backend
+    """
+    try:
+        os.makedirs("config")
+    except FileExistsError:
+        pass
+
+    # Destination one level down from CWD in config folder
+    dest_file = os.path.join(os.getcwd(), "config", PIPESTAT_GENERIC_CONFIG)
+
+    # Determine Generic Configuration File
+    generic_config_dict = {
+        "project_name": "generic_test_name",
+        "record_identifier": "sample1",
+        "schema_path": "sample_output_schema.yaml",
+        "database": {
+            "dialect": "postgresql",
+            "driver": "psycopg2",
+            "name": "pipestat-test",
+            "user": "postgres",
+            "password": "pipestat-password",
+            "host": "127.0.0.1",
+            "port": 5432,
+        },
+    }
+    # Write file
+    if not os.path.exists(dest_file):
+        with open(dest_file, "w") as file:
+            yaml.dump(generic_config_dict, file)
+        print(f"Generic configuration file successfully created at: {dest_file}")
+    else:
+        print(f"Generic configuration file already exists `{dest_file}`. Skipping creation..")
+
+    return True
