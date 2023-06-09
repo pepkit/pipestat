@@ -45,7 +45,7 @@ def prepare_schema_from_mapping(request, tmp_path):
     return partial(func, path=path)
 
 
-def test_empty__fails_with_missing_pipeline_id(prepare_schema_from_mapping):
+def test_empty__fails_with_missing_pipeline_name(prepare_schema_from_mapping):
     schema = prepare_schema_from_mapping({})
     with pytest.raises(SchemaError):
         ParsedSchema(schema)
@@ -157,7 +157,7 @@ def test_parsed_schema__has_correct_data(prepare_schema_from_file, filename, att
     assert observed == expected
 
 
-SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_ID = [
+SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME = [
     [("samples", SAMPLES_DATA)],
     [("project", PROJECT_DATA)],
     [("samples", SAMPLES_DATA), ("project", PROJECT_DATA)],
@@ -196,14 +196,14 @@ SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_ID = [
             dict(data),
             f"Could not find valid pipeline identifier (key '{SCHEMA_PIPELINE_NAME_KEY}') in given schema data",
         )
-        for data in SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_ID
+        for data in SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME
     ]
     + [
         (
             dict(data + [(SCHEMA_PIPELINE_NAME_KEY, "test_pipe"), ("extra_key", "placeholder")]),
             "Extra top-level key(s) in given schema data: extra_key",
         )
-        for data in SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_ID
+        for data in SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME
     ],
 )
 def test_insufficient_schema__raises_expected_error_and_message(schema_data, expected_message):
