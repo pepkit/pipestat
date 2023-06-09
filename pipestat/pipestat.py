@@ -14,7 +14,6 @@ from .parsed_schema import ParsedSchema
 _LOGGER = getLogger(PKG_NAME)
 
 
-
 def require_backend(func):
     """Decorator to ensure a backend exists for functions that require one"""
 

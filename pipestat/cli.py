@@ -1,4 +1,5 @@
 import sys
+import os
 from logging import getLogger
 
 import logmuse
@@ -11,9 +12,11 @@ from .argparser import (
     REMOVE_CMD,
     RETRIEVE_CMD,
     STATUS_CMD,
+    STATUS_GET_CMD,
+    STATUS_SET_CMD,
 )
 from .const import *
-from .exceptions import SchemaNotFoundError
+from .exceptions import SchemaNotFoundError, PipestatStartupError
 from .pipestat import PipestatManager
 
 _LOGGER = getLogger(PKG_NAME)
@@ -33,13 +36,17 @@ def main():
     _LOGGER.debug("Args namespace:\n{}".format(args))
     if args.config and not args.schema and args.command != STATUS_CMD:
         parser.error("the following arguments are required: -s/--schema")
+    if not args.config and not args.results_file:
+        msg = (
+            "Either a config file or a results file must be provided. Either must be supplied to the object "
+            "constructor or via environment variable. \nPlease see: http://pipestat.databio.org/en/dev/cli/"
+        )
+        raise PipestatStartupError(msg)
     psm = PipestatManager(
-        # namespace=args.namespace
         schema_path=args.schema,
         results_file_path=args.results_file,
         config_file=args.config,
         database_only=args.database_only,
-        # status_schema_path=args.status_schema,
         flag_file_dir=args.flag_dir,
     )
     types_to_read_from_json = ["object"] + list(CANONICAL_TYPES.keys())

@@ -54,6 +54,13 @@ class MissingConfigDataError(PipestatError):
         super(MissingConfigDataError, self).__init__(msg + spacing + suggest)
 
 
+class PipestatStartupError(PipestatError):
+    """Data error for local data associated with file backend"""
+
+    def __init__(self, msg):
+        super(PipestatStartupError, self).__init__(msg)
+
+
 class PipestatDataError(PipestatError):
     """Data error for local data associated with file backend"""
 
