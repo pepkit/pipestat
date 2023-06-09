@@ -216,7 +216,7 @@ def init_generic_config():
     # Determine Generic Configuration File
     generic_config_dict = {
         "project_name": "generic_test_name",
-        "record_identifier": "sample1",
+        "sample_name": "sample1",
         "schema_path": "sample_output_schema.yaml",
         "database": {
             "dialect": "postgresql",

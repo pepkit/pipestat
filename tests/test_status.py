@@ -29,8 +29,8 @@ def test_status_not_configured(schema_file_path, config_file_path, backend_data,
         )
         args.update(backend_data)
         psm = PipestatManager(**args)
-        psm.set_status(record_identifier="sample1", status_identifier=status_id)
-        assert psm.get_status(record_identifier="sample1") == status_id
+        psm.set_status(sample_name="sample1", status_identifier=status_id)
+        assert psm.get_status(sample_name="sample1") == status_id
 
 
 @pytest.mark.parametrize("backend_data", [BACKEND_KEY_FILE, BACKEND_KEY_DB], indirect=True)
@@ -47,8 +47,8 @@ def test_custom_status_schema(
         )
         args.update(backend_data)
         psm = PipestatManager(**args)
-        psm.set_status(record_identifier="sample1", status_identifier=status_id)
-        assert psm.get_status(record_identifier="sample1") == status_id
+        psm.set_status(sample_name="sample1", status_identifier=status_id)
+        assert psm.get_status(sample_name="sample1") == status_id
 
 
 @pytest.mark.skip(reason="not implemented")

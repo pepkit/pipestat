@@ -96,7 +96,7 @@ class ParsedSchema(object):
             )
 
         # Check that no reserved keywords were used as data items.
-        resv_kwds = {"id", RECORD_ID}
+        resv_kwds = {"id", SAMPLE_NAME}
         reserved_keywords_used = set()
         for data in [self.project_level_data, self.sample_level_data, self.status_data]:
             reserved_keywords_used |= set(data.keys()) & resv_kwds
@@ -186,7 +186,7 @@ class ParsedSchema(object):
         data = self.project_level_data
         field_defs = self._make_field_definitions(data, require_type=True)
         field_defs = self._add_status_field(field_defs)
-        field_defs = self._add_record_identifier_field(field_defs)
+        field_defs = self._add_sample_name_field(field_defs)
         field_defs = self._add_id_field(field_defs)
         if not field_defs:
             return None
@@ -200,7 +200,7 @@ class ParsedSchema(object):
             return None
         field_defs = self._make_field_definitions(data, require_type=True)
         field_defs = self._add_status_field(field_defs)
-        field_defs = self._add_record_identifier_field(field_defs)
+        field_defs = self._add_sample_name_field(field_defs)
         field_defs = self._add_id_field(field_defs)
         field_defs = self._add_project_name_field(field_defs)
         field_defs = self._add_pipeline_name_field(field_defs)
@@ -239,12 +239,12 @@ class ParsedSchema(object):
         return field_defs
 
     @staticmethod
-    def _add_record_identifier_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
-        if RECORD_ID in field_defs:
+    def _add_sample_name_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
+        if SAMPLE_NAME in field_defs:
             raise SchemaError(
-                f"'{RECORD_ID}' is reserved as identifier and can't be part of schema."
+                f"'{SAMPLE_NAME}' is reserved as identifier and can't be part of schema."
             )
-        field_defs[RECORD_ID] = (str, Field(default=None))
+        field_defs[SAMPLE_NAME] = (str, Field(default=None))
         return field_defs
 
     @staticmethod

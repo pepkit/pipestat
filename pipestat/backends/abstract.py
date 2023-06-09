@@ -50,26 +50,26 @@ class PipestatBackend(ABC):
     def check_result_exists(
         self,
         result_identifier: str,
-        record_identifier: Optional[str] = None,
+        sample_name: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> bool:
         """
         Check if the result has been reported
 
-        :param str record_identifier: unique identifier of the record
+        :param str sample_name: unique identifier of the record
         :param str result_identifier: name of the result to check
         :param str pipeline_type: "sample" or "project"
         :return bool: whether the specified result has been reported for the
             indicated record in current namespace
         """
         pipeline_type = pipeline_type or self.pipeline_type
-        record_identifier = record_identifier or self.record_identifier
+        sample_name = sample_name or self.sample_name
 
         return (
             len(
                 self.list_results(
                     restrict_to=[result_identifier],
-                    record_identifier=record_identifier,
+                    sample_name=sample_name,
                     pipeline_type=pipeline_type,
                 )
             )
@@ -87,20 +87,18 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
-    def get_status(
-        self, record_identifier: str, pipeline_type: Optional[str] = None
-    ) -> Optional[str]:
+    def get_status(self, sample_name: str, pipeline_type: Optional[str] = None) -> Optional[str]:
         _LOGGER.warning("Not implemented yet for this backend")
 
     def clear_status(
-        self, record_identifier: str = None, flag_names: List[str] = None
+        self, sample_name: str = None, flag_names: List[str] = None
     ) -> List[Union[str, None]]:
         _LOGGER.warning("Not implemented yet for this backend")
 
     def set_status(
         self,
         status_identifier: str,
-        record_identifier: Optional[str] = None,
+        sample_name: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> None:
         _LOGGER.warning("Not implemented yet for this backend")
@@ -112,7 +110,7 @@ class PipestatBackend(ABC):
     def report(
         self,
         values: Dict[str, Any],
-        record_identifier: Optional[str] = None,
+        sample_name: Optional[str] = None,
         force_overwrite: bool = False,
         strict_type: bool = True,
         return_id: bool = False,
@@ -126,7 +124,7 @@ class PipestatBackend(ABC):
 
     def remove(
         self,
-        record_identifier: Optional[str] = None,
+        sample_name: Optional[str] = None,
         result_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> bool:
@@ -134,7 +132,7 @@ class PipestatBackend(ABC):
 
     def remove_record(
         self,
-        record_identifier: Optional[str] = None,
+        sample_name: Optional[str] = None,
         result_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> bool:

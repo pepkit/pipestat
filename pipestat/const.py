@@ -20,8 +20,8 @@ __all__ = [
     "ENV_VARS",
     "LOCK_PREFIX",
     "PKG_NAME",
-    "RECORD_ID",
-    "RECORD_ID_KEY",
+    "SAMPLE_NAME",
+    "SAMPLE_NAME_ID_KEY",
     "SCHEMA_DESC_KEY",
     "SCHEMA_PROP_KEY",
     "SCHEMA_TYPE_KEY",
@@ -53,7 +53,7 @@ PKG_NAME = "pipestat"
 LOCK_PREFIX = "lock."
 
 # object attribute names
-RECORD_ID_KEY = "_record_id"
+SAMPLE_NAME_ID_KEY = "_sample_name"
 
 # schema keys
 SCHEMA_PROP_KEY = "properties"
@@ -62,7 +62,7 @@ SCHEMA_DESC_KEY = "description"
 SCHEMA_ITEMS_KEY = "items"
 
 # DB column names
-RECORD_ID = "record_identifier"
+SAMPLE_NAME = "sample_name"
 STATUS = "status"
 
 CANONICAL_TYPES = {
@@ -91,7 +91,7 @@ ENV_VARS = {
     "results_file": "PIPESTAT_RESULTS_FILE",
     "schema": "PIPESTAT_RESULTS_SCHEMA",
     "status_schema": "PIPESTAT_SATUS_SCHEMA",
-    "record_identifier": "PIPESTAT_RECORD_ID",
+    "sample_name": "PIPESTAT_SAMPLE_NAME",
 }
 
 CLASSES_BY_TYPE = {

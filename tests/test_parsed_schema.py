@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import *
 import pytest
 import oyaml
-from pipestat.const import RECORD_ID, STATUS
+from pipestat.const import SAMPLE_NAME, STATUS
 from pipestat.exceptions import SchemaError
 from pipestat.parsed_schema import (
     NULL_MAPPING_VALUE,
@@ -228,10 +228,10 @@ SIMPLE_PROJECT_DATA = [("pct", {"type": "number", "description": "percentage"})]
         ]
         for extra in [
             [("id", {"type": "string", "description": "identifier"})],
-            [(RECORD_ID, {"type": "string", "description": "identifier"})],
+            [(SAMPLE_NAME, {"type": "string", "description": "identifier"})],
             [
                 ("id", {"type": "string", "description": "identifier"}),
-                (RECORD_ID, {"type": "string", "description": "identifier"}),
+                (SAMPLE_NAME, {"type": "string", "description": "identifier"}),
             ],
         ]
     ],

@@ -121,7 +121,7 @@ class TestPipestatManagerInstantiation:
                 "sample1": {"number_of_things": 2},
             }
             for k, v in val_dict.items():
-                psm.report(record_identifier=k, values=v, force_overwrite=True)
+                psm.report(sample_name=k, values=v, force_overwrite=True)
             # Check that a new pipestatmanager object can correctly read the results_file.
             psm2 = PipestatManager(
                 results_file_path=results_file_path,
@@ -142,5 +142,5 @@ class TestPipestatManagerInstantiation:
                 "sample1": {"number_of_things": 2},
             }
             for k, v in val_dict.items():
-                psm.report(record_identifier=k, values=v, force_overwrite=True)
+                psm.report(sample_name=k, values=v, force_overwrite=True)
             assert f"Records count: {len(psm.backend._data['test_pipe'])}" in str(psm)

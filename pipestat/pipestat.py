@@ -38,7 +38,7 @@ class PipestatManager(dict):
 
     def __init__(
         self,
-        record_identifier: Optional[str] = None,
+        sample_name: Optional[str] = None,
         schema_path: Optional[str] = None,
         results_file_path: Optional[str] = None,
         database_only: Optional[bool] = True,
@@ -51,7 +51,7 @@ class PipestatManager(dict):
         """
         Initialize the PipestatManager object
 
-        :param str record_identifier: record identifier to report for. This
+        :param str sample_name: record identifier to report for. This
             creates a weak bound to the record, which can be overridden in
             this object method calls
         :param str schema_path: path to the output schema that formalizes
@@ -82,8 +82,12 @@ class PipestatManager(dict):
 
         self[PIPELINE_NAME] = self.schema.pipeline_name
 
-        self[RECORD_ID_KEY] = self[CONFIG_KEY].priority_get(
-            "record_identifier", env_var=ENV_VARS["record_identifier"], override=record_identifier
+        self[PROJECT_NAME] = self[CONFIG_KEY].priority_get(
+            "project_name", env_var=ENV_VARS["project_name"]
+        )
+
+        self[SAMPLE_NAME_ID_KEY] = self[CONFIG_KEY].priority_get(
+            "sample_name", env_var=ENV_VARS["sample_name"], override=sample_name
         )
         self[DB_ONLY_KEY] = database_only
         self[PIPELINE_TYPE] = self[CONFIG_KEY].priority_get(
@@ -112,7 +116,7 @@ class PipestatManager(dict):
             self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path)
             self.backend = FileBackend(
                 self[FILE_KEY],
-                record_identifier,
+                sample_name,
                 schema_path,
                 self[PIPELINE_NAME],
                 self[PIPELINE_TYPE],
@@ -135,8 +139,9 @@ class PipestatManager(dict):
             self._show_db_logs = show_db_logs
 
             self.backend = DBBackend(
-                record_identifier,
+                sample_name,
                 schema_path,
+                self[PROJECT_NAME],
                 self[PIPELINE_NAME],
                 config_file,
                 config_dict,
@@ -170,18 +175,18 @@ class PipestatManager(dict):
 
     @require_backend
     def clear_status(
-        self, record_identifier: str = None, flag_names: List[str] = None
+        self, sample_name: str = None, flag_names: List[str] = None
     ) -> List[Union[str, None]]:
         """
         Remove status flags
 
-        :param str record_identifier: name of the record to remove flags for
+        :param str sample_name: name of the record to remove flags for
         :param Iterable[str] flag_names: Names of flags to remove, optional; if
             unspecified, all schema-defined flag names will be used.
         :return List[str]: Collection of names of flags removed
         """
-        r_id = self._strict_record_id(record_identifier)
-        return self.backend.clear_status(record_identifier=r_id, flag_names=flag_names)
+        r_id = self._strict_record_id(sample_name)
+        return self.backend.clear_status(sample_name=r_id, flag_names=flag_names)
 
     @require_backend
     def count_records(self, pipeline_type: Optional[str] = None) -> int:
@@ -195,17 +200,17 @@ class PipestatManager(dict):
 
     @require_backend
     def get_status(
-        self, record_identifier: str = None, pipeline_type: Optional[str] = None
+        self, sample_name: str = None, pipeline_type: Optional[str] = None
     ) -> Optional[str]:
         """
         Get the current pipeline status
-        :param str record_identifier: name of the record
+        :param str sample_name: name of the record
         :param str pipeline_type: "sample" or "project"
         :return str: status identifier, like 'running'
         """
-        r_id = self._strict_record_id(record_identifier)
+        r_id = self._strict_record_id(sample_name)
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        return self.backend.get_status(record_identifier=r_id, pipeline_type=pipeline_type)
+        return self.backend.get_status(sample_name=r_id, pipeline_type=pipeline_type)
 
     def process_schema(self, schema_path):
         # Load pipestat schema in two parts: 1) main and 2) status
@@ -269,7 +274,7 @@ class PipestatManager(dict):
     @require_backend
     def remove(
         self,
-        record_identifier: str = None,
+        sample_name: str = None,
         result_identifier: str = None,
         pipeline_type: Optional[str] = None,
     ) -> bool:
@@ -279,7 +284,7 @@ class PipestatManager(dict):
         If no result ID specified or last result is removed, the entire record
         will be removed.
 
-        :param str record_identifier: unique identifier of the record
+        :param str sample_name: unique identifier of the record
         :param str result_identifier: name of the result to be removed or None
              if the record should be removed.
         :param str pipeline_type: "sample" or "project"
@@ -288,14 +293,14 @@ class PipestatManager(dict):
 
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
 
-        r_id = self._strict_record_id(record_identifier)
-        return self.backend.remove(record_identifier, result_identifier, pipeline_type)
+        r_id = self._strict_record_id(sample_name)
+        return self.backend.remove(sample_name, result_identifier, pipeline_type)
 
     @require_backend
     def report(
         self,
         values: Dict[str, Any],
-        record_identifier: str = None,
+        sample_name: str = None,
         force_overwrite: bool = False,
         strict_type: bool = True,
         return_id: bool = False,
@@ -305,8 +310,8 @@ class PipestatManager(dict):
         Report a result.
 
         :param Dict[str, any] values: dictionary of result-value pairs
-        :param str record_identifier: unique identifier of the record, value
-            in 'record_identifier' column to look for to determine if the record
+        :param str sample_name: unique identifier of the record, value
+            in 'sample_name' column to look for to determine if the record
             already exists
         :param bool force_overwrite: whether to overwrite the existing record
         :param bool strict_type: whether the type of the reported values should
@@ -323,7 +328,7 @@ class PipestatManager(dict):
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
         values = deepcopy(values)
 
-        record_identifier = self._strict_record_id(record_identifier)
+        sample_name = self._strict_record_id(sample_name)
         if return_id and self[FILE_KEY] is not None:
             raise NotImplementedError(
                 "There is no way to return the updated object ID while using "
@@ -338,22 +343,22 @@ class PipestatManager(dict):
 
         _LOGGER.warning("Writing to locked data...")
 
-        self.backend.report(values, record_identifier, pipeline_type, force_overwrite)
+        self.backend.report(values, sample_name, pipeline_type, force_overwrite)
 
         nl = "\n"
         _LOGGER.warning("TEST HERE")
         rep_strs = [f"{k}: {v}" for k, v in values.items()]
         _LOGGER.info(
-            f"Reported records for '{record_identifier}' in '{self[PIPELINE_NAME]}' "
+            f"Reported records for '{sample_name}' in '{self[PIPELINE_NAME]}' "
             f"project_name:{nl} - {(nl + ' - ').join(rep_strs)}"
         )
-        _LOGGER.info(record_identifier, values)
+        _LOGGER.info(sample_name, values)
         return True if not return_id else updated_ids
 
     @require_backend
     def retrieve(
         self,
-        record_identifier: Optional[str] = None,
+        sample_name: Optional[str] = None,
         result_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> Union[Any, Dict[str, Any]]:
@@ -363,7 +368,7 @@ class PipestatManager(dict):
         If no result ID specified, results for the entire record will
         be returned.
 
-        :param str record_identifier: unique identifier of the record
+        :param str sample_name: unique identifier of the record
         :param str result_identifier: name of the result to be retrieved
         :param str pipeline_type: "sample" or "project"
         :return any | Dict[str, any]: a single result or a mapping with all the
@@ -371,14 +376,14 @@ class PipestatManager(dict):
         """
 
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        record_identifier = record_identifier or self.record_identifier
-        return self.backend.retrieve(record_identifier, result_identifier, pipeline_type)
+        sample_name = sample_name or self.sample_name
+        return self.backend.retrieve(sample_name, result_identifier, pipeline_type)
 
     @require_backend
     def set_status(
         self,
         status_identifier: str,
-        record_identifier: str = None,
+        sample_name: str = None,
         pipeline_type: Optional[str] = None,
     ) -> None:
         """
@@ -390,12 +395,12 @@ class PipestatManager(dict):
 
         :param str status_identifier: status to set, one of statuses defined
             in the status schema
-        :param str record_identifier: record identifier to set the
+        :param str sample_name: record identifier to set the
             pipeline status for
         :param str pipeline_type: "sample" or "project"
         """
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        self.backend.set_status(status_identifier, record_identifier, pipeline_type)
+        self.backend.set_status(status_identifier, sample_name, pipeline_type)
 
     def _get_attr(self, attr: str) -> Any:
         """
@@ -415,8 +420,8 @@ class PipestatManager(dict):
         """
         if forced_value is not None:
             return forced_value
-        if self.record_identifier is not None:
-            return self.record_identifier
+        if self.sample_name is not None:
+            return self.sample_name
         raise PipestatError(
             f"You must provide the record identifier you want to perform "
             f"the action on. Either in the {self.__class__.__name__} "
@@ -498,13 +503,13 @@ class PipestatManager(dict):
         return self.count_records()
 
     @property
-    def record_identifier(self) -> str:
+    def sample_name(self) -> str:
         """
         Unique identifier of the record
 
         :return str: unique identifier of the record
         """
-        return self.get(RECORD_ID_KEY)
+        return self.get(SAMPLE_NAME_ID_KEY)
 
     @property
     def result_schemas(self) -> Dict[str, Any]:

@@ -33,7 +33,7 @@ class TestDatabaseOnly:
             try:
                 PipestatManager(
                     schema_path=schema_file_path,
-                    record_identifier="irrelevant",
+                    sample_name="irrelevant",
                     database_only=True,
                     config_file=config_file_path,
                 )
@@ -58,7 +58,7 @@ class TestDatabaseOnly:
         with ContextManagerDBTesting(DB_URL):
             psm = PipestatManager(
                 schema_path=schema_file_path,
-                record_identifier="constant_record_id",
+                sample_name="constant_record_id",
                 database_only=True,
                 config_file=config_file_path,
             )
@@ -85,7 +85,7 @@ class TestDatabaseOnly:
         with ContextManagerDBTesting(DB_URL):
             psm = PipestatManager(
                 schema_path=schema_with_project_with_samples_without_status,
-                record_identifier="constant_record_id",
+                sample_name="constant_record_id",
                 database_only=True,
                 config_file=config_file_path,
             )
@@ -162,7 +162,7 @@ class TestDatabaseOnly:
             REC_ID = "constant_record_id"
             psm = PipestatManager(
                 schema_path=recursive_schema_file_path,
-                record_identifier=REC_ID,
+                sample_name=REC_ID,
                 database_only=True,
                 config_file=config_file_path,
             )
@@ -221,7 +221,7 @@ class TestDatabaseOnly:
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = PipestatManager(**args)
             result = psm.backend.select(
-                filter_conditions=[(RECORD_ID, "eq", rec_id)],
+                filter_conditions=[(SAMPLE_NAME, "eq", rec_id)],
                 columns=[res_id],
                 limit=limit,
             )
