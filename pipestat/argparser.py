@@ -79,10 +79,10 @@ def build_argparser(desc):
         if cmd != STATUS_CMD:
             p.add_argument(
                 "-n",
-                "--namespace",
+                "--project-name",
                 type=str,
                 metavar="N",
-                help=f"Name of the pipeline to report result for. {_env_txt('namespace')}",
+                help=f"Name of the pipeline to report result for. {_env_txt('project_name')}",
             )
         sps[cmd] = p
 
@@ -94,10 +94,10 @@ def build_argparser(desc):
         status_sps[cmd] = add_subparser(cmd, desc, status_subparsers)
         status_sps[cmd].add_argument(
             "-n",
-            "--namespace",
+            "--project-name",
             type=str,
             metavar="N",
-            help=f"Name of the pipeline to report result for. {_env_txt('namespace')}",
+            help=f"Name of the pipeline to report result for. {_env_txt('project_name')}",
         )
         if cmd == STATUS_SET_CMD:
             status_sps[cmd].add_argument(
