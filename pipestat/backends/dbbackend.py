@@ -344,6 +344,8 @@ class DBBackend(PipestatBackend):
         pipeline_type = pipeline_type or self.pipeline_type
         sample_name = sample_name or self.sample_name
         result_identifiers = list(values.keys())
+        if self.parsed_schema is None:
+            raise SchemaNotFoundError("DB Backend report results requires schema")
         self.assert_results_defined(results=result_identifiers, pipeline_type=pipeline_type)
 
         table_name = self.get_table_name(pipeline_type=pipeline_type)

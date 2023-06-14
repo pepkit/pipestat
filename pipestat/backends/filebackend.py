@@ -315,7 +315,8 @@ class FileBackend(PipestatBackend):
         sample_name = sample_name or self.sample_name
 
         result_identifiers = list(values.keys())
-        self.assert_results_defined(results=result_identifiers, pipeline_type=pipeline_type)
+        if self.parsed_schema is not None:
+            self.assert_results_defined(results=result_identifiers, pipeline_type=pipeline_type)
         existing = self.list_results(
             sample_name=sample_name,
             restrict_to=result_identifiers,

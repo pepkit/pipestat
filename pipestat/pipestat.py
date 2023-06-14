@@ -344,12 +344,13 @@ class PipestatManager(dict):
                 "There is no way to return the updated object ID while using "
                 "results file as the object backend"
             )
-        if self.schema is None:
-            raise SchemaNotFoundError("report results")
         updated_ids = False
         result_identifiers = list(values.keys())
-        for r in result_identifiers:
-            validate_type(value=values[r], schema=self.result_schemas[r], strict_type=strict_type)
+        if self.schema is not None:
+            for r in result_identifiers:
+                validate_type(
+                    value=values[r], schema=self.result_schemas[r], strict_type=strict_type
+                )
 
         _LOGGER.warning("Writing to locked data...")
 
