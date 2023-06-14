@@ -392,12 +392,13 @@ class FileBackend(PipestatBackend):
         """
         pipeline_type = pipeline_type or self.pipeline_type
         r_id = sample_name or self.sample_name
-        known_status_identifiers = self.status_schema.keys()
-        if status_identifier not in known_status_identifiers:
-            raise PipestatError(
-                f"'{status_identifier}' is not a defined status identifier. "
-                f"These are allowed: {known_status_identifiers}"
-            )
+        if self.status_schema is not None:
+            known_status_identifiers = self.status_schema.keys()
+            if status_identifier not in known_status_identifiers:
+                raise PipestatError(
+                    f"'{status_identifier}' is not a defined status identifier. "
+                    f"These are allowed: {known_status_identifiers}"
+                )
         prev_status = self.get_status(r_id)
 
         # TODO: manage project-level flag here.

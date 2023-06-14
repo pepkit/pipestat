@@ -1,4 +1,4 @@
-pipeline_name: test_pipe
+pipeline_name: default_pipeline_name
 project:
   number_of_things:
     type: integer

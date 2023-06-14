@@ -9,6 +9,7 @@ from pipestat import PipestatManager
 from pipestat.exceptions import *
 from pipestat.parsed_schema import SCHEMA_PIPELINE_NAME_KEY
 from tempfile import NamedTemporaryFile
+from .conftest import STANDARD_TEST_PIPE_ID
 
 
 class TestPipestatManagerInstantiation:
@@ -26,13 +27,14 @@ class TestPipestatManagerInstantiation:
         """Object constructor works with database as backend"""
         assert isinstance(PipestatManager(config_file=config_file_path), PipestatManager)
 
-    def test_schema_is_required_to_create_manager(self, results_file_path):
+    def test_schema_is_required_to_create_manager(self, config_no_schema_file_path):
         """
         Object constructor raises exception if schema is not provided.
         """
         # ToDo this test may be redundant with the modified test_report_requires_schema
         with pytest.raises(SchemaNotFoundError):
-            psm = PipestatManager(results_file_path=results_file_path)
+            # psm = PipestatManager(results_file_path=results_file_path)
+            psm = PipestatManager(config_file=config_no_schema_file_path)
 
     def test_schema_recursive_custom_type_conversion(
         self, recursive_schema_file_path, results_file_path
@@ -127,7 +129,7 @@ class TestPipestatManagerInstantiation:
                 results_file_path=results_file_path,
                 schema_path=schema_file_path,
             )
-            assert "test_pipe" in psm2.backend._data
+            assert STANDARD_TEST_PIPE_ID in psm2.backend._data
 
     def test_str_representation(self, results_file_path, schema_file_path):
         """Test string representation identifies number of records"""
@@ -143,4 +145,4 @@ class TestPipestatManagerInstantiation:
             }
             for k, v in val_dict.items():
                 psm.report(sample_name=k, values=v, force_overwrite=True)
-            assert f"Records count: {len(psm.backend._data['test_pipe'])}" in str(psm)
+            assert f"Records count: {len(psm.backend._data[STANDARD_TEST_PIPE_ID])}" in str(psm)

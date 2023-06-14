@@ -39,7 +39,7 @@ class DBBackend(PipestatBackend):
         """
         _LOGGER.warning("Initialize DBBackend")
         self.project_name = project_name
-        self.pipeline_name =pipeline_name
+        self.pipeline_name = pipeline_name
         self.pipeline_type = pipeline_type or "sample"
         self.sample_name = sample_name
         self.parsed_schema = parsed_schema
@@ -256,7 +256,9 @@ class DBBackend(PipestatBackend):
             ORMClass = self.get_orm(table_name=table_name)
             if self.check_record_exists(sample_name=sample_name, table_name=table_name):
                 with self.session as s:
-                    records = s.query(ORMClass).filter(getattr(ORMClass, SAMPLE_NAME) == sample_name)
+                    records = s.query(ORMClass).filter(
+                        getattr(ORMClass, SAMPLE_NAME) == sample_name
+                    )
 
                     if rm_record is True:
                         self.remove_record(

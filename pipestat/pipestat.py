@@ -80,7 +80,9 @@ class PipestatManager(dict):
 
         self.process_schema(schema_path)
 
-        self[PIPELINE_NAME] = self.schema.pipeline_name
+        self[PIPELINE_NAME] = (
+            self.schema.pipeline_name if self.schema is not None else "default_pipeline_name"
+        )
 
         self[PROJECT_NAME] = self[CONFIG_KEY].priority_get(
             "project_name", env_var=ENV_VARS["project_name"]
@@ -127,6 +129,8 @@ class PipestatManager(dict):
 
         else:  # database backend
             _LOGGER.debug("Determined database as backend")
+            if self[SCHEMA_KEY] is None:
+                raise SchemaNotFoundError("Output schema must be supplied for DB backends.")
             if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
                 raise NoBackendSpecifiedError()
             try:
@@ -219,21 +223,27 @@ class PipestatManager(dict):
         )
 
         if self._schema_path is None:
-            raise SchemaNotFoundError("PipestatManager creation failed; no schema")
-
-        # Main schema
-        schema_to_read = mk_abs_via_cfg(self._schema_path, self.config_path)
-        parsed_schema = ParsedSchema(schema_to_read)
-        self[SCHEMA_KEY] = parsed_schema
-
-        # Status schema
-        self[STATUS_SCHEMA_KEY] = parsed_schema.status_data
-        if not self[STATUS_SCHEMA_KEY]:
-            self[STATUS_SCHEMA_SOURCE_KEY], self[STATUS_SCHEMA_KEY] = read_yaml_data(
-                path=STATUS_SCHEMA, what="default status schema"
-            )
+            # print('DEBUG')
+            _LOGGER.warning("No schema supplied.")
+            self[SCHEMA_KEY] = None
+            self[STATUS_SCHEMA_KEY] = None
+            self[STATUS_SCHEMA_SOURCE_KEY] = None
+            # return None
+            # raise SchemaNotFoundError("PipestatManager creation failed; no schema")
         else:
-            self[STATUS_SCHEMA_SOURCE_KEY] = schema_to_read
+            # Main schema
+            schema_to_read = mk_abs_via_cfg(self._schema_path, self.config_path)
+            parsed_schema = ParsedSchema(schema_to_read)
+            self[SCHEMA_KEY] = parsed_schema
+
+            # Status schema
+            self[STATUS_SCHEMA_KEY] = parsed_schema.status_data
+            if not self[STATUS_SCHEMA_KEY]:
+                self[STATUS_SCHEMA_SOURCE_KEY], self[STATUS_SCHEMA_KEY] = read_yaml_data(
+                    path=STATUS_SCHEMA, what="default status schema"
+                )
+            else:
+                self[STATUS_SCHEMA_SOURCE_KEY] = schema_to_read
 
     def validate_schema(self) -> None:
         """

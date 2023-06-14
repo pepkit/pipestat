@@ -8,7 +8,7 @@ from pipestat.helpers import read_yaml_data
 
 BACKEND_KEY_DB = "db"
 BACKEND_KEY_FILE = "file"
-STANDARD_TEST_PIPE_ID = "test_pipe"
+STANDARD_TEST_PIPE_ID = "default_pipeline_name"
 
 DB_URL = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
 

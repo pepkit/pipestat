@@ -163,8 +163,9 @@ class TestReporting:
                 else {"results_file_path": results_file_path}
             )
             args.update(backend_data)
-            with pytest.raises(SchemaNotFoundError):
-                psm = PipestatManager(**args)
+            if backend == "db":
+                with pytest.raises(SchemaNotFoundError):
+                    psm = PipestatManager(**args)
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],
