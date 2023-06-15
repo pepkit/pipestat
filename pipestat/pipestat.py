@@ -47,6 +47,7 @@ class PipestatManager(dict):
         flag_file_dir: Optional[str] = None,
         show_db_logs: bool = False,
         pipeline_type: Optional[str] = None,
+        mdlog: bool = False,
     ):
         """
         Initialize the PipestatManager object
@@ -102,6 +103,14 @@ class PipestatManager(dict):
             ),
             self._config_path,
         )
+
+        if mdlog is True:
+            print('debug')
+            #check if user supplied file path, or default to results file.
+            #if nothing is supplied and this is set to true, warn user and set to false
+            self._init_md_log()
+            #CREATE LOG FILE
+            #self.pipeline_log_file = pipeline_filepath(self, suffix="_log.md")
 
         if self[FILE_KEY]:  # file backend
             _LOGGER.debug(f"Determined file as backend: {results_file_path}")
@@ -315,6 +324,7 @@ class PipestatManager(dict):
         strict_type: bool = True,
         return_id: bool = False,
         pipeline_type: Optional[str] = None,
+        mdlog: bool = False,
     ) -> Union[bool, int]:
         """
         Report a result.
@@ -354,7 +364,17 @@ class PipestatManager(dict):
 
         _LOGGER.warning("Writing to locked data...")
 
+
         self.backend.report(values, sample_name, pipeline_type, force_overwrite)
+
+        mdlog = True
+        if mdlog is True:
+            for key, value in values.items():
+                print('debug')
+                if type(value) is not dict or list:
+                    message_markdown = "\n> `{key}`\t{value}\t_RES_".format(key=key, value=value)
+                    print(message_markdown)
+            #write to md file here.
 
         nl = "\n"
         _LOGGER.warning("TEST HERE")
@@ -421,6 +441,14 @@ class PipestatManager(dict):
         :return:
         """
         return self.get(attr)
+
+    def _init_md_log(self, filepath: Optional[str] = None) -> str:
+
+        #take in given file path
+        #check if md file exists
+        #if not, create md log file
+
+        return filepath
 
     def _strict_record_id(self, forced_value: str = None) -> str:
         """
