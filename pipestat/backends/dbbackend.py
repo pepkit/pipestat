@@ -33,6 +33,7 @@ class DBBackend(PipestatBackend):
         status_schema: Optional[str] = None,
         db_url: Optional[str] = None,
         status_schema_source: Optional[dict] = None,
+        log_file_path: Optional[str] = None,
     ):
         """
         Class representing a Database backend
@@ -47,6 +48,7 @@ class DBBackend(PipestatBackend):
         self.db_url = db_url
         self.show_db_logs = show_db_logs
         self.status_schema_source = status_schema_source
+        self.log_file_path = log_file_path
 
         self.orms = self._create_orms()
         SQLModel.metadata.create_all(self._engine)
@@ -385,6 +387,20 @@ class DBBackend(PipestatBackend):
                     s.commit()
                     returned_id = record_to_update.id
             _LOGGER.warning(returned_id)
+            if self.log_file_path is not None:
+                self.log_to_md(
+                    pipeline_name=self.pipeline_name,
+                    sample_name=sample_name,
+                    values=values,
+                    filepath=self.log_file_path,
+                )
+            nl = "\n"
+            rep_strs = [f"{k}: {v}" for k, v in values.items()]
+            _LOGGER.info(
+                f"Reported records for '{sample_name}' in '{self.pipeline_name}' "
+                f"project_name:{nl} - {(nl + ' - ').join(rep_strs)}"
+            )
+            _LOGGER.info(sample_name, values)
             return returned_id
         except Exception as e:
             _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")

@@ -47,7 +47,8 @@ class PipestatManager(dict):
         flag_file_dir: Optional[str] = None,
         show_db_logs: bool = False,
         pipeline_type: Optional[str] = None,
-        mdlog: bool = False,
+        log_file: bool = False,
+        log_file_path: Optional[str] = None,
     ):
         """
         Initialize the PipestatManager object
@@ -66,6 +67,8 @@ class PipestatManager(dict):
         :param str flag_file_dir: path to directory containing flag files
         :param bool show_db_logs: Defaults to False, toggles showing database logs
         :param str pipeline_type: "sample" or "project"
+        :param bool log_file: toggles reporting results in md format to a local results_log.md
+        :param str log_file_path: path to md log file
         """
 
         super(PipestatManager, self).__init__()
@@ -104,13 +107,13 @@ class PipestatManager(dict):
             self._config_path,
         )
 
-        if mdlog is True:
-            print('debug')
-            #check if user supplied file path, or default to results file.
-            #if nothing is supplied and this is set to true, warn user and set to false
-            self._init_md_log()
-            #CREATE LOG FILE
-            #self.pipeline_log_file = pipeline_filepath(self, suffix="_log.md")
+        self[LOG_FILE] = log_file
+        if self[LOG_FILE] is True:
+            self[LOG_FILE_PATH] = init_md_log(filepath=log_file_path)
+        else:
+            if log_file_path is not None:
+                _LOGGER.warning("Logging file path provided but log_file = False.")
+            self[LOG_FILE_PATH] = None
 
         if self[FILE_KEY]:  # file backend
             _LOGGER.debug(f"Determined file as backend: {results_file_path}")
@@ -134,6 +137,7 @@ class PipestatManager(dict):
                 self[SCHEMA_KEY],
                 self[STATUS_SCHEMA_KEY],
                 self[STATUS_FILE_DIR],
+                self[LOG_FILE_PATH],
             )
 
         else:  # database backend
@@ -164,6 +168,7 @@ class PipestatManager(dict):
                 self[STATUS_SCHEMA_KEY],
                 self[DB_URL],
                 self[STATUS_SCHEMA_SOURCE_KEY],
+                self[LOG_FILE_PATH],
             )
 
     def __str__(self):
@@ -364,26 +369,8 @@ class PipestatManager(dict):
 
         _LOGGER.warning("Writing to locked data...")
 
-
         self.backend.report(values, sample_name, pipeline_type, force_overwrite)
 
-        mdlog = True
-        if mdlog is True:
-            for key, value in values.items():
-                print('debug')
-                if type(value) is not dict or list:
-                    message_markdown = "\n> `{key}`\t{value}\t_RES_".format(key=key, value=value)
-                    print(message_markdown)
-            #write to md file here.
-
-        nl = "\n"
-        _LOGGER.warning("TEST HERE")
-        rep_strs = [f"{k}: {v}" for k, v in values.items()]
-        _LOGGER.info(
-            f"Reported records for '{sample_name}' in '{self[PIPELINE_NAME]}' "
-            f"project_name:{nl} - {(nl + ' - ').join(rep_strs)}"
-        )
-        _LOGGER.info(sample_name, values)
         return True if not return_id else updated_ids
 
     @require_backend
@@ -441,14 +428,6 @@ class PipestatManager(dict):
         :return:
         """
         return self.get(attr)
-
-    def _init_md_log(self, filepath: Optional[str] = None) -> str:
-
-        #take in given file path
-        #check if md file exists
-        #if not, create md log file
-
-        return filepath
 
     def _strict_record_id(self, forced_value: str = None) -> str:
         """

@@ -237,3 +237,26 @@ def init_generic_config():
         print(f"Generic configuration file already exists `{dest_file}`. Skipping creation..")
 
     return True
+
+
+def init_md_log(filepath) -> str:
+    """
+    Check if user supplied a filepath to log file, if not, create result_log.md
+    :param str filepath: path to log file
+    """
+
+    if not filepath:
+        try:
+            os.makedirs("log")
+        except FileExistsError:
+            pass
+        # Destination one level down from CWD in log folder
+        filepath = os.path.join(os.getcwd(), "log", "result_log.md")
+    if not os.path.exists(filepath):
+        with open(filepath, "w") as file:
+            pass
+        print(f"Markdown log file successfully created at: {filepath}")
+    else:
+        print(f"Markdown log file already exists at `{filepath}`. Skipping creation..")
+
+    return filepath

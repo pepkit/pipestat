@@ -27,6 +27,7 @@ class FileBackend(PipestatBackend):
         parsed_schema: Optional[str] = None,
         status_schema: Optional[str] = None,
         status_file_dir: Optional[str] = None,
+        log_file_path: Optional[str] = None,
     ):
         """
         Class representing a File backend
@@ -40,6 +41,7 @@ class FileBackend(PipestatBackend):
         self.parsed_schema = parsed_schema
         self.status_schema = status_schema
         self.status_file_dir = status_file_dir
+        self.log_file_path = log_file_path
 
         if not os.path.exists(self.results_file_path):
             _LOGGER.debug(
@@ -335,9 +337,24 @@ class FileBackend(PipestatBackend):
         for res_id, val in values.items():
             self._data[self.pipeline_name][pipeline_type][sample_name][res_id] = val
 
+        if self.log_file_path is not None:
+            self.log_to_md(
+                pipeline_name=self.pipeline_name,
+                sample_name=sample_name,
+                values=values,
+                filepath=self.log_file_path,
+            )
+
         with self._data as locked_data:
             locked_data.write()
 
+        nl = "\n"
+        rep_strs = [f"{k}: {v}" for k, v in values.items()]
+        _LOGGER.info(
+            f"Reported records for '{sample_name}' in '{self.pipeline_name}' "
+            f"project_name:{nl} - {(nl + ' - ').join(rep_strs)}"
+        )
+        _LOGGER.info(sample_name, values)
         _LOGGER.warning(self._data)
 
     def retrieve(

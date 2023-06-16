@@ -137,3 +137,31 @@ class PipestatBackend(ABC):
         pipeline_type: Optional[str] = None,
     ) -> bool:
         _LOGGER.warning("Not implemented yet for this backend")
+
+    def log_to_md(self, pipeline_name, sample_name, values, filepath) -> None:
+        if os.path.exists(filepath):
+            for key, value in values.items():
+                if type(value) is not dict and not list:
+                    message_markdown = (
+                        "\n> {pipeline_name}\t{sample_name}\t`{key}`\t{value}\t_RES_".format(
+                            pipeline_name=pipeline_name,
+                            sample_name=sample_name,
+                            key=key,
+                            value=value,
+                        )
+                    )
+                else:
+                    # Encapsulate value in backticks to make appear as code block in markdown
+                    message_markdown = (
+                        "\n> {pipeline_name}\t{sample_name}\t`{key}`\t```{value}```\t_RES_".format(
+                            pipeline_name=pipeline_name,
+                            sample_name=sample_name,
+                            key=key,
+                            value=value,
+                        )
+                    )
+                with open(filepath, "a") as file:
+                    file.write(message_markdown + "\n")
+                    pass
+        else:
+            _LOGGER.warning("Log file does not exist.")
