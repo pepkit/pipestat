@@ -425,6 +425,12 @@ class PipestatManager(dict):
         return self.get(attr)
 
     def _record_identifier(self, override: str = None) -> str:
+        """
+        Get record identifier from the outer source or stored with this object
+
+        :param str override: return this value
+        :return str: self.sample_name
+        """
         if override is not None:
             return override
         if self.sample_name is not None:
