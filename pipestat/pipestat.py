@@ -189,7 +189,7 @@ class PipestatManager(dict):
             unspecified, all schema-defined flag names will be used.
         :return List[str]: Collection of names of flags removed
         """
-        r_id = self.record_identifier(sample_name)
+        r_id = self._record_identifier(sample_name)
         return self.backend.clear_status(sample_name=r_id, flag_names=flag_names)
 
     @require_backend
