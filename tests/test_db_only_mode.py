@@ -5,6 +5,7 @@ from pipestat.const import *
 from .conftest import DB_URL
 
 from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel.main import default_registry
 
 
 class ContextManagerDBTesting:
@@ -23,6 +24,7 @@ class ContextManagerDBTesting:
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         SQLModel.metadata.drop_all(self.engine)
+        default_registry.dispose()
         self.connection.close()
 
 
