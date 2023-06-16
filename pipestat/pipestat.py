@@ -189,7 +189,7 @@ class PipestatManager(dict):
             unspecified, all schema-defined flag names will be used.
         :return List[str]: Collection of names of flags removed
         """
-        r_id = self._strict_record_id(sample_name)
+        r_id = self.record_identifier(sample_name)
         return self.backend.clear_status(sample_name=r_id, flag_names=flag_names)
 
     @require_backend
@@ -212,7 +212,7 @@ class PipestatManager(dict):
         :param str pipeline_type: "sample" or "project"
         :return str: status identifier, like 'running'
         """
-        r_id = self._strict_record_id(sample_name)
+        r_id = self._record_identifier(sample_name)
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
         return self.backend.get_status(sample_name=r_id, pipeline_type=pipeline_type)
 
@@ -303,8 +303,8 @@ class PipestatManager(dict):
 
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
 
-        r_id = self._strict_record_id(sample_name)
-        return self.backend.remove(sample_name, result_identifier, pipeline_type)
+        r_id = self._record_identifier(sample_name)
+        return self.backend.remove(sample_name=r_id, result_identifier=result_identifier, pipeline_type=pipeline_type)
 
     @require_backend
     def report(
@@ -338,7 +338,7 @@ class PipestatManager(dict):
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
         values = deepcopy(values)
 
-        sample_name = self._strict_record_id(sample_name)
+        sample_name = self._record_identifier(sample_name)
         if return_id and self[FILE_KEY] is not None:
             raise NotImplementedError(
                 "There is no way to return the updated object ID while using "
@@ -422,15 +422,9 @@ class PipestatManager(dict):
         """
         return self.get(attr)
 
-    def _strict_record_id(self, forced_value: str = None) -> str:
-        """
-        Get record identifier from the outer source or stored with this object
-
-        :param str forced_value: return this value
-        :return str: record identifier
-        """
-        if forced_value is not None:
-            return forced_value
+    def _record_identifier(self, override: str = None) -> str:
+        if override is not None:
+            return override
         if self.sample_name is not None:
             return self.sample_name
         raise PipestatError(

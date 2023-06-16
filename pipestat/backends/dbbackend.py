@@ -191,7 +191,7 @@ class DBBackend(PipestatBackend):
         :return List[str] existing: if no result identifier specified, return all results for the record
         :return List[str]: results identifiers that exist
         """
-        # rid = self._strict_record_id(rid)
+
         table_name = self.get_table_name(pipeline_type=pipeline_type)
         rid = sample_name
         record = self.get_one_record(rid=rid, table_name=table_name)
@@ -584,7 +584,6 @@ class DBBackend(PipestatBackend):
         pipeline_type = pipeline_type or self.pipeline_type
         table_name = self.get_table_name(pipeline_type)
         sample_name = sample_name or self.sample_name
-        # r_id = self._strict_record_id(sample_name)
         known_status_identifiers = self.status_schema.keys()
         if status_identifier not in known_status_identifiers:
             raise PipestatError(

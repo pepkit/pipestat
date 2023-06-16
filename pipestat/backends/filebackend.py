@@ -114,7 +114,7 @@ class FileBackend(PipestatBackend):
         :param str sample_name: unique record identifier
         :return str | list[str] | None: path to the status flag file
         """
-        # r_id = self._strict_record_id(sample_name)
+
         r_id = sample_name
         regex = os.path.join(self.status_file_dir, f"{self.pipeline_name}_{r_id}_*.flag")
         file_list = glob(regex)
@@ -162,7 +162,7 @@ class FileBackend(PipestatBackend):
         :return str: absolute path to the flag file or None if object is
             backed by a DB
         """
-        # r_id = self._strict_record_id(sample_name)
+
         r_id = sample_name
         return os.path.join(
             self.status_file_dir, f"{self.pipeline_name}_{r_id}_{status_identifier}.flag"
