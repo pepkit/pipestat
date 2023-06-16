@@ -304,7 +304,9 @@ class PipestatManager(dict):
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
 
         r_id = self._record_identifier(sample_name)
-        return self.backend.remove(sample_name=r_id, result_identifier=result_identifier, pipeline_type=pipeline_type)
+        return self.backend.remove(
+            sample_name=r_id, result_identifier=result_identifier, pipeline_type=pipeline_type
+        )
 
     @require_backend
     def report(
