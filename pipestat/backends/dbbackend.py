@@ -33,7 +33,7 @@ class DBBackend(PipestatBackend):
         status_schema: Optional[str] = None,
         db_url: Optional[str] = None,
         status_schema_source: Optional[dict] = None,
-        log_file_path: Optional[str] = None,
+        result_format: Optional[str] = "default",
     ):
         """
         Class representing a Database backend
@@ -48,7 +48,7 @@ class DBBackend(PipestatBackend):
         self.db_url = db_url
         self.show_db_logs = show_db_logs
         self.status_schema_source = status_schema_source
-        self.log_file_path = log_file_path
+        self.result_format = result_format
 
         self.orms = self._create_orms()
         SQLModel.metadata.create_all(self._engine)
@@ -329,7 +329,8 @@ class DBBackend(PipestatBackend):
         sample_name: str,
         pipeline_type: Optional[str] = None,
         force_overwrite: bool = False,
-    ) -> None:
+        result_format: Optional[str] = None,
+    ) -> str:
         """
         Update the value of a result in a current namespace.
 
@@ -341,10 +342,13 @@ class DBBackend(PipestatBackend):
             to be reported
         :param str pipeline_type: "sample" or "project"
         :param bool force_overwrite: force overwriting of results, defaults to False.
+        :param str result_format: desired style for formatting reported results
+        :return str: return formatted string of the reported result
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
         sample_name = sample_name or self.sample_name
+        result_format = result_format or self.result_format
         result_identifiers = list(values.keys())
         if self.parsed_schema is None:
             raise SchemaNotFoundError("DB Backend report results requires schema")
@@ -373,8 +377,6 @@ class DBBackend(PipestatBackend):
                 with self.session as s:
                     s.add(new_record)
                     s.commit()
-                    returned_id = new_record.id
-
             else:
                 with self.session as s:
                     record_to_update = (
@@ -385,23 +387,12 @@ class DBBackend(PipestatBackend):
                     for result_id, result_value in values.items():
                         setattr(record_to_update, result_id, result_value)
                     s.commit()
-                    returned_id = record_to_update.id
-            _LOGGER.warning(returned_id)
-            if self.log_file_path is not None:
-                self.log_to_md(
-                    pipeline_name=self.pipeline_name,
-                    sample_name=sample_name,
-                    values=values,
-                    filepath=self.log_file_path,
-                )
-            nl = "\n"
-            rep_strs = [f"{k}: {v}" for k, v in values.items()]
-            _LOGGER.info(
-                f"Reported records for '{sample_name}' in '{self.pipeline_name}' "
-                f"project_name:{nl} - {(nl + ' - ').join(rep_strs)}"
+            return result_formatter(
+                result_format=result_format,
+                pipeline_name=self.pipeline_name,
+                sample_name=sample_name,
+                values=values,
             )
-            _LOGGER.info(sample_name, values)
-            return returned_id
         except Exception as e:
             _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")
             raise

@@ -27,7 +27,7 @@ class FileBackend(PipestatBackend):
         parsed_schema: Optional[str] = None,
         status_schema: Optional[str] = None,
         status_file_dir: Optional[str] = None,
-        log_file_path: Optional[str] = None,
+        result_format: Optional[str] = "default",
     ):
         """
         Class representing a File backend
@@ -41,7 +41,7 @@ class FileBackend(PipestatBackend):
         self.parsed_schema = parsed_schema
         self.status_schema = status_schema
         self.status_file_dir = status_file_dir
-        self.log_file_path = log_file_path
+        self.result_format = result_format
 
         if not os.path.exists(self.results_file_path):
             _LOGGER.debug(
@@ -298,8 +298,8 @@ class FileBackend(PipestatBackend):
         sample_name: str,
         pipeline_type: Optional[str] = None,
         force_overwrite: bool = False,
-        # strict_type: bool = True,
-    ) -> None:
+        result_format: Optional[str] = None,
+    ) -> str:
         """
         Update the value of a result in a current namespace.
 
@@ -311,10 +311,13 @@ class FileBackend(PipestatBackend):
         :param str sample_name: unique identifier of the record
         :param str pipeline_type: "sample" or "project"
         :param bool force_overwrite: Toggles force overwriting results, defaults to False
+        :param str result_format: desired style for formatting reported results
+        :return str: return formatted string of the reported result
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
         sample_name = sample_name or self.sample_name
+        result_format = result_format or self.result_format
 
         result_identifiers = list(values.keys())
         if self.parsed_schema is not None:
@@ -331,31 +334,19 @@ class FileBackend(PipestatBackend):
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
 
-        _LOGGER.warning("Writing to locked data...")
-
         self._data[self.pipeline_name][pipeline_type].setdefault(sample_name, {})
         for res_id, val in values.items():
             self._data[self.pipeline_name][pipeline_type][sample_name][res_id] = val
 
-        if self.log_file_path is not None:
-            self.log_to_md(
-                pipeline_name=self.pipeline_name,
-                sample_name=sample_name,
-                values=values,
-                filepath=self.log_file_path,
-            )
-
         with self._data as locked_data:
             locked_data.write()
 
-        nl = "\n"
-        rep_strs = [f"{k}: {v}" for k, v in values.items()]
-        _LOGGER.info(
-            f"Reported records for '{sample_name}' in '{self.pipeline_name}' "
-            f"project_name:{nl} - {(nl + ' - ').join(rep_strs)}"
+        return result_formatter(
+            result_format=result_format,
+            pipeline_name=self.pipeline_name,
+            sample_name=sample_name,
+            values=values,
         )
-        _LOGGER.info(sample_name, values)
-        _LOGGER.warning(self._data)
 
     def retrieve(
         self,

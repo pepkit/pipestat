@@ -47,8 +47,7 @@ __all__ = [
     "SCHEMA_PATH",
     "ID_KEY",
     "PIPESTAT_GENERIC_CONFIG",
-    "LOG_FILE_PATH",
-    "LOG_FILE",
+    "RESULT_FORMAT",
 ]
 
 PKG_NAME = "pipestat"
@@ -136,5 +135,4 @@ DB_URL = "_db_url"
 SCHEMA_PATH = "_schema_path"
 ID_KEY = "id"
 PIPESTAT_GENERIC_CONFIG = "generic_config.yaml"
-LOG_FILE_PATH = "_logpath"
-LOG_FILE = "_log_file"
+RESULT_FORMAT = "_result_format"

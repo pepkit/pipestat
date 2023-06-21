@@ -239,24 +239,26 @@ def init_generic_config():
     return True
 
 
-def init_md_log(filepath) -> str:
+def result_formatter(result_format, pipeline_name, sample_name, values) -> str:
     """
-    Check if user supplied a filepath to log file, if not, create result_log.md
-    :param str filepath: path to log file
+    Formats the reported result based on result_format flag.
+    returns reported result as a formatted string
     """
 
-    if not filepath:
-        try:
-            os.makedirs("log")
-        except FileExistsError:
-            pass
-        # Destination one level down from CWD in log folder
-        filepath = os.path.join(os.getcwd(), "log", "result_log.md")
-    if not os.path.exists(filepath):
-        with open(filepath, "w") as file:
-            pass
-        print(f"Markdown log file successfully created at: {filepath}")
+    if result_format == "md":
+        nl = "\n"
+        rep_strs = [f"`{k}`: ```{v}```" for k, v in values.items()]
+        formatted_result = (
+            f"\n > Reported records for `'{sample_name}'` in `'{pipeline_name}'` "
+            + f"{nl} > {(nl + ' > ').join(rep_strs)}"
+        )
+        return formatted_result
     else:
-        print(f"Markdown log file already exists at `{filepath}`. Skipping creation..")
-
-    return filepath
+        # Assume default method desired
+        nl = "\n"
+        rep_strs = [f"{k}: {v}" for k, v in values.items()]
+        formatted_result = (
+            f"Reported records for '{sample_name}' in '{pipeline_name}' \n "
+            + f"project_name:{nl} - {(nl + ' - ').join(rep_strs)}"
+        )
+        return formatted_result

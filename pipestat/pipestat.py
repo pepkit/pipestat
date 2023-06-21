@@ -47,8 +47,7 @@ class PipestatManager(dict):
         flag_file_dir: Optional[str] = None,
         show_db_logs: bool = False,
         pipeline_type: Optional[str] = None,
-        log_file: bool = False,
-        log_file_path: Optional[str] = None,
+        result_format: Optional[str] = "default",
     ):
         """
         Initialize the PipestatManager object
@@ -67,8 +66,7 @@ class PipestatManager(dict):
         :param str flag_file_dir: path to directory containing flag files
         :param bool show_db_logs: Defaults to False, toggles showing database logs
         :param str pipeline_type: "sample" or "project"
-        :param bool log_file: toggles reporting results in md format to a local results_log.md
-        :param str log_file_path: path to md log file
+        :param str result_format: desired style for formatting reported results
         """
 
         super(PipestatManager, self).__init__()
@@ -107,13 +105,7 @@ class PipestatManager(dict):
             self._config_path,
         )
 
-        self[LOG_FILE] = log_file
-        if self[LOG_FILE] is True:
-            self[LOG_FILE_PATH] = init_md_log(filepath=log_file_path)
-        else:
-            if log_file_path is not None:
-                _LOGGER.warning("Logging file path provided but log_file = False.")
-            self[LOG_FILE_PATH] = None
+        self[RESULT_FORMAT] = result_format
 
         if self[FILE_KEY]:  # file backend
             _LOGGER.debug(f"Determined file as backend: {results_file_path}")
@@ -137,7 +129,7 @@ class PipestatManager(dict):
                 self[SCHEMA_KEY],
                 self[STATUS_SCHEMA_KEY],
                 self[STATUS_FILE_DIR],
-                self[LOG_FILE_PATH],
+                self[RESULT_FORMAT],
             )
 
         else:  # database backend
@@ -168,7 +160,7 @@ class PipestatManager(dict):
                 self[STATUS_SCHEMA_KEY],
                 self[DB_URL],
                 self[STATUS_SCHEMA_SOURCE_KEY],
-                self[LOG_FILE_PATH],
+                self[RESULT_FORMAT],
             )
 
     def __str__(self):
@@ -329,8 +321,8 @@ class PipestatManager(dict):
         strict_type: bool = True,
         return_id: bool = False,
         pipeline_type: Optional[str] = None,
-        mdlog: bool = False,
-    ) -> Union[bool, int]:
+        result_format: Optional[str] = None,
+    ) -> str:
         """
         Report a result.
 
@@ -342,15 +334,14 @@ class PipestatManager(dict):
         :param bool strict_type: whether the type of the reported values should
             remain as is. Pipestat would attempt to convert to the
             schema-defined one otherwise
-        :param bool return_id: PostgreSQL IDs of the records that have been
-            updated. Not available with results file as backend
-        :param pipeline_type: whether what's being reported pertains to project-level,
+        :param str pipeline_type: whether what's being reported pertains to project-level,
             rather than sample-level, attribute(s)
-        :return bool | int: whether the result has been reported or the ID of
-            the updated record in the table, if requested
+        :param str result_format: desired style for formatting reported results
+        :return str reported_result: return formatted string of the reported result
         """
 
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
+        result_format = result_format or self[RESULT_FORMAT]
         values = deepcopy(values)
 
         sample_name = self._strict_record_id(sample_name)
@@ -359,7 +350,6 @@ class PipestatManager(dict):
                 "There is no way to return the updated object ID while using "
                 "results file as the object backend"
             )
-        updated_ids = False
         result_identifiers = list(values.keys())
         if self.schema is not None:
             for r in result_identifiers:
@@ -367,11 +357,11 @@ class PipestatManager(dict):
                     value=values[r], schema=self.result_schemas[r], strict_type=strict_type
                 )
 
-        _LOGGER.warning("Writing to locked data...")
+        reported_result = self.backend.report(
+            values, sample_name, pipeline_type, force_overwrite, result_format
+        )
 
-        self.backend.report(values, sample_name, pipeline_type, force_overwrite)
-
-        return True if not return_id else updated_ids
+        return reported_result
 
     @require_backend
     def retrieve(
