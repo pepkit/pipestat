@@ -262,3 +262,13 @@ def result_formatter(result_format, pipeline_name, sample_name, values) -> str:
             + f"project_name:{nl} - {(nl + ' - ').join(rep_strs)}"
         )
         return formatted_result
+
+def markdown_formatter(pipeline_name, smaple_name, values) -> str:
+    """
+    """
+    ...
+    return formatted_results
+
+def default_formatter(...) -> str:
+    ...
+    return formatted_result
