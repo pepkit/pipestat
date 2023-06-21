@@ -3,6 +3,7 @@
 import logging
 import os
 import yaml
+from json import dumps, loads
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -239,36 +240,36 @@ def init_generic_config():
     return True
 
 
-def result_formatter(result_format, pipeline_name, sample_name, values) -> str:
+def markdown_formatter(pipeline_name, sample_name, res_id, value) -> str:
     """
-    Formats the reported result based on result_format flag.
-    returns reported result as a formatted string
+    Returns Markdown formatted value as string
     """
-
-    if result_format == "md":
+    if type(value) is not dict:
         nl = "\n"
-        rep_strs = [f"`{k}`: ```{v}```" for k, v in values.items()]
+        rep_strs = [f"`{res_id}`: ```{value}```"]
         formatted_result = (
             f"\n > Reported records for `'{sample_name}'` in `'{pipeline_name}'` "
             + f"{nl} > {(nl + ' > ').join(rep_strs)}"
         )
-        return formatted_result
     else:
-        # Assume default method desired
         nl = "\n"
-        rep_strs = [f"{k}: {v}" for k, v in values.items()]
+        rep_strs = [f"`{res_id}`:\n ```\n{dumps(value, indent=2)}\n```"]
         formatted_result = (
-            f"Reported records for '{sample_name}' in '{pipeline_name}' \n "
-            + f"project_name:{nl} - {(nl + ' - ').join(rep_strs)}"
+            f"\n > Reported records for `'{sample_name}'` in `'{pipeline_name}'` "
+            + f"{nl} > {(nl + ' > ').join(rep_strs)}"
         )
-        return formatted_result
+    return formatted_result
 
-def markdown_formatter(pipeline_name, smaple_name, values) -> str:
-    """
-    """
-    ...
-    return formatted_results
 
-def default_formatter(...) -> str:
-    ...
+def default_formatter(pipeline_name, sample_name, res_id, value) -> str:
+    """
+    Returns formatted value as string
+    """
+    # Assume default method desired
+    nl = "\n"
+    rep_strs = [f"{res_id}: {value}"]
+    formatted_result = (
+        f"Reported records for '{sample_name}' in '{pipeline_name}' "
+        + f":{nl} - {(nl + ' - ').join(rep_strs)}"
+    )
     return formatted_result

@@ -47,7 +47,7 @@ class PipestatManager(dict):
         flag_file_dir: Optional[str] = None,
         show_db_logs: bool = False,
         pipeline_type: Optional[str] = None,
-        result_format: Optional[str] = "default",
+        result_formatter: staticmethod = default_formatter,
     ):
         """
         Initialize the PipestatManager object
@@ -105,7 +105,7 @@ class PipestatManager(dict):
             self._config_path,
         )
 
-        self[RESULT_FORMAT] = result_format
+        self[RESULT_FORMATTER] = result_formatter
 
         if self[FILE_KEY]:  # file backend
             _LOGGER.debug(f"Determined file as backend: {results_file_path}")
@@ -129,7 +129,7 @@ class PipestatManager(dict):
                 self[SCHEMA_KEY],
                 self[STATUS_SCHEMA_KEY],
                 self[STATUS_FILE_DIR],
-                self[RESULT_FORMAT],
+                self[RESULT_FORMATTER],
             )
 
         else:  # database backend
@@ -160,7 +160,7 @@ class PipestatManager(dict):
                 self[STATUS_SCHEMA_KEY],
                 self[DB_URL],
                 self[STATUS_SCHEMA_SOURCE_KEY],
-                self[RESULT_FORMAT],
+                self[RESULT_FORMATTER],
             )
 
     def __str__(self):
@@ -321,7 +321,7 @@ class PipestatManager(dict):
         strict_type: bool = True,
         return_id: bool = False,
         pipeline_type: Optional[str] = None,
-        result_format: Optional[str] = None,
+        result_formatter: Any = default_formatter,
     ) -> str:
         """
         Report a result.
@@ -341,7 +341,7 @@ class PipestatManager(dict):
         """
 
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        result_format = result_format or self[RESULT_FORMAT]
+        result_formatter = result_formatter or self[RESULT_FORMATTER]
         values = deepcopy(values)
 
         sample_name = self._strict_record_id(sample_name)
@@ -358,7 +358,7 @@ class PipestatManager(dict):
                 )
 
         reported_result = self.backend.report(
-            values, sample_name, pipeline_type, force_overwrite, result_format
+            values, sample_name, pipeline_type, force_overwrite, result_formatter
         )
 
         return reported_result

@@ -33,7 +33,7 @@ class DBBackend(PipestatBackend):
         status_schema: Optional[str] = None,
         db_url: Optional[str] = None,
         status_schema_source: Optional[dict] = None,
-        result_format: Optional[str] = "default",
+        result_formatter: Optional[staticmethod] = None,
     ):
         """
         Class representing a Database backend
@@ -48,7 +48,7 @@ class DBBackend(PipestatBackend):
         self.db_url = db_url
         self.show_db_logs = show_db_logs
         self.status_schema_source = status_schema_source
-        self.result_format = result_format
+        self.result_formatter = result_formatter
 
         self.orms = self._create_orms()
         SQLModel.metadata.create_all(self._engine)
@@ -329,7 +329,7 @@ class DBBackend(PipestatBackend):
         sample_name: str,
         pipeline_type: Optional[str] = None,
         force_overwrite: bool = False,
-        result_format: Optional[str] = None,
+        result_formatter: Optional[staticmethod] = None,
     ) -> str:
         """
         Update the value of a result in a current namespace.
@@ -348,7 +348,8 @@ class DBBackend(PipestatBackend):
 
         pipeline_type = pipeline_type or self.pipeline_type
         sample_name = sample_name or self.sample_name
-        result_format = result_format or self.result_format
+        result_formatter = result_formatter or self.result_formatter
+        results_formatted = []
         result_identifiers = list(values.keys())
         if self.parsed_schema is None:
             raise SchemaNotFoundError("DB Backend report results requires schema")
@@ -387,12 +388,17 @@ class DBBackend(PipestatBackend):
                     for result_id, result_value in values.items():
                         setattr(record_to_update, result_id, result_value)
                     s.commit()
-            return result_formatter(
-                result_format=result_format,
-                pipeline_name=self.pipeline_name,
-                sample_name=sample_name,
-                values=values,
-            )
+
+            for res_id, val in values.items():
+                results_formatted.append(
+                    result_formatter(
+                        pipeline_name=self.pipeline_name,
+                        sample_name=sample_name,
+                        res_id=res_id,
+                        value=val,
+                    )
+                )
+            return results_formatted
         except Exception as e:
             _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")
             raise

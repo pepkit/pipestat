@@ -27,7 +27,7 @@ class FileBackend(PipestatBackend):
         parsed_schema: Optional[str] = None,
         status_schema: Optional[str] = None,
         status_file_dir: Optional[str] = None,
-        result_format: Optional[str] = "default",
+        result_formatter: Optional[staticmethod] = None,
     ):
         """
         Class representing a File backend
@@ -41,7 +41,7 @@ class FileBackend(PipestatBackend):
         self.parsed_schema = parsed_schema
         self.status_schema = status_schema
         self.status_file_dir = status_file_dir
-        self.result_format = result_format
+        self.result_formatter = result_formatter
 
         if not os.path.exists(self.results_file_path):
             _LOGGER.debug(
@@ -298,8 +298,8 @@ class FileBackend(PipestatBackend):
         sample_name: str,
         pipeline_type: Optional[str] = None,
         force_overwrite: bool = False,
-        result_format: Optional[str] = None,
-    ) -> str:
+        result_formatter: Optional[staticmethod] = None,
+    ) -> List[str]:
         """
         Update the value of a result in a current namespace.
 
@@ -317,7 +317,8 @@ class FileBackend(PipestatBackend):
 
         pipeline_type = pipeline_type or self.pipeline_type
         sample_name = sample_name or self.sample_name
-        result_format = result_format or self.result_format
+        result_formatter = result_formatter or self.result_formatter
+        results_formatted = []
 
         result_identifiers = list(values.keys())
         if self.parsed_schema is not None:
@@ -335,18 +336,22 @@ class FileBackend(PipestatBackend):
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
 
         self._data[self.pipeline_name][pipeline_type].setdefault(sample_name, {})
+
         for res_id, val in values.items():
             self._data[self.pipeline_name][pipeline_type][sample_name][res_id] = val
+            results_formatted.append(
+                result_formatter(
+                    pipeline_name=self.pipeline_name,
+                    sample_name=sample_name,
+                    res_id=res_id,
+                    value=val,
+                )
+            )
 
         with self._data as locked_data:
             locked_data.write()
 
-        return result_formatter(
-            result_format=result_format,
-            pipeline_name=self.pipeline_name,
-            sample_name=sample_name,
-            values=values,
-        )
+        return results_formatted
 
     def retrieve(
         self,
