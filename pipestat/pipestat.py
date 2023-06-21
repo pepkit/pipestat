@@ -337,7 +337,7 @@ class PipestatManager(dict):
         :param str pipeline_type: whether what's being reported pertains to project-level,
             rather than sample-level, attribute(s)
         :param str result_formatter: function for formatting result
-        :return str reported_result: return formatted string of the reported result
+        :return str reported_results: return list of formatted string
         """
 
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
@@ -357,11 +357,11 @@ class PipestatManager(dict):
                     value=values[r], schema=self.result_schemas[r], strict_type=strict_type
                 )
 
-        reported_result = self.backend.report(
+        reported_results = self.backend.report(
             values, sample_name, pipeline_type, force_overwrite, result_formatter
         )
 
-        return reported_result
+        return reported_results
 
     @require_backend
     def retrieve(

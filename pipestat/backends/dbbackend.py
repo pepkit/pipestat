@@ -343,7 +343,7 @@ class DBBackend(PipestatBackend):
         :param str pipeline_type: "sample" or "project"
         :param bool force_overwrite: force overwriting of results, defaults to False.
         :param str result_formatter: function for formatting result
-        :return str: return formatted string of the reported result
+        :return list results_formatted: return list of formatted string
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
