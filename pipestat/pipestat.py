@@ -66,7 +66,7 @@ class PipestatManager(dict):
         :param str flag_file_dir: path to directory containing flag files
         :param bool show_db_logs: Defaults to False, toggles showing database logs
         :param str pipeline_type: "sample" or "project"
-        :param str result_format: desired style for formatting reported results
+        :param str result_formatter: function for formatting result
         """
 
         super(PipestatManager, self).__init__()
@@ -321,7 +321,7 @@ class PipestatManager(dict):
         strict_type: bool = True,
         return_id: bool = False,
         pipeline_type: Optional[str] = None,
-        result_formatter: Any = default_formatter,
+        result_formatter: staticmethod = default_formatter,
     ) -> str:
         """
         Report a result.
@@ -336,7 +336,7 @@ class PipestatManager(dict):
             schema-defined one otherwise
         :param str pipeline_type: whether what's being reported pertains to project-level,
             rather than sample-level, attribute(s)
-        :param str result_format: desired style for formatting reported results
+        :param str result_formatter: function for formatting result
         :return str reported_result: return formatted string of the reported result
         """
 

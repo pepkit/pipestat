@@ -311,7 +311,7 @@ class FileBackend(PipestatBackend):
         :param str sample_name: unique identifier of the record
         :param str pipeline_type: "sample" or "project"
         :param bool force_overwrite: Toggles force overwriting results, defaults to False
-        :param str result_format: desired style for formatting reported results
+        :param str result_formatter: function for formatting result
         :return str: return formatted string of the reported result
         """
 
