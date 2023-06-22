@@ -461,21 +461,8 @@ class FileBackend(PipestatBackend):
         num_namespaces = len(namespaces_reported)
         if num_namespaces == 0:
             self._data = data
-        elif num_namespaces == 1:
-            previous = namespaces_reported[0]
-            if self.pipeline_name != previous and self.multi_pipelines is not True:
-                msg = f"'{self.results_file_path}' is already used to report results for a different (not {self.pipeline_name}) namespace: {previous}"
-                raise PipestatError(msg)
-            if self.pipeline_name != previous and self.multi_pipelines is True:
-                self._data = data
-                self._data.setdefault(self.pipeline_name, {})
-                self._data[self.pipeline_name].setdefault("project", {})
-                self._data[self.pipeline_name].setdefault("sample", {})
-                _LOGGER.warning("MULTI PIPELINES FOR SINGLE RESULTS FILE")
-            else:
-                self._data = data
-        else:
-            if self.pipeline_name in namespaces_reported and self.multi_pipelines is True:
+        elif num_namespaces > 0:
+            if self.pipeline_name in namespaces_reported:
                 self._data = data
             elif self.pipeline_name not in namespaces_reported and self.multi_pipelines is True:
                 self._data = data
@@ -485,5 +472,5 @@ class FileBackend(PipestatBackend):
                 _LOGGER.warning("MULTI PIPELINES FOR SINGLE RESULTS FILE")
             else:
                 raise PipestatError(
-                    f"'{self.results_file_path}' is in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)} and multi_pipelines = False."
+                    f"'{self.results_file_path}' is already in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)} and multi_pipelines = False."
                 )

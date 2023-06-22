@@ -100,7 +100,8 @@ class TestPipestatManagerInstantiation:
                 results_file_path=tmp_res_file,
                 schema_path=temp_schema_path,
             )
-        exp_msg = f"'{tmp_res_file}' is already used to report results for a different (not {ns2}) namespace: {psm1.schema.pipeline_name}"
+        # exp_msg = f"'{tmp_res_file}' is already used to report results for a different (not {ns2}) namespace: {psm1.schema.pipeline_name}"
+        exp_msg = f"'{tmp_res_file}' is already in use for 1 namespaces: {psm1.schema.pipeline_name} and multi_pipelines = False."
         obs_msg = str(exc_ctx.value)
         assert obs_msg == exp_msg
 
