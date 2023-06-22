@@ -178,12 +178,15 @@ class PipestatManager(dict):
         res += "\nBackend: {}".format(
             f"File\n - results: {self.file}\n - status: {self[STATUS_FILE_DIR]}"
             if self.file
-            else f"Database (dialect: {self[DB_ENGINE_KEY].dialect.name})"
+            else f"Database (dialect: {self.backend.db_engine_key})"
         )
         res += f"\nResults schema source: {self.schema_path}"
         res += f"\nStatus schema source: {self.status_schema_source}"
         res += f"\nRecords count: {self.record_count}"
-        high_res = self.highlighted_results
+        if self.schema_path is not None:
+            high_res = self.highlighted_results
+        else:
+            high_res = None
         if high_res:
             res += f"\nHighlighted results: {', '.join(high_res)}"
         return res
