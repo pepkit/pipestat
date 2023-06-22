@@ -475,6 +475,15 @@ class FileBackend(PipestatBackend):
             else:
                 self._data = data
         else:
-            raise PipestatError(
-                f"'{self.results_file_path}' is in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)}"
-            )
+            if self.pipeline_name in namespaces_reported and self.multi_pipelines is True:
+                self._data = data
+            elif self.pipeline_name not in namespaces_reported and self.multi_pipelines is True:
+                self._data = data
+                self._data.setdefault(self.pipeline_name, {})
+                self._data[self.pipeline_name].setdefault("project", {})
+                self._data[self.pipeline_name].setdefault("sample", {})
+                _LOGGER.warning("MULTI PIPELINES FOR SINGLE RESULTS FILE")
+            else:
+                raise PipestatError(
+                    f"'{self.results_file_path}' is in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)} and multi_pipelines = False."
+                )
