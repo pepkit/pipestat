@@ -28,6 +28,7 @@ class FileBackend(PipestatBackend):
         status_schema: Optional[str] = None,
         status_file_dir: Optional[str] = None,
         result_formatter: Optional[staticmethod] = None,
+        multi_pipelines: Optional[bool] = None,
     ):
         """
         Class representing a File backend
@@ -42,6 +43,7 @@ class FileBackend(PipestatBackend):
         self.status_schema = status_schema
         self.status_file_dir = status_file_dir
         self.result_formatter = result_formatter
+        self.multi_pipelines = multi_pipelines
 
         if not os.path.exists(self.results_file_path):
             _LOGGER.debug(
@@ -461,10 +463,17 @@ class FileBackend(PipestatBackend):
             self._data = data
         elif num_namespaces == 1:
             previous = namespaces_reported[0]
-            if self.pipeline_name != previous:
+            if self.pipeline_name != previous and self.multi_pipelines is not True:
                 msg = f"'{self.results_file_path}' is already used to report results for a different (not {self.pipeline_name}) namespace: {previous}"
                 raise PipestatError(msg)
-            self._data = data
+            if self.pipeline_name != previous and self.multi_pipelines is True:
+                self._data = data
+                self._data.setdefault(self.pipeline_name, {})
+                self._data[self.pipeline_name].setdefault("project", {})
+                self._data[self.pipeline_name].setdefault("sample", {})
+                _LOGGER.warning("MULTI PIPELINES FOR SINGLE RESULTS FILE")
+            else:
+                self._data = data
         else:
             raise PipestatError(
                 f"'{self.results_file_path}' is in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)}"

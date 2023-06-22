@@ -49,6 +49,7 @@ class PipestatManager(dict):
         pipeline_type: Optional[str] = None,
         pipeline_name: Optional[str] = DEFAULT_PIPELINE_NAME,
         result_formatter: staticmethod = default_formatter,
+        multi_pipelines: bool = False,
     ):
         """
         Initialize the PipestatManager object
@@ -108,6 +109,8 @@ class PipestatManager(dict):
 
         self[RESULT_FORMATTER] = result_formatter
 
+        self.multi_pipelines = multi_pipelines
+
         if self[FILE_KEY]:  # file backend
             _LOGGER.debug(f"Determined file as backend: {results_file_path}")
             if self[DB_ONLY_KEY]:
@@ -131,6 +134,7 @@ class PipestatManager(dict):
                 self[STATUS_SCHEMA_KEY],
                 self[STATUS_FILE_DIR],
                 self[RESULT_FORMATTER],
+                self.multi_pipelines,
             )
 
         else:  # database backend
