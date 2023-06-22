@@ -47,6 +47,7 @@ class PipestatManager(dict):
         flag_file_dir: Optional[str] = None,
         show_db_logs: bool = False,
         pipeline_type: Optional[str] = None,
+        pipeline_name: Optional[str] = DEFAULT_PIPELINE_NAME,
         result_formatter: staticmethod = default_formatter,
     ):
         """
@@ -83,7 +84,7 @@ class PipestatManager(dict):
         self.process_schema(schema_path)
 
         self[PIPELINE_NAME] = (
-            self.schema.pipeline_name if self.schema is not None else "default_pipeline_name"
+            self.schema.pipeline_name if self.schema is not None else pipeline_name
         )
 
         self[PROJECT_NAME] = self[CONFIG_KEY].priority_get(
