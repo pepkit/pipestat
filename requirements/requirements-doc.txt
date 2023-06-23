@@ -3,3 +3,4 @@ https://github.com/pepkit/pipestat/archive/master.zip
 markdown-include
 mkdocs>=1.0
 pydoc-markdown
+sqlmodel>=0.0.8
