@@ -330,7 +330,7 @@ class DBBackend(PipestatBackend):
         pipeline_type: Optional[str] = None,
         force_overwrite: bool = False,
         result_formatter: Optional[staticmethod] = None,
-    ) -> Union[list[str], bool]:
+    ) -> Union[List[str], bool]:
         """
         Update the value of a result in a current namespace.
 

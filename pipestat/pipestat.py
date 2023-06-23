@@ -333,7 +333,7 @@ class PipestatManager(dict):
         return_id: bool = False,
         pipeline_type: Optional[str] = None,
         result_formatter: staticmethod = default_formatter,
-    ) -> Union[list[str], bool]:
+    ) -> Union[List[str], bool]:
         """
         Report a result.
 
