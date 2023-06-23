@@ -297,11 +297,11 @@ class FileBackend(PipestatBackend):
     def report(
         self,
         values: Dict[str, Any],
-        sample_name: str,
+        sample_name: Optional[str] = None,
         pipeline_type: Optional[str] = None,
         force_overwrite: bool = False,
         result_formatter: Optional[staticmethod] = None,
-    ) -> List[str]:
+    ) -> Union[list[str], bool]:
         """
         Update the value of a result in a current namespace.
 

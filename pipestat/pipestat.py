@@ -69,6 +69,7 @@ class PipestatManager(dict):
         :param bool show_db_logs: Defaults to False, toggles showing database logs
         :param str pipeline_type: "sample" or "project"
         :param str result_formatter: function for formatting result
+        :param bool multi_pipelines: allows for running multiple pipelines for one file backend
         """
 
         super(PipestatManager, self).__init__()
@@ -330,7 +331,7 @@ class PipestatManager(dict):
         return_id: bool = False,
         pipeline_type: Optional[str] = None,
         result_formatter: staticmethod = default_formatter,
-    ) -> str:
+    ) -> Union[list[str], bool]:
         """
         Report a result.
 
