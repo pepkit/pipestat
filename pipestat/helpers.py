@@ -3,6 +3,7 @@
 import logging
 import os
 import yaml
+from json import dumps, loads
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -237,3 +238,38 @@ def init_generic_config():
         print(f"Generic configuration file already exists `{dest_file}`. Skipping creation..")
 
     return True
+
+
+def markdown_formatter(pipeline_name, sample_name, res_id, value) -> str:
+    """
+    Returns Markdown formatted value as string
+    """
+    if type(value) is not dict:
+        nl = "\n"
+        rep_strs = [f"`{res_id}`: ```{value}```"]
+        formatted_result = (
+            f"\n > Reported records for `'{sample_name}'` in `'{pipeline_name}'` {nl} "
+            + f"{nl} {(nl).join(rep_strs)}"
+        )
+    else:
+        nl = "\n"
+        rep_strs = [f"`{res_id}`:\n ```\n{dumps(value, indent=2)}\n```"]
+        formatted_result = (
+            f"\n > Reported records for `'{sample_name}'` in `'{pipeline_name}'` {nl} "
+            + f"{nl} {(nl).join(rep_strs)}"
+        )
+    return formatted_result
+
+
+def default_formatter(pipeline_name, sample_name, res_id, value) -> str:
+    """
+    Returns formatted value as string
+    """
+    # Assume default method desired
+    nl = "\n"
+    rep_strs = [f"{res_id}: {value}"]
+    formatted_result = (
+        f"Reported records for '{sample_name}' in '{pipeline_name}' "
+        + f":{nl} - {(nl + ' - ').join(rep_strs)}"
+    )
+    return formatted_result

@@ -27,6 +27,8 @@ class FileBackend(PipestatBackend):
         parsed_schema: Optional[str] = None,
         status_schema: Optional[str] = None,
         status_file_dir: Optional[str] = None,
+        result_formatter: Optional[staticmethod] = None,
+        multi_pipelines: Optional[bool] = None,
     ):
         """
         Class representing a File backend
@@ -40,6 +42,8 @@ class FileBackend(PipestatBackend):
         self.parsed_schema = parsed_schema
         self.status_schema = status_schema
         self.status_file_dir = status_file_dir
+        self.result_formatter = result_formatter
+        self.multi_pipelines = multi_pipelines
 
         if not os.path.exists(self.results_file_path):
             _LOGGER.debug(
@@ -293,11 +297,11 @@ class FileBackend(PipestatBackend):
     def report(
         self,
         values: Dict[str, Any],
-        sample_name: str,
+        sample_name: Optional[str] = None,
         pipeline_type: Optional[str] = None,
         force_overwrite: bool = False,
-        # strict_type: bool = True,
-    ) -> None:
+        result_formatter: Optional[staticmethod] = None,
+    ) -> Union[list[str], bool]:
         """
         Update the value of a result in a current namespace.
 
@@ -309,10 +313,14 @@ class FileBackend(PipestatBackend):
         :param str sample_name: unique identifier of the record
         :param str pipeline_type: "sample" or "project"
         :param bool force_overwrite: Toggles force overwriting results, defaults to False
+        :param str result_formatter: function for formatting result
+        :return list results_formatted: return list of formatted string
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
         sample_name = sample_name or self.sample_name
+        result_formatter = result_formatter or self.result_formatter
+        results_formatted = []
 
         result_identifiers = list(values.keys())
         if self.parsed_schema is not None:
@@ -329,16 +337,23 @@ class FileBackend(PipestatBackend):
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
 
-        _LOGGER.warning("Writing to locked data...")
-
         self._data[self.pipeline_name][pipeline_type].setdefault(sample_name, {})
+
         for res_id, val in values.items():
             self._data[self.pipeline_name][pipeline_type][sample_name][res_id] = val
+            results_formatted.append(
+                result_formatter(
+                    pipeline_name=self.pipeline_name,
+                    sample_name=sample_name,
+                    res_id=res_id,
+                    value=val,
+                )
+            )
 
         with self._data as locked_data:
             locked_data.write()
 
-        _LOGGER.warning(self._data)
+        return results_formatted
 
     def retrieve(
         self,
@@ -446,13 +461,16 @@ class FileBackend(PipestatBackend):
         num_namespaces = len(namespaces_reported)
         if num_namespaces == 0:
             self._data = data
-        elif num_namespaces == 1:
-            previous = namespaces_reported[0]
-            if self.pipeline_name != previous:
-                msg = f"'{self.results_file_path}' is already used to report results for a different (not {self.pipeline_name}) namespace: {previous}"
-                raise PipestatError(msg)
-            self._data = data
-        else:
-            raise PipestatError(
-                f"'{self.results_file_path}' is in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)}"
-            )
+        elif num_namespaces > 0:
+            if self.pipeline_name in namespaces_reported:
+                self._data = data
+            elif self.pipeline_name not in namespaces_reported and self.multi_pipelines is True:
+                self._data = data
+                self._data.setdefault(self.pipeline_name, {})
+                self._data[self.pipeline_name].setdefault("project", {})
+                self._data[self.pipeline_name].setdefault("sample", {})
+                _LOGGER.warning("MULTI PIPELINES FOR SINGLE RESULTS FILE")
+            else:
+                raise PipestatError(
+                    f"'{self.results_file_path}' is already in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)} and multi_pipelines = False."
+                )

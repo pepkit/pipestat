@@ -47,6 +47,9 @@ class PipestatManager(dict):
         flag_file_dir: Optional[str] = None,
         show_db_logs: bool = False,
         pipeline_type: Optional[str] = None,
+        pipeline_name: Optional[str] = DEFAULT_PIPELINE_NAME,
+        result_formatter: staticmethod = default_formatter,
+        multi_pipelines: bool = False,
     ):
         """
         Initialize the PipestatManager object
@@ -65,6 +68,8 @@ class PipestatManager(dict):
         :param str flag_file_dir: path to directory containing flag files
         :param bool show_db_logs: Defaults to False, toggles showing database logs
         :param str pipeline_type: "sample" or "project"
+        :param str result_formatter: function for formatting result
+        :param bool multi_pipelines: allows for running multiple pipelines for one file backend
         """
 
         super(PipestatManager, self).__init__()
@@ -81,7 +86,7 @@ class PipestatManager(dict):
         self.process_schema(schema_path)
 
         self[PIPELINE_NAME] = (
-            self.schema.pipeline_name if self.schema is not None else "default_pipeline_name"
+            self.schema.pipeline_name if self.schema is not None else pipeline_name
         )
 
         self[PROJECT_NAME] = self[CONFIG_KEY].priority_get(
@@ -102,6 +107,10 @@ class PipestatManager(dict):
             ),
             self._config_path,
         )
+
+        self[RESULT_FORMATTER] = result_formatter
+
+        self.multi_pipelines = multi_pipelines
 
         if self[FILE_KEY]:  # file backend
             _LOGGER.debug(f"Determined file as backend: {results_file_path}")
@@ -125,6 +134,8 @@ class PipestatManager(dict):
                 self[SCHEMA_KEY],
                 self[STATUS_SCHEMA_KEY],
                 self[STATUS_FILE_DIR],
+                self[RESULT_FORMATTER],
+                self.multi_pipelines,
             )
 
         else:  # database backend
@@ -155,6 +166,7 @@ class PipestatManager(dict):
                 self[STATUS_SCHEMA_KEY],
                 self[DB_URL],
                 self[STATUS_SCHEMA_SOURCE_KEY],
+                self[RESULT_FORMATTER],
             )
 
     def __str__(self):
@@ -167,12 +179,15 @@ class PipestatManager(dict):
         res += "\nBackend: {}".format(
             f"File\n - results: {self.file}\n - status: {self[STATUS_FILE_DIR]}"
             if self.file
-            else f"Database (dialect: {self[DB_ENGINE_KEY].dialect.name})"
+            else f"Database (dialect: {self.backend.db_engine_key})"
         )
         res += f"\nResults schema source: {self.schema_path}"
         res += f"\nStatus schema source: {self.status_schema_source}"
         res += f"\nRecords count: {self.record_count}"
-        high_res = self.highlighted_results
+        if self.schema_path is not None:
+            high_res = self.highlighted_results
+        else:
+            high_res = None
         if high_res:
             res += f"\nHighlighted results: {', '.join(high_res)}"
         return res
@@ -317,7 +332,8 @@ class PipestatManager(dict):
         strict_type: bool = True,
         return_id: bool = False,
         pipeline_type: Optional[str] = None,
-    ) -> Union[bool, int]:
+        result_formatter: staticmethod = default_formatter,
+    ) -> Union[list[str], bool]:
         """
         Report a result.
 
@@ -329,15 +345,14 @@ class PipestatManager(dict):
         :param bool strict_type: whether the type of the reported values should
             remain as is. Pipestat would attempt to convert to the
             schema-defined one otherwise
-        :param bool return_id: PostgreSQL IDs of the records that have been
-            updated. Not available with results file as backend
-        :param pipeline_type: whether what's being reported pertains to project-level,
+        :param str pipeline_type: whether what's being reported pertains to project-level,
             rather than sample-level, attribute(s)
-        :return bool | int: whether the result has been reported or the ID of
-            the updated record in the table, if requested
+        :param str result_formatter: function for formatting result
+        :return str reported_results: return list of formatted string
         """
 
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
+        result_formatter = result_formatter or self[RESULT_FORMATTER]
         values = deepcopy(values)
 
         sample_name = self._record_identifier(sample_name)
@@ -346,7 +361,6 @@ class PipestatManager(dict):
                 "There is no way to return the updated object ID while using "
                 "results file as the object backend"
             )
-        updated_ids = False
         result_identifiers = list(values.keys())
         if self.schema is not None:
             for r in result_identifiers:
@@ -354,19 +368,11 @@ class PipestatManager(dict):
                     value=values[r], schema=self.result_schemas[r], strict_type=strict_type
                 )
 
-        _LOGGER.warning("Writing to locked data...")
-
-        self.backend.report(values, sample_name, pipeline_type, force_overwrite)
-
-        nl = "\n"
-        _LOGGER.warning("TEST HERE")
-        rep_strs = [f"{k}: {v}" for k, v in values.items()]
-        _LOGGER.info(
-            f"Reported records for '{sample_name}' in '{self[PIPELINE_NAME]}' "
-            f"project_name:{nl} - {(nl + ' - ').join(rep_strs)}"
+        reported_results = self.backend.report(
+            values, sample_name, pipeline_type, force_overwrite, result_formatter
         )
-        _LOGGER.info(sample_name, values)
-        return True if not return_id else updated_ids
+
+        return reported_results
 
     @require_backend
     def retrieve(

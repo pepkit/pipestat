@@ -115,7 +115,7 @@ class PipestatBackend(ABC):
         strict_type: bool = True,
         return_id: bool = False,
         pipeline_type: Optional[str] = None,
-    ) -> Union[bool, int]:
+    ) -> str:
         _LOGGER.warning("Not implemented yet for this backend")
 
     def retrieve(self):
