@@ -69,18 +69,22 @@ def main():
                     value = load(json_file)
             else:
                 _LOGGER.info(f"Path to read for {value} doesn't exist: {path_to_read}")
-        psm.report(
+
+        reported_results = psm.report(
             sample_name=args.sample_name,
             values={args.result_identifier: value},
             force_overwrite=args.overwrite,
             strict_type=args.skip_convert,
         )
+        if reported_results is not False:
+            for r in reported_results:
+                print(r)
     if args.command == INSPECT_CMD:
         print("\n")
         print(psm)
         if args.data and not args.database_only:
             print("\nData:")
-            print(psm.data)
+            print(psm.backend._data)
     if args.command == REMOVE_CMD:
         psm.remove(
             result_identifier=args.result_identifier,
