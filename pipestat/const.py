@@ -93,7 +93,7 @@ ENV_VARS = {
     "config": "PIPESTAT_CONFIG",
     "results_file": "PIPESTAT_RESULTS_FILE",
     "schema": "PIPESTAT_RESULTS_SCHEMA",
-    "status_schema": "PIPESTAT_SATUS_SCHEMA",
+    "status_schema": "PIPESTAT_STATUS_SCHEMA",
     "sample_name": "PIPESTAT_SAMPLE_NAME",
 }
 
