@@ -49,6 +49,7 @@ __all__ = [
     "PIPESTAT_GENERIC_CONFIG",
     "RESULT_FORMATTER",
     "DEFAULT_PIPELINE_NAME",
+    "MULTI_PIPELINE",
 ]
 
 PKG_NAME = "pipestat"
@@ -138,3 +139,4 @@ ID_KEY = "id"
 PIPESTAT_GENERIC_CONFIG = "generic_config.yaml"
 RESULT_FORMATTER = "_result_formatter"
 DEFAULT_PIPELINE_NAME = "default_pipeline_name"
+MULTI_PIPELINE = "_multi_pipelines"

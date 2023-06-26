@@ -83,7 +83,10 @@ class PipestatManager(dict):
         _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
         validate(self[CONFIG_KEY].exp, cfg_schema)
 
+        self[SCHEMA_PATH] = schema_path if schema_path is not None else None
         self.process_schema(schema_path)
+
+        # self[SCHEMA_PATH] = schema_path
 
         self[PIPELINE_NAME] = (
             self.schema.pipeline_name if self.schema is not None else pipeline_name
@@ -110,7 +113,7 @@ class PipestatManager(dict):
 
         self[RESULT_FORMATTER] = result_formatter
 
-        self.multi_pipelines = multi_pipelines
+        self[MULTI_PIPELINE] = multi_pipelines
 
         if self[FILE_KEY]:  # file backend
             _LOGGER.debug(f"Determined file as backend: {results_file_path}")
@@ -135,7 +138,7 @@ class PipestatManager(dict):
                 self[STATUS_SCHEMA_KEY],
                 self[STATUS_FILE_DIR],
                 self[RESULT_FORMATTER],
-                self.multi_pipelines,
+                self[MULTI_PIPELINE],
             )
 
         else:  # database backend
@@ -181,10 +184,28 @@ class PipestatManager(dict):
             if self.file
             else f"Database (dialect: {self.backend.db_engine_key})"
         )
-        res += f"\nResults schema source: {self.schema_path}"
+        if self.file:
+            res += f"\nMultiple Pipelines Allowed: {self[MULTI_PIPELINE]}"
+        else:
+            res += f"\nProject Name: {self[PROJECT_NAME]}"
+            res += f"\nDatabase URL: {self[DB_URL]}"
+            res += f"\nConfig File: {self.config_path}"
+
+        res += f"\nPipeline name: {self[PIPELINE_NAME]}"
+        res += f"\nPipeline type: {self[PIPELINE_TYPE]}"
+        if self[SCHEMA_PATH] is not None:
+            res += f"\nProject Level Data:"
+            for k, v in self[SCHEMA_KEY].project_level_data.items():
+                res += f"\n {k} : {v}"
+            res += f"\nSample Level Data:"
+            for k, v in self[SCHEMA_KEY].sample_level_data.items():
+                res += f"\n {k} : {v}"
+        res += f"\nStatus Schema key: {self[STATUS_SCHEMA_KEY]}"
+        res += f"\nResults formatter: {str(self[RESULT_FORMATTER].__name__)}"
+        res += f"\nResults schema source: {self[SCHEMA_PATH]}"
         res += f"\nStatus schema source: {self.status_schema_source}"
         res += f"\nRecords count: {self.record_count}"
-        if self.schema_path is not None:
+        if self[SCHEMA_PATH] is not None:
             high_res = self.highlighted_results
         else:
             high_res = None
