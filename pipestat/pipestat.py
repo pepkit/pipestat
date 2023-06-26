@@ -516,7 +516,16 @@ class PipestatManager(dict):
         return [k for k, v in self.result_schemas.items() if v.get("highlight") is True]
 
     @property
-    def projectname(self) -> str:
+    def pipeline_name(self) -> str:
+        """
+        Pipeline name
+
+        :return str: Pipeline name
+        """
+        return self.get(PIPELINE_NAME)
+
+    @property
+    def project_name(self) -> str:
         """
         Project name the object writes the results to
 
@@ -525,7 +534,7 @@ class PipestatManager(dict):
         return self.get(PROJECT_NAME)
 
     @property
-    def pipelinetype(self) -> str:
+    def pipeline_type(self) -> str:
         """
         Pipeline type: "sample" or "project"
 
