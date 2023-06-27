@@ -411,7 +411,7 @@ class FileBackend(PipestatBackend):
         if self.status_schema is not None:
             known_status_identifiers = self.status_schema.keys()
             if status_identifier not in known_status_identifiers:
-                raise PipestatError(
+                raise UnrecognizedStatusError(
                     f"'{status_identifier}' is not a defined status identifier. "
                     f"These are allowed: {known_status_identifiers}"
                 )

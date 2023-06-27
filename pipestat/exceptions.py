@@ -13,6 +13,7 @@ __all__ = [
     "SchemaError",
     "SchemaNotFoundError",
     "PipestatDataError",
+    "UnrecognizedStatusError",
 ]
 
 
