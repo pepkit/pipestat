@@ -150,7 +150,7 @@ class TestPipestatManagerInstantiation:
                 psm.report(sample_name=k, values=v, force_overwrite=True)
             assert f"Records count: {len(psm.backend._data[STANDARD_TEST_PIPE_ID])}" in str(psm)
 
-    def test_init_config(self):
+    def test_init_config(self, capfd):
         """Tests initializing generic configuration file"""
         with TemporaryDirectory() as dir:
             os.chdir(dir)
@@ -159,3 +159,6 @@ class TestPipestatManagerInstantiation:
             result = init_generic_config()
             assert result is True
             assert os.path.exists(expectedpath)
+            result = init_generic_config()
+            out, err = capfd.readouterr()
+            assert "already exists" in out

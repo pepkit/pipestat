@@ -254,6 +254,7 @@ class TestReporting:
         [
             ("sample1", {"name_of_something": "test_name"}),
             ("sample2", {"number_of_things": 2}),
+            ("sample3", {"dict_object": {"key": "value"}}),
         ],
     )
     @pytest.mark.parametrize("backend", ["file"])
@@ -271,7 +272,7 @@ class TestReporting:
         """Simply test that we can pass the formatting functions and the returned result contains reported results"""
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(database_only=False)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
