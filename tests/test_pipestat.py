@@ -8,6 +8,7 @@ from pipestat import PipestatManager
 from pipestat.const import *
 from pipestat.exceptions import *
 from pipestat.parsed_schema import ParsedSchema
+from pipestat.helpers import default_formatter, markdown_formatter
 from .conftest import (
     get_data_file_path,
     BACKEND_KEY_DB,
@@ -247,6 +248,43 @@ class TestReporting:
                         strict_type=False,
                         force_overwrite=True,
                     )
+
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("sample1", {"name_of_something": "test_name"}),
+            ("sample2", {"number_of_things": 2}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["file"])
+    @pytest.mark.parametrize("formatter", [default_formatter, markdown_formatter])
+    def test_report_formatter(
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        backend,
+        formatter,
+    ):
+        """Simply test that we can pass the formatting functions and the returned result contains reported results"""
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            results = psm.report(
+                sample_name=rec_id, values=val, force_overwrite=True, result_formatter=formatter
+            )
+            assert rec_id in results[0]
+            value = list(val.keys())[0]
+            assert value in results[0]
 
 
 class TestRetrieval:

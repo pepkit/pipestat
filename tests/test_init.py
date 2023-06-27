@@ -8,8 +8,10 @@ from yaml import dump
 from pipestat import PipestatManager
 from pipestat.exceptions import *
 from pipestat.parsed_schema import SCHEMA_PIPELINE_NAME_KEY
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 from .conftest import STANDARD_TEST_PIPE_ID
+from pipestat.helpers import init_generic_config
+from pipestat.const import PIPESTAT_GENERIC_CONFIG
 
 
 class TestPipestatManagerInstantiation:
@@ -147,3 +149,13 @@ class TestPipestatManagerInstantiation:
             for k, v in val_dict.items():
                 psm.report(sample_name=k, values=v, force_overwrite=True)
             assert f"Records count: {len(psm.backend._data[STANDARD_TEST_PIPE_ID])}" in str(psm)
+
+    def test_init_config(self):
+        """Tests initializing generic configuration file"""
+        with TemporaryDirectory() as dir:
+            os.chdir(dir)
+
+            expectedpath = os.path.join(os.getcwd(), "config", PIPESTAT_GENERIC_CONFIG)
+            result = init_generic_config()
+            assert result is True
+            assert os.path.exists(expectedpath)

@@ -58,7 +58,6 @@ def test_status_not_in_schema__raises_expected_error(
     schema_file_path, config_file_path, backend_data, status_id
 ):
     """A status to set must be a value declared in the active schema, whether default or custom."""
-    """Status management works even in case it has not been configured."""
     with ContextManagerDBTesting(DB_URL) as connection:
         args = dict(
             schema_path=schema_file_path,
