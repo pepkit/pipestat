@@ -10,5 +10,5 @@ jobs:
       - uses: actions/setup-python@v2
       - uses: psf/black@20.8b1
         with:
-          options: "--check --diff --color --verbose --line-length 120"
+          options: "--check --diff --color --verbose --line-length 99"
 
