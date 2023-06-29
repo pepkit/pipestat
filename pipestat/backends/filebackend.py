@@ -21,7 +21,6 @@ class FileBackend(PipestatBackend):
         self,
         results_file_path: str,
         sample_name: Optional[str] = None,
-        schema_path=None,
         pipeline_name: Optional[str] = None,
         pipeline_type: Optional[str] = None,
         parsed_schema: Optional[str] = None,
@@ -32,6 +31,19 @@ class FileBackend(PipestatBackend):
     ):
         """
         Class representing a File backend
+        :param str results_file_path: YAML file to report into, if file is
+            used as the object back-end
+        :param str sample_name: record identifier to report for. This
+            creates a weak bound to the record, which can be overridden in
+            this object method calls
+        :param str pipeline_name: name of pipeline associated with result
+        :param str pipeline_type: "sample" or "project"
+        :param str parsed_schema: results output schema. Used to construct DB columns.
+        :param str status_schema: schema containing pipeline statuses e.g. 'running'
+        :param str status_file_dir: directory for placing status flags
+        :param str result_formatter: function for formatting result
+        :param bool multi_pipelines: allows for running multiple pipelines for one file backend
+
         """
         _LOGGER.warning("Initialize FileBackend")
 

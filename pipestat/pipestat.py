@@ -131,7 +131,6 @@ class PipestatManager(dict):
             self.backend = FileBackend(
                 self[FILE_KEY],
                 sample_name,
-                schema_path,
                 self[PIPELINE_NAME],
                 self[PIPELINE_TYPE],
                 self[SCHEMA_KEY],
@@ -158,11 +157,8 @@ class PipestatManager(dict):
 
             self.backend = DBBackend(
                 sample_name,
-                schema_path,
                 self[PROJECT_NAME],
                 self[PIPELINE_NAME],
-                config_file,
-                config_dict,
                 show_db_logs,
                 self[PIPELINE_TYPE],
                 self[SCHEMA_KEY],

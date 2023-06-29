@@ -22,11 +22,8 @@ class DBBackend(PipestatBackend):
     def __init__(
         self,
         sample_name: Optional[str] = None,
-        schema_path: Optional[str] = None,
         project_name: Optional[str] = None,
         pipeline_name: Optional[str] = None,
-        config_file: Optional[str] = None,
-        config_dict: Optional[dict] = None,
         show_db_logs: bool = False,
         pipeline_type: Optional[str] = False,
         parsed_schema: Optional[str] = None,
@@ -37,6 +34,18 @@ class DBBackend(PipestatBackend):
     ):
         """
         Class representing a Database backend
+        :param str sample_name: record identifier to report for. This
+            creates a weak bound to the record, which can be overridden in
+            this object method calls
+        :param project_name: project name associated with the record
+        :param str pipeline_name: name of pipeline associated with result
+        :param str show_db_logs: Defaults to False, toggles showing database logs
+        :param str pipeline_type: "sample" or "project"
+        :param str parsed_schema: results output schema. Used to construct DB columns.
+        :param str status_schema: schema containing pipeline statuses e.g. 'running'
+        :param str db_url: url used for connection to Postgres DB
+        :param dict status_schema_source: filepath of status schema
+        :param str result_formatter: function for formatting result
         """
         _LOGGER.warning("Initialize DBBackend")
         self.project_name = project_name
