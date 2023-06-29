@@ -3,6 +3,7 @@
 import logging
 import os
 import yaml
+import jsonschema
 from json import dumps, loads
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -33,7 +34,6 @@ def validate_type(value, schema, strict_type=False):
         against, e.g. {"type": "integer"}
     :param bool strict_type: whether the value should validate as is
     """
-    import jsonschema
 
     try:
         jsonschema.validate(value, schema)
