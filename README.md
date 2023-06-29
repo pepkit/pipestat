@@ -1,6 +1,9 @@
 ![Run pytests](https://github.com/pepkit/pipestat/workflows/Run%20pytests/badge.svg)
+[![docs-badge](https://readthedocs.org/projects/pipestat/badge/?version=latest)](https://pipestat.databio.org/en/latest/)
+[![pypi-badge](https://img.shields.io/pypi/v/pipestat)](https://pypi.org/project/pipestat)
 [![codecov](https://codecov.io/gh/pepkit/pipestat/branch/master/graph/badge.svg?token=O07MXSQZ32)](https://codecov.io/gh/pepkit/pipestat)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 
 <img src="https://raw.githubusercontent.com/pepkit/pipestat/master/docs/img/pipestat_logo.svg?sanitize=true" alt="pipestat" height="70"/><br>
 
