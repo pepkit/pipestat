@@ -1,5 +1,3 @@
-test:
-  name:
-    output_file:
-      title: test
-      path: /path/to/file.yaml
+default_pipeline_name:
+  project: {}
+  sample: {}

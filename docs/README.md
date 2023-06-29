@@ -25,9 +25,15 @@ pip install pipestat
 
 ```console
 export PIPESTAT_RESULTS_SCHEMA=output_schema.yaml
-export PIPESTAT_RECORD_ID=my_record
+export PIPESTAT_SAMPLE_NAME=my_record
 export PIPESTAT_RESULTS_FILE=results_file.yaml
-export PIPESTAT_NAMESPACE=my_namespace
+export PIPESTAT_PROJECT_NAME=my_namespace
+```
+Note: When setting environment variables as in the above example, you will need to provide an output_schema.yaml file in your current working directory with the following example data:
+```
+result_name:
+  type: string
+  description: "Result Name"
 ```
 
 ## Pipeline results reporting and retrieval

@@ -26,9 +26,7 @@ extra["install_requires"] = DEPENDENCIES
 def get_static(name, condition=None):
     static = [
         os.path.join(name, f)
-        for f in os.listdir(
-            os.path.join(os.path.dirname(os.path.realpath(__file__)), name)
-        )
+        for f in os.listdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), name))
     ]
     if condition is None:
         return static
@@ -62,10 +60,10 @@ setup(
     classifiers=[
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: BSD License",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
     ],
     keywords="project, metadata, bioinformatics, sequencing, ngs, workflow",
@@ -79,8 +77,6 @@ setup(
     include_package_data=True,
     test_suite="tests",
     tests_require=(["mock", "pytest"]),
-    setup_requires=(
-        ["pytest-runner"] if {"test", "pytest", "ptr"} & set(sys.argv) else []
-    ),
-    **extra
+    setup_requires=(["pytest-runner"] if {"test", "pytest", "ptr"} & set(sys.argv) else []),
+    **extra,
 )

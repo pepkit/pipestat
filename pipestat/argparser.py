@@ -1,9 +1,39 @@
+"""Construction of the CLI definition and parsing framework for the pipestat application"""
+
 import argparse
-
+import os
 from ubiquerg import VersionInHelpParser
-
 from ._version import __version__
+
 from .const import *
+
+REPORT_CMD = "report"
+INSPECT_CMD = "inspect"
+REMOVE_CMD = "remove"
+RETRIEVE_CMD = "retrieve"
+STATUS_CMD = "status"
+INIT_CMD = "init"
+SUBPARSER_MESSAGES = {
+    REPORT_CMD: "Report a result.",
+    INSPECT_CMD: "Inspect a database.",
+    REMOVE_CMD: "Remove a result.",
+    RETRIEVE_CMD: "Retrieve a result.",
+    STATUS_CMD: "Manage pipeline status.",
+    INIT_CMD: "Initialize generic config file",
+}
+
+STATUS_GET_CMD = "get"
+STATUS_SET_CMD = "set"
+STATUS_SUBPARSER_MESSAGES = {
+    STATUS_SET_CMD: "Set status.",
+    STATUS_GET_CMD: "Get status.",
+}
+
+__all__ = (
+    ["build_argparser", "SUBPARSER_MESSAGES", "STATUS_SUBPARSER_MESSAGES"]
+    + list(SUBPARSER_MESSAGES.keys())
+    + list(STATUS_SUBPARSER_MESSAGES.keys())
+)
 
 
 def _env_txt(arg_name):
@@ -12,9 +42,7 @@ def _env_txt(arg_name):
     """
     arg_val = os.environ.get(ENV_VARS[arg_name])
     txt = f"If not provided '{ENV_VARS[arg_name]}' env var will be used. "
-    return txt + (
-        "Currently not set" if arg_val is None else f"Currently set to: {arg_val}"
-    )
+    return txt + ("Currently not set" if arg_val is None else f"Currently set to: {arg_val}")
 
 
 def build_argparser(desc):
@@ -31,7 +59,9 @@ def build_argparser(desc):
 
     subparsers = parser.add_subparsers(dest="command")
 
-    def add_subparser(cmd, msg, subparsers):
+    def add_subparser(
+        cmd: str, msg: str, subparsers: argparse._SubParsersAction
+    ) -> argparse.ArgumentParser:
         return subparsers.add_parser(
             cmd,
             description=msg,
@@ -43,18 +73,18 @@ def build_argparser(desc):
 
     sps = {}
     # common arguments
-    for cmd in SUBPARSER_MSGS.keys():
-        sps[cmd] = add_subparser(cmd, SUBPARSER_MSGS[cmd], subparsers)
+    for cmd in SUBPARSER_MESSAGES.keys():
+        p = add_subparser(cmd, SUBPARSER_MESSAGES[cmd], subparsers)
         # status is nested and status subcommands require config path
-        if cmd == STATUS_CMD:
-            continue
-        sps[cmd].add_argument(
-            "-n",
-            "--namespace",
-            type=str,
-            metavar="N",
-            help=f"Name of the pipeline to report result for. {_env_txt('namespace')}",
-        )
+        if cmd != STATUS_CMD:
+            p.add_argument(
+                "-n",
+                "--project-name",
+                type=str,
+                metavar="N",
+                help=f"Name of the pipeline to report result for. {_env_txt('project_name')}",
+            )
+        sps[cmd] = p
 
     status_subparser = sps[STATUS_CMD]
     status_subparsers = status_subparser.add_subparsers(dest="subcommand")
@@ -64,10 +94,10 @@ def build_argparser(desc):
         status_sps[cmd] = add_subparser(cmd, desc, status_subparsers)
         status_sps[cmd].add_argument(
             "-n",
-            "--namespace",
+            "--project-name",
             type=str,
             metavar="N",
-            help=f"Name of the pipeline to report result for. {_env_txt('namespace')}",
+            help=f"Name of the pipeline to report result for. {_env_txt('project_name')}",
         )
         if cmd == STATUS_SET_CMD:
             status_sps[cmd].add_argument(
@@ -115,15 +145,14 @@ def build_argparser(desc):
             "--flag-dir",
             type=str,
             metavar="FD",
-            help=f"Path to the flag directory in case YAML file is "
-            f"the pipestat backend.",
+            help=f"Path to the flag directory in case YAML file is " f"the pipestat backend.",
         )
         status_sps[cmd].add_argument(
             "-r",
-            "--record-identifier",
+            "--sample-name",
             type=str,
             metavar="R",
-            help=f"ID of the record to report the result for. {_env_txt('record_identifier')}",
+            help=f"ID of the record to report the result for. {_env_txt('sample_name')}",
         )
 
     # remove, report and inspect
@@ -169,8 +198,7 @@ def build_argparser(desc):
             "--flag-dir",
             type=str,
             metavar="FD",
-            help=f"Path to the flag directory in case YAML file is "
-            f"the pipestat backend.",
+            help=f"Path to the flag directory in case YAML file is " f"the pipestat backend.",
         )
 
     # remove and report
@@ -185,10 +213,10 @@ def build_argparser(desc):
         )
         sps[cmd].add_argument(
             "-r",
-            "--record-identifier",
+            "--sample-name",
             type=str,
             metavar="R",
-            help=f"ID of the record to report the result for. {_env_txt('record_identifier')}",
+            help=f"ID of the record to report the result for. {_env_txt('sample_name')}",
         )
 
     # report
@@ -204,16 +232,22 @@ def build_argparser(desc):
         "-o",
         "--overwrite",
         action="store_true",
-        help="Whether the result should override existing ones in "
-        "case of name clashes",
+        help="Whether the result should override existing ones in " "case of name clashes",
     )
 
     sps[REPORT_CMD].add_argument(
         "-t",
         "--skip-convert",
         action="store_true",
-        help="Whether skip result type conversion into the reqiuired "
+        help="Whether skip result type conversion into the required "
         "class in case it does not meet the schema requirements",
+    )
+
+    sps[INIT_CMD].add_argument(
+        "-g",
+        "--generic-config",
+        action="store_true",
+        help="Creates a generic config file",
     )
 
     # inspect

@@ -1,5 +1,5 @@
-namespace: test
-record_identifier: sample1
+project_name: test
+sample_name: sample1
 #schema_path: sample_output_schema.yaml #$HOME/Desktop/sample_output_schema.yaml
 database:
   dialect: postgresql

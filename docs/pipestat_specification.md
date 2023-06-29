@@ -33,12 +33,12 @@ Each *result* reported by a pipeline must have a specified data type. Pipestat i
 Importantly, pipestat extends the jsonschema vocabulary by adding two additional types, which are common results of a pipeline: `image` and `file`. These types require reporting objects with the following attributes:
 
 - `file`:
-  - `path`: path to the reported file
-  - `title`: human readable description of the file
+    - `path`: path to the reported file
+    - `title`: human readable description of the file
 - `image`:
-  - `path`: path to the reported image, usually PDF
-  - `thumbnail`: path to the reported thumbnail, usually PNG or JPEG
-  - `title`: human readable description of the image
+    - `path`: path to the reported image, usually PDF
+    - `thumbnail`: path to the reported thumbnail, usually PNG or JPEG
+    - `title`: human readable description of the image
 
 # Pipestat schema
 

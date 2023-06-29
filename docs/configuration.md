@@ -2,7 +2,7 @@
 
 Pipestat *requires* a few pieces of information to run:
 
-- a **namespace** to write into, for example the name of the pipeline
+- a **pipeline_name** to write into, usually contained within the schema file
 - a path to the **schema** file that describes results that can be reported
 - **backend info**: either path to a YAML-formatted file or pipestat config with PostgreSQL database login credentials
 
