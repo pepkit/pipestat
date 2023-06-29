@@ -7,7 +7,6 @@ from .helpers import *
 from .exceptions import PipestatError
 from .pipestat import *
 
-__classes__ = ["PipestatError", "PipestatManager"]
-__all__ = __classes__
+__all__ = ["PipestatError", "PipestatManager"]
 
 logmuse.init_logger(PKG_NAME)
