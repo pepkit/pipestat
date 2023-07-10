@@ -438,6 +438,21 @@ class PipestatManager(dict):
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
         self.backend.set_status(status_identifier, sample_name, pipeline_type)
 
+    @require_backend
+    def summarize(self) -> None:
+        """
+        Builds a browsable html report for reported results.
+
+        """
+        # if backend is db, allow passing tablename or default to grabbing all tables for the report?
+
+        # Potential option 1
+        self.backend.summarize()
+
+        # Potential option 2
+        #html_report = HTMLReportBuilder(self)
+
+
     def _get_attr(self, attr: str) -> Any:
         """
         Safely get the name of the selected attribute of this object

@@ -442,6 +442,27 @@ class FileBackend(PipestatBackend):
         if prev_status:
             _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
 
+    def summarize(self) -> None:
+        """
+        summarize all reported results by building html report
+        """
+        _LOGGER.debug("Make HTML report here")
+        print("DEBUG SUMMARIZE")
+        self._htmlreportbuilder()
+
+    def _htmlreportbuilder(self):
+        """
+        build html report based on all reported results
+        """
+
+        #build new folder for the report
+        self.reports_dir = os.path.join(self.results_file_path, "reports")
+        _LOGGER.debug(f"Reports dir: {self.reports_dir}")
+
+
+
+
+
     def _init_results_file(self) -> None:
         """
         Initialize YAML results file if it does not exist.
