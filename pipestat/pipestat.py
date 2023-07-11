@@ -456,7 +456,7 @@ class PipestatManager(dict):
 
         html_report_builder = HTMLReportBuilder(prj=self)
         print('DEBUG')
-        report_path = html_report_builder(pipeline_name=pn)
+        report_path = html_report_builder(pipeline_name=self.pipeline_name)
 
         return report_path
 

@@ -32,7 +32,9 @@ class HTMLReportBuilder(object):
         super(HTMLReportBuilder, self).__init__()
         self.prj = prj
         self.j_env = get_jinja_env()
-        self.output_dir = self.prj.output_dir
+        # TODO this must be backend agnostic
+        self.output_dir = self.prj.backend.results_file_path or self.prj.config_path
+        #self.output_dir = self.prj.output_dir
         self.reports_dir = os.path.join(self.output_dir, "reports")
         _LOGGER.debug(f"Reports dir: {self.reports_dir}")
 
@@ -45,24 +47,28 @@ class HTMLReportBuilder(object):
         """
         # Generate HTML report
         self.pipeline_name = pipeline_name
-        self.amendments_str = (
-            "_".join(self.prj.amendments) if self.prj.amendments else ""
-        )
-        self.pipeline_reports = os.path.join(
-            self.reports_dir,
-            f"{self.pipeline_name}_{self.amendments_str}"
-            if self.prj.amendments
-            else self.pipeline_name,
-        )
+        # self.amendments_str = (
+        #     "_".join(self.prj.amendments) if self.prj.amendments else ""
+        # )
+        self.amendments_str = ""
+        # self.pipeline_reports = os.path.join(
+        #     self.reports_dir,
+        #     f"{self.pipeline_name}_{self.amendments_str}"
+        #     if self.prj.amendments
+        #     else self.pipeline_name,
+        # )
+        self.pipeline_reports = os.path.join(self.reports_dir, self.pipeline_name,)
         self.prj_index_html_path = project_index_html
         self.index_html_path = os.path.join(self.pipeline_reports, "index.html")
-        pifaces = self.prj.pipeline_interfaces
-        selected_pipeline_pifaces = [
-            p for p in pifaces if p.pipeline_name == self.pipeline_name
-        ]
-        schema_path = self.prj.get_schemas(
-            selected_pipeline_pifaces, OUTPUT_SCHEMA_KEY
-        )[0]
+        # pifaces = self.prj.pipeline_interfaces
+        # selected_pipeline_pifaces = [
+        #     p for p in pifaces if p.pipeline_name == self.pipeline_name
+        # ]
+        selected_pipeline_pifaces = self.prj.pipeline_name
+        # schema_path = self.prj.get_schemas(
+        #     selected_pipeline_pifaces, OUTPUT_SCHEMA_KEY
+        # )[0]
+        schema_path = self.prj.schema_path
         self.schema = read_schema(schema_path)[0]
         navbar = self.create_navbar(
             navbar_links=self.create_navbar_links(
@@ -127,7 +133,9 @@ class HTMLReportBuilder(object):
             os.makedirs(self.pipeline_reports)
         pages = list()
         labels = list()
-        for sample in self.prj.samples:
+        #for sample in self.prj.samples:
+        # TODO backend agnostic
+        for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
             sample_name = str(sample.sample_name)
             sample_dir = os.path.join(self.prj.results_folder, sample_name)
 
@@ -222,7 +230,8 @@ class HTMLReportBuilder(object):
                 )
         else:
             dropdown_relpaths_objects = objects_relpath
-        if len(self.prj.samples) <= 20:
+        #if len(self.prj.samples) <= 20:
+        if self.prj.record_count <= 20:
             (
                 dropdown_relpaths_samples,
                 sample_names,
@@ -267,7 +276,8 @@ class HTMLReportBuilder(object):
             html_page_path = os.path.join(
                 self.pipeline_reports, f"{file_result}.html".lower()
             )
-            for sample in self.prj.samples:
+            #for sample in self.prj.samples:
+            for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
                 sample_result = fetch_pipeline_results(
                     project=self.prj,
                     pipeline_name=self.pipeline_name,
@@ -308,7 +318,8 @@ class HTMLReportBuilder(object):
                 self.pipeline_reports, f"{image_result}.html".lower()
             )
             figures = []
-            for sample in self.prj.samples:
+            #for sample in self.prj.samples:
+            for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
                 sample_result = fetch_pipeline_results(
                     project=self.prj,
                     pipeline_name=self.pipeline_name,
@@ -479,7 +490,7 @@ class HTMLReportBuilder(object):
 
         # Add stats_summary.tsv button link
         stats_file_path = get_file_for_project(
-            self.prj, self.pipeline_name, "stats_summary.tsv"
+            self.prj, self.prj.pipeline_name, "stats_summary.tsv"
         )
         stats_file_path = (
             os.path.relpath(stats_file_path, self.pipeline_reports)
@@ -502,11 +513,12 @@ class HTMLReportBuilder(object):
         # Produce table rows
         table_row_data = []
         _LOGGER.info(" * Creating sample pages")
-        for sample in self.prj.samples:
+        #for sample in self.prj.samples:
+        for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
             sample_stat_results = fetch_pipeline_results(
                 project=self.prj,
                 pipeline_name=self.pipeline_name,
-                sample_name=sample.sample_name,
+                sample_name=sample,
                 inclusion_fun=lambda x: x not in OBJECT_TYPES,
                 casting_fun=str,
             )
@@ -535,7 +547,7 @@ class HTMLReportBuilder(object):
         )
         # Create status page with each sample's status listed
         status_tab = create_status_table(
-            pipeline_name=self.pipeline_name,
+            pipeline_name=self.prj.pipeline_name,
             project=self.prj,
             pipeline_reports_dir=self.pipeline_reports,
         )
@@ -553,7 +565,7 @@ class HTMLReportBuilder(object):
             columns_json=dumps(columns),
             table_row_data=table_row_data,
             project_name=self.prj.name,
-            pipeline_name=self.pipeline_name,
+            pipeline_name=self.prj.pipeline_name,
             stats_json=self._stats_to_json_str(),
             footer=footer,
             amendments=self.prj.amendments,
@@ -573,22 +585,31 @@ class HTMLReportBuilder(object):
             are not highlighted
         """
         results = []
-        for k, v in self.schema.items():
-            if self.schema[k]["type"] in types:
-                if "highlight" not in self.schema[k].keys():
+        #for k, v in self.schema.items():
+            # if self.schema[k]["type"] in types:
+            #     if "highlight" not in self.schema[k].keys():
+            #         results.append(k)
+            #     # intentionally "== False" to exclude "falsy" values
+            #     elif self.schema[k]["highlight"] == False:
+            #         results.append(k)
+            # TODO make dictionary to support project and sample level results?
+        for k, v in self.schema["samples"].items():
+            if self.schema["samples"][k]["type"] in types:
+                if "highlight" not in self.schema["samples"][k].keys():
                     results.append(k)
                 # intentionally "== False" to exclude "falsy" values
-                elif self.schema[k]["highlight"] == False:
+                elif self.schema["samples"][k]["highlight"] == False:
                     results.append(k)
         return results
 
     def _stats_to_json_str(self):
         results = {}
-        for sample in self.prj.samples:
+        #for sample in self.prj.samples:
+        for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
             results[sample.sample_name] = fetch_pipeline_results(
                 project=self.prj,
-                sample_name=sample.sample_name,
-                pipeline_name=self.pipeline_name,
+                sample_name=sample,
+                pipeline_name=self.prj.pipeline_name,
                 inclusion_fun=lambda x: x not in OBJECT_TYPES,
                 casting_fun=str,
             )
@@ -610,13 +631,23 @@ class HTMLReportBuilder(object):
     def _get_navbar_dropdown_data_samples(self, wd, context):
         relpaths = []
         sample_names = []
-        for sample in self.prj.samples:
+        # TODO make backend agnostic
+        #self.prj.backend._data.data[self.prj.pipeline_name]['sample']
+        # for sample in self.prj.samples:
+        #     page_name = os.path.join(
+        #         self.pipeline_reports,
+        #         f"{sample.sample_name}.html".replace(" ", "_").lower(),
+        #     )
+        #     relpaths.append(_make_relpath(page_name, wd, context))
+        #     sample_names.append(sample.sample_name)
+        for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
             page_name = os.path.join(
                 self.pipeline_reports,
-                f"{sample.sample_name}.html".replace(" ", "_").lower(),
+                f"{sample}.html".replace(" ", "_").lower(),
             )
             relpaths.append(_make_relpath(page_name, wd, context))
-            sample_names.append(sample.sample_name)
+            sample_names.append(sample)
+
         return relpaths, sample_names
 
 
@@ -939,9 +970,20 @@ def get_file_for_project(prj, pipeline_name, appendix=None, directory=None):
         like 'objs_summary.tsv' for objects summary file
     :return str: path to the file
     """
-    fp = os.path.join(
-        prj.output_dir, directory or "", f"{prj[NAME_KEY]}_{pipeline_name}"
-    )
+    # fp = os.path.join(
+    #     prj.output_dir, directory or "", f"{prj[NAME_KEY]}_{pipeline_name}"
+    # )
+    # TODO backend agnostic
+    if prj['project_name'] is None:
+        fp = os.path.join(
+            prj.backend.results_file_path, directory or "", f"NO_PROJECT_NAME_{pipeline_name}"
+        )
+    else:
+        fp = os.path.join(
+            prj.backend.results_file_path, directory or "", f"{prj['project_name']}_{pipeline_name}"
+        )
+
+
     if hasattr(prj, "amendments") and getattr(prj, "amendments"):
         fp += f"_{'_'.join(prj.amendments)}"
     fp += f"_{appendix}"
