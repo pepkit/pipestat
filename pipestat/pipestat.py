@@ -11,6 +11,9 @@ from yacman import YAMLConfigManager, select_config
 from .helpers import *
 from .parsed_schema import ParsedSchema
 
+from .html_reports_pipestat import HTMLReportBuilder, fetch_pipeline_results
+#from .html_reports_project_pipestat import HTMLReportBuilderProject
+
 _LOGGER = getLogger(PKG_NAME)
 
 
@@ -444,13 +447,21 @@ class PipestatManager(dict):
         Builds a browsable html report for reported results.
 
         """
-        # if backend is db, allow passing tablename or default to grabbing all tables for the report?
 
         # Potential option 1
-        self.backend.summarize()
+        #self.backend.summarize()
 
         # Potential option 2
-        #html_report = HTMLReportBuilder(self)
+        print('Debug Begin')
+
+        html_report_builder = HTMLReportBuilder(prj=self)
+        print('DEBUG')
+        report_path = html_report_builder(pipeline_name=pn)
+
+        return report_path
+
+        # html_report_builder_project = HTMLReportBuilderProject(prj=self)
+        #report_path = html_report_builder_project(piface_source=piface)
 
 
     def _get_attr(self, attr: str) -> Any:

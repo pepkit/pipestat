@@ -701,3 +701,45 @@ def test_manager_has_correct_status_schema_and_status_schema_source(
     psm = PipestatManager(schema_path=schema_file_path, **backend_data)
     assert psm.status_schema == exp_status_schema
     assert psm.status_schema_source == exp_status_schema_path
+
+class TestHTMLReport:
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("sample1", {"name_of_something": "test_name"}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["file"])
+    def test_basics(
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            psm.report(sample_name=rec_id, values=val, force_overwrite=True)
+            htmlreportpath = psm.summarize()
+            print(htmlreportpath)
+            # val_name = list(val.keys())[0]
+            # assert val_name in psm.retrieve(sample_name=rec_id)
+            # psm.remove(sample_name=rec_id, result_identifier=val_name)
+            # if backend == "file":
+            #     with pytest.raises(PipestatDataError):
+            #         psm.retrieve(sample_name=rec_id)
+            # if backend == "db":
+            #     assert getattr(psm.retrieve(sample_name=rec_id), val_name, None) is None
+            #     psm.remove(sample_name=rec_id)
+            #     with pytest.raises(PipestatDatabaseError):
+            #         psm.retrieve(sample_name=rec_id)
