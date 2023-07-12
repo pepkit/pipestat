@@ -894,7 +894,7 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
             status_styles.append(_rgb2hex(*status_metadata["color"]))
             status_descs.append(status_metadata["description"])
         except Exception as e:
-            _warn("status", e, sample.sample_name)
+            _warn("status", e, sample)
             statuses.append(NO_DATA_PLACEHOLDER)
             status_styles.append(NO_DATA_PLACEHOLDER)
             status_descs.append(NO_DATA_PLACEHOLDER)

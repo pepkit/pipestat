@@ -719,6 +719,11 @@ class TestHTMLReport:
         results_file_path,
         backend,
     ):
+        value_dict = {
+            "sample1": {"number_of_things": 2},
+            "sample2": {"name_of_something": "name of something string"},
+            "sample3": {"output_file": {"path": "path_string", "title": "title_string"}},
+        }
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path, database_only=False)
@@ -729,6 +734,8 @@ class TestHTMLReport:
             )
             args.update(backend_data)
             psm = PipestatManager(**args)
+            for r, v in value_dict.items():
+                psm.report(sample_name=r, values=v, force_overwrite=True)
             psm.report(sample_name=rec_id, values=val, force_overwrite=True)
             htmlreportpath = psm.summarize()
             print(htmlreportpath)
