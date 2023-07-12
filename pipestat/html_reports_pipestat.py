@@ -33,7 +33,7 @@ class HTMLReportBuilder(object):
         self.prj = prj
         self.j_env = get_jinja_env()
         # TODO this must be backend agnostic
-        self.output_dir = self.prj.backend.results_file_path or self.prj.config_path
+        self.output_dir = os.path.dirname(self.prj.backend.results_file_path) or os.path.dirname(self.prj.config_path)
         #self.output_dir = self.prj.output_dir
         self.reports_dir = os.path.join(self.output_dir, "reports")
         _LOGGER.debug(f"Reports dir: {self.reports_dir}")
@@ -136,14 +136,14 @@ class HTMLReportBuilder(object):
         #for sample in self.prj.samples:
         # TODO backend agnostic
         for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
-            sample_name = str(sample.sample_name)
-            sample_dir = os.path.join(self.prj.results_folder, sample_name)
+            #sample_name = str(sample.sample_name)
+            sample_dir = os.path.join(self.prj.results_folder, sample)
 
             # Confirm sample directory exists, then build page
             if os.path.exists(sample_dir):
                 page_path = os.path.join(
                     self.pipeline_reports,
-                    f"{sample_name}.html".replace(" ", "_").lower(),
+                    f"{sample}.html".replace(" ", "_").lower(),
                 )
                 page_relpath = os.path.relpath(page_path, self.pipeline_reports)
                 pages.append(page_relpath)
@@ -374,9 +374,9 @@ class HTMLReportBuilder(object):
             os.makedirs(self.pipeline_reports)
         html_page = os.path.join(self.pipeline_reports, f"{sample_name}.html".lower())
 
-        psms = self.prj.get_pipestat_managers(sample_name=sample_name)
-        psm = psms[self.pipeline_name]
-        flag = psm.get_status()
+        #psms = self.prj.get_pipestat_managers(sample_name=sample_name)
+        #psm = psms[self.pipeline_name]
+        flag = self.prj.get_status(sample_name=sample_name)
         if not flag:
             button_class = "btn btn-secondary"
             flag = "Missing"
@@ -391,7 +391,7 @@ class HTMLReportBuilder(object):
                 flag = flag_dict["flag"]
         highlighted_results = fetch_pipeline_results(
             project=self.prj,
-            pipeline_name=self.pipeline_name,
+            pipeline_name=self.prj.pipeline_name,
             sample_name=sample_name,
             inclusion_fun=lambda x: x == "file",
             highlighted=True,
@@ -449,7 +449,7 @@ class HTMLReportBuilder(object):
             flag=flag,
             highlighted_results=highlighted_results,
             pipeline_name=self.pipeline_name,
-            amendments=self.prj.amendments,
+            amendments="",#self.prj.amendments,
         )
         _LOGGER.debug(f"sample.html | template_vars:\n{template_vars}")
         save_html(
@@ -522,13 +522,14 @@ class HTMLReportBuilder(object):
                 inclusion_fun=lambda x: x not in OBJECT_TYPES,
                 casting_fun=str,
             )
+            #sample_stat_results = self.prj.retrieve(sample_name=sample)
             sample_html = self.create_sample_html(
-                sample_stat_results, navbar, footer, sample.sample_name
+                sample_stat_results, navbar, footer, sample
             )
             rel_sample_html = os.path.relpath(sample_html, self.pipeline_reports)
             # treat sample_name column differently - will need to provide
             # a link to the sample page
-            table_cell_data = [[rel_sample_html, sample.sample_name]]
+            table_cell_data = [[rel_sample_html, sample]]
             table_cell_data += list(sample_stat_results.values())
             table_row_data.append(table_cell_data)
         # Create parent samples page with links to each sample
@@ -813,29 +814,29 @@ def fetch_pipeline_results(
     :param bool highlighted: return the highlighted or regular results
     :return dict: selected pipeline results
     """
-    psms = project.get_pipestat_managers(
-        sample_name=sample_name, project_level=sample_name is None
-    )
-    if pipeline_name not in psms:
-        _LOGGER.warning(
-            f"Pipeline name '{pipeline_name}' not found in "
-            f"{list(psms.keys())}. This pipeline was not run for"
-            f" sample: {sample_name}"
-        )
-        return
+    # psms = project.get_pipestat_managers(
+    #     sample_name=sample_name, project_level=sample_name is None
+    # )
+    # if pipeline_name not in psms:
+    #     _LOGGER.warning(
+    #         f"Pipeline name '{pipeline_name}' not found in "
+    #         f"{list(psms.keys())}. This pipeline was not run for"
+    #         f" sample: {sample_name}"
+    #     )
+    #     return
     # set defaults to arg functions
     pass_all_fun = lambda x: x
     inclusion_fun = inclusion_fun or pass_all_fun
     casting_fun = casting_fun or pass_all_fun
-    psm = psms[pipeline_name]
+    psm = project #psms[pipeline_name]
     # exclude object-like results from the stats results mapping
     # TODO: can't rely on .data property being there
-    rep_data = psm.retrieve()
+    rep_data = psm.retrieve(sample_name=sample_name)
     # rep_data = psm.data[psm.namespace][psm.record_identifier].items()
     results = {
         k: casting_fun(v)
         for k, v in rep_data.items()
-        if k in psm.schema and inclusion_fun(psm.schema[k]["type"])
+        if k in psm.result_schemas and inclusion_fun(psm.result_schemas[k]["type"])
     }
     if highlighted:
         return {k: v for k, v in results.items() if k in psm.highlighted_results}
