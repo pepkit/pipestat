@@ -103,8 +103,8 @@ class HTMLReportBuilder(object):
 
         for key in obj_result_ids:
             desc = (
-                self.schema[key]["description"]
-                if "description" in self.schema[key]
+                self.prj.result_schemas[key]["description"]
+                if "description" in self.prj.result_schemas[key]
                 else ""
             )
             labels.append(f"<b>{key.replace('_', ' ')}</b>: {desc}")
@@ -137,7 +137,8 @@ class HTMLReportBuilder(object):
         # TODO backend agnostic
         for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
             #sample_name = str(sample.sample_name)
-            sample_dir = os.path.join(self.prj.results_folder, sample)
+            #sample_dir = os.path.join(self.prj.results_folder, sample)
+            sample_dir = os.path.join(self.output_dir, sample)
 
             # Confirm sample directory exists, then build page
             if os.path.exists(sample_dir):
@@ -281,7 +282,7 @@ class HTMLReportBuilder(object):
                 sample_result = fetch_pipeline_results(
                     project=self.prj,
                     pipeline_name=self.pipeline_name,
-                    sample_name=sample.sample_name,
+                    sample_name=sample,
                 )
                 if file_result not in sample_result:
                     break
@@ -323,7 +324,7 @@ class HTMLReportBuilder(object):
                 sample_result = fetch_pipeline_results(
                     project=self.prj,
                     pipeline_name=self.pipeline_name,
-                    sample_name=sample.sample_name,
+                    sample_name=sample,
                 )
                 if image_result not in sample_result:
                     break
@@ -557,7 +558,8 @@ class HTMLReportBuilder(object):
             template=self.create_status_html(status_tab, navbar, footer),
         )
         # Complete and close HTML file
-        columns = [self.prj.sample_table_index] + list(sample_stat_results.keys())
+        #columns = [self.prj.sample_table_index] + list(sample_stat_results.keys())
+        columns = [self.prj.sample_name] + list(sample_stat_results.keys())
         template_vars = dict(
             navbar=navbar,
             stats_file_path=stats_file_path,
@@ -565,11 +567,11 @@ class HTMLReportBuilder(object):
             columns=columns,
             columns_json=dumps(columns),
             table_row_data=table_row_data,
-            project_name=self.prj.name,
+            project_name=self.prj.project_name,
             pipeline_name=self.prj.pipeline_name,
             stats_json=self._stats_to_json_str(),
             footer=footer,
-            amendments=self.prj.amendments,
+            amendments="",#self.prj.amendments,
         )
         _LOGGER.debug(f"index.html | template_vars:\n{template_vars}")
         save_html(
@@ -607,7 +609,7 @@ class HTMLReportBuilder(object):
         results = {}
         #for sample in self.prj.samples:
         for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
-            results[sample.sample_name] = fetch_pipeline_results(
+            results[sample] = fetch_pipeline_results(
                 project=self.prj,
                 sample_name=sample,
                 pipeline_name=self.prj.pipeline_name,
@@ -877,13 +879,16 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
     times = []
     mems = []
     status_descs = []
-    for sample in project.samples:
-        psms = project.get_pipestat_managers(sample_name=sample.sample_name)
-        psm = psms[pipeline_name]
-        sample_names.append(sample.sample_name)
+    #for sample in project.samples:
+    # TODO backend agnostic
+    for sample in project.backend._data.data[project.pipeline_name]['sample'].keys():
+        #psms = project.get_pipestat_managers(sample_name=sample.sample_name)
+        #psm = psms[pipeline_name]
+        psm = project
+        sample_names.append(sample)
         # status and status style
         try:
-            status = psm.get_status()
+            status = psm.get_status(sample_name=sample)
             statuses.append(status)
             status_metadata = psm.status_schema[status]
             status_styles.append(_rgb2hex(*status_metadata["color"]))
@@ -893,7 +898,7 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
             statuses.append(NO_DATA_PLACEHOLDER)
             status_styles.append(NO_DATA_PLACEHOLDER)
             status_descs.append(NO_DATA_PLACEHOLDER)
-        sample_paths.append(f"{sample.sample_name}.html".replace(" ", "_").lower())
+        sample_paths.append(f"{sample}.html".replace(" ", "_").lower())
         # log file path
         try:
             log = psm.retrieve(result_identifier="log")["path"]
@@ -901,7 +906,7 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
             log_link_names.append(os.path.basename(log))
             log_paths.append(os.path.relpath(log, pipeline_reports_dir))
         except Exception as e:
-            _warn("log", e, sample.sample_name)
+            _warn("log", e, sample)
             log_link_names.append(NO_DATA_PLACEHOLDER)
             log_paths.append("")
         # runtime and peak mem
@@ -913,7 +918,7 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
             times.append(_get_runtime(df))
             mems.append(_get_maxmem(df))
         except Exception as e:
-            _warn("profile", e, sample.sample_name)
+            _warn("profile", e, sample)
             times.append(NO_DATA_PLACEHOLDER)
             mems.append(NO_DATA_PLACEHOLDER)
 
