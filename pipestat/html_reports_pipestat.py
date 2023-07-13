@@ -135,7 +135,8 @@ class HTMLReportBuilder(object):
         labels = list()
         #for sample in self.prj.samples:
         # TODO backend agnostic
-        for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
+        #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
+        for sample in self.prj.backend.get_samples():
             #sample_name = str(sample.sample_name)
             #sample_dir = os.path.join(self.prj.results_folder, sample)
             sample_dir = os.path.join(self.output_dir, sample)
@@ -278,7 +279,8 @@ class HTMLReportBuilder(object):
                 self.pipeline_reports, f"{file_result}.html".lower()
             )
             #for sample in self.prj.samples:
-            for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
+            #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
+            for sample in self.prj.backend.get_samples():
                 sample_result = fetch_pipeline_results(
                     project=self.prj,
                     pipeline_name=self.pipeline_name,
@@ -320,7 +322,8 @@ class HTMLReportBuilder(object):
             )
             figures = []
             #for sample in self.prj.samples:
-            for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
+            #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
+            for sample in self.prj.backend.get_samples():
                 sample_result = fetch_pipeline_results(
                     project=self.prj,
                     pipeline_name=self.pipeline_name,
@@ -515,7 +518,8 @@ class HTMLReportBuilder(object):
         table_row_data = []
         _LOGGER.info(" * Creating sample pages")
         #for sample in self.prj.samples:
-        for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
+        #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
+        for sample in self.prj.backend.get_samples():
             sample_stat_results = fetch_pipeline_results(
                 project=self.prj,
                 pipeline_name=self.pipeline_name,
@@ -609,7 +613,8 @@ class HTMLReportBuilder(object):
     def _stats_to_json_str(self):
         results = {}
         #for sample in self.prj.samples:
-        for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
+        #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
+        for sample in self.prj.backend.get_samples():
             results[sample] = fetch_pipeline_results(
                 project=self.prj,
                 sample_name=sample,
@@ -644,7 +649,8 @@ class HTMLReportBuilder(object):
         #     )
         #     relpaths.append(_make_relpath(page_name, wd, context))
         #     sample_names.append(sample.sample_name)
-        for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
+        #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
+        for sample in self.prj.backend.get_samples():
             page_name = os.path.join(
                 self.pipeline_reports,
                 f"{sample}.html".replace(" ", "_").lower(),
@@ -882,7 +888,8 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
     status_descs = []
     #for sample in project.samples:
     # TODO backend agnostic
-    for sample in project.backend._data.data[project.pipeline_name]['sample'].keys():
+    #for sample in project.backend._data.data[project.pipeline_name]['sample'].keys():
+    for sample in project.backend.get_samples():
         #psms = project.get_pipestat_managers(sample_name=sample.sample_name)
         #psm = psms[pipeline_name]
         psm = project

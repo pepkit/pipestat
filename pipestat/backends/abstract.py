@@ -87,6 +87,13 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
+    def get_samples(
+        self,
+        pipeline_type: Optional[str] = None,
+    ):
+        _LOGGER.warning("Not implemented yet for this backend")
+        pass
+
     def get_status(self, sample_name: str, pipeline_type: Optional[str] = None) -> Optional[str]:
         _LOGGER.warning("Not implemented yet for this backend")
 

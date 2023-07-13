@@ -725,7 +725,7 @@ class TestHTMLReport:
             # "sample4": {"output_file": {"path": "path_string", "title": "title_string"}},
         }
         value_dict_sample = {
-            "sample4": {"smooth_bw": "string"},
+            "sample4": {"smooth_bw": "smooth_bw string"},
             #"sample5": {"name_of_something": "name of something string"},
             "sample5": {"output_file": {"path": "path_string", "title": "title_string"}},
         }
@@ -747,6 +747,8 @@ class TestHTMLReport:
             for r, v in value_dict_sample.items():
                 psm.report(sample_name=r, values=v, force_overwrite=True, pipeline_type='sample')
                 psm.set_status(sample_name=r, status_identifier="running")
+            psm.report(sample_name="sample4", values={"aligned_bam": "aligned_bam string"}, force_overwrite=True, pipeline_type='sample')
+            #listsamples = psm.backend.get_samples()
             htmlreportpath = psm.summarize()
             print(htmlreportpath)
             # val_name = list(val.keys())[0]
