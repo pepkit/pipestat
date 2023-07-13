@@ -676,7 +676,7 @@ class HTMLReportBuilder(object):
                 f"{sample_name}.html".replace(" ", "_").lower(),
             )
             relpaths.append(_make_relpath(page_name, wd, context))
-            sample_names.append(sample)
+            sample_names.append(sample_name)
 
         return relpaths, sample_names
 
