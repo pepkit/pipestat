@@ -33,7 +33,14 @@ class HTMLReportBuilder(object):
         self.prj = prj
         self.j_env = get_jinja_env()
         # TODO this must be backend agnostic
-        self.output_dir = os.path.dirname(self.prj.backend.results_file_path) or os.path.dirname(self.prj.config_path)
+        #results_file_path = self.prj.backend.results_file_path if hasattr(self.prj.backend.results_file_path, 'results_file_path') else None
+        results_file_path = getattr(self.prj.backend, 'results_file_path', None)
+        config_path = getattr(self.prj, 'config_path', None)
+        self.output_dir = results_file_path or config_path
+        self.output_dir = os.path.dirname(self.output_dir)
+
+        #self.output_dir = os.path.dirname(self.prj.backend.results_file_path) or os.path.dirname(self.prj.config_path)
+        #self.output_dir = os.path.dirname(self.prj.config_path)
         self.reports_dir = os.path.join(self.output_dir, "reports")
         _LOGGER.debug(f"Reports dir: {self.reports_dir}")
 
@@ -493,7 +500,7 @@ class HTMLReportBuilder(object):
 
         # Add stats_summary.tsv button link
         stats_file_path = get_file_for_project(
-            self.prj, self.prj.pipeline_name, "stats_summary.tsv"
+            prj=self.prj, pipeline_name=self.prj.pipeline_name, appendix="stats_summary.tsv", reportdir=self.reports_dir
         )
         stats_file_path = (
             os.path.relpath(stats_file_path, self.pipeline_reports)
@@ -503,10 +510,10 @@ class HTMLReportBuilder(object):
 
         # Add objects_summary.yaml button link
         objs_file_path = get_file_for_project(
-            self.prj, self.pipeline_name, "objs_summary.yaml"
+            prj=self.prj, pipeline_name=self.prj.pipeline_name, appendix= "objs_summary.yaml", reportdir=self.reports_dir
         )
         objs_file_path = (
-            os.path.relpath(objs_file_path, self.pipeline_reports)
+            os.path.relpath(objs_file_path, self.pipeline_reports, None, self.reports_dir)
             if os.path.exists(objs_file_path)
             else None
         )
@@ -947,7 +954,7 @@ def _get_runtime(profile_df):
         timedelta(seconds=sum(unique_df["runtime"].apply(lambda x: x.total_seconds())))
     ).split(".")[0]
 
-def get_file_for_project(prj, pipeline_name, appendix=None, directory=None):
+def get_file_for_project(prj, pipeline_name, appendix=None, directory=None, reportdir=None):
     """
     Create a path to the file for the current project.
     Takes the possibility of amendment being activated at the time
@@ -967,11 +974,11 @@ def get_file_for_project(prj, pipeline_name, appendix=None, directory=None):
     # TODO backend agnostic
     if prj['project_name'] is None:
         fp = os.path.join(
-            prj.backend.results_file_path, directory or "", f"NO_PROJECT_NAME_{pipeline_name}"
+            reportdir, directory or "", f"NO_PROJECT_NAME_{pipeline_name}"
         )
     else:
         fp = os.path.join(
-            prj.backend.results_file_path, directory or "", f"{prj['project_name']}_{pipeline_name}"
+            reportdir, directory or "", f"{prj['project_name']}_{pipeline_name}"
         )
 
 

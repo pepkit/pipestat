@@ -137,6 +137,40 @@ class DBBackend(PipestatBackend):
 
                 if record:
                     return record
+    def get_samples(
+        self,
+        pipeline_type: Optional[str] = None,
+    ) -> Optional[list]:
+        """Returns list of sample names and pipeline type as a list of tuples that have been reported, regardless of sample or project level"""
+        all_samples_list = []
+
+        pipeline_type = pipeline_type or self.pipeline_type
+        table_name = self.get_table_name(pipeline_type)
+        mod = self.get_model(table_name=table_name, strict=True)
+        with self.session as s:
+            sample_list = []
+            stmt = sql_select(mod)
+            records = s.exec(stmt).all()
+            for i in records:
+                pair = (i.sample_name, pipeline_type)
+                sample_list.append(pair)
+
+        return sample_list
+        # if pipeline_type is not None:
+        #     for k in list(self._data.data[self.pipeline_name][pipeline_type].keys()):
+        #         pair = (k,pipeline_type)
+        #         all_samples_list.append(pair)
+        #     return all_samples_list
+        #     #return list(self._data.data[self.pipeline_name][pipeline_type].keys())
+        # else:
+        #     keys = self._data.data[self.pipeline_name].keys()
+        # for k in keys:
+        #     sample_list = []
+        #     for i in list(self._data.data[self.pipeline_name][k].keys()):
+        #         pair = (i, k)
+        #         sample_list.append(pair)
+        #     all_samples_list += sample_list
+        #return all_samples_list
 
     def get_status(self, sample_name: str, pipeline_type: Optional[str] = None) -> Optional[str]:
         """
