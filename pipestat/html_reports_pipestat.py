@@ -148,7 +148,7 @@ class HTMLReportBuilder(object):
                 )
                 page_relpath = os.path.relpath(page_path, self.pipeline_reports)
                 pages.append(page_relpath)
-                labels.append(sample_name)
+                labels.append(sample)
 
         template_vars = dict(
             navbar=navbar, footer=footer, labels=labels, pages=pages, header="Samples"
@@ -559,7 +559,8 @@ class HTMLReportBuilder(object):
         )
         # Complete and close HTML file
         #columns = [self.prj.sample_table_index] + list(sample_stat_results.keys())
-        columns = [self.prj.sample_name] + list(sample_stat_results.keys())
+        #columns = [self.prj.sample_name] + list(sample_stat_results.keys())
+        columns = ["Record Identifiers"] + ["Results"]
         template_vars = dict(
             navbar=navbar,
             stats_file_path=stats_file_path,
