@@ -34,7 +34,6 @@ class HTMLReportBuilder(object):
         self.j_env = get_jinja_env()
         # TODO this must be backend agnostic
         self.output_dir = os.path.dirname(self.prj.backend.results_file_path) or os.path.dirname(self.prj.config_path)
-        #self.output_dir = self.prj.output_dir
         self.reports_dir = os.path.join(self.output_dir, "reports")
         _LOGGER.debug(f"Reports dir: {self.reports_dir}")
 
@@ -60,14 +59,6 @@ class HTMLReportBuilder(object):
         self.pipeline_reports = os.path.join(self.reports_dir, self.pipeline_name,)
         self.prj_index_html_path = project_index_html
         self.index_html_path = os.path.join(self.pipeline_reports, "index.html")
-        # pifaces = self.prj.pipeline_interfaces
-        # selected_pipeline_pifaces = [
-        #     p for p in pifaces if p.pipeline_name == self.pipeline_name
-        # ]
-        selected_pipeline_pifaces = self.prj.pipeline_name
-        # schema_path = self.prj.get_schemas(
-        #     selected_pipeline_pifaces, OUTPUT_SCHEMA_KEY
-        # )[0]
         schema_path = self.prj.schema_path
         self.schema = read_schema(schema_path)[0]
         navbar = self.create_navbar(
@@ -133,25 +124,20 @@ class HTMLReportBuilder(object):
             os.makedirs(self.pipeline_reports)
         pages = list()
         labels = list()
-        #for sample in self.prj.samples:
-        # TODO backend agnostic
-        #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
         for sample in self.prj.backend.get_samples():
             sample_name = sample[0]
             pipeline_type = sample[1]
-            #sample_name = str(sample.sample_name)
-            #sample_dir = os.path.join(self.prj.results_folder, sample)
-            sample_dir = os.path.join(self.output_dir, sample_name)
+            sample_dir = self.pipeline_reports
 
             # Confirm sample directory exists, then build page
             if os.path.exists(sample_dir):
                 page_path = os.path.join(
                     self.pipeline_reports,
-                    f"{sample}.html".replace(" ", "_").lower(),
+                    f"{sample_name}.html".replace(" ", "_").lower(),
                 )
                 page_relpath = os.path.relpath(page_path, self.pipeline_reports)
                 pages.append(page_relpath)
-                labels.append(sample)
+                labels.append(sample_name)
 
         template_vars = dict(
             navbar=navbar, footer=footer, labels=labels, pages=pages, header="Samples"
@@ -280,8 +266,7 @@ class HTMLReportBuilder(object):
             html_page_path = os.path.join(
                 self.pipeline_reports, f"{file_result}.html".lower()
             )
-            #for sample in self.prj.samples:
-            #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
+
             for sample in self.prj.backend.get_samples():
                 sample_name = sample[0]
                 pipeline_type = sample[1]
@@ -296,12 +281,15 @@ class HTMLReportBuilder(object):
                     #break
                 else:
                     sample_result = sample_result[file_result]
-                    links.append(
-                        [
-                            sample_name,
-                            os.path.relpath(sample_result["path"], self.pipeline_reports),
-                        ]
-                    )
+                    try:
+                        links.append(
+                            [
+                                sample_name,
+                                os.path.relpath(sample_result["path"], self.pipeline_reports),
+                            ]
+                        )
+                    except:
+                        links.append(["LinkPathNotFound"])
             else:
                 link_desc = (
                     self.prj.result_schemas[file_result]["description"]
@@ -328,8 +316,7 @@ class HTMLReportBuilder(object):
                 self.pipeline_reports, f"{image_result}.html".lower()
             )
             figures = []
-            #for sample in self.prj.samples:
-            #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
+
             for sample in self.prj.backend.get_samples():
                 sample_name = sample[0]
                 pipeline_type = sample[1]
@@ -389,8 +376,6 @@ class HTMLReportBuilder(object):
             os.makedirs(self.pipeline_reports)
         html_page = os.path.join(self.pipeline_reports, f"{sample_name}.html".lower())
 
-        #psms = self.prj.get_pipestat_managers(sample_name=sample_name)
-        #psm = psms[self.pipeline_name]
         flag = self.prj.get_status(sample_name=sample_name)
         if not flag:
             button_class = "btn btn-secondary"
@@ -451,7 +436,7 @@ class HTMLReportBuilder(object):
                 [
                     os.path.relpath(result["path"], self.pipeline_reports),
                     result["title"],
-                    os.patrh.relpath(result["thumbnail_path"], self.pipeline_reports),
+                    os.path.relpath(result["thumbnail_path"], self.pipeline_reports),
                 ]
             )
 
@@ -531,8 +516,6 @@ class HTMLReportBuilder(object):
         # Produce table rows
         table_row_data = []
         _LOGGER.info(" * Creating sample pages")
-        #for sample in self.prj.samples:
-        #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
         for sample in self.prj.backend.get_samples():
             sample_name = sample[0]
             pipeline_type = sample[1]
@@ -544,7 +527,6 @@ class HTMLReportBuilder(object):
                 casting_fun=str,
                 pipeline_type = pipeline_type,
             )
-            #sample_stat_results = self.prj.retrieve(sample_name=sample)
             sample_html = self.create_sample_html(
                 sample_stat_results, navbar, footer, sample_name, pipeline_type
             )
@@ -610,13 +592,6 @@ class HTMLReportBuilder(object):
             are not highlighted
         """
         results = []
-        #for k, v in self.schema.items():
-            # if self.schema[k]["type"] in types:
-            #     if "highlight" not in self.schema[k].keys():
-            #         results.append(k)
-            #     # intentionally "== False" to exclude "falsy" values
-            #     elif self.schema[k]["highlight"] == False:
-            #         results.append(k)
             # TODO make dictionary to support project and sample level results?
         for k, v in self.schema["samples"].items():
             if self.schema["samples"][k]["type"] in types:
@@ -629,8 +604,6 @@ class HTMLReportBuilder(object):
 
     def _stats_to_json_str(self):
         results = {}
-        #for sample in self.prj.samples:
-        #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
         for sample in self.prj.backend.get_samples():
             sample_name = sample[0]
             pipeline_type = sample[1]
@@ -661,15 +634,6 @@ class HTMLReportBuilder(object):
         relpaths = []
         sample_names = []
         # TODO make backend agnostic
-        #self.prj.backend._data.data[self.prj.pipeline_name]['sample']
-        # for sample in self.prj.samples:
-        #     page_name = os.path.join(
-        #         self.pipeline_reports,
-        #         f"{sample.sample_name}.html".replace(" ", "_").lower(),
-        #     )
-        #     relpaths.append(_make_relpath(page_name, wd, context))
-        #     sample_names.append(sample.sample_name)
-        #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
         for sample in self.prj.backend.get_samples():
             sample_name = sample[0]
             pipeline_type = sample[1]
@@ -847,17 +811,6 @@ def fetch_pipeline_results(
     :param str pipeline_type: pipeline_type, 'project' or 'sample'
     :return dict: selected pipeline results
     """
-    # psms = project.get_pipestat_managers(
-    #     sample_name=sample_name, project_level=sample_name is None
-    # )
-    # if pipeline_name not in psms:
-    #     _LOGGER.warning(
-    #         f"Pipeline name '{pipeline_name}' not found in "
-    #         f"{list(psms.keys())}. This pipeline was not run for"
-    #         f" sample: {sample_name}"
-    #     )
-    #     return
-    # set defaults to arg functions
     pass_all_fun = lambda x: x
     inclusion_fun = inclusion_fun or pass_all_fun
     casting_fun = casting_fun or pass_all_fun
@@ -916,8 +869,6 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
     for sample in project.backend.get_samples():
         sample_name = sample[0]
         pipeline_type = sample[1]
-        #psms = project.get_pipestat_managers(sample_name=sample.sample_name)
-        #psm = psms[pipeline_name]
         psm = project
         sample_names.append(sample_name)
         # status and status style
