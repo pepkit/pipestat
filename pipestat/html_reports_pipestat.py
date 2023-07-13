@@ -137,9 +137,11 @@ class HTMLReportBuilder(object):
         # TODO backend agnostic
         #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
         for sample in self.prj.backend.get_samples():
+            sample_name = sample[0]
+            pipeline_type = sample[1]
             #sample_name = str(sample.sample_name)
             #sample_dir = os.path.join(self.prj.results_folder, sample)
-            sample_dir = os.path.join(self.output_dir, sample)
+            sample_dir = os.path.join(self.output_dir, sample_name)
 
             # Confirm sample directory exists, then build page
             if os.path.exists(sample_dir):
@@ -281,10 +283,13 @@ class HTMLReportBuilder(object):
             #for sample in self.prj.samples:
             #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
             for sample in self.prj.backend.get_samples():
+                sample_name = sample[0]
+                pipeline_type = sample[1]
                 sample_result = fetch_pipeline_results(
                     project=self.prj,
                     pipeline_name=self.pipeline_name,
-                    sample_name=sample,
+                    sample_name=sample_name,
+                    pipeline_type=pipeline_type,
                 )
                 if file_result not in sample_result:
                     break
@@ -324,10 +329,13 @@ class HTMLReportBuilder(object):
             #for sample in self.prj.samples:
             #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
             for sample in self.prj.backend.get_samples():
+                sample_name = sample[0]
+                pipeline_type = sample[1]
                 sample_result = fetch_pipeline_results(
                     project=self.prj,
                     pipeline_name=self.pipeline_name,
-                    sample_name=sample,
+                    sample_name=sample_name,
+                    pipeline_type=pipeline_type,
                 )
                 if image_result not in sample_result:
                     break
@@ -335,7 +343,7 @@ class HTMLReportBuilder(object):
                 figures.append(
                     [
                         os.path.relpath(sample_result["path"], self.pipeline_reports),
-                        sample.sample_name,
+                        sample_name,
                         os.path.relpath(
                             sample_result["thumbnail_path"], self.pipeline_reports
                         ),
@@ -363,7 +371,7 @@ class HTMLReportBuilder(object):
                     ),
                 )
 
-    def create_sample_html(self, sample_stats, navbar, footer, sample_name):
+    def create_sample_html(self, sample_stats, navbar, footer, sample_name, pipeline_type):
         """
         Produce an HTML page containing all of a sample's objects
         and the sample summary statistics
@@ -372,6 +380,7 @@ class HTMLReportBuilder(object):
         :param dict sample_stats: pipeline run statistics for the current sample
         :param str navbar: HTML to be included as the navbar in the main summary page
         :param str footer: HTML to be included as the footer
+        :param str pipeline_type: pipeline_type, 'project' or 'sample'
         :return str: path to the produced HTML page
         """
         if not os.path.exists(self.pipeline_reports):
@@ -399,6 +408,7 @@ class HTMLReportBuilder(object):
             sample_name=sample_name,
             inclusion_fun=lambda x: x == "file",
             highlighted=True,
+            pipeline_type=pipeline_type,
         )
 
         for k in highlighted_results.keys():
@@ -412,6 +422,7 @@ class HTMLReportBuilder(object):
             pipeline_name=self.pipeline_name,
             sample_name=sample_name,
             inclusion_fun=lambda x: x == "file",
+            pipeline_type=pipeline_type,
         )
         for result_id, result in file_results.items():
             desc = (
@@ -430,6 +441,7 @@ class HTMLReportBuilder(object):
             pipeline_name=self.pipeline_name,
             sample_name=sample_name,
             inclusion_fun=lambda x: x == "image",
+            pipeline_type=pipeline_type,
         )
         figures = []
         for result_id, result in image_results.items():
@@ -520,21 +532,24 @@ class HTMLReportBuilder(object):
         #for sample in self.prj.samples:
         #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
         for sample in self.prj.backend.get_samples():
+            sample_name = sample[0]
+            pipeline_type = sample[1]
             sample_stat_results = fetch_pipeline_results(
                 project=self.prj,
                 pipeline_name=self.pipeline_name,
-                sample_name=sample,
+                sample_name=sample_name,
                 inclusion_fun=lambda x: x not in OBJECT_TYPES,
                 casting_fun=str,
+                pipeline_type = pipeline_type,
             )
             #sample_stat_results = self.prj.retrieve(sample_name=sample)
             sample_html = self.create_sample_html(
-                sample_stat_results, navbar, footer, sample
+                sample_stat_results, navbar, footer, sample_name, pipeline_type
             )
             rel_sample_html = os.path.relpath(sample_html, self.pipeline_reports)
             # treat sample_name column differently - will need to provide
             # a link to the sample page
-            table_cell_data = [[rel_sample_html, sample]]
+            table_cell_data = [[rel_sample_html, sample_name]]
             table_cell_data += list(sample_stat_results.values())
             table_row_data.append(table_cell_data)
         # Create parent samples page with links to each sample
@@ -615,12 +630,15 @@ class HTMLReportBuilder(object):
         #for sample in self.prj.samples:
         #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
         for sample in self.prj.backend.get_samples():
-            results[sample] = fetch_pipeline_results(
+            sample_name = sample[0]
+            pipeline_type = sample[1]
+            results[sample_name] = fetch_pipeline_results(
                 project=self.prj,
-                sample_name=sample,
+                sample_name=sample_name,
                 pipeline_name=self.prj.pipeline_name,
                 inclusion_fun=lambda x: x not in OBJECT_TYPES,
                 casting_fun=str,
+                pipeline_type=pipeline_type,
             )
         return dumps(results)
 
@@ -651,9 +669,11 @@ class HTMLReportBuilder(object):
         #     sample_names.append(sample.sample_name)
         #for sample in self.prj.backend._data.data[self.prj.pipeline_name]['sample'].keys():
         for sample in self.prj.backend.get_samples():
+            sample_name = sample[0]
+            pipeline_type = sample[1]
             page_name = os.path.join(
                 self.pipeline_reports,
-                f"{sample}.html".replace(" ", "_").lower(),
+                f"{sample_name}.html".replace(" ", "_").lower(),
             )
             relpaths.append(_make_relpath(page_name, wd, context))
             sample_names.append(sample)
@@ -808,6 +828,7 @@ def fetch_pipeline_results(
     inclusion_fun=None,
     casting_fun=None,
     highlighted=False,
+    pipeline_type=None,
 ):
     """
     Get the specific pipeline results for sample based on inclusion function
@@ -821,6 +842,7 @@ def fetch_pipeline_results(
     :param callable(str) casting_fun: a function that will be used to cast the
         each of the results to a proper type before returning, e.g int, str
     :param bool highlighted: return the highlighted or regular results
+    :param str pipeline_type: pipeline_type, 'project' or 'sample'
     :return dict: selected pipeline results
     """
     # psms = project.get_pipestat_managers(
@@ -840,7 +862,7 @@ def fetch_pipeline_results(
     psm = project #psms[pipeline_name]
     # exclude object-like results from the stats results mapping
     # TODO: can't rely on .data property being there
-    rep_data = psm.retrieve(sample_name=sample_name)
+    rep_data = psm.retrieve(sample_name=sample_name, pipeline_type=pipeline_type)
     # rep_data = psm.data[psm.namespace][psm.record_identifier].items()
     results = {
         k: casting_fun(v)
@@ -890,23 +912,25 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
     # TODO backend agnostic
     #for sample in project.backend._data.data[project.pipeline_name]['sample'].keys():
     for sample in project.backend.get_samples():
+        sample_name = sample[0]
+        pipeline_type = sample[1]
         #psms = project.get_pipestat_managers(sample_name=sample.sample_name)
         #psm = psms[pipeline_name]
         psm = project
         sample_names.append(sample)
         # status and status style
         try:
-            status = psm.get_status(sample_name=sample)
+            status = psm.get_status(sample_name=sample_name)
             statuses.append(status)
             status_metadata = psm.status_schema[status]
             status_styles.append(_rgb2hex(*status_metadata["color"]))
             status_descs.append(status_metadata["description"])
         except Exception as e:
-            _warn("status", e, sample)
+            _warn("status", e, sample_name)
             statuses.append(NO_DATA_PLACEHOLDER)
             status_styles.append(NO_DATA_PLACEHOLDER)
             status_descs.append(NO_DATA_PLACEHOLDER)
-        sample_paths.append(f"{sample}.html".replace(" ", "_").lower())
+        sample_paths.append(f"{sample_name}.html".replace(" ", "_").lower())
         # log file path
         try:
             log = psm.retrieve(result_identifier="log")["path"]

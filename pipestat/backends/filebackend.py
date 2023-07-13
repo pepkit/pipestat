@@ -147,14 +147,22 @@ class FileBackend(PipestatBackend):
         self,
         pipeline_type: Optional[str] = None,
     ) -> Optional[list]:
-        """Returns list of sample names that have been reported, regardless of sample or project level"""
+        """Returns list of sample names and pipeline type as a list of tuples that have been reported, regardless of sample or project level"""
         all_samples_list = []
+
         if pipeline_type is not None:
-            return list(self._data.data[self.pipeline_name][pipeline_type].keys())
+            for k in list(self._data.data[self.pipeline_name][pipeline_type].keys()):
+                pair = (k,pipeline_type)
+                all_samples_list.append(pair)
+            return all_samples_list
+            #return list(self._data.data[self.pipeline_name][pipeline_type].keys())
         else:
             keys = self._data.data[self.pipeline_name].keys()
         for k in keys:
-            sample_list = self._data.data[self.pipeline_name][k].keys()
+            sample_list = []
+            for i in list(self._data.data[self.pipeline_name][k].keys()):
+                pair = (i, k)
+                sample_list.append(pair)
             all_samples_list += sample_list
         return all_samples_list
     def get_status(self, sample_name: str, pipeline_type: Optional[str] = None) -> Optional[str]:

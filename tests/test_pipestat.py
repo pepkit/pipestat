@@ -748,7 +748,7 @@ class TestHTMLReport:
                 psm.report(sample_name=r, values=v, force_overwrite=True, pipeline_type='sample')
                 psm.set_status(sample_name=r, status_identifier="running")
             psm.report(sample_name="sample4", values={"aligned_bam": "aligned_bam string"}, force_overwrite=True, pipeline_type='sample')
-            #listsamples = psm.backend.get_samples()
+            listsamples = psm.backend.get_samples()
             htmlreportpath = psm.summarize()
             print(htmlreportpath)
             # val_name = list(val.keys())[0]
