@@ -292,18 +292,20 @@ class HTMLReportBuilder(object):
                     pipeline_type=pipeline_type,
                 )
                 if file_result not in sample_result:
-                    break
-                sample_result = sample_result[file_result]
-                links.append(
-                    [
-                        sample.sample_name,
-                        os.path.relpath(sample_result["path"], self.pipeline_reports),
-                    ]
-                )
+                    pass
+                    #break
+                else:
+                    sample_result = sample_result[file_result]
+                    links.append(
+                        [
+                            sample_name,
+                            os.path.relpath(sample_result["path"], self.pipeline_reports),
+                        ]
+                    )
             else:
                 link_desc = (
-                    self.schema[file_result]["description"]
-                    if "description" in self.schema[file_result]
+                    self.prj.result_schemas[file_result]["description"]
+                    if "description" in self.prj.result_schemas[file_result]
                     else "No description in schema"
                 )
                 template_vars = dict(
@@ -917,7 +919,7 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
         #psms = project.get_pipestat_managers(sample_name=sample.sample_name)
         #psm = psms[pipeline_name]
         psm = project
-        sample_names.append(sample)
+        sample_names.append(sample_name)
         # status and status style
         try:
             status = psm.get_status(sample_name=sample_name)
