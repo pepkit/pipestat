@@ -442,26 +442,17 @@ class PipestatManager(dict):
         self.backend.set_status(status_identifier, sample_name, pipeline_type)
 
     @require_backend
-    def summarize(self) -> None:
+    def summarize(self, amendment: Optional[str] = None,) -> None:
         """
         Builds a browsable html report for reported results.
+        :param Iterable[str] amendment: name indicating amendment to use, optional
+        :return str: report_path
 
         """
 
-        # Potential option 1
-        #self.backend.summarize()
-
-        # Potential option 2
-        print('Debug Begin')
-
         html_report_builder = HTMLReportBuilder(prj=self)
-        print('DEBUG')
-        report_path = html_report_builder(pipeline_name=self.pipeline_name)
-
+        report_path = html_report_builder(pipeline_name=self.pipeline_name, amendment=amendment)
         return report_path
-
-        # html_report_builder_project = HTMLReportBuilderProject(prj=self)
-        #report_path = html_report_builder_project(piface_source=piface)
 
 
     def _get_attr(self, attr: str) -> Any:

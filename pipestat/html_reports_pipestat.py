@@ -44,26 +44,27 @@ class HTMLReportBuilder(object):
         self.reports_dir = os.path.join(self.output_dir, "reports")
         _LOGGER.debug(f"Reports dir: {self.reports_dir}")
 
-    def __call__(self, pipeline_name, project_index_html=None):
+    def __call__(self, pipeline_name, project_index_html=None, amendment=None):
         """
         Generate HTML report.
 
         :param str pipeline_name: ID of the pipeline to generate the report for
+        :param Iterable[str] amendment: name indicating amendment to use, optional
         :return str: path to the index page of the generated HTML report
         """
         # Generate HTML report
         self.pipeline_name = pipeline_name
-        # self.amendments_str = (
-        #     "_".join(self.prj.amendments) if self.prj.amendments else ""
-        # )
-        self.amendments_str = ""
-        # self.pipeline_reports = os.path.join(
-        #     self.reports_dir,
-        #     f"{self.pipeline_name}_{self.amendments_str}"
-        #     if self.prj.amendments
-        #     else self.pipeline_name,
-        # )
-        self.pipeline_reports = os.path.join(self.reports_dir, self.pipeline_name,)
+        self.amendment=amendment
+        self.amendments_str = (
+            "_".join(self.amendment) if self.amendment else ""
+        )
+        self.pipeline_reports = os.path.join(
+            self.reports_dir,
+            f"{self.pipeline_name}_{self.amendments_str}"
+            if self.amendments_str
+            else self.pipeline_name,
+        )
+        #self.pipeline_reports = os.path.join(self.reports_dir, self.pipeline_name,)
         self.prj_index_html_path = project_index_html
         self.index_html_path = os.path.join(self.pipeline_reports, "index.html")
         schema_path = self.prj.schema_path
@@ -227,7 +228,6 @@ class HTMLReportBuilder(object):
                 )
         else:
             dropdown_relpaths_objects = objects_relpath
-        #if len(self.prj.samples) <= 20:
         if self.prj.record_count <= 20:
             (
                 dropdown_relpaths_samples,

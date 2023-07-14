@@ -740,10 +740,10 @@ class TestHTMLReport:
             args.update(backend_data)
             psm = PipestatManager(**args)
             psm.report(sample_name=rec_id, values=val, force_overwrite=True, pipeline_type='project')
-            psm.set_status(sample_name=rec_id, status_identifier="completed")
+            #psm.set_status(sample_name=rec_id, status_identifier="completed")
             for r, v in value_dict_project.items():
                 psm.report(sample_name=r, values=v, force_overwrite=True, pipeline_type='project')
-                psm.set_status(sample_name=r, status_identifier="running")
+                #psm.set_status(sample_name=r, status_identifier="running")
             for r, v in value_dict_sample.items():
                 psm.report(sample_name=r, values=v, force_overwrite=True, pipeline_type='sample')
                 psm.set_status(sample_name=r, status_identifier="running")
@@ -756,16 +756,5 @@ class TestHTMLReport:
                        pipeline_type='sample')
             psm.set_status(sample_name="sample7", status_identifier="running")
             listsamples = psm.backend.get_samples()
-            htmlreportpath = psm.summarize()
+            htmlreportpath = psm.summarize(amendment='a')
             print(htmlreportpath)
-            # val_name = list(val.keys())[0]
-            # assert val_name in psm.retrieve(sample_name=rec_id)
-            # psm.remove(sample_name=rec_id, result_identifier=val_name)
-            # if backend == "file":
-            #     with pytest.raises(PipestatDataError):
-            #         psm.retrieve(sample_name=rec_id)
-            # if backend == "db":
-            #     assert getattr(psm.retrieve(sample_name=rec_id), val_name, None) is None
-            #     psm.remove(sample_name=rec_id)
-            #     with pytest.raises(PipestatDatabaseError):
-            #         psm.retrieve(sample_name=rec_id)
