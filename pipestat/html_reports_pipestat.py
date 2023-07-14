@@ -284,7 +284,7 @@ class HTMLReportBuilder(object):
                     pipeline_type=pipeline_type,
                 )
                 if file_result not in sample_result or sample_result[file_result] == {}:
-                    break
+                    pass
                 else:
                     try:
                         links.append(
@@ -304,7 +304,7 @@ class HTMLReportBuilder(object):
                 template_vars = dict(
                     navbar=navbar,
                     footer=footer,
-                    name=sample_result[file_result]["title"],
+                    name=file_result,
                     figures=[],
                     links=links,
                     desc=link_desc,
@@ -331,28 +331,31 @@ class HTMLReportBuilder(object):
                     sample_name=sample_name,
                     pipeline_type=pipeline_type,
                 )
-                if image_result not in sample_result:
-                    break
-                sample_result = sample_result[image_result]
-                figures.append(
-                    [
-                        os.path.relpath(sample_result["path"], self.pipeline_reports),
-                        sample_name,
-                        os.path.relpath(
-                            sample_result["thumbnail_path"], self.pipeline_reports
-                        ),
-                    ]
-                )
+                if image_result not in sample_result or sample_result[image_result] == {}:
+                    pass
+                else:
+                    try:
+                        figures.append(
+                            [
+                                os.path.relpath(sample_result[image_result]["path"], self.pipeline_reports),
+                                sample_name,
+                                os.path.relpath(
+                                    sample_result[image_result]["thumbnail_path"], self.pipeline_reports
+                                ),
+                            ]
+                        )
+                    except:
+                        figures.append(["FigurePathNotFound"])
             else:
                 img_desc = (
-                    self.schema[image_result]["description"]
-                    if "description" in self.schema[image_result]
+                    self.prj.result_schemas[image_result]["description"]
+                    if "description" in self.prj.result_schemas[image_result]
                     else "No description in schema"
                 )
                 template_vars = dict(
                     navbar=navbar,
                     footer=footer,
-                    name=sample_result["title"],
+                    name=image_result,
                     figures=figures,
                     links=[],
                     desc=img_desc,

@@ -748,6 +748,13 @@ class TestHTMLReport:
                 psm.report(sample_name=r, values=v, force_overwrite=True, pipeline_type='sample')
                 psm.set_status(sample_name=r, status_identifier="running")
             psm.report(sample_name="sample4", values={"aligned_bam": "aligned_bam string"}, force_overwrite=True, pipeline_type='sample')
+            psm.set_status(sample_name="sample4", status_identifier="running")
+            psm.report(sample_name="sample6", values={"output_file": {"path": "path_string", "title": "title_string"}}, force_overwrite=True,
+                       pipeline_type='sample')
+            psm.set_status(sample_name="sample6", status_identifier="running")
+            psm.report(sample_name="sample7", values={"output_image": {"path": "path_string", "thumbnail_path": "path_string", "title": "title_string"}}, force_overwrite=True,
+                       pipeline_type='sample')
+            psm.set_status(sample_name="sample7", status_identifier="running")
             listsamples = psm.backend.get_samples()
             htmlreportpath = psm.summarize()
             print(htmlreportpath)

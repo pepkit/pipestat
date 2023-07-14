@@ -28,3 +28,6 @@ samples:
   output_file:
     type: file
     description: "This a path to the output file"
+  output_image:
+    type: image
+    description: "This a path to the output image"
