@@ -854,7 +854,7 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
         sample_names.append(sample_name)
         # status and status style
         try:
-            status = psm.get_status(sample_name=sample_name)
+            status = psm.get_status(sample_name=sample_name, pipeline_type=pipeline_type)
             statuses.append(status)
             status_metadata = psm.status_schema[status]
             status_styles.append(_rgb2hex(*status_metadata["color"]))
