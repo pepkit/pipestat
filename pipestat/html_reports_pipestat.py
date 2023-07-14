@@ -525,7 +525,7 @@ class HTMLReportBuilder(object):
                 project=self.prj,
                 pipeline_name=self.pipeline_name,
                 sample_name=sample_name,
-                inclusion_fun=lambda x: x not in OBJECT_TYPES,
+                inclusion_fun=None,
                 casting_fun=str,
                 pipeline_type = pipeline_type,
             )
