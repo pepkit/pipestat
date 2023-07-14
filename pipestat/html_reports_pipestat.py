@@ -283,16 +283,14 @@ class HTMLReportBuilder(object):
                     sample_name=sample_name,
                     pipeline_type=pipeline_type,
                 )
-                if file_result not in sample_result:
-                    pass
-                    #break
+                if file_result not in sample_result or sample_result[file_result] == {}:
+                    break
                 else:
-                    sample_result = sample_result[file_result]
                     try:
                         links.append(
                             [
                                 sample_name,
-                                os.path.relpath(sample_result["path"], self.pipeline_reports),
+                                os.path.relpath(sample_result[file_result]["path"], self.pipeline_reports),
                             ]
                         )
                     except:
@@ -306,7 +304,7 @@ class HTMLReportBuilder(object):
                 template_vars = dict(
                     navbar=navbar,
                     footer=footer,
-                    name=sample_result["title"],
+                    name=sample_result[file_result]["title"],
                     figures=[],
                     links=links,
                     desc=link_desc,

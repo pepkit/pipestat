@@ -709,7 +709,7 @@ class TestHTMLReport:
             ("sample1", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file"])
+    @pytest.mark.parametrize("backend", ["file", "db"])
     def test_basics(
         self,
         rec_id,
