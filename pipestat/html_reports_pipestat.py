@@ -32,15 +32,10 @@ class HTMLReportBuilder(object):
         super(HTMLReportBuilder, self).__init__()
         self.prj = prj
         self.j_env = get_jinja_env()
-        # TODO this must be backend agnostic
-        #results_file_path = self.prj.backend.results_file_path if hasattr(self.prj.backend.results_file_path, 'results_file_path') else None
         results_file_path = getattr(self.prj.backend, 'results_file_path', None)
         config_path = getattr(self.prj, 'config_path', None)
         self.output_dir = results_file_path or config_path
         self.output_dir = os.path.dirname(self.output_dir)
-
-        #self.output_dir = os.path.dirname(self.prj.backend.results_file_path) or os.path.dirname(self.prj.config_path)
-        #self.output_dir = os.path.dirname(self.prj.config_path)
         self.reports_dir = os.path.join(self.output_dir, "reports")
         _LOGGER.debug(f"Reports dir: {self.reports_dir}")
 
@@ -64,7 +59,6 @@ class HTMLReportBuilder(object):
             if self.amendments_str
             else self.pipeline_name,
         )
-        #self.pipeline_reports = os.path.join(self.reports_dir, self.pipeline_name,)
         self.prj_index_html_path = project_index_html
         self.index_html_path = os.path.join(self.pipeline_reports, "index.html")
         schema_path = self.prj.schema_path
@@ -569,8 +563,6 @@ class HTMLReportBuilder(object):
             template=self.create_status_html(status_tab, navbar, footer),
         )
         # Complete and close HTML file
-        #columns = [self.prj.sample_table_index] + list(sample_stat_results.keys())
-        #columns = [self.prj.sample_name] + list(sample_stat_results.keys())
         columns = ["Record Identifiers"] + ["Results"]
         template_vars = dict(
             navbar=navbar,
@@ -606,7 +598,14 @@ class HTMLReportBuilder(object):
                 if "highlight" not in self.schema["samples"][k].keys():
                     results.append(k)
                 # intentionally "== False" to exclude "falsy" values
-                elif self.schema["samples"][k]["highlight"] == False:
+                elif self.schema["samples"][k]["highlight"] is False:
+                    results.append(k)
+        for k, v in self.schema["project"].items():
+            if self.schema["project"][k]["type"] in types:
+                if "highlight" not in self.schema["project"][k].keys():
+                    results.append(k)
+                # intentionally "== False" to exclude "falsy" values
+                elif self.schema["project"][k]["highlight"] is False:
                     results.append(k)
         return results
 
@@ -641,7 +640,6 @@ class HTMLReportBuilder(object):
     def _get_navbar_dropdown_data_samples(self, wd, context):
         relpaths = []
         sample_names = []
-        # TODO make backend agnostic
         for sample in self.prj.backend.get_samples():
             sample_name = sample[0]
             pipeline_type = sample[1]
@@ -824,9 +822,7 @@ def fetch_pipeline_results(
     casting_fun = casting_fun or pass_all_fun
     psm = project #psms[pipeline_name]
     # exclude object-like results from the stats results mapping
-    # TODO: can't rely on .data property being there
     rep_data = psm.retrieve(sample_name=sample_name, pipeline_type=pipeline_type)
-    # rep_data = psm.data[psm.namespace][psm.record_identifier].items()
     results = {
         k: casting_fun(v)
         for k, v in rep_data.items()
@@ -871,9 +867,6 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
     times = []
     mems = []
     status_descs = []
-    #for sample in project.samples:
-    # TODO backend agnostic
-    #for sample in project.backend._data.data[project.pipeline_name]['sample'].keys():
     for sample in project.backend.get_samples():
         sample_name = sample[0]
         pipeline_type = sample[1]
@@ -969,10 +962,6 @@ def get_file_for_project(prj, pipeline_name, appendix=None, directory=None, repo
         like 'objs_summary.tsv' for objects summary file
     :return str: path to the file
     """
-    # fp = os.path.join(
-    #     prj.output_dir, directory or "", f"{prj[NAME_KEY]}_{pipeline_name}"
-    # )
-    # TODO backend agnostic
     if prj['project_name'] is None:
         fp = os.path.join(
             reportdir, directory or "", f"NO_PROJECT_NAME_{pipeline_name}"
