@@ -2,3 +2,4 @@ include requirements/*
 include README.md
 include pipestat/schemas/*
 include pipestat/backends/*
+include pipestat/jinja_templates/*

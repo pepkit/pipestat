@@ -13,6 +13,7 @@ REMOVE_CMD = "remove"
 RETRIEVE_CMD = "retrieve"
 STATUS_CMD = "status"
 INIT_CMD = "init"
+# SUMMARIZE_CMD = "summarize"
 SUBPARSER_MESSAGES = {
     REPORT_CMD: "Report a result.",
     INSPECT_CMD: "Inspect a database.",
@@ -20,6 +21,7 @@ SUBPARSER_MESSAGES = {
     RETRIEVE_CMD: "Retrieve a result.",
     STATUS_CMD: "Manage pipeline status.",
     INIT_CMD: "Initialize generic config file",
+    # SUMMARIZE_CMD: "Generates HTML Report",
 }
 
 STATUS_GET_CMD = "get"
