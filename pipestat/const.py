@@ -149,7 +149,7 @@ DEFAULT_PIPELINE_NAME = "default_pipeline_name"
 MULTI_PIPELINE = "_multi_pipelines"
 TEMPLATES_DIRNAME = "jinja_templates"
 
-#from looper htmlreport builder
+
 OBJECT_TYPES = ["object", "file", "image", "array"]
 OUTPUT_SCHEMA_KEY = "output_schema"
 NO_DATA_PLACEHOLDER = "NA"
@@ -163,6 +163,7 @@ APPEARANCE_BY_FLAG = {
     "parital": {"button_class": "{type}-warning", "flag": "Partial"},
     "waiting": {"button_class": "{type}-info", "flag": "Waiting"},
 }
+
 
 def _get_apperance_dict(type, templ=APPEARANCE_BY_FLAG):
     """
@@ -180,5 +181,6 @@ def _get_apperance_dict(type, templ=APPEARANCE_BY_FLAG):
         for key, app in app_dict.items():
             ret[flag][key] = ret[flag][key].format(type=type)
     return ret
+
 
 BUTTON_APPEARANCE_BY_FLAG = _get_apperance_dict("btn btn")

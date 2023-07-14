@@ -14,9 +14,7 @@ from peppy.const import *
 from ._version import __version__ as v
 from .const import *
 
-#from .utils import get_file_for_project
 
-#_LOGGER = logging.getLogger("looper")
 _LOGGER = getLogger(PKG_NAME)
 
 
@@ -32,8 +30,8 @@ class HTMLReportBuilder(object):
         super(HTMLReportBuilder, self).__init__()
         self.prj = prj
         self.j_env = get_jinja_env()
-        results_file_path = getattr(self.prj.backend, 'results_file_path', None)
-        config_path = getattr(self.prj, 'config_path', None)
+        results_file_path = getattr(self.prj.backend, "results_file_path", None)
+        config_path = getattr(self.prj, "config_path", None)
         self.output_dir = results_file_path or config_path
         self.output_dir = os.path.dirname(self.output_dir)
         self.reports_dir = os.path.join(self.output_dir, "reports")
@@ -49,10 +47,8 @@ class HTMLReportBuilder(object):
         """
         # Generate HTML report
         self.pipeline_name = pipeline_name
-        self.amendment=amendment
-        self.amendments_str = (
-            "_".join(self.amendment) if self.amendment else ""
-        )
+        self.amendment = amendment
+        self.amendments_str = "_".join(self.amendment) if self.amendment else ""
         self.pipeline_reports = os.path.join(
             self.reports_dir,
             f"{self.pipeline_name}_{self.amendments_str}"
@@ -72,9 +68,7 @@ class HTMLReportBuilder(object):
                 if self.prj_index_html_path
                 else None,
             ),
-            index_html_relpath=os.path.relpath(
-                self.index_html_path, self.pipeline_reports
-            ),
+            index_html_relpath=os.path.relpath(self.index_html_path, self.pipeline_reports),
         )
         self.create_index_html(navbar, self.create_footer())
         return self.index_html_path
@@ -107,12 +101,8 @@ class HTMLReportBuilder(object):
         template_vars = dict(
             navbar=navbar, footer=footer, labels=labels, pages=pages, header="Objects"
         )
-        _LOGGER.debug(
-            f"object navbar_list_parent.html | template_vars:" f"\n{template_vars}"
-        )
-        return render_jinja_template(
-            "navbar_list_parent.html", self.j_env, template_vars
-        )
+        _LOGGER.debug(f"object navbar_list_parent.html | template_vars:" f"\n{template_vars}")
+        return render_jinja_template("navbar_list_parent.html", self.j_env, template_vars)
 
     def create_sample_parent_html(self, navbar, footer):
         """
@@ -144,12 +134,8 @@ class HTMLReportBuilder(object):
         template_vars = dict(
             navbar=navbar, footer=footer, labels=labels, pages=pages, header="Samples"
         )
-        _LOGGER.debug(
-            f"sample navbar_list_parent.html | template_vars:" f"\n{template_vars}"
-        )
-        return render_jinja_template(
-            "navbar_list_parent.html", self.j_env, template_vars
-        )
+        _LOGGER.debug(f"sample navbar_list_parent.html | template_vars:" f"\n{template_vars}")
+        return render_jinja_template("navbar_list_parent.html", self.j_env, template_vars)
 
     def create_navbar(self, navbar_links, index_html_relpath):
         """
@@ -169,9 +155,7 @@ class HTMLReportBuilder(object):
         """
         return render_jinja_template("footer.html", self.j_env, dict(version=v))
 
-    def create_navbar_links(
-        self, wd=None, context=None, project_index_html_relpath=None
-    ):
+    def create_navbar_links(self, wd=None, context=None, project_index_html_relpath=None):
         """
         Return a string containing the navbar prebuilt html.
 
@@ -264,9 +248,7 @@ class HTMLReportBuilder(object):
             os.makedirs(self.pipeline_reports)
         for file_result in file_results:
             links = []
-            html_page_path = os.path.join(
-                self.pipeline_reports, f"{file_result}.html".lower()
-            )
+            html_page_path = os.path.join(self.pipeline_reports, f"{file_result}.html".lower())
 
             for sample in self.prj.backend.get_samples():
                 sample_name = sample[0]
@@ -284,7 +266,9 @@ class HTMLReportBuilder(object):
                         links.append(
                             [
                                 sample_name,
-                                os.path.relpath(sample_result[file_result]["path"], self.pipeline_reports),
+                                os.path.relpath(
+                                    sample_result[file_result]["path"], self.pipeline_reports
+                                ),
                             ]
                         )
                     except:
@@ -305,15 +289,11 @@ class HTMLReportBuilder(object):
                 )
                 save_html(
                     html_page_path,
-                    render_jinja_template(
-                        "object.html", self.j_env, args=template_vars
-                    ),
+                    render_jinja_template("object.html", self.j_env, args=template_vars),
                 )
 
         for image_result in image_results:
-            html_page_path = os.path.join(
-                self.pipeline_reports, f"{image_result}.html".lower()
-            )
+            html_page_path = os.path.join(self.pipeline_reports, f"{image_result}.html".lower())
             figures = []
 
             for sample in self.prj.backend.get_samples():
@@ -331,10 +311,13 @@ class HTMLReportBuilder(object):
                     try:
                         figures.append(
                             [
-                                os.path.relpath(sample_result[image_result]["path"], self.pipeline_reports),
+                                os.path.relpath(
+                                    sample_result[image_result]["path"], self.pipeline_reports
+                                ),
                                 sample_name,
                                 os.path.relpath(
-                                    sample_result[image_result]["thumbnail_path"], self.pipeline_reports
+                                    sample_result[image_result]["thumbnail_path"],
+                                    self.pipeline_reports,
                                 ),
                             ]
                         )
@@ -357,9 +340,7 @@ class HTMLReportBuilder(object):
                 _LOGGER.debug(f"object.html | template_vars:\n{template_vars}")
                 save_html(
                     html_page_path,
-                    render_jinja_template(
-                        "object.html", self.j_env, args=template_vars
-                    ),
+                    render_jinja_template("object.html", self.j_env, args=template_vars),
                 )
 
     def create_sample_html(self, sample_stats, navbar, footer, sample_name, pipeline_type):
@@ -454,12 +435,10 @@ class HTMLReportBuilder(object):
             flag=flag,
             highlighted_results=highlighted_results,
             pipeline_name=self.pipeline_name,
-            amendments="",#self.prj.amendments,
+            amendments="",
         )
         _LOGGER.debug(f"sample.html | template_vars:\n{template_vars}")
-        save_html(
-            html_page, render_jinja_template("sample.html", self.j_env, template_vars)
-        )
+        save_html(html_page, render_jinja_template("sample.html", self.j_env, template_vars))
         return html_page
 
     def create_status_html(self, status_table, navbar, footer):
@@ -495,7 +474,10 @@ class HTMLReportBuilder(object):
 
         # Add stats_summary.tsv button link
         stats_file_path = get_file_for_project(
-            prj=self.prj, pipeline_name=self.prj.pipeline_name, appendix="stats_summary.tsv", reportdir=self.reports_dir
+            prj=self.prj,
+            pipeline_name=self.prj.pipeline_name,
+            appendix="stats_summary.tsv",
+            reportdir=self.reports_dir,
         )
         stats_file_path = (
             os.path.relpath(stats_file_path, self.pipeline_reports)
@@ -505,7 +487,10 @@ class HTMLReportBuilder(object):
 
         # Add objects_summary.yaml button link
         objs_file_path = get_file_for_project(
-            prj=self.prj, pipeline_name=self.prj.pipeline_name, appendix= "objs_summary.yaml", reportdir=self.reports_dir
+            prj=self.prj,
+            pipeline_name=self.prj.pipeline_name,
+            appendix="objs_summary.yaml",
+            reportdir=self.reports_dir,
         )
         objs_file_path = (
             os.path.relpath(objs_file_path, self.pipeline_reports, None, self.reports_dir)
@@ -527,7 +512,7 @@ class HTMLReportBuilder(object):
                 sample_name=sample_name,
                 inclusion_fun=None,
                 casting_fun=str,
-                pipeline_type = pipeline_type,
+                pipeline_type=pipeline_type,
             )
             sample_html = self.create_sample_html(
                 sample_stat_results, navbar, footer, sample_name, pipeline_type
@@ -575,7 +560,7 @@ class HTMLReportBuilder(object):
             pipeline_name=self.prj.pipeline_name,
             stats_json=self._stats_to_json_str(),
             footer=footer,
-            amendments="",#self.prj.amendments,
+            amendments="",
         )
         _LOGGER.debug(f"index.html | template_vars:\n{template_vars}")
         save_html(
@@ -592,7 +577,6 @@ class HTMLReportBuilder(object):
             are not highlighted
         """
         results = []
-            # TODO make dictionary to support project and sample level results?
         for k, v in self.schema["samples"].items():
             if self.schema["samples"][k]["type"] in types:
                 if "highlight" not in self.schema["samples"][k].keys():
@@ -698,9 +682,7 @@ def get_jinja_env(templates_dirname=None):
     return jinja2.Environment(loader=jinja2.FileSystemLoader(templates_dirname))
 
 
-def _get_file_for_sample(
-    prj, sample_name, appendix, pipeline_name=None, basename=False
-):
+def _get_file_for_sample(prj, sample_name, appendix, pipeline_name=None, basename=False):
     """
     Safely looks for files matching the appendix in the specified
     location for the sample
@@ -775,9 +757,7 @@ def _read_csv_encodings(path, encodings=["utf-8", "ascii"], **kwargs):
         except UnicodeDecodeError:
             pass
         idx = idx + 1
-    _LOGGER.warning(
-        f"Could not read the log file '{path}' with encodings '{encodings}'"
-    )
+    _LOGGER.warning(f"Could not read the log file '{path}' with encodings '{encodings}'")
 
 
 def _read_tsv_to_json(path):
@@ -820,7 +800,7 @@ def fetch_pipeline_results(
     pass_all_fun = lambda x: x
     inclusion_fun = inclusion_fun or pass_all_fun
     casting_fun = casting_fun or pass_all_fun
-    psm = project #psms[pipeline_name]
+    psm = project
     # exclude object-like results from the stats results mapping
     rep_data = psm.retrieve(sample_name=sample_name, pipeline_type=pipeline_type)
     results = {
@@ -948,6 +928,7 @@ def _get_runtime(profile_df):
         timedelta(seconds=sum(unique_df["runtime"].apply(lambda x: x.total_seconds())))
     ).split(".")[0]
 
+
 def get_file_for_project(prj, pipeline_name, appendix=None, directory=None, reportdir=None):
     """
     Create a path to the file for the current project.
@@ -962,15 +943,10 @@ def get_file_for_project(prj, pipeline_name, appendix=None, directory=None, repo
         like 'objs_summary.tsv' for objects summary file
     :return str: path to the file
     """
-    if prj['project_name'] is None:
-        fp = os.path.join(
-            reportdir, directory or "", f"NO_PROJECT_NAME_{pipeline_name}"
-        )
+    if prj["project_name"] is None:
+        fp = os.path.join(reportdir, directory or "", f"NO_PROJECT_NAME_{pipeline_name}")
     else:
-        fp = os.path.join(
-            reportdir, directory or "", f"{prj['project_name']}_{pipeline_name}"
-        )
-
+        fp = os.path.join(reportdir, directory or "", f"{prj['project_name']}_{pipeline_name}")
 
     if hasattr(prj, "amendments") and getattr(prj, "amendments"):
         fp += f"_{'_'.join(prj.amendments)}"

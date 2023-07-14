@@ -702,6 +702,7 @@ def test_manager_has_correct_status_schema_and_status_schema_source(
     assert psm.status_schema == exp_status_schema
     assert psm.status_schema_source == exp_status_schema_path
 
+
 class TestHTMLReport:
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -709,7 +710,7 @@ class TestHTMLReport:
             ("sample1", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file","db"])
+    @pytest.mark.parametrize("backend", ["file", "db"])
     def test_basics(
         self,
         rec_id,
@@ -719,16 +720,25 @@ class TestHTMLReport:
         results_file_path,
         backend,
     ):
-        value_dict_project = {
-            "sample2": {"number_of_things": 2},
-            "sample3": {"name_of_something": "name of something string"},
-            # "sample4": {"output_file": {"path": "path_string", "title": "title_string"}},
-        }
-        value_dict_sample = {
-            "sample4": {"smooth_bw": "smooth_bw string"},
-            #"sample5": {"name_of_something": "name of something string"},
-            "sample5": {"output_file": {"path": "path_string", "title": "title_string"}},
-        }
+        values_project = [
+            {"sample2": {"number_of_things": 2}},
+            {"sample3": {"name_of_something": "name of something string"}},
+        ]
+        values_sample = [
+            {"sample4": {"smooth_bw": "smooth_bw string"}},
+            {"sample5": {"output_file": {"path": "path_string", "title": "title_string"}}},
+            {"sample4": {"aligned_bam": "aligned_bam string"}},
+            {"sample6": {"output_file": {"path": "path_string", "title": "title_string"}}},
+            {
+                "sample7": {
+                    "output_image": {
+                        "path": "path_string",
+                        "thumbnail_path": "path_string",
+                        "title": "title_string",
+                    }
+                }
+            },
+        ]
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report, database_only=False)
@@ -739,22 +749,26 @@ class TestHTMLReport:
             )
             args.update(backend_data)
             psm = PipestatManager(**args)
-            psm.report(sample_name=rec_id, values=val, force_overwrite=True, pipeline_type='project')
-            psm.set_status(sample_name=rec_id, status_identifier="completed", pipeline_type='project')
-            for r, v in value_dict_project.items():
-                psm.report(sample_name=r, values=v, force_overwrite=True, pipeline_type='project')
-                psm.set_status(sample_name=r, status_identifier="running", pipeline_type='project')
-            for r, v in value_dict_sample.items():
-                psm.report(sample_name=r, values=v, force_overwrite=True, pipeline_type='sample')
-                psm.set_status(sample_name=r, status_identifier="running")
-            psm.report(sample_name="sample4", values={"aligned_bam": "aligned_bam string"}, force_overwrite=True, pipeline_type='sample')
-            psm.set_status(sample_name="sample4", status_identifier="running")
-            psm.report(sample_name="sample6", values={"output_file": {"path": "path_string", "title": "title_string"}}, force_overwrite=True,
-                       pipeline_type='sample')
-            psm.set_status(sample_name="sample6", status_identifier="running")
-            psm.report(sample_name="sample7", values={"output_image": {"path": "path_string", "thumbnail_path": "path_string", "title": "title_string"}}, force_overwrite=True,
-                       pipeline_type='sample')
-            psm.set_status(sample_name="sample7", status_identifier="running")
+            psm.report(
+                sample_name=rec_id, values=val, force_overwrite=True, pipeline_type="project"
+            )
+            psm.set_status(
+                sample_name=rec_id, status_identifier="completed", pipeline_type="project"
+            )
+            for i in values_project:
+                for r, v in i.items():
+                    psm.report(
+                        sample_name=r, values=v, force_overwrite=True, pipeline_type="project"
+                    )
+                    psm.set_status(
+                        sample_name=r, status_identifier="running", pipeline_type="project"
+                    )
+            for i in values_sample:
+                for r, v in i.items():
+                    psm.report(
+                        sample_name=r, values=v, force_overwrite=True, pipeline_type="sample"
+                    )
+                    psm.set_status(sample_name=r, status_identifier="running")
             listsamples = psm.backend.get_samples()
-            htmlreportpath = psm.summarize(amendment='')
+            htmlreportpath = psm.summarize(amendment="")
             print(htmlreportpath)

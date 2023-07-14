@@ -12,7 +12,7 @@ from .helpers import *
 from .parsed_schema import ParsedSchema
 
 from .html_reports_pipestat import HTMLReportBuilder, fetch_pipeline_results
-#from .html_reports_project_pipestat import HTMLReportBuilderProject
+
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -442,7 +442,10 @@ class PipestatManager(dict):
         self.backend.set_status(status_identifier, sample_name, pipeline_type)
 
     @require_backend
-    def summarize(self, amendment: Optional[str] = None,) -> None:
+    def summarize(
+        self,
+        amendment: Optional[str] = None,
+    ) -> None:
         """
         Builds a browsable html report for reported results.
         :param Iterable[str] amendment: name indicating amendment to use, optional
@@ -453,7 +456,6 @@ class PipestatManager(dict):
         html_report_builder = HTMLReportBuilder(prj=self)
         report_path = html_report_builder(pipeline_name=self.pipeline_name, amendment=amendment)
         return report_path
-
 
     def _get_attr(self, attr: str) -> Any:
         """

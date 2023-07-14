@@ -137,6 +137,7 @@ class DBBackend(PipestatBackend):
 
                 if record:
                     return record
+
     def get_samples(
         self,
         pipeline_type: Optional[str] = None,
@@ -157,7 +158,7 @@ class DBBackend(PipestatBackend):
 
             return sample_list
         else:
-            pipelines = ['sample', 'project']
+            pipelines = ["sample", "project"]
             for i in pipelines:
                 pipeline_type = i
                 table_name = self.get_table_name(pipeline_type)
@@ -170,7 +171,7 @@ class DBBackend(PipestatBackend):
                         pair = (i.sample_name, pipeline_type)
                         sample_list.append(pair)
 
-                all_samples_list +=sample_list
+                all_samples_list += sample_list
             return all_samples_list
 
     def get_status(self, sample_name: str, pipeline_type: Optional[str] = None) -> Optional[str]:

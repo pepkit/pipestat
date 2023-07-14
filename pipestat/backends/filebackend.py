@@ -143,6 +143,7 @@ class FileBackend(PipestatBackend):
             _LOGGER.debug("No flag files found")
             return None
         pass
+
     def get_samples(
         self,
         pipeline_type: Optional[str] = None,
@@ -152,10 +153,10 @@ class FileBackend(PipestatBackend):
 
         if pipeline_type is not None:
             for k in list(self._data.data[self.pipeline_name][pipeline_type].keys()):
-                pair = (k,pipeline_type)
+                pair = (k, pipeline_type)
                 all_samples_list.append(pair)
             return all_samples_list
-            #return list(self._data.data[self.pipeline_name][pipeline_type].keys())
+
         else:
             keys = self._data.data[self.pipeline_name].keys()
         for k in keys:
@@ -165,6 +166,7 @@ class FileBackend(PipestatBackend):
                 sample_list.append(pair)
             all_samples_list += sample_list
         return all_samples_list
+
     def get_status(self, sample_name: str, pipeline_type: Optional[str] = None) -> Optional[str]:
         """
         Get the current pipeline status
@@ -476,13 +478,9 @@ class FileBackend(PipestatBackend):
         build html report based on all reported results
         """
 
-        #build new folder for the report
+        # build new folder for the report
         self.reports_dir = os.path.join(self.results_file_path, "reports")
         _LOGGER.debug(f"Reports dir: {self.reports_dir}")
-
-
-
-
 
     def _init_results_file(self) -> None:
         """
