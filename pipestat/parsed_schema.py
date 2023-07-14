@@ -7,7 +7,7 @@ from typing import *
 from pydantic import create_model
 
 # from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy import Column
+from sqlalchemy import Column, null
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 from .const import *
@@ -158,7 +158,7 @@ class ParsedSchema(object):
             if data_type == CLASSES_BY_TYPE["object"] or data_type == CLASSES_BY_TYPE["array"]:
                 defs[name] = (
                     data_type,
-                    Field(sa_column=Column(JSONB), default={}),
+                    Field(sa_column=Column(JSONB), default=null()),
                 )
             else:
                 defs[name] = (

@@ -283,7 +283,7 @@ class HTMLReportBuilder(object):
                     sample_name=sample_name,
                     pipeline_type=pipeline_type,
                 )
-                if file_result not in sample_result or sample_result[file_result] == {}:
+                if file_result not in sample_result:
                     pass
                 else:
                     try:
@@ -331,7 +331,7 @@ class HTMLReportBuilder(object):
                     sample_name=sample_name,
                     pipeline_type=pipeline_type,
                 )
-                if image_result not in sample_result or sample_result[image_result] == {}:
+                if image_result not in sample_result:
                     pass
                 else:
                     try:
