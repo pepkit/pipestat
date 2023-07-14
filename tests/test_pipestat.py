@@ -740,10 +740,10 @@ class TestHTMLReport:
             args.update(backend_data)
             psm = PipestatManager(**args)
             psm.report(sample_name=rec_id, values=val, force_overwrite=True, pipeline_type='project')
-            #psm.set_status(sample_name=rec_id, status_identifier="completed")
+            psm.set_status(sample_name=rec_id, status_identifier="completed", pipeline_type='project')
             for r, v in value_dict_project.items():
                 psm.report(sample_name=r, values=v, force_overwrite=True, pipeline_type='project')
-                #psm.set_status(sample_name=r, status_identifier="running")
+                psm.set_status(sample_name=r, status_identifier="running", pipeline_type='project')
             for r, v in value_dict_sample.items():
                 psm.report(sample_name=r, values=v, force_overwrite=True, pipeline_type='sample')
                 psm.set_status(sample_name=r, status_identifier="running")
@@ -756,5 +756,5 @@ class TestHTMLReport:
                        pipeline_type='sample')
             psm.set_status(sample_name="sample7", status_identifier="running")
             listsamples = psm.backend.get_samples()
-            htmlreportpath = psm.summarize(amendment='a')
+            htmlreportpath = psm.summarize(amendment='')
             print(htmlreportpath)

@@ -187,6 +187,7 @@ class ParsedSchema(object):
         field_defs = self._make_field_definitions(data, require_type=True)
         field_defs = self._add_status_field(field_defs)
         field_defs = self._add_sample_name_field(field_defs)
+        field_defs = self._add_project_name_field(field_defs)
         field_defs = self._add_id_field(field_defs)
         if not field_defs:
             return None
