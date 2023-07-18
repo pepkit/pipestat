@@ -39,7 +39,7 @@ Pipestat standardizes reporting of pipeline results and pipeline status manageme
 
 
 ```python
-def __init__(self, sample_name: Optional[str]=None, schema_path: Optional[str]=None, results_file_path: Optional[str]=None, database_only: Optional[bool]=True, config_file: Optional[str]=None, config_dict: Optional[dict]=None, flag_file_dir: Optional[str]=None, show_db_logs: bool=False, pipeline_type: Optional[str]=None, pipeline_name: Optional[str]='default_pipeline_name', result_formatter: staticmethod=<function default_formatter at 0x7f70b1358c10>, multi_pipelines: bool=False)
+def __init__(self, sample_name: Optional[str]=None, schema_path: Optional[str]=None, results_file_path: Optional[str]=None, database_only: Optional[bool]=True, config_file: Optional[str]=None, config_dict: Optional[dict]=None, flag_file_dir: Optional[str]=None, show_db_logs: bool=False, pipeline_type: Optional[str]=None, pipeline_name: Optional[str]='default_pipeline_name', result_formatter: staticmethod=<function default_formatter at 0x7f3c2fc69360>, multi_pipelines: bool=False)
 ```
 
 Initialize the PipestatManager object
@@ -289,6 +289,12 @@ Status schema source
 
 - `dict`:  source of the schema that formalizesthe pipeline status structure
 
+
+
+
+```python
+def summarize(self, *args, **kwargs)
+```
 
 
 
