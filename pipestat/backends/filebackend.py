@@ -144,6 +144,29 @@ class FileBackend(PipestatBackend):
             return None
         pass
 
+    def get_samples(
+        self,
+        pipeline_type: Optional[str] = None,
+    ) -> Optional[list]:
+        """Returns list of sample names and pipeline type as a list of tuples that have been reported, regardless of sample or project level"""
+        all_samples_list = []
+
+        if pipeline_type is not None:
+            for k in list(self._data.data[self.pipeline_name][pipeline_type].keys()):
+                pair = (k, pipeline_type)
+                all_samples_list.append(pair)
+            return all_samples_list
+
+        else:
+            keys = self._data.data[self.pipeline_name].keys()
+        for k in keys:
+            sample_list = []
+            for i in list(self._data.data[self.pipeline_name][k].keys()):
+                pair = (i, k)
+                sample_list.append(pair)
+            all_samples_list += sample_list
+        return all_samples_list
+
     def get_status(self, sample_name: str, pipeline_type: Optional[str] = None) -> Optional[str]:
         """
         Get the current pipeline status
@@ -441,6 +464,23 @@ class FileBackend(PipestatBackend):
 
         if prev_status:
             _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
+
+    def summarize(self) -> None:
+        """
+        summarize all reported results by building html report
+        """
+        _LOGGER.debug("Make HTML report here")
+        print("DEBUG SUMMARIZE")
+        self._htmlreportbuilder()
+
+    def _htmlreportbuilder(self):
+        """
+        build html report based on all reported results
+        """
+
+        # build new folder for the report
+        self.reports_dir = os.path.join(self.results_file_path, "reports")
+        _LOGGER.debug(f"Reports dir: {self.reports_dir}")
 
     def _init_results_file(self) -> None:
         """

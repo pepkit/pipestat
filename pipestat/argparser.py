@@ -13,6 +13,7 @@ REMOVE_CMD = "remove"
 RETRIEVE_CMD = "retrieve"
 STATUS_CMD = "status"
 INIT_CMD = "init"
+SUMMARIZE_CMD = "summarize"
 SUBPARSER_MESSAGES = {
     REPORT_CMD: "Report a result.",
     INSPECT_CMD: "Inspect a database.",
@@ -20,6 +21,7 @@ SUBPARSER_MESSAGES = {
     RETRIEVE_CMD: "Retrieve a result.",
     STATUS_CMD: "Manage pipeline status.",
     INIT_CMD: "Initialize generic config file",
+    SUMMARIZE_CMD: "Generates HTML Report",
 }
 
 STATUS_GET_CMD = "get"
@@ -254,5 +256,31 @@ def build_argparser(desc):
     sps[INSPECT_CMD].add_argument(
         "-d", "--data", action="store_true", help="Whether to display the data"
     )
+
+    # Summarize
+    for cmd in [SUMMARIZE_CMD]:
+        sps[cmd].add_argument(
+            "-f",
+            "--results-file",
+            type=str,
+            metavar="F",
+            help=f"Path to the YAML file where the results will be stored. "
+            f"This file will be used as {PKG_NAME} backend and to restore"
+            f" the reported results across sessions",
+        )
+        sps[cmd].add_argument(
+            "-c",
+            "--config",
+            type=str,
+            metavar="C",
+            help=f"Path to the YAML configuration file. {_env_txt('config')}",
+        )
+        sps[cmd].add_argument(
+            "-s",
+            "--schema",
+            type=str,
+            metavar="S",
+            help=f"Path to the schema that defines the results that can be reported. {_env_txt('schema')}",
+        )
 
     return parser

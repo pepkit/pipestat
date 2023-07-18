@@ -50,6 +50,13 @@ __all__ = [
     "RESULT_FORMATTER",
     "DEFAULT_PIPELINE_NAME",
     "MULTI_PIPELINE",
+    "OBJECT_TYPES",
+    "OUTPUT_SCHEMA_KEY",
+    "BUTTON_APPEARANCE_BY_FLAG",
+    "APPEARANCE_BY_FLAG",
+    "TEMPLATES_DIRNAME",
+    "NO_DATA_PLACEHOLDER",
+    "PROFILE_COLNAMES",
 ]
 
 PKG_NAME = "pipestat"
@@ -140,3 +147,40 @@ PIPESTAT_GENERIC_CONFIG = "generic_config.yaml"
 RESULT_FORMATTER = "_result_formatter"
 DEFAULT_PIPELINE_NAME = "default_pipeline_name"
 MULTI_PIPELINE = "_multi_pipelines"
+TEMPLATES_DIRNAME = "jinja_templates"
+
+
+OBJECT_TYPES = ["object", "file", "image", "array"]
+OUTPUT_SCHEMA_KEY = "output_schema"
+NO_DATA_PLACEHOLDER = "NA"
+# this strongly depends on pypiper's profile.tsv format
+PROFILE_COLNAMES = ["pid", "hash", "cid", "runtime", "mem", "cmd", "lock"]
+
+APPEARANCE_BY_FLAG = {
+    "completed": {"button_class": "{type}-success", "flag": "Completed"},
+    "running": {"button_class": "{type}-primary", "flag": "Running"},
+    "failed": {"button_class": "{type}-danger", "flag": "Failed"},
+    "parital": {"button_class": "{type}-warning", "flag": "Partial"},
+    "waiting": {"button_class": "{type}-info", "flag": "Waiting"},
+}
+
+
+def _get_apperance_dict(type, templ=APPEARANCE_BY_FLAG):
+    """
+    Based on the type of the HTML element provided construct the appearence
+     mapping using the template
+
+    :param dict templ: appearance template to populate
+    :param str type: type of HTML element to populate template with
+    :return dict: populated appearance template
+    """
+    from copy import deepcopy
+
+    ret = deepcopy(templ)
+    for flag, app_dict in ret.items():
+        for key, app in app_dict.items():
+            ret[flag][key] = ret[flag][key].format(type=type)
+    return ret
+
+
+BUTTON_APPEARANCE_BY_FLAG = _get_apperance_dict("btn btn")

@@ -701,3 +701,74 @@ def test_manager_has_correct_status_schema_and_status_schema_source(
     psm = PipestatManager(schema_path=schema_file_path, **backend_data)
     assert psm.status_schema == exp_status_schema
     assert psm.status_schema_source == exp_status_schema_path
+
+
+class TestHTMLReport:
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("sample1", {"name_of_something": "test_name"}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_basics(
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        output_schema_html_report,
+        results_file_path,
+        backend,
+    ):
+        values_project = [
+            {"sample2": {"number_of_things": 2}},
+            {"sample3": {"name_of_something": "name of something string"}},
+        ]
+        values_sample = [
+            {"sample4": {"smooth_bw": "smooth_bw string"}},
+            {"sample5": {"output_file": {"path": "path_string", "title": "title_string"}}},
+            {"sample4": {"aligned_bam": "aligned_bam string"}},
+            {"sample6": {"output_file": {"path": "path_string", "title": "title_string"}}},
+            {
+                "sample7": {
+                    "output_image": {
+                        "path": "path_string",
+                        "thumbnail_path": "path_string",
+                        "title": "title_string",
+                    }
+                }
+            },
+        ]
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=output_schema_html_report, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            psm.report(
+                sample_name=rec_id, values=val, force_overwrite=True, pipeline_type="project"
+            )
+            psm.set_status(
+                sample_name=rec_id, status_identifier="completed", pipeline_type="project"
+            )
+            for i in values_project:
+                for r, v in i.items():
+                    psm.report(
+                        sample_name=r, values=v, force_overwrite=True, pipeline_type="project"
+                    )
+                    psm.set_status(
+                        sample_name=r, status_identifier="running", pipeline_type="project"
+                    )
+            for i in values_sample:
+                for r, v in i.items():
+                    psm.report(
+                        sample_name=r, values=v, force_overwrite=True, pipeline_type="sample"
+                    )
+                    psm.set_status(sample_name=r, status_identifier="running")
+            listsamples = psm.backend.get_samples()
+            htmlreportpath = psm.summarize(amendment="")
+            print(htmlreportpath)
