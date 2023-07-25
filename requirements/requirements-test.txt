@@ -2,3 +2,4 @@ black
 coveralls
 pytest>=4.6.9
 pytest-cov>=2.8.1
+jinja2
