@@ -5,7 +5,7 @@ Pipestat offers a CLI that can be access via the `pipestat` command in the shell
 Here you can see the command-line usage instructions for the main command and for each subcommand:
 ## `pipestat --help`
 ```console
-version: 0.4.0
+version: 0.4.1
 usage: pipestat [-h] [--version] [--silent] [--verbosity V] [--logdev]
                 {report,inspect,remove,retrieve,status,init} ...
 
@@ -20,7 +20,7 @@ positional arguments:
     status              Manage pipeline status.
     init                Initialize generic config file
 
-options:
+optional arguments:
   -h, --help            show this help message and exit
   --version             show program's version number and exit
   --silent              Silence logging. Overrides verbosity.
@@ -42,7 +42,7 @@ usage: pipestat report [-h] [-n N] [-f F] [-c C] [-a] [-s S] [--status-schema ST
 
 Report a result.
 
-options:
+optional arguments:
   -h, --help                   show this help message and exit
   -n N, --project-name N       Name of the pipeline to report result for. If not provided
                                'PIPESTAT_PROJECT_NAME' env var will be used. Currently not
@@ -58,8 +58,8 @@ options:
                                reported. If not provided 'PIPESTAT_RESULTS_SCHEMA' env var
                                will be used. Currently not set
   --status-schema ST           Path to the status schema. Default will be used if not
-                               provided: /home/drc/GITHUB/pipestat/pipestat/venv/lib/pytho
-                               n3.10/site-packages/pipestat/schemas/status_schema.yaml
+                               provided: /home/drc/anaconda3/envs/condalooper_p38/lib/pyth
+                               on3.8/site-packages/pipestat/schemas/status_schema.yaml
   --flag-dir FD                Path to the flag directory in case YAML file is the
                                pipestat backend.
   -i I, --result-identifier I  ID of the result to report; needs to be defined in the
@@ -81,7 +81,7 @@ usage: pipestat inspect [-h] [-n N] [-f F] [-c C] [-a] [-s S] [--status-schema S
 
 Inspect a database.
 
-options:
+optional arguments:
   -h, --help              show this help message and exit
   -n N, --project-name N  Name of the pipeline to report result for. If not provided
                           'PIPESTAT_PROJECT_NAME' env var will be used. Currently not set
@@ -96,7 +96,7 @@ options:
                           reported. If not provided 'PIPESTAT_RESULTS_SCHEMA' env var will
                           be used. Currently not set
   --status-schema ST      Path to the status schema. Default will be used if not provided:
-                          /home/drc/GITHUB/pipestat/pipestat/venv/lib/python3.10/site-
+                          /home/drc/anaconda3/envs/condalooper_p38/lib/python3.8/site-
                           packages/pipestat/schemas/status_schema.yaml
   --flag-dir FD           Path to the flag directory in case YAML file is the pipestat
                           backend.
@@ -110,7 +110,7 @@ usage: pipestat remove [-h] [-n N] [-f F] [-c C] [-a] [-s S] [--status-schema ST
 
 Remove a result.
 
-options:
+optional arguments:
   -h, --help                   show this help message and exit
   -n N, --project-name N       Name of the pipeline to report result for. If not provided
                                'PIPESTAT_PROJECT_NAME' env var will be used. Currently not
@@ -126,8 +126,8 @@ options:
                                reported. If not provided 'PIPESTAT_RESULTS_SCHEMA' env var
                                will be used. Currently not set
   --status-schema ST           Path to the status schema. Default will be used if not
-                               provided: /home/drc/GITHUB/pipestat/pipestat/venv/lib/pytho
-                               n3.10/site-packages/pipestat/schemas/status_schema.yaml
+                               provided: /home/drc/anaconda3/envs/condalooper_p38/lib/pyth
+                               on3.8/site-packages/pipestat/schemas/status_schema.yaml
   --flag-dir FD                Path to the flag directory in case YAML file is the
                                pipestat backend.
   -i I, --result-identifier I  ID of the result to report; needs to be defined in the
@@ -144,7 +144,7 @@ usage: pipestat retrieve [-h] [-n N] [-f F] [-c C] [-a] [-s S] [--status-schema 
 
 Retrieve a result.
 
-options:
+optional arguments:
   -h, --help                   show this help message and exit
   -n N, --project-name N       Name of the pipeline to report result for. If not provided
                                'PIPESTAT_PROJECT_NAME' env var will be used. Currently not
@@ -160,8 +160,8 @@ options:
                                reported. If not provided 'PIPESTAT_RESULTS_SCHEMA' env var
                                will be used. Currently not set
   --status-schema ST           Path to the status schema. Default will be used if not
-                               provided: /home/drc/GITHUB/pipestat/pipestat/venv/lib/pytho
-                               n3.10/site-packages/pipestat/schemas/status_schema.yaml
+                               provided: /home/drc/anaconda3/envs/condalooper_p38/lib/pyth
+                               on3.8/site-packages/pipestat/schemas/status_schema.yaml
   --flag-dir FD                Path to the flag directory in case YAML file is the
                                pipestat backend.
   -i I, --result-identifier I  ID of the result to report; needs to be defined in the
@@ -182,7 +182,7 @@ positional arguments:
     set       Set status.
     get       Get status.
 
-options:
+optional arguments:
   -h, --help  show this help message and exit
 ```
 
@@ -193,7 +193,7 @@ usage: pipestat status get [-h] [-n N] [-f F] [-c C] [-a] [-s S] [--status-schem
 
 Get status.
 
-options:
+optional arguments:
   -h, --help              show this help message and exit
   -n N, --project-name N  Name of the pipeline to report result for. If not provided
                           'PIPESTAT_PROJECT_NAME' env var will be used. Currently not set
@@ -208,7 +208,7 @@ options:
                           reported. If not provided 'PIPESTAT_RESULTS_SCHEMA' env var will
                           be used. Currently not set
   --status-schema ST      Path to the status schema. Default will be used if not provided:
-                          /home/drc/GITHUB/pipestat/pipestat/venv/lib/python3.10/site-
+                          /home/drc/anaconda3/envs/condalooper_p38/lib/python3.8/site-
                           packages/pipestat/schemas/status_schema.yaml
   --flag-dir FD           Path to the flag directory in case YAML file is the pipestat
                           backend.
@@ -227,7 +227,7 @@ Set status.
 positional arguments:
   status_identifier       Status identifier to set.
 
-options:
+optional arguments:
   -h, --help              show this help message and exit
   -n N, --project-name N  Name of the pipeline to report result for. If not provided
                           'PIPESTAT_PROJECT_NAME' env var will be used. Currently not set
@@ -242,7 +242,7 @@ options:
                           reported. If not provided 'PIPESTAT_RESULTS_SCHEMA' env var will
                           be used. Currently not set
   --status-schema ST      Path to the status schema. Default will be used if not provided:
-                          /home/drc/GITHUB/pipestat/pipestat/venv/lib/python3.10/site-
+                          /home/drc/anaconda3/envs/condalooper_p38/lib/python3.8/site-
                           packages/pipestat/schemas/status_schema.yaml
   --flag-dir FD           Path to the flag directory in case YAML file is the pipestat
                           backend.
