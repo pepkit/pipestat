@@ -4,3 +4,4 @@ markdown-include
 mkdocs>=1.0
 pydoc-markdown
 sqlmodel>=0.0.8
+eido
