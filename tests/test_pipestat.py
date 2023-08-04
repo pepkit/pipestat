@@ -72,9 +72,15 @@ class TestSplitClasses:
             psm = PipestatManager(**args)
             psm.report(sample_name=rec_id, values=val, force_overwrite=True)
             val_name = list(val.keys())[0]
+            psm.set_status(status_identifier="running", sample_name=rec_id)
+            status = psm.get_status(sample_name=rec_id)
+            assert status == "running"
             assert val_name in psm.retrieve(sample_name=rec_id)
             psm.remove(sample_name=rec_id, result_identifier=val_name)
             if backend == "file":
+                psm.clear_status(sample_name=rec_id)
+                status = psm.get_status(sample_name=rec_id)
+                assert status is None
                 with pytest.raises(PipestatDataError):
                     psm.retrieve(sample_name=rec_id)
             if backend == "db":
