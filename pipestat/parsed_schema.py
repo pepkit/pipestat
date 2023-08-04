@@ -112,6 +112,23 @@ class ParsedSchema(object):
                 f"Overlap between project- and sample-level keys: {', '.join(project_sample_overlap)}"
             )
 
+    def __str__(self):
+        """
+        Generate string representation of the object
+
+        :return str: string representation of the object
+        """
+        res = f"{self.__class__.__name__} ({self._pipeline_name})"
+        if self._project_level_data is not None:
+            res += f"\n Project Level Data:"
+            for k, v in self._project_level_data.items():
+                res += f"\n -  {k} : {v}"
+        if self._sample_level_data is not None:
+            res += f"\n Sample Level Data:"
+            for k, v in self._sample_level_data.items():
+                res += f"\n -  {k} : {v}"
+        return res
+
     @property
     def pipeline_name(self):
         return self._pipeline_name

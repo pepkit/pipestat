@@ -149,12 +149,18 @@ EXPECTED_SUBDATA_BY_EXAMPLE_FILE = [
         for attr, exp in attr_exp_pairs
     ],
 )
-def test_parsed_schema__has_correct_data(prepare_schema_from_file, filename, attr_name, expected):
+def test_parsed_schema__has_correct_data_and_print(
+    prepare_schema_from_file, filename, attr_name, expected
+):
     data_file = get_data_file_path(filename)
     raw_schema = prepare_schema_from_file(data_file)
     schema = ParsedSchema(raw_schema)
     observed = getattr(schema, attr_name)
     assert observed == expected
+    try:
+        print(str(schema))
+    except:
+        assert False
 
 
 SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME = [
