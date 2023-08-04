@@ -5,6 +5,10 @@ coverage:
         target: 80%    # the required coverage value
         threshold: 1%  # the leniency in hitting the target
         informational: true
+    patch:
+      default:
+        target: 80%
+        informational: true
 ignore:
   - "*/argparser.py"
   - "*/cli.py"
