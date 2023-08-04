@@ -91,9 +91,11 @@ class ParsedSchema(object):
         self._status_data = _safe_pop_one_mapping(key="status", data=data, info_name="status")
 
         if data:
-            raise SchemaError(
-                f"Extra top-level key(s) in given schema data: {', '.join(data.keys())}"
+            _LOGGER.info(
+                "Top-Level arguments found in output schema. They will be assigned to project-level."
             )
+            extra_project_data = _recursively_replace_custom_types(data)
+            self._project_level_data.update(extra_project_data)
 
         # Check that no reserved keywords were used as data items.
         resv_kwds = {"id", SAMPLE_NAME}

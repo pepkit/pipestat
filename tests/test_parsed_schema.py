@@ -197,13 +197,6 @@ SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME = [
             f"Could not find valid pipeline identifier (key '{SCHEMA_PIPELINE_NAME_KEY}') in given schema data",
         )
         for data in SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME
-    ]
-    + [
-        (
-            dict(data + [(SCHEMA_PIPELINE_NAME_KEY, "test_pipe"), ("extra_key", "placeholder")]),
-            "Extra top-level key(s) in given schema data: extra_key",
-        )
-        for data in SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME
     ],
 )
 def test_insufficient_schema__raises_expected_error_and_message(schema_data, expected_message):
