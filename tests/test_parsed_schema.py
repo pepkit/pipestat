@@ -149,12 +149,18 @@ EXPECTED_SUBDATA_BY_EXAMPLE_FILE = [
         for attr, exp in attr_exp_pairs
     ],
 )
-def test_parsed_schema__has_correct_data(prepare_schema_from_file, filename, attr_name, expected):
+def test_parsed_schema__has_correct_data_and_print(
+    prepare_schema_from_file, filename, attr_name, expected
+):
     data_file = get_data_file_path(filename)
     raw_schema = prepare_schema_from_file(data_file)
     schema = ParsedSchema(raw_schema)
     observed = getattr(schema, attr_name)
     assert observed == expected
+    try:
+        print(str(schema))
+    except:
+        assert False
 
 
 SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME = [
@@ -195,13 +201,6 @@ SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME = [
         (
             dict(data),
             f"Could not find valid pipeline identifier (key '{SCHEMA_PIPELINE_NAME_KEY}') in given schema data",
-        )
-        for data in SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME
-    ]
-    + [
-        (
-            dict(data + [(SCHEMA_PIPELINE_NAME_KEY, "test_pipe"), ("extra_key", "placeholder")]),
-            "Extra top-level key(s) in given schema data: extra_key",
         )
         for data in SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME
     ],

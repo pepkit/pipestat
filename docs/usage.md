@@ -5,19 +5,21 @@ Pipestat offers a CLI that can be access via the `pipestat` command in the shell
 Here you can see the command-line usage instructions for the main command and for each subcommand:
 ## `pipestat --help`
 ```console
-version: 0.4.0
-usage: pipestat [-h] [--version] [--silent] [--verbosity V] [--logdev] {report,inspect,remove,retrieve,status,init} ...
+version: 0.5.0
+usage: pipestat [-h] [--version] [--silent] [--verbosity V] [--logdev]
+                {report,inspect,remove,retrieve,status,init,summarize} ...
 
 pipestat - report pipeline results
 
 positional arguments:
-  {report,inspect,remove,retrieve,status,init}
+  {report,inspect,remove,retrieve,status,init,summarize}
     report              Report a result.
     inspect             Inspect a database.
     remove              Remove a result.
     retrieve            Retrieve a result.
     status              Manage pipeline status.
     init                Initialize generic config file
+    summarize           Generates HTML Report
 
 options:
   -h, --help            show this help message and exit
@@ -26,10 +28,12 @@ options:
   --verbosity V         Set logging level (1-5 or logging module level name)
   --logdev              Expand content of logging message format.
 
-Pipestat standardizes reporting of pipeline results and pipeline status management. It formalizes a way for pipeline 
-developers and downstream tools developers to communicate -- results produced by a pipeline can easily and
-reliably become an input for downstream analyses. A PipestatManager object exposes an API for interacting with the 
-results and pipeline status and can be backed by either a YAML-formatted file or a database.
+Pipestat standardizes reporting of pipeline results and pipeline status
+management. It formalizes a way for pipeline developers and downstream tools
+developers to communicate -- results produced by a pipeline can easily and
+reliably become an input for downstream analyses. A PipestatManager object
+exposes an API for interacting with the results and pipeline status and can be
+backed by either a YAML-formatted file or a database.
 ```
 
 ## `pipestat report --help`
@@ -55,8 +59,8 @@ options:
                                reported. If not provided 'PIPESTAT_RESULTS_SCHEMA' env var
                                will be used. Currently not set
   --status-schema ST           Path to the status schema. Default will be used if not
-                               provided: /usr/local/lib/python3.10/site-
-                               packages/pipestat/schemas/status_schema.yaml
+                               provided: /home/drc/GITHUB/pipestat/pipestat/venv/lib/pytho
+                               n3.10/site-packages/pipestat/schemas/status_schema.yaml
   --flag-dir FD                Path to the flag directory in case YAML file is the
                                pipestat backend.
   -i I, --result-identifier I  ID of the result to report; needs to be defined in the
@@ -69,7 +73,6 @@ options:
                                name clashes
   -t, --skip-convert           Whether skip result type conversion into the required class
                                in case it does not meet the schema requirements
-
 ```
 
 ## `pipestat inspect --help`
@@ -79,9 +82,9 @@ usage: pipestat inspect [-h] [-n N] [-f F] [-c C] [-a] [-s S] [--status-schema S
 
 Inspect a database.
 
-optional arguments:
+options:
   -h, --help              show this help message and exit
-  -n N, --project-name N     Name of the pipeline to report result for. If not provided
+  -n N, --project-name N  Name of the pipeline to report result for. If not provided
                           'PIPESTAT_PROJECT_NAME' env var will be used. Currently not set
   -f F, --results-file F  Path to the YAML file where the results will be stored. This
                           file will be used as pipestat backend and to restore the
@@ -94,7 +97,7 @@ optional arguments:
                           reported. If not provided 'PIPESTAT_RESULTS_SCHEMA' env var will
                           be used. Currently not set
   --status-schema ST      Path to the status schema. Default will be used if not provided:
-                          /usr/local/lib/python3.9/site-
+                          /home/drc/GITHUB/pipestat/pipestat/venv/lib/python3.10/site-
                           packages/pipestat/schemas/status_schema.yaml
   --flag-dir FD           Path to the flag directory in case YAML file is the pipestat
                           backend.
@@ -124,8 +127,8 @@ options:
                                reported. If not provided 'PIPESTAT_RESULTS_SCHEMA' env var
                                will be used. Currently not set
   --status-schema ST           Path to the status schema. Default will be used if not
-                               provided: /usr/local/lib/python3.10/site-
-                               packages/pipestat/schemas/status_schema.yaml
+                               provided: /home/drc/GITHUB/pipestat/pipestat/venv/lib/pytho
+                               n3.10/site-packages/pipestat/schemas/status_schema.yaml
   --flag-dir FD                Path to the flag directory in case YAML file is the
                                pipestat backend.
   -i I, --result-identifier I  ID of the result to report; needs to be defined in the
@@ -133,7 +136,6 @@ options:
   -r R, --sample-name R        ID of the record to report the result for. If not provided
                                'PIPESTAT_SAMPLE_NAME' env var will be used. Currently not
                                set
-
 ```
 
 ## `pipestat retrieve --help`
@@ -159,8 +161,8 @@ options:
                                reported. If not provided 'PIPESTAT_RESULTS_SCHEMA' env var
                                will be used. Currently not set
   --status-schema ST           Path to the status schema. Default will be used if not
-                               provided: /usr/local/lib/python3.10/site-
-                               packages/pipestat/schemas/status_schema.yaml
+                               provided: /home/drc/GITHUB/pipestat/pipestat/venv/lib/pytho
+                               n3.10/site-packages/pipestat/schemas/status_schema.yaml
   --flag-dir FD                Path to the flag directory in case YAML file is the
                                pipestat backend.
   -i I, --result-identifier I  ID of the result to report; needs to be defined in the
@@ -168,7 +170,6 @@ options:
   -r R, --sample-name R        ID of the record to report the result for. If not provided
                                'PIPESTAT_SAMPLE_NAME' env var will be used. Currently not
                                set
-
 ```
 
 ## `pipestat status --help`
@@ -182,7 +183,7 @@ positional arguments:
     set       Set status.
     get       Get status.
 
-optional arguments:
+options:
   -h, --help  show this help message and exit
 ```
 
@@ -208,8 +209,8 @@ options:
                           reported. If not provided 'PIPESTAT_RESULTS_SCHEMA' env var will
                           be used. Currently not set
   --status-schema ST      Path to the status schema. Default will be used if not provided:
-                          /usr/local/lib/python3.10
-                          /site-packages/pipestat/schemas/status_schema.yaml
+                          /home/drc/GITHUB/pipestat/pipestat/venv/lib/python3.10/site-
+                          packages/pipestat/schemas/status_schema.yaml
   --flag-dir FD           Path to the flag directory in case YAML file is the pipestat
                           backend.
   -r R, --sample-name R   ID of the record to report the result for. If not provided
@@ -242,9 +243,11 @@ options:
                           reported. If not provided 'PIPESTAT_RESULTS_SCHEMA' env var will
                           be used. Currently not set
   --status-schema ST      Path to the status schema. Default will be used if not provided:
-                          /usr/local/lib/python3.10/site-packages/pipestat/schemas/status_schema.yaml
+                          /home/drc/GITHUB/pipestat/pipestat/venv/lib/python3.10/site-
+                          packages/pipestat/schemas/status_schema.yaml
   --flag-dir FD           Path to the flag directory in case YAML file is the pipestat
                           backend.
   -r R, --sample-name R   ID of the record to report the result for. If not provided
                           'PIPESTAT_SAMPLE_NAME' env var will be used. Currently not set
 ```
+

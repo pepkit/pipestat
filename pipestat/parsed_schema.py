@@ -7,7 +7,7 @@ from typing import *
 from pydantic import create_model
 
 # from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy import Column
+from sqlalchemy import Column, null
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 from .const import *
@@ -91,9 +91,11 @@ class ParsedSchema(object):
         self._status_data = _safe_pop_one_mapping(key="status", data=data, info_name="status")
 
         if data:
-            raise SchemaError(
-                f"Extra top-level key(s) in given schema data: {', '.join(data.keys())}"
+            _LOGGER.info(
+                "Top-Level arguments found in output schema. They will be assigned to project-level."
             )
+            extra_project_data = _recursively_replace_custom_types(data)
+            self._project_level_data.update(extra_project_data)
 
         # Check that no reserved keywords were used as data items.
         resv_kwds = {"id", SAMPLE_NAME}
@@ -111,6 +113,23 @@ class ParsedSchema(object):
             raise SchemaError(
                 f"Overlap between project- and sample-level keys: {', '.join(project_sample_overlap)}"
             )
+
+    def __str__(self):
+        """
+        Generate string representation of the object
+
+        :return str: string representation of the object
+        """
+        res = f"{self.__class__.__name__} ({self._pipeline_name})"
+        if self._project_level_data is not None:
+            res += f"\n Project Level Data:"
+            for k, v in self._project_level_data.items():
+                res += f"\n -  {k} : {v}"
+        if self._sample_level_data is not None:
+            res += f"\n Sample Level Data:"
+            for k, v in self._sample_level_data.items():
+                res += f"\n -  {k} : {v}"
+        return res
 
     @property
     def pipeline_name(self):
@@ -158,7 +177,7 @@ class ParsedSchema(object):
             if data_type == CLASSES_BY_TYPE["object"] or data_type == CLASSES_BY_TYPE["array"]:
                 defs[name] = (
                     data_type,
-                    Field(sa_column=Column(JSONB), default={}),
+                    Field(sa_column=Column(JSONB), default=null()),
                 )
             else:
                 defs[name] = (
@@ -187,6 +206,7 @@ class ParsedSchema(object):
         field_defs = self._make_field_definitions(data, require_type=True)
         field_defs = self._add_status_field(field_defs)
         field_defs = self._add_sample_name_field(field_defs)
+        field_defs = self._add_project_name_field(field_defs)
         field_defs = self._add_id_field(field_defs)
         if not field_defs:
             return None

@@ -11,6 +11,9 @@ from yacman import YAMLConfigManager, select_config
 from .helpers import *
 from .parsed_schema import ParsedSchema
 
+from .html_reports_pipestat import HTMLReportBuilder, fetch_pipeline_results
+
+
 _LOGGER = getLogger(PKG_NAME)
 
 
@@ -437,6 +440,22 @@ class PipestatManager(dict):
         """
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
         self.backend.set_status(status_identifier, sample_name, pipeline_type)
+
+    @require_backend
+    def summarize(
+        self,
+        amendment: Optional[str] = None,
+    ) -> None:
+        """
+        Builds a browsable html report for reported results.
+        :param Iterable[str] amendment: name indicating amendment to use, optional
+        :return str: report_path
+
+        """
+
+        html_report_builder = HTMLReportBuilder(prj=self)
+        report_path = html_report_builder(pipeline_name=self.pipeline_name, amendment=amendment)
+        return report_path
 
     def _get_attr(self, attr: str) -> Any:
         """

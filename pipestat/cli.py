@@ -15,6 +15,7 @@ from .argparser import (
     STATUS_GET_CMD,
     STATUS_SET_CMD,
     INIT_CMD,
+    SUMMARIZE_CMD,
 )
 from .const import *
 from .exceptions import SchemaNotFoundError, PipestatStartupError
@@ -46,6 +47,18 @@ def main():
             "constructor or via environment variable. \nPlease see: http://pipestat.databio.org/en/dev/cli/"
         )
         raise PipestatStartupError(msg)
+    if args.command == SUMMARIZE_CMD:
+        psm = PipestatManager(
+            schema_path=args.schema,
+            results_file_path=args.results_file,
+            config_file=args.config,
+        )
+        results_path = args.config or args.results_file
+        html_report_path = psm.summarize()
+        _LOGGER.info(f"\nGenerating HTML Report from {results_path} at: {html_report_path}\n")
+
+        sys.exit(0)
+
     psm = PipestatManager(
         schema_path=args.schema,
         results_file_path=args.results_file,
@@ -105,4 +118,5 @@ def main():
                 status_identifier=args.status_identifier,
                 sample_name=args.sample_name,
             )
+
     sys.exit(0)
