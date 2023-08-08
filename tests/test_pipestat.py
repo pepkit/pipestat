@@ -775,6 +775,6 @@ class TestHTMLReport:
                         sample_name=r, values=v, force_overwrite=True, pipeline_type="sample"
                     )
                     psm.set_status(sample_name=r, status_identifier="running")
-            listsamples = psm.backend.get_samples()
+
             htmlreportpath = psm.summarize(amendment="")
-            print(htmlreportpath)
+

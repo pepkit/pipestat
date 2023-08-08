@@ -25,11 +25,11 @@ class HTMLReportBuilder(object):
         """
         The Project defines the instance.
 
-        :param looper.Project prj: Project with which to work/operate on
+        :param PipestatManager prj: Project with which to work/operate on
         """
-        super(HTMLReportBuilder, self).__init__()
+        #super(HTMLReportBuilder, self).__init__()
         self.prj = prj
-        self.j_env = get_jinja_env()
+        self.jinja_env = get_jinja_env()
         results_file_path = getattr(self.prj.backend, "results_file_path", None)
         config_path = getattr(self.prj, "config_path", None)
         self.output_dir = results_file_path or config_path
@@ -102,7 +102,7 @@ class HTMLReportBuilder(object):
             navbar=navbar, footer=footer, labels=labels, pages=pages, header="Objects"
         )
         _LOGGER.debug(f"object navbar_list_parent.html | template_vars:" f"\n{template_vars}")
-        return render_jinja_template("navbar_list_parent.html", self.j_env, template_vars)
+        return render_jinja_template("navbar_list_parent.html", self.jinja_env, template_vars)
 
     def create_sample_parent_html(self, navbar, footer):
         """
@@ -135,7 +135,7 @@ class HTMLReportBuilder(object):
             navbar=navbar, footer=footer, labels=labels, pages=pages, header="Samples"
         )
         _LOGGER.debug(f"sample navbar_list_parent.html | template_vars:" f"\n{template_vars}")
-        return render_jinja_template("navbar_list_parent.html", self.j_env, template_vars)
+        return render_jinja_template("navbar_list_parent.html", self.jinja_env, template_vars)
 
     def create_navbar(self, navbar_links, index_html_relpath):
         """
@@ -145,7 +145,7 @@ class HTMLReportBuilder(object):
         :return str: navbar HTML
         """
         template_vars = dict(navbar_links=navbar_links, index_html=index_html_relpath)
-        return render_jinja_template("navbar.html", self.j_env, template_vars)
+        return render_jinja_template("navbar.html", self.jinja_env, template_vars)
 
     def create_footer(self):
         """
@@ -153,7 +153,7 @@ class HTMLReportBuilder(object):
 
         :return str: footer HTML
         """
-        return render_jinja_template("footer.html", self.j_env, dict(version=v))
+        return render_jinja_template("footer.html", self.jinja_env, dict(version=v))
 
     def create_navbar_links(self, wd=None, context=None, project_index_html_relpath=None):
         """
@@ -231,7 +231,7 @@ class HTMLReportBuilder(object):
             project_report=project_index_html_relpath,
         )
         _LOGGER.debug(f"navbar_links.html | template_vars:\n{template_vars}")
-        return render_jinja_template("navbar_links.html", self.j_env, template_vars)
+        return render_jinja_template("navbar_links.html", self.jinja_env, template_vars)
 
     def create_object_htmls(self, navbar, footer):
         """
@@ -289,7 +289,7 @@ class HTMLReportBuilder(object):
                 )
                 save_html(
                     html_page_path,
-                    render_jinja_template("object.html", self.j_env, args=template_vars),
+                    render_jinja_template("object.html", self.jinja_env, args=template_vars),
                 )
 
         for image_result in image_results:
@@ -340,7 +340,7 @@ class HTMLReportBuilder(object):
                 _LOGGER.debug(f"object.html | template_vars:\n{template_vars}")
                 save_html(
                     html_page_path,
-                    render_jinja_template("object.html", self.j_env, args=template_vars),
+                    render_jinja_template("object.html", self.jinja_env, args=template_vars),
                 )
 
     def create_sample_html(self, sample_stats, navbar, footer, sample_name, pipeline_type):
@@ -438,7 +438,7 @@ class HTMLReportBuilder(object):
             amendments="",
         )
         _LOGGER.debug(f"sample.html | template_vars:\n{template_vars}")
-        save_html(html_page, render_jinja_template("sample.html", self.j_env, template_vars))
+        save_html(html_page, render_jinja_template("sample.html", self.jinja_env, template_vars))
         return html_page
 
     def create_status_html(self, status_table, navbar, footer):
@@ -453,7 +453,7 @@ class HTMLReportBuilder(object):
         _LOGGER.debug("Building status page...")
         template_vars = dict(status_table=status_table, navbar=navbar, footer=footer)
         _LOGGER.debug(f"status.html | template_vars:\n{template_vars}")
-        return render_jinja_template("status.html", self.j_env, template_vars)
+        return render_jinja_template("status.html", self.jinja_env, template_vars)
 
     def create_index_html(self, navbar, footer):
         """
@@ -565,7 +565,7 @@ class HTMLReportBuilder(object):
         _LOGGER.debug(f"index.html | template_vars:\n{template_vars}")
         save_html(
             self.index_html_path,
-            render_jinja_template("index.html", self.j_env, template_vars),
+            render_jinja_template("index.html", self.jinja_env, template_vars),
         )
 
     def get_nonhighlighted_results(self, types):
