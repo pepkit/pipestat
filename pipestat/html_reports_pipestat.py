@@ -359,7 +359,7 @@ class HTMLReportBuilder(object):
             os.makedirs(self.pipeline_reports)
         html_page = os.path.join(self.pipeline_reports, f"{sample_name}.html".lower())
 
-        flag = self.prj.get_status(sample_name=sample_name)
+        flag = self.prj.get_status(sample_name=sample_name, pipeline_type=pipeline_type)
         if not flag:
             button_class = "btn btn-secondary"
             flag = "Missing"
@@ -548,7 +548,7 @@ class HTMLReportBuilder(object):
             template=self.create_status_html(status_tab, navbar, footer),
         )
         # Complete and close HTML file
-        columns = ["Record Identifiers"] + ["Results"]
+        columns = ["Record Identifiers", "Results"]
         template_vars = dict(
             navbar=navbar,
             stats_file_path=stats_file_path,
