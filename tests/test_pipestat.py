@@ -777,4 +777,3 @@ class TestHTMLReport:
                     psm.set_status(sample_name=r, status_identifier="running")
 
             htmlreportpath = psm.summarize(amendment="")
-

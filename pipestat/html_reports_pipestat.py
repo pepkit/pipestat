@@ -27,7 +27,7 @@ class HTMLReportBuilder(object):
 
         :param PipestatManager prj: Project with which to work/operate on
         """
-        #super(HTMLReportBuilder, self).__init__()
+
         self.prj = prj
         self.jinja_env = get_jinja_env()
         results_file_path = getattr(self.prj.backend, "results_file_path", None)
@@ -84,8 +84,8 @@ class HTMLReportBuilder(object):
         """
         if not os.path.exists(self.pipeline_reports):
             os.makedirs(self.pipeline_reports)
-        pages = list()
-        labels = list()
+        pages = []
+        labels = []
         obj_result_ids = self.get_nonhighlighted_results(OBJECT_TYPES)
 
         for key in obj_result_ids:
@@ -114,8 +114,8 @@ class HTMLReportBuilder(object):
         """
         if not os.path.exists(self.pipeline_reports):
             os.makedirs(self.pipeline_reports)
-        pages = list()
-        labels = list()
+        pages = []
+        labels = []
         for sample in self.prj.backend.get_samples():
             sample_name = sample[0]
             pipeline_type = sample[1]
