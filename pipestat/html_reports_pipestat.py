@@ -521,7 +521,7 @@ class HTMLReportBuilder(object):
             # treat sample_name column differently - will need to provide
             # a link to the sample page
             table_cell_data = [[rel_sample_html, sample_name]]
-            table_cell_data += list(sample_stat_results.values())
+            table_cell_data.append(list(sample_stat_results.values()))
             table_row_data.append(table_cell_data)
         # Create parent samples page with links to each sample
         save_html(
