@@ -57,7 +57,7 @@ class HTMLReportBuilder(object):
         )
         self.prj_index_html_path = project_index_html
         self.index_html_path = os.path.join(self.pipeline_reports, "index.html")
-        schema_path = self.prj.schema_path
+        schema_path = self.prj._schema_path
         self.schema = read_schema(schema_path)[0]
         navbar = self.create_navbar(
             navbar_links=self.create_navbar_links(
