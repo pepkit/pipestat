@@ -465,14 +465,6 @@ class FileBackend(PipestatBackend):
         if prev_status:
             _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
 
-    def summarize(self) -> None:
-        """
-        summarize all reported results by building html report
-        """
-        _LOGGER.debug("Make HTML report here")
-        print("DEBUG SUMMARIZE")
-        self._htmlreportbuilder()
-
     def _htmlreportbuilder(self):
         """
         build html report based on all reported results
