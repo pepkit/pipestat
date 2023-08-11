@@ -86,9 +86,6 @@ class PipestatManager(dict):
         _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
         validate(self[CONFIG_KEY].exp, cfg_schema)
 
-        # self[SCHEMA_PATH] = self[CONFIG_KEY].priority_get(
-        #     "schema_path", default=None, override=schema_path
-        # )
         self[SCHEMA_PATH] = schema_path if schema_path is not None else None
         self.process_schema(schema_path)
 
