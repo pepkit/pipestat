@@ -150,7 +150,9 @@ class PipestatManager(dict):
             if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
                 raise NoBackendSpecifiedError()
             try:
-                dbconf = self[CONFIG_KEY][CFG_DATABASE_KEY]
+                dbconf = self[CONFIG_KEY].exp[
+                    CFG_DATABASE_KEY
+                ]  # the .exp expands the paths before url construction
                 self[DB_URL] = construct_db_url(dbconf)
             except KeyError:
                 raise PipestatDatabaseError(
