@@ -268,6 +268,7 @@ class PipestatManager(dict):
         else:
             # Main schema
             schema_to_read = mk_abs_via_cfg(self._schema_path, self.config_path)
+            self._schema_path = schema_to_read
             parsed_schema = ParsedSchema(schema_to_read)
             self[SCHEMA_KEY] = parsed_schema
 
