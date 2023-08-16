@@ -1,3 +1,4 @@
+import csv
 from logging import getLogger
 from copy import deepcopy
 
@@ -501,14 +502,16 @@ class PipestatManager(dict):
         stats = []
         _LOGGER.info("Creating stats summary")
         if pipeline_type == "project":
-            _LOGGER.info(
-                counter.show(name=project.name, type="project", pipeline_name=pipeline_name)
-            )
-            reported_stats = {"project_name": project.name}
+            # _LOGGER.info(
+            #     counter.show(name=project.name, type="project", pipeline_name=pipeline_name)
+            # )
+            reported_stats = {"project_name": project.project_name or "No Project Name Supplied"}
             results = fetch_pipeline_results(
                 project=project,
                 pipeline_name=pipeline_name,
+                sample_name=None,
                 inclusion_fun=lambda x: x not in OBJECT_TYPES,
+                pipeline_type=pipeline_type,
             )
             reported_stats.update(results)
             stats.append(reported_stats)
@@ -517,7 +520,7 @@ class PipestatManager(dict):
         else:
             for sample in project.samples:
                 sn = sample.sample_name
-                _LOGGER.info(counter.show(sn, pipeline_name))
+                # _LOGGER.info(counter.show(sn, pipeline_name))
                 reported_stats = {project.sample_table_index: sn}
                 results = fetch_pipeline_results(
                     project=project,
@@ -724,7 +727,13 @@ def get_file_for_project(prj, pipeline_name, appendix=None, directory=None):
         like 'objs_summary.tsv' for objects summary file
     :return str: path to the file
     """
-    fp = os.path.join(prj.output_dir, directory or "", f"{prj[NAME_KEY]}_{pipeline_name}")
+    # TODO make determining the output_dir its own small function since we use the same code in HTML report building.
+    results_file_path = getattr(prj.backend, "results_file_path", None)
+    config_path = getattr(prj, "config_path", None)
+    prj.output_dir = results_file_path or config_path
+    prj.output_dir = os.path.dirname(prj.output_dir)
+    prj.reports_dir = os.path.join(prj.output_dir, "reports")
+    fp = os.path.join(prj.output_dir, directory or "", f"{prj[PROJECT_NAME]}_{pipeline_name}")
     if hasattr(prj, "amendments") and getattr(prj, "amendments"):
         fp += f"_{'_'.join(prj.amendments)}"
     fp += f"_{appendix}"
