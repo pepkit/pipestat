@@ -463,6 +463,7 @@ class PipestatManager(dict):
     @require_backend
     def table(
         self,
+        pipeline_type: Optional[str] = None,
     ) -> None:
         """
         Generates stats and object tables as .tsv files
@@ -471,9 +472,77 @@ class PipestatManager(dict):
 
         """
 
+        prj = self
+        pipeline_name = self.pipeline_name
+        # pipeline_type = self.pipeline_type
+        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
+        self.stats = self._create_stats_summary(prj, pipeline_name, pipeline_type)
+        #     self.objs = _create_obj_summary(
+        #         self.prj, pipeline_name, project_level, self.counter
+        #     )
+
         print("DEBUG")
         tsv_paths = ["path1", "path2"]
         return tsv_paths
+
+    def _create_stats_summary(self, project, pipeline_name, pipeline_type):
+        """
+        Create stats spreadsheet and columns to be considered in the report, save
+        the spreadsheet to file
+
+        :param looper.Project project: the project to be summarized
+        :param str pipeline_name: name of the pipeline to tabulate results for
+        :param bool project_level: whether the project-level pipeline resutlts
+            should be tabulated
+        :param looper.LooperCounter counter: a counter object
+        """
+        # Create stats_summary file
+        columns = set()
+        stats = []
+        _LOGGER.info("Creating stats summary")
+        if pipeline_type == "project":
+            _LOGGER.info(
+                counter.show(name=project.name, type="project", pipeline_name=pipeline_name)
+            )
+            reported_stats = {"project_name": project.name}
+            results = fetch_pipeline_results(
+                project=project,
+                pipeline_name=pipeline_name,
+                inclusion_fun=lambda x: x not in OBJECT_TYPES,
+            )
+            reported_stats.update(results)
+            stats.append(reported_stats)
+            columns |= set(reported_stats.keys())
+
+        else:
+            for sample in project.samples:
+                sn = sample.sample_name
+                _LOGGER.info(counter.show(sn, pipeline_name))
+                reported_stats = {project.sample_table_index: sn}
+                results = fetch_pipeline_results(
+                    project=project,
+                    pipeline_name=pipeline_name,
+                    sample_name=sn,
+                    inclusion_fun=lambda x: x not in OBJECT_TYPES,
+                )
+                reported_stats.update(results)
+                stats.append(reported_stats)
+                columns |= set(reported_stats.keys())
+
+        tsv_outfile_path = get_file_for_project(project, pipeline_name, "stats_summary.tsv")
+        tsv_outfile = open(tsv_outfile_path, "w")
+        tsv_writer = csv.DictWriter(
+            tsv_outfile, fieldnames=list(columns), delimiter="\t", extrasaction="ignore"
+        )
+        tsv_writer.writeheader()
+        for row in stats:
+            tsv_writer.writerow(row)
+        tsv_outfile.close()
+        _LOGGER.info(
+            f"'{pipeline_name}' pipeline stats summary (n={len(stats)}):" f" {tsv_outfile_path}"
+        )
+        # counter.reset()
+        return stats
 
     def _get_attr(self, attr: str) -> Any:
         """
@@ -639,3 +708,24 @@ class PipestatManager(dict):
             the pipeline status structure
         """
         return self.get(STATUS_SCHEMA_SOURCE_KEY)
+
+
+def get_file_for_project(prj, pipeline_name, appendix=None, directory=None):
+    """
+    Create a path to the file for the current project.
+    Takes the possibility of amendment being activated at the time
+
+    Format of the output path:
+    {output_dir}/{directory}/{p.name}_{pipeline_name}_{active_amendments}_{appendix}
+
+    :param looper.Project prj: project object
+    :param str pipeline_name: name of the pipeline to get the file for
+    :param str appendix: the appendix of the file to create the path for,
+        like 'objs_summary.tsv' for objects summary file
+    :return str: path to the file
+    """
+    fp = os.path.join(prj.output_dir, directory or "", f"{prj[NAME_KEY]}_{pipeline_name}")
+    if hasattr(prj, "amendments") and getattr(prj, "amendments"):
+        fp += f"_{'_'.join(prj.amendments)}"
+    fp += f"_{appendix}"
+    return fp
