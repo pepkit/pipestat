@@ -460,6 +460,21 @@ class PipestatManager(dict):
         report_path = html_report_builder(pipeline_name=self.pipeline_name, amendment=amendment)
         return report_path
 
+    @require_backend
+    def table(
+        self,
+    ) -> None:
+        """
+        Generates stats and object tables as .tsv files
+
+        :return List[str]: tsv_paths
+
+        """
+
+        print("DEBUG")
+        tsv_paths = ["path1", "path2"]
+        return tsv_paths
+
     def _get_attr(self, attr: str) -> Any:
         """
         Safely get the name of the selected attribute of this object
