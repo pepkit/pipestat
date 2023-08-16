@@ -518,15 +518,22 @@ class PipestatManager(dict):
             columns |= set(reported_stats.keys())
 
         else:
-            for sample in project.samples:
-                sn = sample.sample_name
+            sample_index = 0
+            for sample in project.backend.get_samples():
+                sample_index += 1
+                sample_name = sample[0]
+                pipeline_type = sample[1]
+                #sample_dir = self.pipeline_reports
+            #for sample in project.samples:
+                #sn = sample.sample_name
                 # _LOGGER.info(counter.show(sn, pipeline_name))
-                reported_stats = {project.sample_table_index: sn}
+                reported_stats = {sample_index: sample_name}
                 results = fetch_pipeline_results(
                     project=project,
                     pipeline_name=pipeline_name,
-                    sample_name=sn,
+                    sample_name=sample_name,
                     inclusion_fun=lambda x: x not in OBJECT_TYPES,
+                    pipeline_type=pipeline_type,
                 )
                 reported_stats.update(results)
                 stats.append(reported_stats)
