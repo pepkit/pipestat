@@ -466,7 +466,7 @@ class PipestatManager(dict):
     def table(
         self,
         pipeline_type: Optional[str] = None,
-    ) -> list[str]:
+    ) -> List[str]:
         """
         Generates stats and object tables as .tsv file and .yaml files respectively.
         :param Optional[str] pipeline_type: sample or project pipeline
