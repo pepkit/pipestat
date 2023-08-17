@@ -1,6 +1,7 @@
 import csv
 from logging import getLogger
 from copy import deepcopy
+from typing import List
 
 from pipestat.backends.filebackend import FileBackend
 from pipestat.backends.dbbackend import DBBackend
@@ -465,7 +466,7 @@ class PipestatManager(dict):
     def table(
         self,
         pipeline_type: Optional[str] = None,
-    ) -> None:
+    ) -> list[str]:
         """
         Generates stats and object tables as .tsv file and .yaml files respectively.
         :param Optional[str] pipeline_type: sample or project pipeline
@@ -481,7 +482,7 @@ class PipestatManager(dict):
         table_path_list = [stats_path, objs_path]
         return table_path_list
 
-    def _create_stats_summary(self, pipeline_name, pipeline_type):
+    def _create_stats_summary(self, pipeline_name, pipeline_type) -> str:
         """
         Create stats spreadsheet and columns to be considered in the report, save
         the spreadsheet to file
@@ -547,7 +548,7 @@ class PipestatManager(dict):
 
         return tsv_outfile_path
 
-    def _create_obj_summary(self, pipeline_name, pipeline_type):
+    def _create_obj_summary(self, pipeline_name, pipeline_type) -> str:
         """
         Read sample specific objects files and save to a data frame
 
