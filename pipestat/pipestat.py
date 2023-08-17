@@ -498,7 +498,7 @@ class PipestatManager(dict):
         _LOGGER.info("Creating stats summary")
         if pipeline_type == "project":
             # TODO for project level should we actually be calling project.backend.get_samples(pipeline_type='project')?
-            reported_stats = {"project_name": self.project_name or "No Project Name Supplied"}
+            reported_stats = ["project_name", self.project_name or "No Project Name Supplied"]
             results = fetch_pipeline_results(
                 project=self,
                 pipeline_name=pipeline_name,
@@ -506,9 +506,11 @@ class PipestatManager(dict):
                 inclusion_fun=lambda x: x not in OBJECT_TYPES,
                 pipeline_type=pipeline_type,
             )
-            reported_stats.update(results)
+            for k, v in results.items():
+                reported_stats.append(k)
+                reported_stats.append(k)
             stats.append(reported_stats)
-            columns |= set(reported_stats.keys())
+            columns = ["Project", "Project Name", "Results"]
 
         else:
             sample_index = 0
@@ -516,7 +518,7 @@ class PipestatManager(dict):
                 sample_index += 1
                 sample_name = sample[0]
                 pipeline_type = sample[1]
-                reported_stats = {sample_index: sample_name}
+                reported_stats = [sample_index, sample_name]
                 results = fetch_pipeline_results(
                     project=self,
                     pipeline_name=pipeline_name,
@@ -524,23 +526,25 @@ class PipestatManager(dict):
                     inclusion_fun=lambda x: x not in OBJECT_TYPES,
                     pipeline_type=pipeline_type,
                 )
-                reported_stats.update(results)
+                for k, v in results.items():
+                    reported_stats.append(k)
+                    reported_stats.append(k)
                 stats.append(reported_stats)
-                columns |= set(reported_stats.keys())
+                columns = ["Sample Index", "Sample Name", "Results"]
 
         tsv_outfile_path = get_file_for_project(self, pipeline_name, "stats_summary.tsv")
-        tsv_outfile = open(tsv_outfile_path, "w")
-        tsv_writer = csv.DictWriter(
-            tsv_outfile, fieldnames=list(columns), delimiter="\t", extrasaction="ignore"
-        )
-        tsv_writer.writeheader()
-        for row in stats:
-            tsv_writer.writerow(row)
-        tsv_outfile.close()
+
+        stats.insert(0, columns)
+
+        with open(tsv_outfile_path, "w") as tsv_outfile:
+            writer = csv.writer(tsv_outfile, delimiter="\t")
+            for row in stats:
+                writer.writerow(row)
+
         _LOGGER.info(
             f"'{pipeline_name}' pipeline stats summary (n={len(stats)}):" f" {tsv_outfile_path}"
         )
-        # counter.reset()
+
         return tsv_outfile_path
 
     def _create_obj_summary(self, pipeline_name, pipeline_type):
