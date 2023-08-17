@@ -473,18 +473,16 @@ class PipestatManager(dict):
 
         """
 
-        prj = self
         pipeline_name = self.pipeline_name
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        stats_path = self._create_stats_summary(prj, pipeline_name, pipeline_type)
-        objs_path = self._create_obj_summary(
-                prj, pipeline_name, pipeline_type
+        stats_path = self._create_stats_summary(pipeline_name, pipeline_type)
+        objs_path = self._create_obj_summary(pipeline_name, pipeline_type
             )
 
         table_path_list = [stats_path, objs_path]
         return table_path_list
 
-    def _create_stats_summary(self, project, pipeline_name, pipeline_type):
+    def _create_stats_summary(self, pipeline_name, pipeline_type):
         """
         Create stats spreadsheet and columns to be considered in the report, save
         the spreadsheet to file
@@ -501,9 +499,9 @@ class PipestatManager(dict):
         _LOGGER.info("Creating stats summary")
         if pipeline_type == "project":
             # TODO for project level should we actually be calling project.backend.get_samples(pipeline_type='project')?
-            reported_stats = {"project_name": project.project_name or "No Project Name Supplied"}
+            reported_stats = {"project_name": self.project_name or "No Project Name Supplied"}
             results = fetch_pipeline_results(
-                project=project,
+                project=self,
                 pipeline_name=pipeline_name,
                 sample_name=None,
                 inclusion_fun=lambda x: x not in OBJECT_TYPES,
@@ -515,13 +513,13 @@ class PipestatManager(dict):
 
         else:
             sample_index = 0
-            for sample in project.backend.get_samples():
+            for sample in self.backend.get_samples():
                 sample_index += 1
                 sample_name = sample[0]
                 pipeline_type = sample[1]
                 reported_stats = {sample_index: sample_name}
                 results = fetch_pipeline_results(
-                    project=project,
+                    project=self,
                     pipeline_name=pipeline_name,
                     sample_name=sample_name,
                     inclusion_fun=lambda x: x not in OBJECT_TYPES,
@@ -531,7 +529,7 @@ class PipestatManager(dict):
                 stats.append(reported_stats)
                 columns |= set(reported_stats.keys())
 
-        tsv_outfile_path = get_file_for_project(project, pipeline_name, "stats_summary.tsv")
+        tsv_outfile_path = get_file_for_project(self, pipeline_name, "stats_summary.tsv")
         tsv_outfile = open(tsv_outfile_path, "w")
         tsv_writer = csv.DictWriter(
             tsv_outfile, fieldnames=list(columns), delimiter="\t", extrasaction="ignore"
@@ -546,7 +544,7 @@ class PipestatManager(dict):
         # counter.reset()
         return tsv_outfile_path
 
-    def _create_obj_summary(self, project, pipeline_name, pipeline_type):
+    def _create_obj_summary(self, pipeline_name, pipeline_type):
         """
         Read sample specific objects files and save to a data frame
 
@@ -559,8 +557,9 @@ class PipestatManager(dict):
         _LOGGER.info("Creating objects summary")
         reported_objects = {}
         if pipeline_type == "project":
+            # TODO for project level should we actually be calling project.backend.get_samples(pipeline_type='project')?
             res = fetch_pipeline_results(
-                project=project,
+                project=self,
                 pipeline_name=pipeline_name,
                 sample_name=None,
                 inclusion_fun=lambda x: x in OBJECT_TYPES,
@@ -569,15 +568,15 @@ class PipestatManager(dict):
             # need to cast to a dict, since other mapping-like objects might
             # cause issues when writing to the collective yaml file below
             project_reported_objects = {k: dict(v) for k, v in res.items()}
-            reported_objects[project.project_name] = project_reported_objects
+            reported_objects[self.project_name] = project_reported_objects
         else:
             sample_index = 0
-            for sample in project.backend.get_samples():
+            for sample in self.backend.get_samples():
                 sample_index += 1
                 sample_name = sample[0]
                 pipeline_type = sample[1]
                 res = fetch_pipeline_results(
-                    project=project,
+                    project=self,
                     pipeline_name=pipeline_name,
                     sample_name=sample_name,
                     inclusion_fun=lambda x: x in OBJECT_TYPES,
@@ -587,7 +586,7 @@ class PipestatManager(dict):
                 # cause issues when writing to the collective yaml file below
                 sample_reported_objects = {k: dict(v) for k, v in res.items()}
                 reported_objects[sample_name] = sample_reported_objects
-        objs_yaml_path = get_file_for_project(project, pipeline_name, "objs_summary.yaml")
+        objs_yaml_path = get_file_for_project(self, pipeline_name, "objs_summary.yaml")
         with open(objs_yaml_path, "w") as outfile:
             yaml.dump(reported_objects, outfile)
         _LOGGER.info(
