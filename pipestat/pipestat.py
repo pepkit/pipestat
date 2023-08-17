@@ -512,7 +512,7 @@ class PipestatManager(dict):
 
         else:
             sample_index = 0
-            for sample in self.backend.get_samples():
+            for sample in self.backend.get_samples(pipeline_type="sample"):
                 sample_index += 1
                 sample_name = sample[0]
                 pipeline_type = sample[1]
