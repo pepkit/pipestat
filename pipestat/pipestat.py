@@ -509,7 +509,7 @@ class PipestatManager(dict):
             )
             for k, v in results.items():
                 reported_stats.append(k)
-                reported_stats.append(k)
+                reported_stats.append(v)
             stats.append(reported_stats)
             columns = ["Project", "Project Name", "Results"]
 
@@ -529,7 +529,7 @@ class PipestatManager(dict):
                 )
                 for k, v in results.items():
                     reported_stats.append(k)
-                    reported_stats.append(k)
+                    reported_stats.append(v)
                 stats.append(reported_stats)
                 columns = ["Sample Index", "Sample Name", "Results"]
 
