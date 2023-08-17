@@ -776,4 +776,13 @@ class TestHTMLReport:
                     )
                     psm.set_status(sample_name=r, status_identifier="running")
 
-            htmlreportpath = psm.summarize(amendment="")
+            try:
+                htmlreportpath = psm.summarize(amendment="")
+                assert htmlreportpath is not None
+            except:
+                assert 0
+            try:
+                table_paths = psm.table()
+                assert table_paths is not None
+            except:
+                assert 0
