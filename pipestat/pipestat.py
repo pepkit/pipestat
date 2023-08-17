@@ -476,8 +476,7 @@ class PipestatManager(dict):
         pipeline_name = self.pipeline_name
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
         stats_path = self._create_stats_summary(pipeline_name, pipeline_type)
-        objs_path = self._create_obj_summary(pipeline_name, pipeline_type
-            )
+        objs_path = self._create_obj_summary(pipeline_name, pipeline_type)
 
         table_path_list = [stats_path, objs_path]
         return table_path_list
