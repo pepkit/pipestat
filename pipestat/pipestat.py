@@ -774,10 +774,11 @@ def get_file_for_project(prj, pipeline_name, appendix=None, directory=None):
     Format of the output path:
     {output_dir}/{directory}/{p.name}_{pipeline_name}_{active_amendments}_{appendix}
 
-    :param looper.Project prj: project object
+    :param pipestat manager object prj: project object
     :param str pipeline_name: name of the pipeline to get the file for
     :param str appendix: the appendix of the file to create the path for,
         like 'objs_summary.tsv' for objects summary file
+    :param directory: subdirectory (if desired)
     :return str: path to the file
     """
     # TODO make determining the output_dir its own small function since we use the same code in HTML report building.
