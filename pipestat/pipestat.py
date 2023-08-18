@@ -533,7 +533,7 @@ class PipestatManager(dict):
                 stats.append(reported_stats)
                 columns = ["Sample Index", "Sample Name", "Results"]
 
-        tsv_outfile_path = get_file_for_project(self, pipeline_name, "stats_summary.tsv")
+        tsv_outfile_path = get_file_for_table(self, pipeline_name, "stats_summary.tsv")
 
         stats.insert(0, columns)
 
@@ -590,7 +590,7 @@ class PipestatManager(dict):
                 # cause issues when writing to the collective yaml file below
                 sample_reported_objects = {k: dict(v) for k, v in res.items()}
                 reported_objects[sample_name] = sample_reported_objects
-        objs_yaml_path = get_file_for_project(self, pipeline_name, "objs_summary.yaml")
+        objs_yaml_path = get_file_for_table(self, pipeline_name, "objs_summary.yaml")
         with open(objs_yaml_path, "w") as outfile:
             yaml.dump(reported_objects, outfile)
         _LOGGER.info(
@@ -766,7 +766,7 @@ class PipestatManager(dict):
         return self.get(STATUS_SCHEMA_SOURCE_KEY)
 
 
-def get_file_for_project(prj, pipeline_name, appendix=None, directory=None):
+def get_file_for_table(prj, pipeline_name, appendix=None, directory=None):
     """
     Create a path to the file for the current project.
     Takes the possibility of amendment being activated at the time
@@ -779,7 +779,7 @@ def get_file_for_project(prj, pipeline_name, appendix=None, directory=None):
     :param str appendix: the appendix of the file to create the path for,
         like 'objs_summary.tsv' for objects summary file
     :param directory: subdirectory (if desired)
-    :return str: path to the file
+    :return str fp: path to the file
     """
     # TODO make determining the output_dir its own small function since we use the same code in HTML report building.
     results_file_path = getattr(prj.backend, "results_file_path", None)

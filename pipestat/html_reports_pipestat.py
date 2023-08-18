@@ -937,12 +937,20 @@ def get_file_for_project(prj, pipeline_name, appendix=None, directory=None, repo
     Format of the output path:
     {output_dir}/{directory}/{p.name}_{pipeline_name}_{active_amendments}_{appendix}
 
-    :param looper.Project prj: project object
+    :param pipestat manager object prj: project object
     :param str pipeline_name: name of the pipeline to get the file for
     :param str appendix: the appendix of the file to create the path for,
         like 'objs_summary.tsv' for objects summary file
-    :return str: path to the file
+    :param str directory: subdirectory
+    :return str fp: path to the file
     """
+    # TODO try to combine with get_file_for_table to reduce code.
+    if reportdir is None:
+        results_file_path = getattr(prj.backend, "results_file_path", None)
+        config_path = getattr(prj, "config_path", None)
+        output_dir = results_file_path or config_path
+        output_dir = os.path.dirname(output_dir)
+        reportdir = os.path.join(output_dir, "reports")
     if prj["project_name"] is None:
         fp = os.path.join(reportdir, directory or "", f"NO_PROJECT_NAME_{pipeline_name}")
     else:
