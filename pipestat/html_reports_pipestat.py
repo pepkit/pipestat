@@ -577,20 +577,28 @@ class HTMLReportBuilder(object):
             are not highlighted
         """
         results = []
-        for k, v in self.schema["samples"].items():
-            if self.schema["samples"][k]["type"] in types:
-                if "highlight" not in self.schema["samples"][k].keys():
-                    results.append(k)
-                # intentionally "== False" to exclude "falsy" values
-                elif self.schema["samples"][k]["highlight"] is False:
-                    results.append(k)
-        for k, v in self.schema["project"].items():
-            if self.schema["project"][k]["type"] in types:
-                if "highlight" not in self.schema["project"][k].keys():
-                    results.append(k)
-                # intentionally "== False" to exclude "falsy" values
-                elif self.schema["project"][k]["highlight"] is False:
-                    results.append(k)
+        try:
+            for k, v in self.schema["samples"].items():
+                if self.schema["samples"][k]["type"] in types:
+                    if "highlight" not in self.schema["samples"][k].keys():
+                        results.append(k)
+                    # intentionally "== False" to exclude "falsy" values
+                    elif self.schema["samples"][k]["highlight"] is False:
+                        results.append(k)
+        except KeyError:
+            pass
+
+        try:
+            for k, v in self.schema["project"].items():
+                if self.schema["project"][k]["type"] in types:
+                    if "highlight" not in self.schema["project"][k].keys():
+                        results.append(k)
+                    # intentionally "== False" to exclude "falsy" values
+                    elif self.schema["project"][k]["highlight"] is False:
+                        results.append(k)
+        except KeyError:
+            pass
+
         return results
 
     def _stats_to_json_str(self):
