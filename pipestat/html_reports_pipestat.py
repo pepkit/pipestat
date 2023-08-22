@@ -1,14 +1,14 @@
 """ Generate HTML reports """
 
-from logging import getLogger
-import os
-import sys
-from datetime import timedelta
-from json import dumps
-
 import jinja2
+import os
 import pandas as _pd
+import sys
+
+from datetime import timedelta
 from eido import read_schema
+from json import dumps
+from logging import getLogger
 from peppy.const import *
 
 from ._version import __version__ as v
@@ -577,7 +577,7 @@ class HTMLReportBuilder(object):
             are not highlighted
         """
         results = []
-        try:
+        if "samples" in self.schema:
             for k, v in self.schema["samples"].items():
                 if self.schema["samples"][k]["type"] in types:
                     if "highlight" not in self.schema["samples"][k].keys():
@@ -585,10 +585,8 @@ class HTMLReportBuilder(object):
                     # intentionally "== False" to exclude "falsy" values
                     elif self.schema["samples"][k]["highlight"] is False:
                         results.append(k)
-        except KeyError:
-            pass
 
-        try:
+        if "project" in self.schema:
             for k, v in self.schema["project"].items():
                 if self.schema["project"][k]["type"] in types:
                     if "highlight" not in self.schema["project"][k].keys():
@@ -596,8 +594,6 @@ class HTMLReportBuilder(object):
                     # intentionally "== False" to exclude "falsy" values
                     elif self.schema["project"][k]["highlight"] is False:
                         results.append(k)
-        except KeyError:
-            pass
 
         return results
 
