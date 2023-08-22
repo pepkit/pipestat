@@ -964,3 +964,31 @@ def get_file_for_project(prj, pipeline_name, appendix=None, directory=None, repo
         fp += f"_{'_'.join(prj.amendments)}"
     fp += f"_{appendix}"
     return fp
+
+
+def get_file_for_table(prj, pipeline_name, appendix=None, directory=None):
+    """
+    Create a path to the file for the current project.
+    Takes the possibility of amendment being activated at the time
+
+    Format of the output path:
+    {output_dir}/{directory}/{p.name}_{pipeline_name}_{active_amendments}_{appendix}
+
+    :param pipestat manager object prj: project object
+    :param str pipeline_name: name of the pipeline to get the file for
+    :param str appendix: the appendix of the file to create the path for,
+        like 'objs_summary.tsv' for objects summary file
+    :param directory: subdirectory (if desired)
+    :return str fp: path to the file
+    """
+    # TODO make determining the output_dir its own small function since we use the same code in HTML report building.
+    results_file_path = getattr(prj.backend, "results_file_path", None)
+    config_path = getattr(prj, "config_path", None)
+    prj.output_dir = results_file_path or config_path
+    prj.output_dir = os.path.dirname(prj.output_dir)
+    prj.reports_dir = os.path.join(prj.output_dir, "reports")
+    fp = os.path.join(prj.output_dir, directory or "", f"{prj[PROJECT_NAME]}_{pipeline_name}")
+    if hasattr(prj, "amendments") and getattr(prj, "amendments"):
+        fp += f"_{'_'.join(prj.amendments)}"
+    fp += f"_{appendix}"
+    return fp

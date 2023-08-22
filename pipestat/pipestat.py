@@ -13,7 +13,7 @@ from yacman import YAMLConfigManager, select_config
 from .helpers import *
 from .parsed_schema import ParsedSchema
 
-from .html_reports_pipestat import HTMLReportBuilder, fetch_pipeline_results
+from .reports import HTMLReportBuilder, fetch_pipeline_results, get_file_for_table
 
 
 _LOGGER = getLogger(PKG_NAME)
@@ -487,11 +487,10 @@ class PipestatManager(dict):
         Create stats spreadsheet and columns to be considered in the report, save
         the spreadsheet to file
 
-        :param pipestat manager object: the project to be summarized
         :param str pipeline_name: name of the pipeline to tabulate results for
         :param str pipeline_type: whether the project-level pipeline results
             should be tabulated
-        :return str: tsv_outfile_path
+        :return str tsv_outfile_path: path to stats.tsv file
         """
         # Create stats_summary file
         columns = set()
@@ -543,7 +542,7 @@ class PipestatManager(dict):
                 writer.writerow(row)
 
         _LOGGER.info(
-            f"'{pipeline_name}' pipeline stats summary (n={len(stats)}):" f" {tsv_outfile_path}"
+            f"'{pipeline_name}' pipeline stats summary (n={len(stats)}): {tsv_outfile_path}"
         )
 
         return tsv_outfile_path
@@ -552,11 +551,10 @@ class PipestatManager(dict):
         """
         Read sample specific objects files and save to a data frame
 
-        :param pipestat manager object: the project to be summarized
         :param str pipeline_name: name of the pipeline to tabulate results for
         :param str pipeline_type: whether the project-level pipeline results
             should be tabulated
-        :return str: objs_yaml_path
+        :return str objs_yaml_path: path to objs_summary.yaml
         """
         _LOGGER.info("Creating objects summary")
         reported_objects = {}
@@ -764,31 +762,3 @@ class PipestatManager(dict):
             the pipeline status structure
         """
         return self.get(STATUS_SCHEMA_SOURCE_KEY)
-
-
-def get_file_for_table(prj, pipeline_name, appendix=None, directory=None):
-    """
-    Create a path to the file for the current project.
-    Takes the possibility of amendment being activated at the time
-
-    Format of the output path:
-    {output_dir}/{directory}/{p.name}_{pipeline_name}_{active_amendments}_{appendix}
-
-    :param pipestat manager object prj: project object
-    :param str pipeline_name: name of the pipeline to get the file for
-    :param str appendix: the appendix of the file to create the path for,
-        like 'objs_summary.tsv' for objects summary file
-    :param directory: subdirectory (if desired)
-    :return str fp: path to the file
-    """
-    # TODO make determining the output_dir its own small function since we use the same code in HTML report building.
-    results_file_path = getattr(prj.backend, "results_file_path", None)
-    config_path = getattr(prj, "config_path", None)
-    prj.output_dir = results_file_path or config_path
-    prj.output_dir = os.path.dirname(prj.output_dir)
-    prj.reports_dir = os.path.join(prj.output_dir, "reports")
-    fp = os.path.join(prj.output_dir, directory or "", f"{prj[PROJECT_NAME]}_{pipeline_name}")
-    if hasattr(prj, "amendments") and getattr(prj, "amendments"):
-        fp += f"_{'_'.join(prj.amendments)}"
-    fp += f"_{appendix}"
-    return fp
