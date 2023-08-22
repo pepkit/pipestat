@@ -468,7 +468,7 @@ class PipestatManager(dict):
         pipeline_type: Optional[str] = None,
     ) -> List[str]:
         """
-        Generates stats and object tables as .tsv file and .yaml files respectively.
+        Generates stats (.tsv) and object (.yaml) files.
         :param Optional[str] pipeline_type: sample or project pipeline
         :return list[str] table_path_list: list containing output file paths of stats and objects
 
