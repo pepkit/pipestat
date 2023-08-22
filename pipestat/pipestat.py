@@ -592,8 +592,7 @@ class PipestatManager(dict):
         with open(objs_yaml_path, "w") as outfile:
             yaml.dump(reported_objects, outfile)
         _LOGGER.info(
-            f"'{pipeline_name}' pipeline objects summary "
-            f"(n={len(reported_objects.keys())}): {objs_yaml_path}"
+            f"'{pipeline_name}' pipeline objects summary (n={len(reported_objects.keys())}): {objs_yaml_path}"
         )
 
         return objs_yaml_path
