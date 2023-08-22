@@ -13,8 +13,7 @@ from yacman import YAMLConfigManager, select_config
 from .helpers import *
 from .parsed_schema import ParsedSchema
 
-from .reports import HTMLReportBuilder, fetch_pipeline_results, get_file_for_table
-
+from .reports import HTMLReportBuilder, get_file_for_table
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -476,118 +475,68 @@ class PipestatManager(dict):
 
         pipeline_name = self.pipeline_name
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        stats_path = self._create_stats_summary(pipeline_name, pipeline_type)
-        objs_path = self._create_obj_summary(pipeline_name, pipeline_type)
+        table_path_list = self._create_stats_objs_summaries(pipeline_name, pipeline_type)
 
-        table_path_list = [stats_path, objs_path]
         return table_path_list
 
-    def _create_stats_summary(self, pipeline_name, pipeline_type) -> str:
+    def _create_stats_objs_summaries(self, pipeline_name, pipeline_type) -> List[str]:
         """
-        Create stats spreadsheet and columns to be considered in the report, save
-        the spreadsheet to file
+        Create stats spreadsheet and objects summary.
+
 
         :param str pipeline_name: name of the pipeline to tabulate results for
         :param str pipeline_type: whether the project-level pipeline results
             should be tabulated
-        :return str tsv_outfile_path: path to stats.tsv file
-        """
-        # Create stats_summary file
-        columns = set()
-        stats = []
-        _LOGGER.info("Creating stats summary")
-        if pipeline_type == "project":
-            # TODO for project level should we actually be calling project.backend.get_samples(pipeline_type='project')?
-            reported_stats = ["project_name", self.project_name or "No Project Name Supplied"]
-            results = fetch_pipeline_results(
-                project=self,
-                pipeline_name=pipeline_name,
-                sample_name=None,
-                inclusion_fun=lambda x: x not in OBJECT_TYPES,
-                pipeline_type=pipeline_type,
-            )
-            for k, v in results.items():
-                reported_stats.append(k)
-                reported_stats.append(v)
-            stats.append(reported_stats)
-            columns = ["Project", "Project Name", "Results"]
+        :return List[str] [tsv_outfile_path, objs_yaml_path]: list of paths to tsv_outfile_path, objs_yaml_path
 
+        """
+
+        _LOGGER.info("Creating objects summary")
+        reported_objects = {}
+        reported_stats = []
+        stats = []
+
+        if pipeline_type == "sample":
+            columns = ["Sample Index", "Sample Name", "Results"]
         else:
-            sample_index = 0
-            for sample in self.backend.get_samples(pipeline_type="sample"):
-                sample_index += 1
-                sample_name = sample[0]
-                pipeline_type = sample[1]
+            columns = ["Sample Index", "Project Name", "Sample Name", "Results"]
+
+        samples = self.backend.get_samples(pipeline_type=pipeline_type)
+        sample_index = 0
+        for sample in samples:
+            sample_index += 1
+            sample_name = sample[0]
+            rep_data = self.backend.retrieve(sample_name=sample_name, pipeline_type=pipeline_type)
+            if pipeline_type == "sample":
                 reported_stats = [sample_index, sample_name]
-                results = fetch_pipeline_results(
-                    project=self,
-                    pipeline_name=pipeline_name,
-                    sample_name=sample_name,
-                    inclusion_fun=lambda x: x not in OBJECT_TYPES,
-                    pipeline_type=pipeline_type,
-                )
-                for k, v in results.items():
+            else:
+                reported_stats = [
+                    sample_index,
+                    self.project_name or "No Project Name Supplied",
+                    sample_name,
+                ]
+
+            for k, v in rep_data.items():
+                if k in self.result_schemas and self.result_schemas[k]["type"] in OBJECT_TYPES:
+                    sample_reported_objects = {k: dict(v)}
+                    reported_objects[sample_name] = sample_reported_objects
+                if k in self.result_schemas and self.result_schemas[k]["type"] not in OBJECT_TYPES:
                     reported_stats.append(k)
                     reported_stats.append(v)
-                stats.append(reported_stats)
-                columns = ["Sample Index", "Sample Name", "Results"]
+            stats.append(reported_stats)
 
+        # Stats File
         tsv_outfile_path = get_file_for_table(self, pipeline_name, "stats_summary.tsv")
-
         stats.insert(0, columns)
-
         with open(tsv_outfile_path, "w") as tsv_outfile:
             writer = csv.writer(tsv_outfile, delimiter="\t")
             for row in stats:
                 writer.writerow(row)
-
         _LOGGER.info(
             f"'{pipeline_name}' pipeline stats summary (n={len(stats)}): {tsv_outfile_path}"
         )
 
-        return tsv_outfile_path
-
-    def _create_obj_summary(self, pipeline_name, pipeline_type) -> str:
-        """
-        Read sample specific objects files and save to a data frame
-
-        :param str pipeline_name: name of the pipeline to tabulate results for
-        :param str pipeline_type: whether the project-level pipeline results
-            should be tabulated
-        :return str objs_yaml_path: path to objs_summary.yaml
-        """
-        _LOGGER.info("Creating objects summary")
-        reported_objects = {}
-        if pipeline_type == "project":
-            # TODO for project level should we actually be calling project.backend.get_samples(pipeline_type='project')?
-            res = fetch_pipeline_results(
-                project=self,
-                pipeline_name=pipeline_name,
-                sample_name=None,
-                inclusion_fun=lambda x: x in OBJECT_TYPES,
-                pipeline_type=pipeline_type,
-            )
-            # need to cast to a dict, since other mapping-like objects might
-            # cause issues when writing to the collective yaml file below
-            project_reported_objects = {k: dict(v) for k, v in res.items()}
-            reported_objects[self.project_name] = project_reported_objects
-        else:
-            sample_index = 0
-            for sample in self.backend.get_samples():
-                sample_index += 1
-                sample_name = sample[0]
-                pipeline_type = sample[1]
-                res = fetch_pipeline_results(
-                    project=self,
-                    pipeline_name=pipeline_name,
-                    sample_name=sample_name,
-                    inclusion_fun=lambda x: x in OBJECT_TYPES,
-                    pipeline_type=pipeline_type,
-                )
-                # need to cast to a dict, since other mapping-like objects might
-                # cause issues when writing to the collective yaml file below
-                sample_reported_objects = {k: dict(v) for k, v in res.items()}
-                reported_objects[sample_name] = sample_reported_objects
+        # Create Object yaml
         objs_yaml_path = get_file_for_table(self, pipeline_name, "objs_summary.yaml")
         with open(objs_yaml_path, "w") as outfile:
             yaml.dump(reported_objects, outfile)
@@ -595,7 +544,7 @@ class PipestatManager(dict):
             f"'{pipeline_name}' pipeline objects summary (n={len(reported_objects.keys())}): {objs_yaml_path}"
         )
 
-        return objs_yaml_path
+        return [tsv_outfile_path, objs_yaml_path]
 
     def _get_attr(self, attr: str) -> Any:
         """
