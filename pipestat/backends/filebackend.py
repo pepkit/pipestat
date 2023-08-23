@@ -21,6 +21,7 @@ class FileBackend(PipestatBackend):
         self,
         results_file_path: str,
         sample_name: Optional[str] = None,
+        #project_name: Optional[str] = None,
         pipeline_name: Optional[str] = None,
         pipeline_type: Optional[str] = None,
         parsed_schema: Optional[str] = None,
@@ -51,6 +52,7 @@ class FileBackend(PipestatBackend):
         self.pipeline_name = pipeline_name
         self.pipeline_type = pipeline_type
         self.sample_name = sample_name
+        #self.project_name = project_name
         self.parsed_schema = parsed_schema
         self.status_schema = status_schema
         self.status_file_dir = status_file_dir

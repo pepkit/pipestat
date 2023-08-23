@@ -43,6 +43,7 @@ class PipestatManager(dict):
     def __init__(
         self,
         sample_name: Optional[str] = None,
+        project_name: Optional[str] = None,
         schema_path: Optional[str] = None,
         results_file_path: Optional[str] = None,
         database_only: Optional[bool] = True,
@@ -97,7 +98,7 @@ class PipestatManager(dict):
         )
 
         self[PROJECT_NAME] = self[CONFIG_KEY].priority_get(
-            "project_name", env_var=ENV_VARS["project_name"]
+            "project_name", env_var=ENV_VARS["project_name"], override=project_name
         )
 
         self[SAMPLE_NAME_ID_KEY] = self[CONFIG_KEY].priority_get(
@@ -136,6 +137,7 @@ class PipestatManager(dict):
                 self[FILE_KEY],
                 sample_name,
                 self[PIPELINE_NAME],
+                #self[PROJECT_NAME],
                 self[PIPELINE_TYPE],
                 self[SCHEMA_KEY],
                 self[STATUS_SCHEMA_KEY],
@@ -352,6 +354,7 @@ class PipestatManager(dict):
         self,
         values: Dict[str, Any],
         sample_name: str = None,
+        project_name: Optional[str] = None,
         force_overwrite: bool = False,
         strict_type: bool = True,
         return_id: bool = False,
@@ -376,10 +379,15 @@ class PipestatManager(dict):
         """
 
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
+
         result_formatter = result_formatter or self[RESULT_FORMATTER]
         values = deepcopy(values)
 
-        sample_name = self._record_identifier(sample_name)
+        if pipeline_type == 'project':
+            sample_name = project_name or self.project_name
+        else:
+            sample_name = self._record_identifier(sample_name)
+
         if return_id and self[FILE_KEY] is not None:
             raise NotImplementedError(
                 "There is no way to return the updated object ID while using "
@@ -427,6 +435,7 @@ class PipestatManager(dict):
         self,
         status_identifier: str,
         sample_name: str = None,
+        project_name: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> None:
         """
@@ -443,6 +452,10 @@ class PipestatManager(dict):
         :param str pipeline_type: "sample" or "project"
         """
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
+        if pipeline_type == 'project':
+            sample_name = project_name or self.project_name
+        else:
+            sample_name = sample_name or self.sample_name
         self.backend.set_status(status_identifier, sample_name, pipeline_type)
 
     @require_backend
