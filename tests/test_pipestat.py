@@ -727,8 +727,8 @@ class TestHTMLReport:
         backend,
     ):
         values_project = [
-            {"sample2": {"number_of_things": 2}},
-            {"sample3": {"name_of_something": "name of something string"}},
+            {"project_name_1": {"number_of_things": 2}},
+            {"project_name_1": {"name_of_something": "name of something string"}},
         ]
         values_sample = [
             {"sample4": {"smooth_bw": "smooth_bw string"}},
@@ -755,20 +755,23 @@ class TestHTMLReport:
             )
             args.update(backend_data)
             psm = PipestatManager(**args)
+
             psm.report(
-                sample_name=rec_id, values=val, force_overwrite=True, pipeline_type="project"
+                project_name=rec_id, values=val, force_overwrite=True, pipeline_type="project"
             )
             psm.set_status(
-                sample_name=rec_id, status_identifier="completed", pipeline_type="project"
+                project_name=rec_id, status_identifier="completed", pipeline_type="project"
             )
+
             for i in values_project:
                 for r, v in i.items():
                     psm.report(
-                        sample_name=r, values=v, force_overwrite=True, pipeline_type="project"
+                        project_name=r, values=v, force_overwrite=True, pipeline_type="project"
                     )
                     psm.set_status(
-                        sample_name=r, status_identifier="running", pipeline_type="project"
+                        project_name=r, status_identifier="running", pipeline_type="project"
                     )
+
             for i in values_sample:
                 for r, v in i.items():
                     psm.report(
