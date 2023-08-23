@@ -219,7 +219,11 @@ class PipestatManager(dict):
 
     @require_backend
     def clear_status(
-        self, sample_name: str = None, flag_names: List[str] = None
+        self,
+        sample_name: str = None,
+        flag_names: List[str] = None,
+        project_name: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
     ) -> List[Union[str, None]]:
         """
         Remove status flags
@@ -229,7 +233,12 @@ class PipestatManager(dict):
             unspecified, all schema-defined flag names will be used.
         :return List[str]: Collection of names of flags removed
         """
-        r_id = self._record_identifier(sample_name)
+        pipeline_type = pipeline_type or self.pipeline_type
+        if pipeline_type == "project":
+            r_id = project_name or self.project_name
+        if pipeline_type == "sample":
+            r_id = sample_name or self.sample_name
+        r_id = self._record_identifier(r_id)
         return self.backend.clear_status(sample_name=r_id, flag_names=flag_names)
 
     @require_backend
@@ -244,7 +253,10 @@ class PipestatManager(dict):
 
     @require_backend
     def get_status(
-        self, sample_name: str = None, pipeline_type: Optional[str] = None
+        self,
+        sample_name: str = None,
+        pipeline_type: Optional[str] = None,
+        project_name: Optional[str] = None,
     ) -> Optional[str]:
         """
         Get the current pipeline status
@@ -252,8 +264,13 @@ class PipestatManager(dict):
         :param str pipeline_type: "sample" or "project"
         :return str: status identifier, like 'running'
         """
-        r_id = self._record_identifier(sample_name)
+
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
+        if pipeline_type == "project":
+            r_id = project_name or self.project_name
+        else:
+            r_id = sample_name or self.sample_name
+        r_id = self._record_identifier(r_id)
         return self.backend.get_status(sample_name=r_id, pipeline_type=pipeline_type)
 
     def process_schema(self, schema_path):
@@ -346,6 +363,8 @@ class PipestatManager(dict):
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
         if pipeline_type == "project":
             sample_name = project_name or self.project_name
+        else:
+            sample_name = sample_name or self.sample_name
 
         r_id = self._record_identifier(sample_name)
         return self.backend.remove(

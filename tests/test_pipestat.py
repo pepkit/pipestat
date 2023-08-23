@@ -89,6 +89,63 @@ class TestSplitClasses:
                 with pytest.raises(PipestatDatabaseError):
                     psm.retrieve(sample_name=rec_id)
 
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("project_name_1", {"name_of_something": "test_name"}),
+            ("project_name_1", {"number_of_things": 1}),
+            ("project_name_2", {"number_of_things": 2}),
+            ("project_name_2", {"percentage_of_things": 10.1}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_basics_project_level(
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        output_schema_html_report,
+        results_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=output_schema_html_report, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            psm.report(
+                project_name=rec_id, values=val, force_overwrite=True, pipeline_type="project"
+            )
+            val_name = list(val.keys())[0]
+            psm.set_status(
+                status_identifier="running", project_name=rec_id, pipeline_type="project"
+            )
+            status = psm.get_status(project_name=rec_id, pipeline_type="project")
+            assert status == "running"
+            assert val_name in psm.retrieve(project_name=rec_id, pipeline_type="project")
+            psm.remove(project_name=rec_id, result_identifier=val_name, pipeline_type="project")
+            if backend == "file":
+                psm.clear_status(project_name=rec_id, pipeline_type="project")
+                status = psm.get_status(project_name=rec_id, pipeline_type="project")
+                assert status is None
+                with pytest.raises(PipestatDataError):
+                    psm.retrieve(project_name=rec_id, pipeline_type="project")
+            if backend == "db":
+                assert (
+                    getattr(
+                        psm.retrieve(project_name=rec_id, pipeline_type="project"), val_name, None
+                    )
+                    is None
+                )
+                psm.remove(project_name=rec_id, pipeline_type="project")
+                with pytest.raises(PipestatDatabaseError):
+                    psm.retrieve(project_name=rec_id, pipeline_type="project")
+
 
 class TestReporting:
     @pytest.mark.parametrize(

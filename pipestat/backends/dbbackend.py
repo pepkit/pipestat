@@ -307,8 +307,7 @@ class DBBackend(PipestatBackend):
         table_name = self.get_table_name(pipeline_type=pipeline_type)
 
         if not self.check_record_exists(
-            sample_name=sample_name,
-            table_name=table_name,
+            sample_name=sample_name, table_name=table_name, pipeline_type=pipeline_type
         ):
             _LOGGER.error(f"Record '{sample_name}' not found")
             return False
@@ -323,12 +322,18 @@ class DBBackend(PipestatBackend):
 
         try:
             ORMClass = self.get_orm(table_name=table_name)
-            if self.check_record_exists(sample_name=sample_name, table_name=table_name):
+            if self.check_record_exists(
+                sample_name=sample_name, table_name=table_name, pipeline_type=pipeline_type
+            ):
                 with self.session as s:
-                    records = s.query(ORMClass).filter(
-                        getattr(ORMClass, SAMPLE_NAME) == sample_name
-                    )
-
+                    if pipeline_type == "sample":
+                        records = s.query(ORMClass).filter(
+                            getattr(ORMClass, SAMPLE_NAME) == sample_name
+                        )
+                    if pipeline_type == "project":
+                        records = s.query(ORMClass).filter(
+                            getattr(ORMClass, PROJECT_NAME) == sample_name
+                        )
                     if rm_record is True:
                         self.remove_record(
                             sample_name=sample_name,
@@ -375,11 +380,18 @@ class DBBackend(PipestatBackend):
         if rm_record:
             try:
                 ORMClass = self.get_orm(table_name=table_name)
-                if self.check_record_exists(sample_name=sample_name, table_name=table_name):
+                if self.check_record_exists(
+                    sample_name=sample_name, table_name=table_name, pipeline_type=pipeline_type
+                ):
                     with self.session as s:
-                        records = s.query(ORMClass).filter(
-                            getattr(ORMClass, SAMPLE_NAME) == sample_name
-                        )
+                        if pipeline_type == "sample":
+                            records = s.query(ORMClass).filter(
+                                getattr(ORMClass, SAMPLE_NAME) == sample_name
+                            )
+                        if pipeline_type == "project":
+                            records = s.query(ORMClass).filter(
+                                getattr(ORMClass, PROJECT_NAME) == sample_name
+                            )
                         records.delete()
                         s.commit()
                 else:
