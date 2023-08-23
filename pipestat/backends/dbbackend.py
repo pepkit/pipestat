@@ -66,6 +66,7 @@ class DBBackend(PipestatBackend):
         self,
         sample_name: str,
         table_name: str,
+        pipeline_type: Optional[str] = None,
     ) -> bool:
         """
         Check if the specified record exists in the table
@@ -74,7 +75,8 @@ class DBBackend(PipestatBackend):
         :param str table_name: table name to check
         :return bool: whether the record exists in the table
         """
-        query_hit = self.get_one_record(rid=sample_name, table_name=table_name)
+        pipeline_type = pipeline_type or self.pipeline_type
+        query_hit = self.get_one_record(rid=sample_name, table_name=table_name, pipeline_type=pipeline_type)
         return query_hit is not None
 
     def count_records(self, pipeline_type: Optional[str] = None):
@@ -116,11 +118,11 @@ class DBBackend(PipestatBackend):
         :return Any: Object relational mapper class
         """
         if self.orms is None:
-            raise PipestatDatabaseError("Object relational mapper classes not defined")
+            raise PipestatDatabaseError("Object relational mapper classes not defined.")
         mod = self.get_model(table_name=table_name, strict=True)
         return mod
 
-    def get_one_record(self, table_name: str, rid: Optional[str] = None):
+    def get_one_record(self, table_name: str, rid: Optional[str] = None, pipeline_type: Optional[str] = None,):
         """
         Retrieve single record from SQL table
 
@@ -132,8 +134,16 @@ class DBBackend(PipestatBackend):
         models = [self.get_orm(table_name=table_name)] if table_name else list(self.orms.values())
         with self.session as s:
             for mod in models:
-                stmt = sql_select(mod).where(mod.sample_name == rid)
+                if pipeline_type == 'sample':
+                    stmt = sql_select(mod).where(mod.sample_name == rid)
+                elif pipeline_type == 'project':
+                    stmt = sql_select(mod).where(mod.project_name == rid)
+                else:
+                    PipestatDatabaseError(
+                        f"Pipeline type must be 'sample' or 'project' to use get_one_record. Supplied pipeline_type: '{pipeline_type}'."
+                    )
                 record = s.exec(stmt).first()
+
 
                 if record:
                     return record
@@ -241,7 +251,7 @@ class DBBackend(PipestatBackend):
 
         table_name = self.get_table_name(pipeline_type=pipeline_type)
         rid = sample_name
-        record = self.get_one_record(rid=rid, table_name=table_name)
+        record = self.get_one_record(rid=rid, table_name=table_name, pipeline_type=pipeline_type)
 
         if restrict_to is None:
             return (
