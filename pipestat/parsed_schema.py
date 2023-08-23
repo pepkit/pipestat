@@ -213,8 +213,6 @@ class ParsedSchema(object):
         return _create_model(self.project_table_name, **field_defs)
 
     def build_sample_model(self):
-        # TODO: include the ability to process the custom types.
-        # TODO: at minimum, we need capability for image and file, and maybe link.
         data = self.sample_level_data
         if not self.sample_level_data:
             return None
