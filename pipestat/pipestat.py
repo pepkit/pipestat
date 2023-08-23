@@ -328,6 +328,7 @@ class PipestatManager(dict):
         sample_name: str = None,
         result_identifier: str = None,
         pipeline_type: Optional[str] = None,
+        project_name: Optional[str] = None,
     ) -> bool:
         """
         Remove a result.
@@ -343,6 +344,8 @@ class PipestatManager(dict):
         """
 
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
+        if pipeline_type == "project":
+            sample_name = project_name or self.project_name
 
         r_id = self._record_identifier(sample_name)
         return self.backend.remove(
@@ -412,6 +415,7 @@ class PipestatManager(dict):
         sample_name: Optional[str] = None,
         result_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
+        project_name: Optional[str] = None,
     ) -> Union[Any, Dict[str, Any]]:
         """
         Retrieve a result for a record.
@@ -427,7 +431,10 @@ class PipestatManager(dict):
         """
 
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        sample_name = sample_name or self.sample_name
+        if pipeline_type == "project":
+            sample_name = project_name or self.project_name
+        else:
+            sample_name = sample_name or self.sample_name
         return self.backend.retrieve(sample_name, result_identifier, pipeline_type)
 
     @require_backend

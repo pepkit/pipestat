@@ -806,7 +806,10 @@ def fetch_pipeline_results(
     casting_fun = casting_fun or pass_all_fun
     psm = project
     # exclude object-like results from the stats results mapping
-    rep_data = psm.retrieve(sample_name=sample_name, pipeline_type=pipeline_type)
+    if pipeline_type == "sample":
+        rep_data = psm.retrieve(sample_name=sample_name, pipeline_type=pipeline_type)
+    if pipeline_type == "project":
+        rep_data = psm.retrieve(project_name=sample_name, pipeline_type=pipeline_type)
     results = {
         k: casting_fun(v)
         for k, v in rep_data.items()
