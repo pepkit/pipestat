@@ -545,10 +545,12 @@ class PipestatManager(dict):
         for sample in samples:
             sample_index += 1
             sample_name = sample[0]
-            rep_data = self.backend.retrieve(sample_name=sample_name, pipeline_type=pipeline_type)
+
             if pipeline_type == "sample":
                 reported_stats = [sample_index, sample_name]
+                rep_data = self.retrieve(sample_name=sample_name, pipeline_type=pipeline_type)
             else:
+                rep_data = self.retrieve(project_name=sample_name, pipeline_type=pipeline_type)
                 reported_stats = [
                     sample_index,
                     self.project_name or "No Project Name Supplied",
