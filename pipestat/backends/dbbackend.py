@@ -76,7 +76,9 @@ class DBBackend(PipestatBackend):
         :return bool: whether the record exists in the table
         """
         pipeline_type = pipeline_type or self.pipeline_type
-        query_hit = self.get_one_record(rid=sample_name, table_name=table_name, pipeline_type=pipeline_type)
+        query_hit = self.get_one_record(
+            rid=sample_name, table_name=table_name, pipeline_type=pipeline_type
+        )
         return query_hit is not None
 
     def count_records(self, pipeline_type: Optional[str] = None):
@@ -122,7 +124,12 @@ class DBBackend(PipestatBackend):
         mod = self.get_model(table_name=table_name, strict=True)
         return mod
 
-    def get_one_record(self, table_name: str, rid: Optional[str] = None, pipeline_type: Optional[str] = None,):
+    def get_one_record(
+        self,
+        table_name: str,
+        rid: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
+    ):
         """
         Retrieve single record from SQL table
 
@@ -134,16 +141,15 @@ class DBBackend(PipestatBackend):
         models = [self.get_orm(table_name=table_name)] if table_name else list(self.orms.values())
         with self.session as s:
             for mod in models:
-                if pipeline_type == 'sample':
+                if pipeline_type == "sample":
                     stmt = sql_select(mod).where(mod.sample_name == rid)
-                elif pipeline_type == 'project':
+                elif pipeline_type == "project":
                     stmt = sql_select(mod).where(mod.project_name == rid)
                 else:
                     PipestatDatabaseError(
                         f"Pipeline type must be 'sample' or 'project' to use get_one_record. Supplied pipeline_type: '{pipeline_type}'."
                     )
                 record = s.exec(stmt).first()
-
 
                 if record:
                     return record
@@ -425,21 +431,35 @@ class DBBackend(PipestatBackend):
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
         try:
             ORMClass = self.get_orm(table_name=table_name)
-            values.update({SAMPLE_NAME: sample_name})
-            values.update({"project_name": self.project_name})
-
-            if not self.check_record_exists(sample_name=sample_name, table_name=table_name):
+            if pipeline_type == "sample":
+                values.update({SAMPLE_NAME: sample_name})
+                values.update({"project_name": self.project_name})
+            if pipeline_type == "project":
+                # TODO this looks funny but its because project_name becomes the sample_name in pipestat_report
+                # TODO for project pipelines.
+                # we should consider changing this back to record_identifier as the generic term.
+                values.update({"project_name": sample_name})
+            if not self.check_record_exists(
+                sample_name=sample_name, table_name=table_name, pipeline_type=pipeline_type
+            ):
                 new_record = ORMClass(**values)
                 with self.session as s:
                     s.add(new_record)
                     s.commit()
             else:
                 with self.session as s:
-                    record_to_update = (
-                        s.query(ORMClass)
-                        .filter(getattr(ORMClass, SAMPLE_NAME) == sample_name)
-                        .first()
-                    )
+                    if pipeline_type == "sample":
+                        record_to_update = (
+                            s.query(ORMClass)
+                            .filter(getattr(ORMClass, SAMPLE_NAME) == sample_name)
+                            .first()
+                        )
+                    if pipeline_type == "project":
+                        record_to_update = (
+                            s.query(ORMClass)
+                            .filter(getattr(ORMClass, PROJECT_NAME) == sample_name)
+                            .first()
+                        )
                     for result_id, result_value in values.items():
                         setattr(record_to_update, result_id, result_value)
                     s.commit()
@@ -493,9 +513,16 @@ class DBBackend(PipestatBackend):
                 )
 
         with self.session as s:
-            record = (
-                s.query(self.get_orm(table_name=tn)).filter_by(sample_name=sample_name).first()
-            )
+            if pipeline_type == "sample":
+                record = (
+                    s.query(self.get_orm(table_name=tn)).filter_by(sample_name=sample_name).first()
+                )
+            if pipeline_type == "project":
+                record = (
+                    s.query(self.get_orm(table_name=tn))
+                    .filter_by(project_name=sample_name)
+                    .first()
+                )
 
         if record is not None:
             if result_identifier is not None:

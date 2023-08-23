@@ -137,7 +137,7 @@ class PipestatManager(dict):
                 self[FILE_KEY],
                 sample_name,
                 self[PIPELINE_NAME],
-                #self[PROJECT_NAME],
+                # self[PROJECT_NAME],
                 self[PIPELINE_TYPE],
                 self[SCHEMA_KEY],
                 self[STATUS_SCHEMA_KEY],
@@ -383,7 +383,7 @@ class PipestatManager(dict):
         result_formatter = result_formatter or self[RESULT_FORMATTER]
         values = deepcopy(values)
 
-        if pipeline_type == 'project':
+        if pipeline_type == "project":
             sample_name = project_name or self.project_name
         else:
             sample_name = self._record_identifier(sample_name)
@@ -452,7 +452,7 @@ class PipestatManager(dict):
         :param str pipeline_type: "sample" or "project"
         """
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        if pipeline_type == 'project':
+        if pipeline_type == "project":
             sample_name = project_name or self.project_name
         else:
             sample_name = sample_name or self.sample_name

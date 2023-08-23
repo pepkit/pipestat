@@ -777,7 +777,9 @@ class TestHTMLReport:
                     psm.report(
                         sample_name=r, values=v, force_overwrite=True, pipeline_type="sample"
                     )
-                    psm.set_status(sample_name=r, status_identifier="running")
+                    psm.set_status(
+                        sample_name=r, status_identifier="running", pipeline_type="sample"
+                    )
 
             try:
                 htmlreportpath = psm.summarize(amendment="")
