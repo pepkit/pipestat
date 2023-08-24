@@ -13,7 +13,7 @@ from yacman import YAMLConfigManager, select_config
 from .helpers import *
 from .parsed_schema import ParsedSchema
 
-from .reports import HTMLReportBuilder, get_file_for_table
+from .reports import HTMLReportBuilder, get_file_for_table, _create_stats_objs_summaries
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -509,78 +509,9 @@ class PipestatManager(dict):
 
         pipeline_name = self.pipeline_name
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        table_path_list = self._create_stats_objs_summaries(pipeline_name, pipeline_type)
+        table_path_list = _create_stats_objs_summaries(self, pipeline_name, pipeline_type)
 
         return table_path_list
-
-    def _create_stats_objs_summaries(self, pipeline_name, pipeline_type) -> List[str]:
-        """
-        Create stats spreadsheet and objects summary.
-
-
-        :param str pipeline_name: name of the pipeline to tabulate results for
-        :param str pipeline_type: whether the sample-level or project-level pipeline results
-            should be tabulated
-        :return List[str] [tsv_outfile_path, objs_yaml_path]: list of paths to tsv_outfile_path, objs_yaml_path
-
-        """
-
-        _LOGGER.info("Creating objects summary")
-        reported_objects = {}
-        reported_stats = []
-        stats = []
-
-        if pipeline_type == "sample":
-            columns = ["Sample Index", "Sample Name", "Results"]
-        else:
-            columns = ["Sample Index", "Project Name", "Sample Name", "Results"]
-
-        records = self.backend.get_records(pipeline_type=pipeline_type)
-        record_index = 0
-        for record in records:
-            record_index += 1
-            record_name = record[0]
-
-            if pipeline_type == "sample":
-                reported_stats = [record_index, record_name]
-                rep_data = self.retrieve(sample_name=record_name, pipeline_type=pipeline_type)
-            else:
-                rep_data = self.retrieve(project_name=record_name, pipeline_type=pipeline_type)
-                reported_stats = [
-                    record_index,
-                    self.project_name or "No Project Name Supplied",
-                    record_name,
-                ]
-
-            for k, v in rep_data.items():
-                if k in self.result_schemas and self.result_schemas[k]["type"] in OBJECT_TYPES:
-                    sample_reported_objects = {k: dict(v)}
-                    reported_objects[record_name] = sample_reported_objects
-                if k in self.result_schemas and self.result_schemas[k]["type"] not in OBJECT_TYPES:
-                    reported_stats.append(k)
-                    reported_stats.append(v)
-            stats.append(reported_stats)
-
-        # Stats File
-        tsv_outfile_path = get_file_for_table(self, pipeline_name, "stats_summary.tsv")
-        stats.insert(0, columns)
-        with open(tsv_outfile_path, "w") as tsv_outfile:
-            writer = csv.writer(tsv_outfile, delimiter="\t")
-            for row in stats:
-                writer.writerow(row)
-        _LOGGER.info(
-            f"'{pipeline_name}' pipeline stats summary (n={len(stats)}): {tsv_outfile_path}"
-        )
-
-        # Create Object yaml
-        objs_yaml_path = get_file_for_table(self, pipeline_name, "objs_summary.yaml")
-        with open(objs_yaml_path, "w") as outfile:
-            yaml.dump(reported_objects, outfile)
-        _LOGGER.info(
-            f"'{pipeline_name}' pipeline objects summary (n={len(reported_objects.keys())}): {objs_yaml_path}"
-        )
-
-        return [tsv_outfile_path, objs_yaml_path]
 
     def _get_attr(self, attr: str) -> Any:
         """
