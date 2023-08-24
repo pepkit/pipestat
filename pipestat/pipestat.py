@@ -221,16 +221,18 @@ class PipestatManager(dict):
     def clear_status(
         self,
         sample_name: str = None,
-        flag_names: List[str] = None,
         project_name: Optional[str] = None,
+        flag_names: List[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> List[Union[str, None]]:
         """
         Remove status flags
 
-        :param str sample_name: name of the record to remove flags for
+        :param str sample_name: name of the sample_level record to remove flags for
+        :param str project_name: name of the project_level record to remove flags for
         :param Iterable[str] flag_names: Names of flags to remove, optional; if
             unspecified, all schema-defined flag names will be used.
+        :param str pipeline_type: "sample" or "project"
         :return List[str]: Collection of names of flags removed
         """
         pipeline_type = pipeline_type or self.pipeline_type
@@ -253,12 +255,13 @@ class PipestatManager(dict):
     def get_status(
         self,
         sample_name: str = None,
-        pipeline_type: Optional[str] = None,
         project_name: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
     ) -> Optional[str]:
         """
         Get the current pipeline status
-        :param str sample_name: name of the record
+        :param str sample_name: name of the sample_level record
+        :param str project_name: name of the project_level record
         :param str pipeline_type: "sample" or "project"
         :return str: status identifier, like 'running'
         """
@@ -338,9 +341,9 @@ class PipestatManager(dict):
     def remove(
         self,
         sample_name: str = None,
+        project_name: Optional[str] = None,
         result_identifier: str = None,
         pipeline_type: Optional[str] = None,
-        project_name: Optional[str] = None,
     ) -> bool:
         """
         Remove a result.
@@ -348,7 +351,8 @@ class PipestatManager(dict):
         If no result ID specified or last result is removed, the entire record
         will be removed.
 
-        :param str sample_name: unique identifier of the record
+        :param str sample_name: name of the sample_level record
+        :param str project_name: name of the project_level record
         :param str result_identifier: name of the result to be removed or None
              if the record should be removed.
         :param str pipeline_type: "sample" or "project"
@@ -382,6 +386,7 @@ class PipestatManager(dict):
         :param str sample_name: unique identifier of the record, value
             in 'sample_name' column to look for to determine if the record
             already exists
+        :param str project_name: name of the project_level record
         :param bool force_overwrite: whether to overwrite the existing record
         :param bool strict_type: whether the type of the reported values should
             remain as is. Pipestat would attempt to convert to the
@@ -422,9 +427,9 @@ class PipestatManager(dict):
     def retrieve(
         self,
         sample_name: Optional[str] = None,
+        project_name: Optional[str] = None,
         result_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
-        project_name: Optional[str] = None,
     ) -> Union[Any, Dict[str, Any]]:
         """
         Retrieve a result for a record.
@@ -432,7 +437,8 @@ class PipestatManager(dict):
         If no result ID specified, results for the entire record will
         be returned.
 
-        :param str sample_name: unique identifier of the record
+        :param str sample_name: name of the sample_level record
+        :param str project_name: name of the project_level record
         :param str result_identifier: name of the result to be retrieved
         :param str pipeline_type: "sample" or "project"
         :return any | Dict[str, any]: a single result or a mapping with all the
@@ -462,7 +468,9 @@ class PipestatManager(dict):
 
         :param str status_identifier: status to set, one of statuses defined
             in the status schema
-        :param str sample_name: record identifier to set the
+        :param str sample_name: sample_level record identifier to set the
+            pipeline status for
+        :param str project_name: name of the project_level record to set the
             pipeline status for
         :param str pipeline_type: "sample" or "project"
         """
