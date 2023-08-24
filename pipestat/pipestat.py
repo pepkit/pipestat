@@ -136,8 +136,8 @@ class PipestatManager(dict):
             self.backend = FileBackend(
                 self[FILE_KEY],
                 sample_name,
+                self[PROJECT_NAME],
                 self[PIPELINE_NAME],
-                # self[PROJECT_NAME],
                 self[PIPELINE_TYPE],
                 self[SCHEMA_KEY],
                 self[STATUS_SCHEMA_KEY],
