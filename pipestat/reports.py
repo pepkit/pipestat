@@ -116,7 +116,7 @@ class HTMLReportBuilder(object):
             os.makedirs(self.pipeline_reports)
         pages = []
         labels = []
-        for sample in self.prj.backend.get_samples():
+        for sample in self.prj.backend.get_records():
             sample_name = sample[0]
             pipeline_type = sample[1]
             sample_dir = self.pipeline_reports
@@ -250,7 +250,7 @@ class HTMLReportBuilder(object):
             links = []
             html_page_path = os.path.join(self.pipeline_reports, f"{file_result}.html".lower())
 
-            for sample in self.prj.backend.get_samples():
+            for sample in self.prj.backend.get_records():
                 sample_name = sample[0]
                 pipeline_type = sample[1]
                 sample_result = fetch_pipeline_results(
@@ -296,7 +296,7 @@ class HTMLReportBuilder(object):
             html_page_path = os.path.join(self.pipeline_reports, f"{image_result}.html".lower())
             figures = []
 
-            for sample in self.prj.backend.get_samples():
+            for sample in self.prj.backend.get_records():
                 sample_name = sample[0]
                 pipeline_type = sample[1]
                 sample_result = fetch_pipeline_results(
@@ -506,7 +506,7 @@ class HTMLReportBuilder(object):
         # Produce table rows
         table_row_data = []
         _LOGGER.info(" * Creating sample pages")
-        for sample in self.prj.backend.get_samples():
+        for sample in self.prj.backend.get_records():
             sample_name = sample[0]
             pipeline_type = sample[1]
             sample_stat_results = fetch_pipeline_results(
@@ -602,7 +602,7 @@ class HTMLReportBuilder(object):
 
     def _stats_to_json_str(self):
         results = {}
-        for sample in self.prj.backend.get_samples():
+        for sample in self.prj.backend.get_records():
             sample_name = sample[0]
             pipeline_type = sample[1]
             results[sample_name] = fetch_pipeline_results(
@@ -631,7 +631,7 @@ class HTMLReportBuilder(object):
     def _get_navbar_dropdown_data_samples(self, wd, context):
         relpaths = []
         sample_names = []
-        for sample in self.prj.backend.get_samples():
+        for sample in self.prj.backend.get_records():
             sample_name = sample[0]
             pipeline_type = sample[1]
             page_name = os.path.join(
@@ -857,7 +857,7 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
     times = []
     mems = []
     status_descs = []
-    for sample in project.backend.get_samples():
+    for sample in project.backend.get_records():
         sample_name = sample[0]
         pipeline_type = sample[1]
         psm = project

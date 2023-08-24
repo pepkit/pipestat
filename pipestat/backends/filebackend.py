@@ -21,7 +21,6 @@ class FileBackend(PipestatBackend):
         self,
         results_file_path: str,
         sample_name: Optional[str] = None,
-        project_name: Optional[str] = None,
         pipeline_name: Optional[str] = None,
         pipeline_type: Optional[str] = None,
         parsed_schema: Optional[str] = None,
@@ -52,7 +51,6 @@ class FileBackend(PipestatBackend):
         self.pipeline_name = pipeline_name
         self.pipeline_type = pipeline_type
         self.sample_name = sample_name
-        self.project_name = project_name
         self.parsed_schema = parsed_schema
         self.status_schema = status_schema
         self.status_file_dir = status_file_dir
@@ -146,7 +144,7 @@ class FileBackend(PipestatBackend):
             return None
         pass
 
-    def get_samples(
+    def get_records(
         self,
         pipeline_type: Optional[str] = None,
     ) -> Optional[list]:
@@ -303,15 +301,12 @@ class FileBackend(PipestatBackend):
         self,
         sample_name: Optional[str] = None,
         pipeline_type: Optional[str] = None,
-        project_name: Optional[str] = None,
         rm_record: Optional[bool] = False,
     ) -> bool:
         """
         Remove a record, requires rm_record to be True
 
         :param str sample_name: unique identifier of the record
-        :param str result_identifier: name of the result to be removed or None
-             if the record should be removed.
         :param str pipeline_type: "sample" or "project"
         :param bool rm_record: bool for removing record.
         :return bool: whether the result has been removed

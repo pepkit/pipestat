@@ -154,7 +154,7 @@ class DBBackend(PipestatBackend):
                 if record:
                     return record
 
-    def get_samples(
+    def get_records(
         self,
         pipeline_type: Optional[str] = None,
     ) -> Optional[list]:

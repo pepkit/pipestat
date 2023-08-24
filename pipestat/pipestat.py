@@ -136,7 +136,6 @@ class PipestatManager(dict):
             self.backend = FileBackend(
                 self[FILE_KEY],
                 sample_name,
-                self[PROJECT_NAME],
                 self[PIPELINE_NAME],
                 self[PIPELINE_TYPE],
                 self[SCHEMA_KEY],
@@ -520,7 +519,7 @@ class PipestatManager(dict):
 
 
         :param str pipeline_name: name of the pipeline to tabulate results for
-        :param str pipeline_type: whether the project-level pipeline results
+        :param str pipeline_type: whether the sample-level or project-level pipeline results
             should be tabulated
         :return List[str] [tsv_outfile_path, objs_yaml_path]: list of paths to tsv_outfile_path, objs_yaml_path
 
@@ -536,27 +535,27 @@ class PipestatManager(dict):
         else:
             columns = ["Sample Index", "Project Name", "Sample Name", "Results"]
 
-        samples = self.backend.get_samples(pipeline_type=pipeline_type)
-        sample_index = 0
-        for sample in samples:
-            sample_index += 1
-            sample_name = sample[0]
+        records = self.backend.get_records(pipeline_type=pipeline_type)
+        record_index = 0
+        for record in records:
+            record_index += 1
+            record_name = record[0]
 
             if pipeline_type == "sample":
-                reported_stats = [sample_index, sample_name]
-                rep_data = self.retrieve(sample_name=sample_name, pipeline_type=pipeline_type)
+                reported_stats = [record_index, record_name]
+                rep_data = self.retrieve(sample_name=record_name, pipeline_type=pipeline_type)
             else:
-                rep_data = self.retrieve(project_name=sample_name, pipeline_type=pipeline_type)
+                rep_data = self.retrieve(project_name=record_name, pipeline_type=pipeline_type)
                 reported_stats = [
-                    sample_index,
+                    record_index,
                     self.project_name or "No Project Name Supplied",
-                    sample_name,
+                    record_name,
                 ]
 
             for k, v in rep_data.items():
                 if k in self.result_schemas and self.result_schemas[k]["type"] in OBJECT_TYPES:
                     sample_reported_objects = {k: dict(v)}
-                    reported_objects[sample_name] = sample_reported_objects
+                    reported_objects[record_name] = sample_reported_objects
                 if k in self.result_schemas and self.result_schemas[k]["type"] not in OBJECT_TYPES:
                     reported_stats.append(k)
                     reported_stats.append(v)
