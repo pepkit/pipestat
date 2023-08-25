@@ -132,7 +132,7 @@ class PipestatManager(dict):
             flag_file_dir = self[CONFIG_KEY].priority_get(
                 "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.file)
             )
-            self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path)
+            self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path or self.file)
             self.backend = FileBackend(
                 self[FILE_KEY],
                 sample_name,
