@@ -34,7 +34,8 @@ class HTMLReportBuilder(object):
         self.jinja_env = get_jinja_env()
         results_file_path = getattr(self.prj.backend, "results_file_path", None)
         config_path = getattr(self.prj, "config_path", None)
-        self.output_dir = results_file_path or config_path
+        output_dir = getattr(self.prj, "output_dir", None)
+        self.output_dir = output_dir or results_file_path or config_path
         self.output_dir = os.path.dirname(self.output_dir)
         self.reports_dir = os.path.join(self.output_dir, "reports")
         _LOGGER.debug(f"Reports dir: {self.reports_dir}")
@@ -960,7 +961,8 @@ def get_file_for_project(prj, pipeline_name, appendix=None, directory=None, repo
     if reportdir is None:  # Determine a default reportdir if not provided
         results_file_path = getattr(prj.backend, "results_file_path", None)
         config_path = getattr(prj, "config_path", None)
-        output_dir = results_file_path or config_path
+        output_dir = getattr(prj, "output_dir", None)
+        output_dir = output_dir or results_file_path or config_path
         output_dir = os.path.dirname(output_dir)
         reportdir = os.path.join(output_dir, "reports")
     if prj["project_name"] is None:
@@ -992,10 +994,11 @@ def get_file_for_table(prj, pipeline_name, appendix=None, directory=None):
     # TODO make determining the output_dir its own small function since we use the same code in HTML report building.
     results_file_path = getattr(prj.backend, "results_file_path", None)
     config_path = getattr(prj, "config_path", None)
-    prj.output_dir = results_file_path or config_path
-    prj.output_dir = os.path.dirname(prj.output_dir)
-    prj.reports_dir = os.path.join(prj.output_dir, "reports")
-    fp = os.path.join(prj.output_dir, directory or "", f"{prj[PROJECT_NAME]}_{pipeline_name}")
+    output_dir = getattr(prj, "output_dir", None)
+    table_dir = output_dir or results_file_path or config_path
+    if not os.path.isdir(table_dir):
+        table_dir = os.path.dirname(table_dir)
+    fp = os.path.join(table_dir, directory or "", f"{prj[PROJECT_NAME]}_{pipeline_name}")
     if hasattr(prj, "amendments") and getattr(prj, "amendments"):
         fp += f"_{'_'.join(prj.amendments)}"
     fp += f"_{appendix}"

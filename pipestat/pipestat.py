@@ -55,6 +55,7 @@ class PipestatManager(dict):
         pipeline_name: Optional[str] = DEFAULT_PIPELINE_NAME,
         result_formatter: staticmethod = default_formatter,
         multi_pipelines: bool = False,
+        output_dir: Optional[str] = None,
     ):
         """
         Initialize the PipestatManager object
@@ -75,6 +76,7 @@ class PipestatManager(dict):
         :param str pipeline_type: "sample" or "project"
         :param str result_formatter: function for formatting result
         :param bool multi_pipelines: allows for running multiple pipelines for one file backend
+        :param str output_dir: target director for report generation via summarize and table generation via table.
         """
 
         super(PipestatManager, self).__init__()
@@ -119,6 +121,8 @@ class PipestatManager(dict):
         self[RESULT_FORMATTER] = result_formatter
 
         self[MULTI_PIPELINE] = multi_pipelines
+
+        self[OUTPUT_DIR] = output_dir
 
         if self[FILE_KEY]:  # file backend
             _LOGGER.debug(f"Determined file as backend: {results_file_path}")
@@ -610,6 +614,15 @@ class PipestatManager(dict):
         :return List[str]: a collection of highlighted results
         """
         return [k for k, v in self.result_schemas.items() if v.get("highlight") is True]
+
+    @property
+    def output_dir(self) -> str:
+        """
+        Output directory for report and stats generation
+
+        :return str: path to output_dir
+        """
+        return self.get(OUTPUT_DIR)
 
     @property
     def pipeline_name(self) -> str:
