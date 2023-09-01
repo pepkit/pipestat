@@ -76,7 +76,7 @@ class PipestatManager(dict):
         :param str pipeline_type: "sample" or "project"
         :param str result_formatter: function for formatting result
         :param bool multi_pipelines: allows for running multiple pipelines for one file backend
-        :param str output_dir: target director for report generation via summarize and table generation via table.
+        :param str output_dir: target directory for report generation via summarize and table generation via table.
         """
 
         super(PipestatManager, self).__init__()
@@ -90,7 +90,9 @@ class PipestatManager(dict):
         _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
         validate(self[CONFIG_KEY].exp, cfg_schema)
 
-        self[SCHEMA_PATH] = schema_path if schema_path is not None else None
+        self[SCHEMA_PATH] = self[CONFIG_KEY].priority_get(
+            "schema_path", env_var=ENV_VARS["schema"], override=schema_path
+        )  # schema_path if schema_path is not None else None
         self.process_schema(schema_path)
 
         # self[SCHEMA_PATH] = schema_path
@@ -122,7 +124,7 @@ class PipestatManager(dict):
 
         self[MULTI_PIPELINE] = multi_pipelines
 
-        self[OUTPUT_DIR] = output_dir
+        self[OUTPUT_DIR] = self[CONFIG_KEY].priority_get("output_dir", override=output_dir)
 
         if self[FILE_KEY]:  # file backend
             _LOGGER.debug(f"Determined file as backend: {results_file_path}")
