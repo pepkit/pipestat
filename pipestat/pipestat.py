@@ -257,6 +257,19 @@ class PipestatManager(dict):
         return self.backend.count_records(pipeline_type)
 
     @require_backend
+    def get_one_record(self, **kwargs):
+        """
+        Retrieve single record from SQL table
+
+        :param str rid: record to check for
+        :param str table_name: table name to check
+        :return Any: Record object
+        """
+        # Only implemented for DB backend
+        record = self.backend.get_one_record(**kwargs)
+        return record
+
+    @require_backend
     def get_status(
         self,
         sample_name: str = None,
