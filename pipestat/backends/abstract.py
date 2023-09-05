@@ -144,3 +144,7 @@ class PipestatBackend(ABC):
         pipeline_type: Optional[str] = None,
     ) -> bool:
         _LOGGER.warning("Not implemented yet for this backend")
+
+    def select(self):
+        _LOGGER.warning("Not implemented yet for this backend")
+        pass
