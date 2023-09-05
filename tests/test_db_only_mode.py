@@ -284,5 +284,5 @@ class TestDatabaseOnly:
             psm.report(values=val, force_overwrite=True)
             val_name = list(val.keys())[0]
             # assert psm.backend.select(filter_conditions=[(val_name, "eq", val[val_name])])[0]
-            assert val_name in str(psm.backend.select_txt())
-            assert val_name not in str(psm.backend.select_txt(offset=2))
+            assert val_name in str(psm.select_txt())
+            assert val_name not in str(psm.select_txt(offset=2))

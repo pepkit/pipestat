@@ -485,6 +485,44 @@ class PipestatManager(dict):
         return result
 
     @require_backend
+    def select_txt(self, **kwargs):
+        """
+        Execute a query with a textual filter. Returns all results.
+
+        To retrieve all table contents, leave the filter arguments out.
+        Table name uses pipeline_type
+
+        :param str filter_templ: filter template with value placeholders,
+             formatted as follows `id<:value and name=:name`
+        :param Dict[str, Any] filter_params: a mapping keys specified in the `filter_templ`
+            to parameters that are supposed to replace the placeholders
+        :param str table_name: name of the table to query
+        :param int offset: skip this number of rows
+        :param int limit: include this number of rows
+        :param str pipeline_type: sample vs project pipeline
+        :return List[Any]: a list of matched records
+        """
+        # Note this is only implemented for DBBackend
+        result = self.backend.select_txt(**kwargs)
+
+        return result
+
+    @require_backend
+    def select_distinct(self, **kwargs):
+        """
+        Perform a `SELECT DISTINCT` on given table and column
+
+        :param str table_name: name of the table to SELECT from
+        :param List[str] columns: columns to include in the result
+        :param str pipeline_type: "sample" or "project"
+        :return List[Any]: returns distinct values.
+        """
+        # Note this is only implemented for DBBackend
+        results = self.backend.select_distinct(**kwargs)
+
+        return results
+
+    @require_backend
     def set_status(
         self,
         status_identifier: str,

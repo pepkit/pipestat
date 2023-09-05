@@ -148,3 +148,11 @@ class PipestatBackend(ABC):
     def select(self):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
+
+    def select_txt(self):
+        _LOGGER.warning("Not implemented yet for this backend")
+        pass
+
+    def select_distinct(self):
+        _LOGGER.warning("Not implemented yet for this backend")
+        pass
