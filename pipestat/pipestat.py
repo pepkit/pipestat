@@ -457,34 +457,6 @@ class PipestatManager(dict):
         return self.backend.retrieve(r_id, result_identifier, pipeline_type)
 
     @require_backend
-    def select(self, **kwargs):
-        """
-        Perform a `SELECT` on the table
-
-        :param str table_name: name of the table to SELECT from
-        :param List[str] columns: columns to include in the result
-        :param [(key,operator,value)] filter_conditions: e.g. [("id", "eq", 1)], operator list:
-            - eq for ==
-            - lt for <
-            - ge for >=
-            - in for in_
-            - like for like
-        :param [(col,key,value)] json_filter_conditions: conditions for JSONB column to
-            query that include JSON column name, key withing the JSON object in that
-            column and the value to check the identity against. Therefore only '==' is
-            supported in non-nested checks, e.g. [("other", "genome", "hg38")]
-        :param int offset: skip this number of rows
-        :param int limit: include this number of rows
-        :param str pipeline_type: "sample" or "project"
-
-        """
-
-        # Note this is only implemented for DBBackend
-        result = self.backend.select(**kwargs)
-
-        return result
-
-    @require_backend
     def set_status(
         self,
         status_identifier: str,
