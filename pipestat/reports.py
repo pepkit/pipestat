@@ -193,6 +193,11 @@ class HTMLReportBuilder(object):
             wd=wd,
             context=context,
         )
+        glossary_relpath = _make_relpath(
+            file_name=os.path.join(self.pipeline_reports, "glossary.html"),
+            wd=wd,
+            context=context,
+        )
         # determine the outputs IDs by type
         obj_result_ids = self.get_nonhighlighted_results(OBJECT_TYPES)
         dropdown_keys_objects = None
@@ -218,6 +223,8 @@ class HTMLReportBuilder(object):
             # Create a menu link to the samples parent page
             dropdown_relpaths_samples = samples_relpath
         template_vars = dict(
+            glossary_html_page=glossary_relpath,
+            glossary_page_name="Glossary",
             status_html_page=status_relpath,
             status_page_name="Status",
             dropdown_keys_objects=dropdown_keys_objects,
@@ -345,6 +352,11 @@ class HTMLReportBuilder(object):
                     html_page_path,
                     render_jinja_template("object.html", self.jinja_env, args=template_vars),
                 )
+
+    def create_glossary_html(self, glossary_table, navbar, footer):
+        template_vars = dict(glossary_table=glossary_table, navbar=navbar, footer=footer)
+        _LOGGER.debug(f"glossary.html | template_vars:\n{template_vars}")
+        return render_jinja_template("glossary.html", self.jinja_env, template_vars)
 
     def create_sample_html(self, sample_stats, navbar, footer, sample_name, pipeline_type):
         """
@@ -529,6 +541,7 @@ class HTMLReportBuilder(object):
             table_cell_data = [[rel_sample_html, sample_name]]
             table_cell_data.append(list(sample_stat_results.values()))
             table_row_data.append(table_cell_data)
+
         # Create parent samples page with links to each sample
         save_html(
             path=os.path.join(self.pipeline_reports, "samples.html"),
@@ -552,6 +565,12 @@ class HTMLReportBuilder(object):
         save_html(
             path=os.path.join(self.pipeline_reports, "status.html"),
             template=self.create_status_html(status_tab, navbar, footer),
+        )
+        # glossary_html = self.create_glossary_html(navbar,footer)
+        glossary_table = create_glossary_table(project=self.prj)
+        save_html(
+            path=os.path.join(self.pipeline_reports, "glossary.html"),
+            template=self.create_glossary_html(glossary_table, navbar, footer),
         )
         # Complete and close HTML file
         columns = ["Record Identifiers", "Results"]
@@ -914,6 +933,23 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
     )
     _LOGGER.debug(f"status_table.html | template_vars:\n{template_vars}")
     return render_jinja_template("status_table.html", get_jinja_env(), template_vars)
+
+
+def create_glossary_table(project):
+    items = []
+    descs = []
+
+    for k, v in project.result_schemas.items():
+        items.append(k)
+        descs.append(v["description"])
+
+    template_vars = dict(
+        items=items,
+        descriptions=descs,
+    )
+
+    # return (items,descs)
+    return render_jinja_template("glossary_table.html", get_jinja_env(), template_vars)
 
 
 def _get_maxmem(profile):
