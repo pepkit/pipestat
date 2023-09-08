@@ -14,7 +14,13 @@ __all__ = [
     "SchemaNotFoundError",
     "PipestatDataError",
     "UnrecognizedStatusError",
+    "RecordNotFoundError",
 ]
+
+
+class RecordNotFoundError(LookupError):
+    def __init__(self, msg):
+        super(RecordNotFoundError, self).__init__(msg)
 
 
 class PipestatError(Exception):

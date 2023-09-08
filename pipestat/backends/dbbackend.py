@@ -212,7 +212,7 @@ class DBBackend(PipestatBackend):
                 sample_name=sample_name,
                 pipeline_type=pipeline_type,
             )
-        except PipestatDatabaseError:
+        except RecordNotFoundError:
             return None
         return result
 
@@ -346,14 +346,14 @@ class DBBackend(PipestatBackend):
                             result_identifier=result_identifier,
                             pipeline_type=pipeline_type,
                         ):
-                            raise PipestatDatabaseError(
+                            raise RecordNotFoundError(
                                 f"Result '{result_identifier}' not found for record "
                                 f"'{sample_name}'"
                             )
                         setattr(records.first(), result_identifier, None)
                     s.commit()
             else:
-                raise PipestatDatabaseError(f"Record '{sample_name}' not found")
+                raise RecordNotFoundError(f"Record '{sample_name}' not found")
         except Exception as e:
             _LOGGER.error(f"Could not remove the result from the database. Exception: {e}")
             raise
@@ -395,7 +395,7 @@ class DBBackend(PipestatBackend):
                         records.delete()
                         s.commit()
                 else:
-                    raise PipestatDatabaseError(f"Record '{sample_name}' not found")
+                    raise RecordNotFoundError(f"Record '{sample_name}' not found")
             except Exception as e:
                 _LOGGER.error(f"Could not remove the result from the database. Exception: {e}")
                 raise
@@ -526,7 +526,7 @@ class DBBackend(PipestatBackend):
                 pipeline_type=pipeline_type,
             )
             if not existing:
-                raise PipestatDatabaseError(
+                raise RecordNotFoundError(
                     f"Result '{result_identifier}' not found for record " f"'{sample_name}'"
                 )
 
@@ -550,7 +550,7 @@ class DBBackend(PipestatBackend):
                 for column in [c.name for c in record.__table__.columns]
                 if getattr(record, column, None) is not None
             }
-        raise PipestatDatabaseError(f"Record '{sample_name}' not found")
+        raise RecordNotFoundError(f"Record '{sample_name}' not found")
 
     def select(
         self,

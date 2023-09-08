@@ -81,12 +81,12 @@ class TestSplitClasses:
                 psm.clear_status(sample_name=rec_id)
                 status = psm.get_status(sample_name=rec_id)
                 assert status is None
-                with pytest.raises(PipestatDataError):
+                with pytest.raises(RecordNotFoundError):
                     psm.retrieve(sample_name=rec_id)
             if backend == "db":
                 assert getattr(psm.retrieve(sample_name=rec_id), val_name, None) is None
                 psm.remove(sample_name=rec_id)
-                with pytest.raises(PipestatDatabaseError):
+                with pytest.raises(RecordNotFoundError):
                     psm.retrieve(sample_name=rec_id)
 
     @pytest.mark.parametrize(
@@ -133,7 +133,7 @@ class TestSplitClasses:
                 psm.clear_status(project_name=rec_id, pipeline_type="project")
                 status = psm.get_status(project_name=rec_id, pipeline_type="project")
                 assert status is None
-                with pytest.raises(PipestatDataError):
+                with pytest.raises(RecordNotFoundError):
                     psm.retrieve(project_name=rec_id, pipeline_type="project")
             if backend == "db":
                 assert (
@@ -143,7 +143,7 @@ class TestSplitClasses:
                     is None
                 )
                 psm.remove(project_name=rec_id, pipeline_type="project")
-                with pytest.raises(PipestatDatabaseError):
+                with pytest.raises(RecordNotFoundError):
                     psm.retrieve(project_name=rec_id, pipeline_type="project")
 
 
@@ -420,10 +420,10 @@ class TestRetrieval:
             for k, v in val_dict.items():
                 psm.report(sample_name=k, values=v, force_overwrite=True)
             if backend == "db":
-                with pytest.raises(PipestatDatabaseError):
+                with pytest.raises(RecordNotFoundError):
                     psm.retrieve(result_identifier=res_id, sample_name=rec_id)
             else:
-                with pytest.raises(PipestatDataError):
+                with pytest.raises(RecordNotFoundError):
                     psm.retrieve(result_identifier=res_id, sample_name=rec_id)
 
 
@@ -565,7 +565,7 @@ class TestRemoval:
             psm.report(sample_name=rec_id, values={res_id: "something"}, force_overwrite=True)
             assert psm.remove(sample_name=rec_id, result_identifier=res_id)
             if backend == "file":
-                with pytest.raises(PipestatDataError):
+                with pytest.raises(RecordNotFoundError):
                     psm.retrieve(sample_name=rec_id)
 
 

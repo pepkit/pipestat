@@ -410,11 +410,11 @@ class FileBackend(PipestatBackend):
         sample_name = sample_name or self.sample_name
 
         if sample_name not in self._data[self.pipeline_name][pipeline_type]:
-            raise PipestatDataError(f"Record '{sample_name}' not found")
+            raise RecordNotFoundError(f"Record '{sample_name}' not found")
         if result_identifier is None:
             return self._data.exp[self.pipeline_name][pipeline_type][sample_name]
         if result_identifier not in self._data[self.pipeline_name][pipeline_type][sample_name]:
-            raise PipestatDataError(
+            raise RecordNotFoundError(
                 f"Result '{result_identifier}' not found for record '{sample_name}'"
             )
         return self._data[self.pipeline_name][pipeline_type][sample_name][result_identifier]
