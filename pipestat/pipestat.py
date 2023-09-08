@@ -5,6 +5,7 @@ from typing import List
 
 from pipestat.backends.filebackend import FileBackend
 from pipestat.backends.dbbackend import DBBackend
+from pipestat.reader.reader import pipestat_reader
 
 from jsonschema import validate
 
@@ -484,6 +485,20 @@ class PipestatManager(dict):
             pipeline_type=pipeline_type, sample_name=sample_name, project_name=project_name
         )
         self.backend.set_status(status_identifier, r_id, pipeline_type)
+
+    @require_backend
+    def reader(self):
+
+        #this will require a database backend
+        #actually the usage of this should probably be via the CLI
+        # pipestat reader -configfile "path to config with SQL database info"
+        # optional arguments to kill the uvicorn server
+        db_config = self[CONFIG_KEY].exp[CFG_DATABASE_KEY]
+        pipestat_reader(db_config)
+
+
+        return 0
+
 
     @require_backend
     def summarize(
