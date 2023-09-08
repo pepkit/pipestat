@@ -146,7 +146,7 @@ class DBBackend(PipestatBackend):
                 elif pipeline_type == "project":
                     stmt = sql_select(mod).where(mod.project_name == rid)
                 else:
-                    PipestatDatabaseError(
+                    PipelineTypeNotSuppliedError(
                         f"Pipeline type must be 'sample' or 'project' to use get_one_record. Supplied pipeline_type: '{pipeline_type}'."
                     )
                 record = s.exec(stmt).first()
