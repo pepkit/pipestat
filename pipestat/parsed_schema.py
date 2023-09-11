@@ -61,6 +61,11 @@ def _safe_pop_one_mapping(key: str, data: Dict[str, Any], info_name: str) -> Any
 
 class ParsedSchema(object):
     # TODO: validate no collision among the 3 namespaces.
+
+    _PROJECT_KEY = "project"
+    _SAMPLES_KEY = "samples"
+    _STATUS_KEY = "status"
+
     def __init__(self, data: Union[Dict[str, Any], Path, str]) -> None:
         # initial validation and parse
         if not isinstance(data, dict):
@@ -75,12 +80,12 @@ class ParsedSchema(object):
             )
 
         # Parse sample-level data item declarations.
-        sample_data = _safe_pop_one_mapping(key="samples", data=data, info_name="sample-level")
+        sample_data = _safe_pop_one_mapping(key=self._SAMPLES_KEY, data=data, info_name="sample-level")
 
         self._sample_level_data = _recursively_replace_custom_types(sample_data)
 
         # Parse project-level data item declarations.
-        prj_data = _safe_pop_one_mapping(key="project", data=data, info_name="project-level")
+        prj_data = _safe_pop_one_mapping(key=self._PROJECT_KEY, data=data, info_name="project-level")
         self._project_level_data = _recursively_replace_custom_types(prj_data)
 
         # Sample- and/or project-level data must be declared.
@@ -88,7 +93,7 @@ class ParsedSchema(object):
             raise SchemaError("Neither sample-level nor project-level data items are declared.")
 
         # Parse custom status declaration if present.
-        self._status_data = _safe_pop_one_mapping(key="status", data=data, info_name="status")
+        self._status_data = _safe_pop_one_mapping(key=self._STATUS_KEY, data=data, info_name="status")
 
         if data:
             _LOGGER.info(
@@ -116,7 +121,7 @@ class ParsedSchema(object):
 
     def __str__(self):
         """
-        Generate string representation of the object
+        Generate string representation of the object.
 
         :return str: string representation of the object
         """
@@ -129,34 +134,42 @@ class ParsedSchema(object):
             res += f"\n Sample Level Data:"
             for k, v in self._sample_level_data.items():
                 res += f"\n -  {k} : {v}"
+        # TODO: add status schema data
         return res
 
     @property
     def pipeline_name(self):
+        """Return the declared name for the pipeline for which this schema's written."""
         return self._pipeline_name
 
     @property
     def project_level_data(self):
+        """Return information relevant for a project-level pipeline."""
         return copy.deepcopy(self._project_level_data)
 
     @property
     def results_data(self):
+        """Return union of sample- and project-level information."""
         return {**self.project_level_data, **self.sample_level_data}
 
     @property
     def sample_level_data(self):
+        """Return information relevant for a sample-level pipeline."""
         return copy.deepcopy(self._sample_level_data)
 
     @property
     def status_data(self):
+        """Return information relevant to pipeline status."""
         return copy.deepcopy(self._status_data)
 
     @property
     def project_table_name(self):
+        """Return the name of the database table for project-level information."""
         return self._table_name("project")
 
     @property
     def sample_table_name(self):
+        """Return the name of the database table for sample-level information."""
         return self._table_name("sample")
 
     def _make_field_definitions(self, data: Dict[str, Any], require_type: bool):
@@ -213,6 +226,7 @@ class ParsedSchema(object):
         return _create_model(self.project_table_name, **field_defs)
 
     def build_sample_model(self):
+        """Create the SQLModel object for sample-level information."""
         # TODO: include the ability to process the custom types.
         # TODO: at minimum, we need capability for image and file, and maybe link.
         data = self.sample_level_data
@@ -225,6 +239,14 @@ class ParsedSchema(object):
         field_defs = self._add_project_name_field(field_defs)
         field_defs = self._add_pipeline_name_field(field_defs)
         return _create_model(self.sample_table_name, **field_defs)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Create simple dictionary representation of this instance."""
+        data = {SCHEMA_PIPELINE_NAME_KEY: self.pipeline_name}
+        for key, values in [(self._PROJECT_KEY, self.project_level_data), (self._SAMPLES_KEY, self.sample_level_data), (self._STATUS_KEY, self.status_data)]:
+            if values:
+                data[key] = values
+        return data
 
     @staticmethod
     def _add_project_name_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
