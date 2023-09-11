@@ -39,8 +39,8 @@ def main():
     _LOGGER.debug("Args namespace:\n{}".format(args))
     if args.command == INIT_CMD:
         sys.exit(int(not init_generic_config()))
-    if args.config and not args.schema and args.command != STATUS_CMD:
-        parser.error("the following arguments are required: -s/--schema")
+    # if args.config and not args.schema and args.command != STATUS_CMD:
+    #     parser.error("the following arguments are required: -s/--schema")
     if not args.config and not args.results_file:
         msg = (
             "Either a config file or a results file must be provided. Either must be supplied to the object "

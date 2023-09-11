@@ -57,6 +57,7 @@ __all__ = [
     "TEMPLATES_DIRNAME",
     "NO_DATA_PLACEHOLDER",
     "PROFILE_COLNAMES",
+    "OUTPUT_DIR",
 ]
 
 PKG_NAME = "pipestat"
@@ -148,6 +149,7 @@ RESULT_FORMATTER = "_result_formatter"
 DEFAULT_PIPELINE_NAME = "default_pipeline_name"
 MULTI_PIPELINE = "_multi_pipelines"
 TEMPLATES_DIRNAME = "jinja_templates"
+OUTPUT_DIR = "_output_dir"
 
 
 OBJECT_TYPES = ["object", "file", "image", "array"]

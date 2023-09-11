@@ -229,7 +229,8 @@ class ParsedSchema(object):
         data = self.project_level_data
         field_defs = self._make_field_definitions(data, require_type=True)
         field_defs = self._add_status_field(field_defs)
-        field_defs = self._add_sample_name_field(field_defs)
+        # field_defs = self._add_sample_name_field(field_defs)
+        field_defs = self._add_pipeline_name_field(field_defs)
         field_defs = self._add_project_name_field(field_defs)
         field_defs = self._add_id_field(field_defs)
         if not field_defs:
@@ -240,6 +241,7 @@ class ParsedSchema(object):
         """Create the SQLModel object for sample-level information."""
         # TODO: include the ability to process the custom types.
         # TODO: at minimum, we need capability for image and file, and maybe link.
+
         data = self.sample_level_data
         if not self.sample_level_data:
             return None

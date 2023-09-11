@@ -137,3 +137,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 /tests/data/reports/
+/tests/data/test_default_pipeline_name_objs_summary.yaml
+/tests/data/test_default_pipeline_name_stats_summary.tsv

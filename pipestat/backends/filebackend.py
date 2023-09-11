@@ -144,7 +144,7 @@ class FileBackend(PipestatBackend):
             return None
         pass
 
-    def get_samples(
+    def get_records(
         self,
         pipeline_type: Optional[str] = None,
     ) -> Optional[list]:
@@ -301,15 +301,12 @@ class FileBackend(PipestatBackend):
         self,
         sample_name: Optional[str] = None,
         pipeline_type: Optional[str] = None,
-        project_name: Optional[str] = None,
         rm_record: Optional[bool] = False,
     ) -> bool:
         """
         Remove a record, requires rm_record to be True
 
         :param str sample_name: unique identifier of the record
-        :param str result_identifier: name of the result to be removed or None
-             if the record should be removed.
         :param str pipeline_type: "sample" or "project"
         :param bool rm_record: bool for removing record.
         :return bool: whether the result has been removed
@@ -413,11 +410,11 @@ class FileBackend(PipestatBackend):
         sample_name = sample_name or self.sample_name
 
         if sample_name not in self._data[self.pipeline_name][pipeline_type]:
-            raise PipestatDataError(f"Record '{sample_name}' not found")
+            raise RecordNotFoundError(f"Record '{sample_name}' not found")
         if result_identifier is None:
             return self._data.exp[self.pipeline_name][pipeline_type][sample_name]
         if result_identifier not in self._data[self.pipeline_name][pipeline_type][sample_name]:
-            raise PipestatDataError(
+            raise RecordNotFoundError(
                 f"Result '{result_identifier}' not found for record '{sample_name}'"
             )
         return self._data[self.pipeline_name][pipeline_type][sample_name][result_identifier]
