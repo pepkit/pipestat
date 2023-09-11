@@ -77,6 +77,7 @@ class ParsedSchema(object):
     _SAMPLES_KEY = "samples"
     _STATUS_KEY = "status"
 
+
     def __init__(self, data: Union[Dict[str, Any], Path, str]) -> None:
         # initial validation and parse
         if not isinstance(data, dict):
@@ -236,9 +237,11 @@ class ParsedSchema(object):
             # if using the same output schema and thus, pipeline name for samples and project
             # we must ensure there are distinct table names in the same database.
             table_name = self.project_table_name
+
         if pipeline_type == "sample":
             data = self.sample_level_data
             table_name = self.sample_table_name
+
 
         if not self.sample_level_data and not self.project_level_data:
             return None

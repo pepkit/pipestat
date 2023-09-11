@@ -2,7 +2,7 @@
 
 import os
 import pytest
-from pipestat import PipestatManager
+from pipestat import SamplePipestatManager, SamplePipestatManager, ProjectPipestatManager
 from pipestat.const import STATUS_FILE_DIR
 from .conftest import BACKEND_KEY_DB, BACKEND_KEY_FILE, DB_URL
 
@@ -13,7 +13,7 @@ from pipestat.exceptions import UnrecognizedStatusError
 def test_status_file_default_location(schema_file_path, results_file_path):
     """status file location is set to the results file dir
     if not specified"""
-    psm = PipestatManager(
+    psm = SamplePipestatManager(
         results_file_path=results_file_path,
         schema_path=schema_file_path,
     )
@@ -29,9 +29,10 @@ def test_status_not_configured(schema_file_path, config_file_path, backend_data,
             schema_path=schema_file_path,
         )
         args.update(backend_data)
-        psm = PipestatManager(**args)
-        psm.set_status(sample_name="sample1", status_identifier=status_id)
-        assert psm.get_status(sample_name="sample1") == status_id
+        #psm = SamplePipestatManager(**args)
+        psm = SamplePipestatManager(**args)
+        psm.set_status(record_identifier="sample1", status_identifier=status_id)
+        assert psm.get_status(record_identifier="sample1") == status_id
 
 
 @pytest.mark.parametrize("backend_data", [BACKEND_KEY_FILE, BACKEND_KEY_DB], indirect=True)
@@ -47,9 +48,9 @@ def test_custom_status_schema(
             schema_path=custom_status_schema2,
         )
         args.update(backend_data)
-        psm = PipestatManager(**args)
-        psm.set_status(sample_name="sample1", status_identifier=status_id)
-        assert psm.get_status(sample_name="sample1") == status_id
+        psm = SamplePipestatManager(**args)
+        psm.set_status(record_identifier="sample1", status_identifier=status_id)
+        assert psm.get_status(record_identifier="sample1") == status_id
 
 
 @pytest.mark.parametrize("backend_data", ["file", "db"], indirect=True)
@@ -63,9 +64,9 @@ def test_status_not_in_schema__raises_expected_error(
             schema_path=schema_file_path,
         )
         args.update(backend_data)
-        psm = PipestatManager(**args)
+        psm = SamplePipestatManager(**args)
         with pytest.raises(UnrecognizedStatusError):
-            psm.set_status(sample_name="sample1", status_identifier=status_id)
+            psm.set_status(record_identifier="sample1", status_identifier=status_id)
 
 
 @pytest.mark.skip(reason="not implemented")

@@ -20,7 +20,7 @@ class FileBackend(PipestatBackend):
     def __init__(
         self,
         results_file_path: str,
-        sample_name: Optional[str] = None,
+        record_identifier: Optional[str] = None,
         pipeline_name: Optional[str] = None,
         pipeline_type: Optional[str] = None,
         parsed_schema: Optional[str] = None,
@@ -33,7 +33,7 @@ class FileBackend(PipestatBackend):
         Class representing a File backend
         :param str results_file_path: YAML file to report into, if file is
             used as the object back-end
-        :param str sample_name: record identifier to report for. This
+        :param str record_identifier: record identifier to report for. This
             creates a weak bound to the record, which can be overridden in
             this object method calls
         :param str pipeline_name: name of pipeline associated with result
@@ -50,7 +50,7 @@ class FileBackend(PipestatBackend):
         self.results_file_path = results_file_path
         self.pipeline_name = pipeline_name
         self.pipeline_type = pipeline_type
-        self.sample_name = sample_name
+        self.record_identifier = record_identifier
         self.parsed_schema = parsed_schema
         self.status_schema = status_schema
         self.status_file_dir = status_file_dir
@@ -68,13 +68,13 @@ class FileBackend(PipestatBackend):
 
     def check_record_exists(
         self,
-        sample_name: str,
+        record_identifier: str,
         pipeline_type: Optional[str] = None,
     ) -> bool:
         """
         Check if the specified record exists in self._data
 
-        :param str sample_name: record to check for
+        :param str record_identifier: record to check for
         :param str pipeline_type: project or sample pipeline
         :return bool: whether the record exists in the table
         """
@@ -82,16 +82,16 @@ class FileBackend(PipestatBackend):
 
         return (
             self.pipeline_name in self._data
-            and sample_name in self._data[self.pipeline_name][pipeline_type]
+            and record_identifier in self._data[self.pipeline_name][pipeline_type]
         )
 
     def clear_status(
-        self, sample_name: str = None, flag_names: List[str] = None
+        self, record_identifier: str = None, flag_names: List[str] = None
     ) -> List[Union[str, None]]:
         """
         Remove status flags
 
-        :param str sample_name: name of the record to remove flags for
+        :param str record_identifier: name of the record to remove flags for
         :param Iterable[str] flag_names: Names of flags to remove, optional; if
             unspecified, all schema-defined flag names will be used.
         :return List[str]: Collection of names of flags removed
@@ -103,7 +103,7 @@ class FileBackend(PipestatBackend):
         removed = []
         for f in flag_names:
             path_flag_file = self.get_status_flag_path(
-                status_identifier=f, sample_name=sample_name
+                status_identifier=f, record_identifier=record_identifier
             )
             try:
                 os.remove(path_flag_file)
@@ -123,15 +123,15 @@ class FileBackend(PipestatBackend):
 
         return len(self._data[self.pipeline_name])
 
-    def get_flag_file(self, sample_name: str = None) -> Union[str, List[str], None]:
+    def get_flag_file(self, record_identifier: str = None) -> Union[str, List[str], None]:
         """
         Get path to the status flag file for the specified record
 
-        :param str sample_name: unique record identifier
+        :param str record_identifier: unique record identifier
         :return str | list[str] | None: path to the status flag file
         """
 
-        r_id = sample_name
+        r_id = record_identifier
         regex = os.path.join(self.status_file_dir, f"{self.pipeline_name}_{r_id}_*.flag")
         file_list = glob(regex)
         if len(file_list) > 1:
@@ -167,17 +167,17 @@ class FileBackend(PipestatBackend):
             all_samples_list += sample_list
         return all_samples_list
 
-    def get_status(self, sample_name: str, pipeline_type: Optional[str] = None) -> Optional[str]:
+    def get_status(self, record_identifier: str, pipeline_type: Optional[str] = None) -> Optional[str]:
         """
         Get the current pipeline status
 
-        :param str sample_name: record identifier to set the
+        :param str record_identifier: record identifier to set the
             pipeline status for
         :param str pipeline_type: "sample" or "project"
         :return str: status identifier, like 'running'
         """
-        r_id = sample_name or self.sample_name
-        flag_file = self.get_flag_file(sample_name=sample_name)
+        r_id = record_identifier or self.record_identifier
+        flag_file = self.get_flag_file(record_identifier=record_identifier)
         if flag_file is not None:
             assert isinstance(flag_file, str), TypeError(
                 "Flag file path is expected to be a str, were multiple flags found?"
@@ -191,18 +191,18 @@ class FileBackend(PipestatBackend):
         )
         return None
 
-    def get_status_flag_path(self, status_identifier: str, sample_name=None) -> str:
+    def get_status_flag_path(self, status_identifier: str, record_identifier=None) -> str:
         """
         Get the path to the status file flag
 
         :param str status_identifier: one of the defined status IDs in schema
-        :param str sample_name: unique record ID, optional if
+        :param str record_identifier: unique record ID, optional if
             specified in the object constructor
         :return str: absolute path to the flag file or None if object is
             backed by a DB
         """
 
-        r_id = sample_name
+        r_id = record_identifier
         return os.path.join(
             self.status_file_dir, f"{self.pipeline_name}_{r_id}_{status_identifier}.flag"
         )
@@ -217,13 +217,13 @@ class FileBackend(PipestatBackend):
         Lists all, or a selected set of, reported results
 
         :param List[str] restrict_to: selected subset of names of results to list
-        :param str sample_name: unique identifier of the record
+        :param str record_identifier: unique identifier of the record
         :param str pipeline_type: "sample" or "project"
         :return List[str]: names of results which exist
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
-        #sample_name = sample_name or self.sample_name
+        #record_identifier = record_identifier or self.record_identifier
         record_identifier = record_identifier
 
         try:
@@ -236,7 +236,7 @@ class FileBackend(PipestatBackend):
 
     def remove(
         self,
-        sample_name: Optional[str] = None,
+        record_identifier: Optional[str] = None,
         result_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> bool:
@@ -246,7 +246,7 @@ class FileBackend(PipestatBackend):
         If no result ID specified or last result is removed, the entire record
         will be removed.
 
-        :param str sample_name: unique identifier of the record
+        :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be removed or None
              if the record should be removed.
         :param str pipeline_type: "sample" or "project"
@@ -254,43 +254,43 @@ class FileBackend(PipestatBackend):
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
-        sample_name = sample_name or self.sample_name
+        record_identifier = record_identifier or self.record_identifier
 
         rm_record = True if result_identifier is None else False
 
         if not self.check_record_exists(
-            sample_name=sample_name,
+            record_identifier=record_identifier,
             pipeline_type=pipeline_type,
         ):
-            _LOGGER.error(f"Record '{sample_name}' not found")
+            _LOGGER.error(f"Record '{record_identifier}' not found")
             return False
 
         if result_identifier and not self.check_result_exists(
-            result_identifier, sample_name, pipeline_type=pipeline_type
+            result_identifier, record_identifier, pipeline_type=pipeline_type
         ):
-            _LOGGER.error(f"'{result_identifier}' has not been reported for '{sample_name}'")
+            _LOGGER.error(f"'{result_identifier}' has not been reported for '{record_identifier}'")
             return False
 
         if rm_record:
             self.remove_record(
-                sample_name=sample_name,
+                record_identifier=record_identifier,
                 pipeline_type=pipeline_type,
                 rm_record=rm_record,
             )
         else:
-            val_backup = self._data[self.pipeline_name][pipeline_type][sample_name][
+            val_backup = self._data[self.pipeline_name][pipeline_type][record_identifier][
                 result_identifier
             ]
-            del self._data[self.pipeline_name][pipeline_type][sample_name][result_identifier]
+            del self._data[self.pipeline_name][pipeline_type][record_identifier][result_identifier]
             _LOGGER.info(
                 f"Removed result '{result_identifier}' for record "
-                f"'{sample_name}' from '{self.pipeline_name}' namespace"
+                f"'{record_identifier}' from '{self.pipeline_name}' namespace"
             )
-            if not self._data[self.pipeline_name][pipeline_type][sample_name]:
-                _LOGGER.info(f"Last result removed for '{sample_name}'. " f"Removing the record")
+            if not self._data[self.pipeline_name][pipeline_type][record_identifier]:
+                _LOGGER.info(f"Last result removed for '{record_identifier}'. " f"Removing the record")
                 rm_record = True
                 self.remove_record(
-                    sample_name=sample_name,
+                    record_identifier=record_identifier,
                     pipeline_type=pipeline_type,
                     rm_record=rm_record,
                 )
@@ -300,32 +300,32 @@ class FileBackend(PipestatBackend):
 
     def remove_record(
         self,
-        sample_name: Optional[str] = None,
+        record_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
         rm_record: Optional[bool] = False,
     ) -> bool:
         """
         Remove a record, requires rm_record to be True
 
-        :param str sample_name: unique identifier of the record
+        :param str record_identifier: unique identifier of the record
         :param str pipeline_type: "sample" or "project"
         :param bool rm_record: bool for removing record.
         :return bool: whether the result has been removed
         """
         if rm_record:
             try:
-                _LOGGER.info(f"Removing '{sample_name}' record")
-                del self._data[self.pipeline_name][pipeline_type][sample_name]
+                _LOGGER.info(f"Removing '{record_identifier}' record")
+                del self._data[self.pipeline_name][pipeline_type][record_identifier]
                 with self._data as locked_data:
                     locked_data.write()
                 return True
             except:
                 _LOGGER.warning(
-                    f" Unable to remove record, aborting Removing '{sample_name}' record"
+                    f" Unable to remove record, aborting Removing '{record_identifier}' record"
                 )
                 return False
         else:
-            _LOGGER.info(f" rm_record flag False, aborting Removing '{sample_name}' record")
+            _LOGGER.info(f" rm_record flag False, aborting Removing '{record_identifier}' record")
 
     def report(
         self,
@@ -343,7 +343,7 @@ class FileBackend(PipestatBackend):
 
         :param Dict[str, Any] values: dict of results identifiers and values
             to be reported
-        :param str sample_name: unique identifier of the record
+        :param str record_identifier: unique identifier of the record
         :param str pipeline_type: "sample" or "project"
         :param bool force_overwrite: Toggles force overwriting results, defaults to False
         :param str result_formatter: function for formatting result
@@ -351,7 +351,7 @@ class FileBackend(PipestatBackend):
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
-        #sample_name = sample_name or self.sample_name
+        #record_identifier = record_identifier or self.record_identifier
         record_identifier = record_identifier
         result_formatter = result_formatter or self.result_formatter
         results_formatted = []
@@ -391,7 +391,7 @@ class FileBackend(PipestatBackend):
 
     def retrieve(
         self,
-        sample_name: Optional[str] = None,
+        record_identifier: Optional[str] = None,
         result_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> Union[Any, Dict[str, Any]]:
@@ -401,7 +401,7 @@ class FileBackend(PipestatBackend):
         If no result ID specified, results for the entire record will
         be returned.
 
-        :param str sample_name: unique identifier of the record
+        :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be retrieved
         :param str pipeline_type: "sample" or "project"
         :return any | Dict[str, any]: a single result or a mapping with all the
@@ -409,22 +409,22 @@ class FileBackend(PipestatBackend):
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
-        sample_name = sample_name or self.sample_name
+        record_identifier = record_identifier or self.record_identifier
 
-        if sample_name not in self._data[self.pipeline_name][pipeline_type]:
-            raise RecordNotFoundError(f"Record '{sample_name}' not found")
+        if record_identifier not in self._data[self.pipeline_name][pipeline_type]:
+            raise RecordNotFoundError(f"Record '{record_identifier}' not found")
         if result_identifier is None:
-            return self._data.exp[self.pipeline_name][pipeline_type][sample_name]
-        if result_identifier not in self._data[self.pipeline_name][pipeline_type][sample_name]:
+            return self._data.exp[self.pipeline_name][pipeline_type][record_identifier]
+        if result_identifier not in self._data[self.pipeline_name][pipeline_type][record_identifier]:
             raise RecordNotFoundError(
-                f"Result '{result_identifier}' not found for record '{sample_name}'"
+                f"Result '{result_identifier}' not found for record '{record_identifier}'"
             )
-        return self._data[self.pipeline_name][pipeline_type][sample_name][result_identifier]
+        return self._data[self.pipeline_name][pipeline_type][record_identifier][result_identifier]
 
     def set_status(
         self,
         status_identifier: str,
-        sample_name: str = None,
+        record_identifier: str = None,
         pipeline_type: Optional[str] = None,
     ) -> None:
         """
@@ -436,12 +436,12 @@ class FileBackend(PipestatBackend):
 
         :param str status_identifier: status to set, one of statuses defined
             in the status schema
-        :param str sample_name: record identifier to set the
+        :param str record_identifier: record identifier to set the
             pipeline status for
         :param str pipeline_type: "sample" or "project"
         """
         pipeline_type = pipeline_type or self.pipeline_type
-        r_id = sample_name or self.sample_name
+        r_id = record_identifier or self.record_identifier
         if self.status_schema is not None:
             known_status_identifiers = self.status_schema.keys()
             if status_identifier not in known_status_identifiers:
@@ -453,9 +453,9 @@ class FileBackend(PipestatBackend):
 
         # TODO: manage project-level flag here.
         if prev_status is not None:
-            prev_flag_path = self.get_status_flag_path(prev_status, sample_name)
+            prev_flag_path = self.get_status_flag_path(prev_status, record_identifier)
             os.remove(prev_flag_path)
-        flag_path = self.get_status_flag_path(status_identifier, sample_name)
+        flag_path = self.get_status_flag_path(status_identifier, record_identifier)
         create_lock(flag_path)
         with open(flag_path, "w") as f:
             f.write(status_identifier)
