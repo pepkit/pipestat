@@ -63,13 +63,13 @@ class ParsedSchema(object):
     """
     Store the results of parsing a pipestat schema configuration file.
 
-    In particular, there are different 'levels' (concepts, really) at which schema 
-    elements may be defined; namely, there may be project-, sample-, or status-related 
+    In particular, there are different 'levels' (concepts, really) at which schema
+    elements may be defined; namely, there may be project-, sample-, or status-related
     schema information in a configuration file.
 
-    This class tames this complexity relative to interacting directly with a raw 
-    Mapping-like object that would result from a parse, providing accessors for each 
-    of the key groupings of schema information, as well as the name of the pipeline 
+    This class tames this complexity relative to interacting directly with a raw
+    Mapping-like object that would result from a parse, providing accessors for each
+    of the key groupings of schema information, as well as the name of the pipeline
     for which the schema is written.
     """
 
@@ -91,12 +91,16 @@ class ParsedSchema(object):
             )
 
         # Parse sample-level data item declarations.
-        sample_data = _safe_pop_one_mapping(key=self._SAMPLES_KEY, data=data, info_name="sample-level")
+        sample_data = _safe_pop_one_mapping(
+            key=self._SAMPLES_KEY, data=data, info_name="sample-level"
+        )
 
         self._sample_level_data = _recursively_replace_custom_types(sample_data)
 
         # Parse project-level data item declarations.
-        prj_data = _safe_pop_one_mapping(key=self._PROJECT_KEY, data=data, info_name="project-level")
+        prj_data = _safe_pop_one_mapping(
+            key=self._PROJECT_KEY, data=data, info_name="project-level"
+        )
         self._project_level_data = _recursively_replace_custom_types(prj_data)
 
         # Sample- and/or project-level data must be declared.
@@ -104,7 +108,9 @@ class ParsedSchema(object):
             raise SchemaError("Neither sample-level nor project-level data items are declared.")
 
         # Parse custom status declaration if present.
-        self._status_data = _safe_pop_one_mapping(key=self._STATUS_KEY, data=data, info_name="status")
+        self._status_data = _safe_pop_one_mapping(
+            key=self._STATUS_KEY, data=data, info_name="status"
+        )
 
         if data:
             _LOGGER.info(
@@ -252,11 +258,15 @@ class ParsedSchema(object):
         field_defs = self._add_project_name_field(field_defs)
         field_defs = self._add_pipeline_name_field(field_defs)
         return _create_model(self.sample_table_name, **field_defs)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Create simple dictionary representation of this instance."""
         data = {SCHEMA_PIPELINE_NAME_KEY: self.pipeline_name}
-        for key, values in [(self._PROJECT_KEY, self.project_level_data), (self._SAMPLES_KEY, self.sample_level_data), (self._STATUS_KEY, self.status_data)]:
+        for key, values in [
+            (self._PROJECT_KEY, self.project_level_data),
+            (self._SAMPLES_KEY, self.sample_level_data),
+            (self._STATUS_KEY, self.status_data),
+        ]:
             if values:
                 data[key] = values
         return data

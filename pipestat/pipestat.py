@@ -717,3 +717,17 @@ class PipestatManager(dict):
             the pipeline status structure
         """
         return self.get(STATUS_SCHEMA_SOURCE_KEY)
+
+
+class SamplePipestatManager(PipestatManager):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        _LOGGER.warning("Initialize PipestatMgrSample")
+        self[PIPELINE_TYPE] = "sample"
+
+
+class ProjectPipestatManager(PipestatManager):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        _LOGGER.warning("Initialize PipestatMgrSample")
+        self[PIPELINE_TYPE] = "project"
