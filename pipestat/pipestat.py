@@ -736,4 +736,4 @@ class SamplePipestatManager(PipestatManager):
 class ProjectPipestatManager(PipestatManager):
     def __init__(self, **kwargs):
         PipestatManager.__init__(self, pipeline_type='project',**kwargs)
-        _LOGGER.warning("Initialize PipestatMgrSample")
+        _LOGGER.warning("Initialize PipestatMgrProject")
