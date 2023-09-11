@@ -117,7 +117,8 @@ class PipestatBackend(ABC):
     def report(
         self,
         values: Dict[str, Any],
-        sample_name: Optional[str] = None,
+        #sample_name: Optional[str] = None,
+        record_identifier: Optional[str] = None,
         force_overwrite: bool = False,
         strict_type: bool = True,
         return_id: bool = False,

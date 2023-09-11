@@ -230,6 +230,25 @@ class ParsedSchema(object):
     def file_like_table_name(self):
         return self._table_name("files")
 
+    def build_model(self, pipeline_type):
+        if pipeline_type == "project":
+            data = self.project_level_data
+        if pipeline_type == "sample":
+            data = self.sample_level_data
+
+        if not self.sample_level_data and not self.project_level_data:
+            return None
+
+        field_defs = self._make_field_definitions(data, require_type=True)
+        field_defs = self._add_status_field(field_defs)
+        #field_defs = self._add_sample_name_field(field_defs)
+        field_defs = self._add_record_identifier_field(field_defs)
+        field_defs = self._add_id_field(field_defs)
+        field_defs = self._add_project_name_field(field_defs)
+        field_defs = self._add_pipeline_name_field(field_defs)
+        return _create_model(self.sample_table_name, **field_defs)
+
+
     def build_project_model(self):
         """Create the models associated with project-level data."""
         data = self.project_level_data
@@ -243,10 +262,9 @@ class ParsedSchema(object):
             return None
         return _create_model(self.project_table_name, **field_defs)
 
+
     def build_sample_model(self):
         """Create the SQLModel object for sample-level information."""
-        # TODO: include the ability to process the custom types.
-        # TODO: at minimum, we need capability for image and file, and maybe link.
 
         data = self.sample_level_data
         if not self.sample_level_data:
@@ -303,6 +321,14 @@ class ParsedSchema(object):
         )
         return field_defs
 
+    @staticmethod
+    def _add_record_identifier_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
+        if RECORD_IDENTIFIER in field_defs:
+            raise SchemaError(
+                f"'{RECORD_IDENTIFIER}' is reserved as identifier and can't be part of schema."
+            )
+        field_defs[RECORD_IDENTIFIER] = (str, Field(default=None))
+        return field_defs
     @staticmethod
     def _add_sample_name_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
         if SAMPLE_NAME in field_defs:

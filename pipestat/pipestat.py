@@ -44,6 +44,7 @@ class PipestatManager(dict):
         self,
         sample_name: Optional[str] = None,
         project_name: Optional[str] = None,
+        record_identifier: Optional[str] = None,
         schema_path: Optional[str] = None,
         results_file_path: Optional[str] = None,
         database_only: Optional[bool] = True,
@@ -378,6 +379,7 @@ class PipestatManager(dict):
         values: Dict[str, Any],
         sample_name: str = None,
         project_name: Optional[str] = None,
+        record_identifier: str = None,
         force_overwrite: bool = False,
         strict_type: bool = True,
         return_id: bool = False,
@@ -406,9 +408,15 @@ class PipestatManager(dict):
 
         result_formatter = result_formatter or self[RESULT_FORMATTER]
         values = deepcopy(values)
-        r_id = self._get_record_identifier(
-            pipeline_type=pipeline_type, sample_name=sample_name, project_name=project_name
-        )
+        # r_id = self._get_record_identifier(
+        #     pipeline_type=pipeline_type, sample_name=sample_name, project_name=project_name
+        # )
+
+        r_id = record_identifier or None
+        if r_id is None:
+            raise NotImplementedError(
+                "You must supply a record identifier to report results"
+            )
 
         if return_id and self[FILE_KEY] is not None:
             raise NotImplementedError(
@@ -423,7 +431,7 @@ class PipestatManager(dict):
                 )
 
         reported_results = self.backend.report(
-            values, r_id, pipeline_type, force_overwrite, result_formatter
+            values, r_id, force_overwrite, result_formatter
         )
 
         return reported_results

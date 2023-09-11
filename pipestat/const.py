@@ -58,6 +58,7 @@ __all__ = [
     "NO_DATA_PLACEHOLDER",
     "PROFILE_COLNAMES",
     "OUTPUT_DIR",
+    "RECORD_IDENTIFIER",
 ]
 
 PKG_NAME = "pipestat"
@@ -74,6 +75,7 @@ SCHEMA_ITEMS_KEY = "items"
 
 # DB column names
 SAMPLE_NAME = "sample_name"
+RECORD_IDENTIFIER = "record_identifier"
 STATUS = "status"
 
 CANONICAL_TYPES = {
