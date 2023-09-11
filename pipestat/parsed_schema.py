@@ -60,7 +60,18 @@ def _safe_pop_one_mapping(key: str, data: Dict[str, Any], info_name: str) -> Any
 
 
 class ParsedSchema(object):
-    # TODO: validate no collision among the 3 namespaces.
+    """
+    Store the results of parsing a pipestat schema configuration file.
+
+    In particular, there are different 'levels' (concepts, really) at which schema 
+    elements may be defined; namely, there may be project-, sample-, or status-related 
+    schema information in a configuration file.
+
+    This class tames this complexity relative to interacting directly with a raw 
+    Mapping-like object that would result from a parse, providing accessors for each 
+    of the key groupings of schema information, as well as the name of the pipeline 
+    for which the schema is written.
+    """
 
     _PROJECT_KEY = "project"
     _SAMPLES_KEY = "samples"
