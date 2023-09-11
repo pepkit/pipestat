@@ -210,7 +210,7 @@ class FileBackend(PipestatBackend):
     def list_results(
         self,
         restrict_to: Optional[List[str]] = None,
-        sample_name: Optional[str] = None,
+        record_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> List[str]:
         """
@@ -223,10 +223,11 @@ class FileBackend(PipestatBackend):
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
-        sample_name = sample_name or self.sample_name
+        #sample_name = sample_name or self.sample_name
+        record_identifier = record_identifier
 
         try:
-            results = list(self._data[self.pipeline_name][pipeline_type][sample_name].keys())
+            results = list(self._data[self.pipeline_name][pipeline_type][record_identifier].keys())
         except KeyError:
             return []
         if restrict_to:
@@ -329,7 +330,7 @@ class FileBackend(PipestatBackend):
     def report(
         self,
         values: Dict[str, Any],
-        sample_name: Optional[str] = None,
+        record_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
         force_overwrite: bool = False,
         result_formatter: Optional[staticmethod] = None,
@@ -350,33 +351,34 @@ class FileBackend(PipestatBackend):
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
-        sample_name = sample_name or self.sample_name
+        #sample_name = sample_name or self.sample_name
+        record_identifier = record_identifier
         result_formatter = result_formatter or self.result_formatter
         results_formatted = []
 
         result_identifiers = list(values.keys())
         if self.parsed_schema is not None:
-            self.assert_results_defined(results=result_identifiers, pipeline_type=pipeline_type)
+            self.assert_results_defined(results=result_identifiers, pipeline_type=self.pipeline_type)
         existing = self.list_results(
-            sample_name=sample_name,
+            record_identifier=record_identifier,
             restrict_to=result_identifiers,
             pipeline_type=pipeline_type,
         )
         if existing:
             existing_str = ", ".join(existing)
-            _LOGGER.warning(f"These results exist for '{sample_name}': {existing_str}")
+            _LOGGER.warning(f"These results exist for '{record_identifier}': {existing_str}")
             if not force_overwrite:
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
 
-        self._data[self.pipeline_name][pipeline_type].setdefault(sample_name, {})
+        self._data[self.pipeline_name][pipeline_type].setdefault(record_identifier, {})
 
         for res_id, val in values.items():
-            self._data[self.pipeline_name][pipeline_type][sample_name][res_id] = val
+            self._data[self.pipeline_name][pipeline_type][record_identifier][res_id] = val
             results_formatted.append(
                 result_formatter(
                     pipeline_name=self.pipeline_name,
-                    sample_name=sample_name,
+                    record_identifier=record_identifier,
                     res_id=res_id,
                     value=val,
                 )

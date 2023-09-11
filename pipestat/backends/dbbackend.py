@@ -142,14 +142,6 @@ class DBBackend(PipestatBackend):
         with self.session as s:
             for mod in models:
                 stmt = sql_select(mod).where(mod.record_identifier == rid)
-                # if pipeline_type == "sample":
-                #     stmt = sql_select(mod).where(mod.sample_name == rid)
-                # elif pipeline_type == "project":
-                #     stmt = sql_select(mod).where(mod.project_name == rid)
-                # else:
-                #     PipelineTypeNotSuppliedError(
-                #         f"Pipeline type must be 'sample' or 'project' to use get_one_record. Supplied pipeline_type: '{pipeline_type}'."
-                #     )
                 record = s.exec(stmt).first()
 
                 if record:
