@@ -1,5 +1,7 @@
+import csv
 from logging import getLogger
 from copy import deepcopy
+from typing import List
 
 from pipestat.backends.filebackend import FileBackend
 from pipestat.backends.dbbackend import DBBackend
@@ -11,8 +13,7 @@ from yacman import YAMLConfigManager, select_config
 from .helpers import *
 from .parsed_schema import ParsedSchema
 
-from .html_reports_pipestat import HTMLReportBuilder, fetch_pipeline_results
-
+from .reports import HTMLReportBuilder, get_file_for_table, _create_stats_objs_summaries
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -42,6 +43,7 @@ class PipestatManager(dict):
     def __init__(
         self,
         sample_name: Optional[str] = None,
+        project_name: Optional[str] = None,
         schema_path: Optional[str] = None,
         results_file_path: Optional[str] = None,
         database_only: Optional[bool] = True,
@@ -53,6 +55,7 @@ class PipestatManager(dict):
         pipeline_name: Optional[str] = DEFAULT_PIPELINE_NAME,
         result_formatter: staticmethod = default_formatter,
         multi_pipelines: bool = False,
+        output_dir: Optional[str] = None,
     ):
         """
         Initialize the PipestatManager object
@@ -73,6 +76,7 @@ class PipestatManager(dict):
         :param str pipeline_type: "sample" or "project"
         :param str result_formatter: function for formatting result
         :param bool multi_pipelines: allows for running multiple pipelines for one file backend
+        :param str output_dir: target directory for report generation via summarize and table generation via table.
         """
 
         super(PipestatManager, self).__init__()
@@ -86,7 +90,9 @@ class PipestatManager(dict):
         _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
         validate(self[CONFIG_KEY].exp, cfg_schema)
 
-        self[SCHEMA_PATH] = schema_path if schema_path is not None else None
+        self[SCHEMA_PATH] = self[CONFIG_KEY].priority_get(
+            "schema_path", env_var=ENV_VARS["schema"], override=schema_path
+        )  # schema_path if schema_path is not None else None
         self.process_schema(schema_path)
 
         # self[SCHEMA_PATH] = schema_path
@@ -96,7 +102,7 @@ class PipestatManager(dict):
         )
 
         self[PROJECT_NAME] = self[CONFIG_KEY].priority_get(
-            "project_name", env_var=ENV_VARS["project_name"]
+            "project_name", env_var=ENV_VARS["project_name"], override=project_name
         )
 
         self[SAMPLE_NAME_ID_KEY] = self[CONFIG_KEY].priority_get(
@@ -118,6 +124,8 @@ class PipestatManager(dict):
 
         self[MULTI_PIPELINE] = multi_pipelines
 
+        self[OUTPUT_DIR] = self[CONFIG_KEY].priority_get("output_dir", override=output_dir)
+
         if self[FILE_KEY]:  # file backend
             _LOGGER.debug(f"Determined file as backend: {results_file_path}")
             if self[DB_ONLY_KEY]:
@@ -130,7 +138,7 @@ class PipestatManager(dict):
             flag_file_dir = self[CONFIG_KEY].priority_get(
                 "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.file)
             )
-            self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path)
+            self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path or self.file)
             self.backend = FileBackend(
                 self[FILE_KEY],
                 sample_name,
@@ -216,17 +224,26 @@ class PipestatManager(dict):
 
     @require_backend
     def clear_status(
-        self, sample_name: str = None, flag_names: List[str] = None
+        self,
+        sample_name: str = None,
+        project_name: Optional[str] = None,
+        flag_names: List[str] = None,
+        pipeline_type: Optional[str] = None,
     ) -> List[Union[str, None]]:
         """
         Remove status flags
 
-        :param str sample_name: name of the record to remove flags for
+        :param str sample_name: name of the sample_level record to remove flags for
+        :param str project_name: name of the project_level record to remove flags for
         :param Iterable[str] flag_names: Names of flags to remove, optional; if
             unspecified, all schema-defined flag names will be used.
+        :param str pipeline_type: "sample" or "project"
         :return List[str]: Collection of names of flags removed
         """
-        r_id = self._record_identifier(sample_name)
+        pipeline_type = pipeline_type or self.pipeline_type
+        r_id = self._get_record_identifier(
+            pipeline_type=pipeline_type, sample_name=sample_name, project_name=project_name
+        )
         return self.backend.clear_status(sample_name=r_id, flag_names=flag_names)
 
     @require_backend
@@ -241,16 +258,23 @@ class PipestatManager(dict):
 
     @require_backend
     def get_status(
-        self, sample_name: str = None, pipeline_type: Optional[str] = None
+        self,
+        sample_name: str = None,
+        project_name: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
     ) -> Optional[str]:
         """
         Get the current pipeline status
-        :param str sample_name: name of the record
+        :param str sample_name: name of the sample_level record
+        :param str project_name: name of the project_level record
         :param str pipeline_type: "sample" or "project"
         :return str: status identifier, like 'running'
         """
-        r_id = self._record_identifier(sample_name)
+
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
+        r_id = self._get_record_identifier(
+            pipeline_type=pipeline_type, sample_name=sample_name, project_name=project_name
+        )
         return self.backend.get_status(sample_name=r_id, pipeline_type=pipeline_type)
 
     def process_schema(self, schema_path):
@@ -260,7 +284,6 @@ class PipestatManager(dict):
         )
 
         if self._schema_path is None:
-            # print('DEBUG')
             _LOGGER.warning("No schema supplied.")
             self[SCHEMA_KEY] = None
             self[STATUS_SCHEMA_KEY] = None
@@ -323,6 +346,7 @@ class PipestatManager(dict):
     def remove(
         self,
         sample_name: str = None,
+        project_name: Optional[str] = None,
         result_identifier: str = None,
         pipeline_type: Optional[str] = None,
     ) -> bool:
@@ -332,7 +356,8 @@ class PipestatManager(dict):
         If no result ID specified or last result is removed, the entire record
         will be removed.
 
-        :param str sample_name: unique identifier of the record
+        :param str sample_name: name of the sample_level record
+        :param str project_name: name of the project_level record
         :param str result_identifier: name of the result to be removed or None
              if the record should be removed.
         :param str pipeline_type: "sample" or "project"
@@ -340,8 +365,9 @@ class PipestatManager(dict):
         """
 
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-
-        r_id = self._record_identifier(sample_name)
+        r_id = self._get_record_identifier(
+            pipeline_type=pipeline_type, sample_name=sample_name, project_name=project_name
+        )
         return self.backend.remove(
             sample_name=r_id, result_identifier=result_identifier, pipeline_type=pipeline_type
         )
@@ -351,6 +377,7 @@ class PipestatManager(dict):
         self,
         values: Dict[str, Any],
         sample_name: str = None,
+        project_name: Optional[str] = None,
         force_overwrite: bool = False,
         strict_type: bool = True,
         return_id: bool = False,
@@ -364,6 +391,7 @@ class PipestatManager(dict):
         :param str sample_name: unique identifier of the record, value
             in 'sample_name' column to look for to determine if the record
             already exists
+        :param str project_name: name of the project_level record
         :param bool force_overwrite: whether to overwrite the existing record
         :param bool strict_type: whether the type of the reported values should
             remain as is. Pipestat would attempt to convert to the
@@ -375,10 +403,13 @@ class PipestatManager(dict):
         """
 
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
+
         result_formatter = result_formatter or self[RESULT_FORMATTER]
         values = deepcopy(values)
+        r_id = self._get_record_identifier(
+            pipeline_type=pipeline_type, sample_name=sample_name, project_name=project_name
+        )
 
-        sample_name = self._record_identifier(sample_name)
         if return_id and self[FILE_KEY] is not None:
             raise NotImplementedError(
                 "There is no way to return the updated object ID while using "
@@ -392,7 +423,7 @@ class PipestatManager(dict):
                 )
 
         reported_results = self.backend.report(
-            values, sample_name, pipeline_type, force_overwrite, result_formatter
+            values, r_id, pipeline_type, force_overwrite, result_formatter
         )
 
         return reported_results
@@ -401,6 +432,7 @@ class PipestatManager(dict):
     def retrieve(
         self,
         sample_name: Optional[str] = None,
+        project_name: Optional[str] = None,
         result_identifier: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> Union[Any, Dict[str, Any]]:
@@ -410,7 +442,8 @@ class PipestatManager(dict):
         If no result ID specified, results for the entire record will
         be returned.
 
-        :param str sample_name: unique identifier of the record
+        :param str sample_name: name of the sample_level record
+        :param str project_name: name of the project_level record
         :param str result_identifier: name of the result to be retrieved
         :param str pipeline_type: "sample" or "project"
         :return any | Dict[str, any]: a single result or a mapping with all the
@@ -418,14 +451,17 @@ class PipestatManager(dict):
         """
 
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        sample_name = sample_name or self.sample_name
-        return self.backend.retrieve(sample_name, result_identifier, pipeline_type)
+        r_id = self._get_record_identifier(
+            pipeline_type=pipeline_type, sample_name=sample_name, project_name=project_name
+        )
+        return self.backend.retrieve(r_id, result_identifier, pipeline_type)
 
     @require_backend
     def set_status(
         self,
         status_identifier: str,
         sample_name: str = None,
+        project_name: Optional[str] = None,
         pipeline_type: Optional[str] = None,
     ) -> None:
         """
@@ -437,12 +473,17 @@ class PipestatManager(dict):
 
         :param str status_identifier: status to set, one of statuses defined
             in the status schema
-        :param str sample_name: record identifier to set the
+        :param str sample_name: sample_level record identifier to set the
+            pipeline status for
+        :param str project_name: name of the project_level record to set the
             pipeline status for
         :param str pipeline_type: "sample" or "project"
         """
         pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        self.backend.set_status(status_identifier, sample_name, pipeline_type)
+        r_id = self._get_record_identifier(
+            pipeline_type=pipeline_type, sample_name=sample_name, project_name=project_name
+        )
+        self.backend.set_status(status_identifier, r_id, pipeline_type)
 
     @require_backend
     def summarize(
@@ -460,6 +501,24 @@ class PipestatManager(dict):
         report_path = html_report_builder(pipeline_name=self.pipeline_name, amendment=amendment)
         return report_path
 
+    @require_backend
+    def table(
+        self,
+        pipeline_type: Optional[str] = None,
+    ) -> List[str]:
+        """
+        Generates stats (.tsv) and object (.yaml) files.
+        :param Optional[str] pipeline_type: sample or project pipeline
+        :return list[str] table_path_list: list containing output file paths of stats and objects
+
+        """
+
+        pipeline_name = self.pipeline_name
+        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
+        table_path_list = _create_stats_objs_summaries(self, pipeline_name, pipeline_type)
+
+        return table_path_list
+
     def _get_attr(self, attr: str) -> Any:
         """
         Safely get the name of the selected attribute of this object
@@ -469,22 +528,47 @@ class PipestatManager(dict):
         """
         return self.get(attr)
 
-    def _record_identifier(self, override: str = None) -> str:
+    def _get_record_identifier(
+        self,
+        pipeline_type: Optional[str] = None,
+        sample_name: Optional[str] = None,
+        project_name: Optional[str] = None,
+    ) -> str:
         """
-        Get record identifier from the outer source or stored with this object
+        Get record identifier from the outer source or stored with this object depending on pipeline type
 
-        :param str override: return this value
-        :return str: self.sample_name
+        :param str pipeline_type: sample or project level pipeline
+        :param str sample_name: return this value as r_id if sample_level pipeline
+        :param str project_name: return this value as r_id if project_level pipeline
+        :return str: r_id
         """
-        if override is not None:
-            return override
-        if self.sample_name is not None:
-            return self.sample_name
-        raise PipestatError(
-            f"You must provide the record identifier you want to perform "
-            f"the action on. Either in the {self.__class__.__name__} "
-            f"constructor or as an argument to the method."
-        )
+        # if no pipeline type is given, we assume sample level
+        if pipeline_type is None or pipeline_type == "sample":
+            r_id = sample_name or self.sample_name
+            if r_id is not None:
+                return r_id
+            else:
+                raise PipestatError(
+                    f"No pipeline type supplied, assuming sample_level. You must provide the sample_name you want to perform "
+                    f"the action on. Either in the {self.__class__.__name__} "
+                    f"constructor or as an argument to the method."
+                )
+        elif pipeline_type == "project":
+            r_id = project_name or self.project_name
+            if r_id is not None:
+                return r_id
+            else:
+                raise PipestatError(
+                    f"Pipeline type supplied: {pipeline_type}. You must provide the project_name you want to perform "
+                    f"the action on. Either in the {self.__class__.__name__} "
+                    f"constructor or as an argument to the method."
+                )
+        else:
+            raise PipestatError(
+                f"You must provide the record identifier you want to perform "
+                f"the action on. Either in the {self.__class__.__name__} "
+                f"constructor or as an argument to the method."
+            )
 
     @property
     def config_path(self) -> str:
@@ -532,6 +616,15 @@ class PipestatManager(dict):
         :return List[str]: a collection of highlighted results
         """
         return [k for k, v in self.result_schemas.items() if v.get("highlight") is True]
+
+    @property
+    def output_dir(self) -> str:
+        """
+        Output directory for report and stats generation
+
+        :return str: path to output_dir
+        """
+        return self.get(OUTPUT_DIR)
 
     @property
     def pipeline_name(self) -> str:

@@ -1,19 +1,21 @@
 """ Generate HTML reports """
 
-from logging import getLogger
-import os
-import sys
-from datetime import timedelta
-from json import dumps
-
 import jinja2
+import os
 import pandas as _pd
+import sys
+import csv
+import yaml
+
+from datetime import timedelta
 from eido import read_schema
+from json import dumps
+from logging import getLogger
 from peppy.const import *
 
 from ._version import __version__ as v
 from .const import *
-
+from typing import List
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -32,7 +34,8 @@ class HTMLReportBuilder(object):
         self.jinja_env = get_jinja_env()
         results_file_path = getattr(self.prj.backend, "results_file_path", None)
         config_path = getattr(self.prj, "config_path", None)
-        self.output_dir = results_file_path or config_path
+        output_dir = getattr(self.prj, "output_dir", None)
+        self.output_dir = output_dir or results_file_path or config_path
         self.output_dir = os.path.dirname(self.output_dir)
         self.reports_dir = os.path.join(self.output_dir, "reports")
         _LOGGER.debug(f"Reports dir: {self.reports_dir}")
@@ -116,7 +119,7 @@ class HTMLReportBuilder(object):
             os.makedirs(self.pipeline_reports)
         pages = []
         labels = []
-        for sample in self.prj.backend.get_samples():
+        for sample in self.prj.backend.get_records():
             sample_name = sample[0]
             pipeline_type = sample[1]
             sample_dir = self.pipeline_reports
@@ -190,6 +193,11 @@ class HTMLReportBuilder(object):
             wd=wd,
             context=context,
         )
+        glossary_relpath = _make_relpath(
+            file_name=os.path.join(self.pipeline_reports, "glossary.html"),
+            wd=wd,
+            context=context,
+        )
         # determine the outputs IDs by type
         obj_result_ids = self.get_nonhighlighted_results(OBJECT_TYPES)
         dropdown_keys_objects = None
@@ -215,6 +223,8 @@ class HTMLReportBuilder(object):
             # Create a menu link to the samples parent page
             dropdown_relpaths_samples = samples_relpath
         template_vars = dict(
+            glossary_html_page=glossary_relpath,
+            glossary_page_name="Glossary",
             status_html_page=status_relpath,
             status_page_name="Status",
             dropdown_keys_objects=dropdown_keys_objects,
@@ -250,7 +260,7 @@ class HTMLReportBuilder(object):
             links = []
             html_page_path = os.path.join(self.pipeline_reports, f"{file_result}.html".lower())
 
-            for sample in self.prj.backend.get_samples():
+            for sample in self.prj.backend.get_records():
                 sample_name = sample[0]
                 pipeline_type = sample[1]
                 sample_result = fetch_pipeline_results(
@@ -296,7 +306,7 @@ class HTMLReportBuilder(object):
             html_page_path = os.path.join(self.pipeline_reports, f"{image_result}.html".lower())
             figures = []
 
-            for sample in self.prj.backend.get_samples():
+            for sample in self.prj.backend.get_records():
                 sample_name = sample[0]
                 pipeline_type = sample[1]
                 sample_result = fetch_pipeline_results(
@@ -343,6 +353,11 @@ class HTMLReportBuilder(object):
                     render_jinja_template("object.html", self.jinja_env, args=template_vars),
                 )
 
+    def create_glossary_html(self, glossary_table, navbar, footer):
+        template_vars = dict(glossary_table=glossary_table, navbar=navbar, footer=footer)
+        _LOGGER.debug(f"glossary.html | template_vars:\n{template_vars}")
+        return render_jinja_template("glossary.html", self.jinja_env, template_vars)
+
     def create_sample_html(self, sample_stats, navbar, footer, sample_name, pipeline_type):
         """
         Produce an HTML page containing all of a sample's objects
@@ -359,7 +374,10 @@ class HTMLReportBuilder(object):
             os.makedirs(self.pipeline_reports)
         html_page = os.path.join(self.pipeline_reports, f"{sample_name}.html".lower())
 
-        flag = self.prj.get_status(sample_name=sample_name, pipeline_type=pipeline_type)
+        if pipeline_type == "sample":
+            flag = self.prj.get_status(sample_name=sample_name, pipeline_type=pipeline_type)
+        if pipeline_type == "project":
+            flag = self.prj.get_status(project_name=sample_name, pipeline_type=pipeline_type)
         if not flag:
             button_class = "btn btn-secondary"
             flag = "Missing"
@@ -503,7 +521,7 @@ class HTMLReportBuilder(object):
         # Produce table rows
         table_row_data = []
         _LOGGER.info(" * Creating sample pages")
-        for sample in self.prj.backend.get_samples():
+        for sample in self.prj.backend.get_records():
             sample_name = sample[0]
             pipeline_type = sample[1]
             sample_stat_results = fetch_pipeline_results(
@@ -523,6 +541,7 @@ class HTMLReportBuilder(object):
             table_cell_data = [[rel_sample_html, sample_name]]
             table_cell_data.append(list(sample_stat_results.values()))
             table_row_data.append(table_cell_data)
+
         # Create parent samples page with links to each sample
         save_html(
             path=os.path.join(self.pipeline_reports, "samples.html"),
@@ -546,6 +565,12 @@ class HTMLReportBuilder(object):
         save_html(
             path=os.path.join(self.pipeline_reports, "status.html"),
             template=self.create_status_html(status_tab, navbar, footer),
+        )
+        # glossary_html = self.create_glossary_html(navbar,footer)
+        glossary_table = create_glossary_table(project=self.prj)
+        save_html(
+            path=os.path.join(self.pipeline_reports, "glossary.html"),
+            template=self.create_glossary_html(glossary_table, navbar, footer),
         )
         # Complete and close HTML file
         columns = ["Record Identifiers", "Results"]
@@ -577,25 +602,29 @@ class HTMLReportBuilder(object):
             are not highlighted
         """
         results = []
-        for k, v in self.schema["samples"].items():
-            if self.schema["samples"][k]["type"] in types:
-                if "highlight" not in self.schema["samples"][k].keys():
-                    results.append(k)
-                # intentionally "== False" to exclude "falsy" values
-                elif self.schema["samples"][k]["highlight"] is False:
-                    results.append(k)
-        for k, v in self.schema["project"].items():
-            if self.schema["project"][k]["type"] in types:
-                if "highlight" not in self.schema["project"][k].keys():
-                    results.append(k)
-                # intentionally "== False" to exclude "falsy" values
-                elif self.schema["project"][k]["highlight"] is False:
-                    results.append(k)
+        if "samples" in self.schema:
+            for k, v in self.schema["samples"].items():
+                if self.schema["samples"][k]["type"] in types:
+                    if "highlight" not in self.schema["samples"][k].keys():
+                        results.append(k)
+                    # intentionally "== False" to exclude "falsy" values
+                    elif self.schema["samples"][k]["highlight"] is False:
+                        results.append(k)
+
+        if "project" in self.schema:
+            for k, v in self.schema["project"].items():
+                if self.schema["project"][k]["type"] in types:
+                    if "highlight" not in self.schema["project"][k].keys():
+                        results.append(k)
+                    # intentionally "== False" to exclude "falsy" values
+                    elif self.schema["project"][k]["highlight"] is False:
+                        results.append(k)
+
         return results
 
     def _stats_to_json_str(self):
         results = {}
-        for sample in self.prj.backend.get_samples():
+        for sample in self.prj.backend.get_records():
             sample_name = sample[0]
             pipeline_type = sample[1]
             results[sample_name] = fetch_pipeline_results(
@@ -624,7 +653,7 @@ class HTMLReportBuilder(object):
     def _get_navbar_dropdown_data_samples(self, wd, context):
         relpaths = []
         sample_names = []
-        for sample in self.prj.backend.get_samples():
+        for sample in self.prj.backend.get_records():
             sample_name = sample[0]
             pipeline_type = sample[1]
             page_name = os.path.join(
@@ -802,7 +831,10 @@ def fetch_pipeline_results(
     casting_fun = casting_fun or pass_all_fun
     psm = project
     # exclude object-like results from the stats results mapping
-    rep_data = psm.retrieve(sample_name=sample_name, pipeline_type=pipeline_type)
+    if pipeline_type == "sample":
+        rep_data = psm.retrieve(sample_name=sample_name, pipeline_type=pipeline_type)
+    if pipeline_type == "project":
+        rep_data = psm.retrieve(project_name=sample_name, pipeline_type=pipeline_type)
     results = {
         k: casting_fun(v)
         for k, v in rep_data.items()
@@ -847,7 +879,7 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
     times = []
     mems = []
     status_descs = []
-    for sample in project.backend.get_samples():
+    for sample in project.backend.get_records():
         sample_name = sample[0]
         pipeline_type = sample[1]
         psm = project
@@ -903,6 +935,23 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
     return render_jinja_template("status_table.html", get_jinja_env(), template_vars)
 
 
+def create_glossary_table(project):
+    items = []
+    descs = []
+
+    for k, v in project.result_schemas.items():
+        items.append(k)
+        descs.append(v["description"])
+
+    template_vars = dict(
+        items=items,
+        descriptions=descs,
+    )
+
+    # return (items,descs)
+    return render_jinja_template("glossary_table.html", get_jinja_env(), template_vars)
+
+
 def _get_maxmem(profile):
     """
     Get current peak memory
@@ -937,12 +986,21 @@ def get_file_for_project(prj, pipeline_name, appendix=None, directory=None, repo
     Format of the output path:
     {output_dir}/{directory}/{p.name}_{pipeline_name}_{active_amendments}_{appendix}
 
-    :param looper.Project prj: project object
+    :param pipestat.PipestatManager prj: pipestat manager object
     :param str pipeline_name: name of the pipeline to get the file for
     :param str appendix: the appendix of the file to create the path for,
         like 'objs_summary.tsv' for objects summary file
-    :return str: path to the file
+    :param str directory: optional subdirectory for location of file
+    :return str fp: path to the file, e.g. objects.yaml, stats.tsv
     """
+    # TODO try to combine with get_file_for_table to reduce code.
+    if reportdir is None:  # Determine a default reportdir if not provided
+        results_file_path = getattr(prj.backend, "results_file_path", None)
+        config_path = getattr(prj, "config_path", None)
+        output_dir = getattr(prj, "output_dir", None)
+        output_dir = output_dir or results_file_path or config_path
+        output_dir = os.path.dirname(output_dir)
+        reportdir = os.path.join(output_dir, "reports")
     if prj["project_name"] is None:
         fp = os.path.join(reportdir, directory or "", f"NO_PROJECT_NAME_{pipeline_name}")
     else:
@@ -952,3 +1010,100 @@ def get_file_for_project(prj, pipeline_name, appendix=None, directory=None, repo
         fp += f"_{'_'.join(prj.amendments)}"
     fp += f"_{appendix}"
     return fp
+
+
+def get_file_for_table(prj, pipeline_name, appendix=None, directory=None):
+    """
+    Create a path to the file for the current project.
+    Takes the possibility of amendment being activated at the time
+
+    Format of the output path:
+    {output_dir}/{directory}/{p.name}_{pipeline_name}_{active_amendments}_{appendix}
+
+    :param pipestat manager object prj: project object
+    :param str pipeline_name: name of the pipeline to get the file for
+    :param str appendix: the appendix of the file to create the path for,
+        like 'objs_summary.tsv' for objects summary file
+    :param directory: subdirectory (if desired)
+    :return str fp: path to the file
+    """
+    # TODO make determining the output_dir its own small function since we use the same code in HTML report building.
+    results_file_path = getattr(prj.backend, "results_file_path", None)
+    config_path = getattr(prj, "config_path", None)
+    output_dir = getattr(prj, "output_dir", None)
+    table_dir = output_dir or results_file_path or config_path
+    if not os.path.isdir(table_dir):
+        table_dir = os.path.dirname(table_dir)
+    fp = os.path.join(table_dir, directory or "", f"{prj[PROJECT_NAME]}_{pipeline_name}")
+    if hasattr(prj, "amendments") and getattr(prj, "amendments"):
+        fp += f"_{'_'.join(prj.amendments)}"
+    fp += f"_{appendix}"
+    return fp
+
+
+def _create_stats_objs_summaries(prj, pipeline_name, pipeline_type) -> List[str]:
+    """
+    Create stats spreadsheet and objects summary.
+
+    :param pipestat.PipestatManager prj: pipestat object used to create table
+    :param str pipeline_name: name of the pipeline to tabulate results for
+    :param str pipeline_type: whether the sample-level or project-level pipeline results
+        should be tabulated
+    :return List[str] [tsv_outfile_path, objs_yaml_path]: list of paths to tsv_outfile_path, objs_yaml_path
+
+    """
+
+    _LOGGER.info("Creating objects summary")
+    reported_objects = {}
+    reported_stats = []
+    stats = []
+
+    if pipeline_type == "sample":
+        columns = ["Sample Index", "Sample Name", "Results"]
+    else:
+        columns = ["Sample Index", "Project Name", "Sample Name", "Results"]
+
+    records = prj.backend.get_records(pipeline_type=pipeline_type)
+    record_index = 0
+    for record in records:
+        record_index += 1
+        record_name = record[0]
+
+        if pipeline_type == "sample":
+            reported_stats = [record_index, record_name]
+            rep_data = prj.retrieve(sample_name=record_name, pipeline_type=pipeline_type)
+        else:
+            rep_data = prj.retrieve(project_name=record_name, pipeline_type=pipeline_type)
+            reported_stats = [
+                record_index,
+                prj.project_name or "No Project Name Supplied",
+                record_name,
+            ]
+
+        for k, v in rep_data.items():
+            if k in prj.result_schemas and prj.result_schemas[k]["type"] in OBJECT_TYPES:
+                sample_reported_objects = {k: dict(v)}
+                reported_objects[record_name] = sample_reported_objects
+            if k in prj.result_schemas and prj.result_schemas[k]["type"] not in OBJECT_TYPES:
+                reported_stats.append(k)
+                reported_stats.append(v)
+        stats.append(reported_stats)
+
+    # Stats File
+    tsv_outfile_path = get_file_for_table(prj, pipeline_name, "stats_summary.tsv")
+    stats.insert(0, columns)
+    with open(tsv_outfile_path, "w") as tsv_outfile:
+        writer = csv.writer(tsv_outfile, delimiter="\t")
+        for row in stats:
+            writer.writerow(row)
+    _LOGGER.info(f"'{pipeline_name}' pipeline stats summary (n={len(stats)}): {tsv_outfile_path}")
+
+    # Create Object yaml
+    objs_yaml_path = get_file_for_table(prj, pipeline_name, "objs_summary.yaml")
+    with open(objs_yaml_path, "w") as outfile:
+        yaml.dump(reported_objects, outfile)
+    _LOGGER.info(
+        f"'{pipeline_name}' pipeline objects summary (n={len(reported_objects.keys())}): {objs_yaml_path}"
+    )
+
+    return [tsv_outfile_path, objs_yaml_path]

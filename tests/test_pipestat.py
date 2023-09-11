@@ -81,13 +81,70 @@ class TestSplitClasses:
                 psm.clear_status(sample_name=rec_id)
                 status = psm.get_status(sample_name=rec_id)
                 assert status is None
-                with pytest.raises(PipestatDataError):
+                with pytest.raises(RecordNotFoundError):
                     psm.retrieve(sample_name=rec_id)
             if backend == "db":
                 assert getattr(psm.retrieve(sample_name=rec_id), val_name, None) is None
                 psm.remove(sample_name=rec_id)
-                with pytest.raises(PipestatDatabaseError):
+                with pytest.raises(RecordNotFoundError):
                     psm.retrieve(sample_name=rec_id)
+
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("project_name_1", {"name_of_something": "test_name"}),
+            ("project_name_1", {"number_of_things": 1}),
+            ("project_name_2", {"number_of_things": 2}),
+            ("project_name_2", {"percentage_of_things": 10.1}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_basics_project_level(
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        output_schema_html_report,
+        results_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=output_schema_html_report, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = PipestatManager(**args)
+            psm.report(
+                project_name=rec_id, values=val, force_overwrite=True, pipeline_type="project"
+            )
+            val_name = list(val.keys())[0]
+            psm.set_status(
+                status_identifier="running", project_name=rec_id, pipeline_type="project"
+            )
+            status = psm.get_status(project_name=rec_id, pipeline_type="project")
+            assert status == "running"
+            assert val_name in psm.retrieve(project_name=rec_id, pipeline_type="project")
+            psm.remove(project_name=rec_id, result_identifier=val_name, pipeline_type="project")
+            if backend == "file":
+                psm.clear_status(project_name=rec_id, pipeline_type="project")
+                status = psm.get_status(project_name=rec_id, pipeline_type="project")
+                assert status is None
+                with pytest.raises(RecordNotFoundError):
+                    psm.retrieve(project_name=rec_id, pipeline_type="project")
+            if backend == "db":
+                assert (
+                    getattr(
+                        psm.retrieve(project_name=rec_id, pipeline_type="project"), val_name, None
+                    )
+                    is None
+                )
+                psm.remove(project_name=rec_id, pipeline_type="project")
+                with pytest.raises(RecordNotFoundError):
+                    psm.retrieve(project_name=rec_id, pipeline_type="project")
 
 
 class TestReporting:
@@ -363,10 +420,10 @@ class TestRetrieval:
             for k, v in val_dict.items():
                 psm.report(sample_name=k, values=v, force_overwrite=True)
             if backend == "db":
-                with pytest.raises(PipestatDatabaseError):
+                with pytest.raises(RecordNotFoundError):
                     psm.retrieve(result_identifier=res_id, sample_name=rec_id)
             else:
-                with pytest.raises(PipestatDataError):
+                with pytest.raises(RecordNotFoundError):
                     psm.retrieve(result_identifier=res_id, sample_name=rec_id)
 
 
@@ -508,7 +565,7 @@ class TestRemoval:
             psm.report(sample_name=rec_id, values={res_id: "something"}, force_overwrite=True)
             assert psm.remove(sample_name=rec_id, result_identifier=res_id)
             if backend == "file":
-                with pytest.raises(PipestatDataError):
+                with pytest.raises(RecordNotFoundError):
                     psm.retrieve(sample_name=rec_id)
 
 
@@ -727,8 +784,8 @@ class TestHTMLReport:
         backend,
     ):
         values_project = [
-            {"sample2": {"number_of_things": 2}},
-            {"sample3": {"name_of_something": "name of something string"}},
+            {"project_name_1": {"number_of_things": 2}},
+            {"project_name_1": {"name_of_something": "name of something string"}},
         ]
         values_sample = [
             {"sample4": {"smooth_bw": "smooth_bw string"}},
@@ -755,25 +812,39 @@ class TestHTMLReport:
             )
             args.update(backend_data)
             psm = PipestatManager(**args)
+
             psm.report(
-                sample_name=rec_id, values=val, force_overwrite=True, pipeline_type="project"
+                project_name=rec_id, values=val, force_overwrite=True, pipeline_type="project"
             )
             psm.set_status(
-                sample_name=rec_id, status_identifier="completed", pipeline_type="project"
+                project_name=rec_id, status_identifier="completed", pipeline_type="project"
             )
+
             for i in values_project:
                 for r, v in i.items():
                     psm.report(
-                        sample_name=r, values=v, force_overwrite=True, pipeline_type="project"
+                        project_name=r, values=v, force_overwrite=True, pipeline_type="project"
                     )
                     psm.set_status(
-                        sample_name=r, status_identifier="running", pipeline_type="project"
+                        project_name=r, status_identifier="running", pipeline_type="project"
                     )
+
             for i in values_sample:
                 for r, v in i.items():
                     psm.report(
                         sample_name=r, values=v, force_overwrite=True, pipeline_type="sample"
                     )
-                    psm.set_status(sample_name=r, status_identifier="running")
+                    psm.set_status(
+                        sample_name=r, status_identifier="running", pipeline_type="sample"
+                    )
 
-            htmlreportpath = psm.summarize(amendment="")
+            try:
+                htmlreportpath = psm.summarize(amendment="")
+                assert htmlreportpath is not None
+            except:
+                assert 0
+            try:
+                table_paths = psm.table()
+                assert table_paths is not None
+            except:
+                assert 0
