@@ -233,8 +233,12 @@ class ParsedSchema(object):
     def build_model(self, pipeline_type):
         if pipeline_type == "project":
             data = self.project_level_data
+            # if using the same output schema and thus, pipeline name for samples and project
+            # we must ensure there are distinct table names in the same database.
+            table_name = self.project_table_name
         if pipeline_type == "sample":
             data = self.sample_level_data
+            table_name = self.sample_table_name
 
         if not self.sample_level_data and not self.project_level_data:
             return None
@@ -246,36 +250,8 @@ class ParsedSchema(object):
         field_defs = self._add_id_field(field_defs)
         field_defs = self._add_project_name_field(field_defs)
         field_defs = self._add_pipeline_name_field(field_defs)
-        return _create_model(self.sample_table_name, **field_defs)
+        return _create_model(table_name, **field_defs)
 
-
-    def build_project_model(self):
-        """Create the models associated with project-level data."""
-        data = self.project_level_data
-        field_defs = self._make_field_definitions(data, require_type=True)
-        field_defs = self._add_status_field(field_defs)
-        # field_defs = self._add_sample_name_field(field_defs)
-        field_defs = self._add_pipeline_name_field(field_defs)
-        field_defs = self._add_project_name_field(field_defs)
-        field_defs = self._add_id_field(field_defs)
-        if not field_defs:
-            return None
-        return _create_model(self.project_table_name, **field_defs)
-
-
-    def build_sample_model(self):
-        """Create the SQLModel object for sample-level information."""
-
-        data = self.sample_level_data
-        if not self.sample_level_data:
-            return None
-        field_defs = self._make_field_definitions(data, require_type=True)
-        field_defs = self._add_status_field(field_defs)
-        field_defs = self._add_sample_name_field(field_defs)
-        field_defs = self._add_id_field(field_defs)
-        field_defs = self._add_project_name_field(field_defs)
-        field_defs = self._add_pipeline_name_field(field_defs)
-        return _create_model(self.sample_table_name, **field_defs)
 
     def to_dict(self) -> Dict[str, Any]:
         """Create simple dictionary representation of this instance."""

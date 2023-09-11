@@ -111,7 +111,7 @@ class PipestatManager(dict):
         )
         self[DB_ONLY_KEY] = database_only
         self[PIPELINE_TYPE] = self[CONFIG_KEY].priority_get(
-            "pipeline_type", default="sample", override=pipeline_type
+            "pipeline_type", default="none", override=pipeline_type
         )
 
         self[FILE_KEY] = mk_abs_via_cfg(
@@ -729,13 +729,11 @@ class PipestatManager(dict):
 
 class SamplePipestatManager(PipestatManager):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        PipestatManager.__init__(self, pipeline_type='sample',**kwargs)
         _LOGGER.warning("Initialize PipestatMgrSample")
-        self[PIPELINE_TYPE] = "sample"
 
 
 class ProjectPipestatManager(PipestatManager):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        PipestatManager.__init__(self, pipeline_type='project',**kwargs)
         _LOGGER.warning("Initialize PipestatMgrSample")
-        self[PIPELINE_TYPE] = "project"
