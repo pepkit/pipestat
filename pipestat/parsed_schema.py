@@ -246,10 +246,9 @@ class ParsedSchema(object):
 
         field_defs = self._make_field_definitions(data, require_type=True)
         field_defs = self._add_status_field(field_defs)
-        # field_defs = self._add_sample_name_field(field_defs)
         field_defs = self._add_record_identifier_field(field_defs)
         field_defs = self._add_id_field(field_defs)
-        field_defs = self._add_project_name_field(field_defs)
+        # field_defs = self._add_project_name_field(field_defs)
         field_defs = self._add_pipeline_name_field(field_defs)
         return _create_model(table_name, **field_defs)
 

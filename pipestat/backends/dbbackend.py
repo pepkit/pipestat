@@ -58,6 +58,7 @@ class DBBackend(PipestatBackend):
         self.result_formatter = result_formatter
 
         self.orms = self._create_orms(pipeline_type=pipeline_type)
+        self.table_name = self.get_table_name(pipeline_type)
         SQLModel.metadata.create_all(self._engine)
 
     def check_record_exists(
@@ -86,8 +87,8 @@ class DBBackend(PipestatBackend):
         :return int: number of records
         """
         pipeline_type = pipeline_type or self.pipeline_type
-        table_name = self.get_table_name(pipeline_type)
-        mod = self.get_model(table_name=table_name, strict=True)
+
+        mod = self.get_model(table_name=self.table_name, strict=True)
         with self.session as s:
             stmt = sql_select(mod)
             records = s.exec(stmt).all()
@@ -154,8 +155,7 @@ class DBBackend(PipestatBackend):
 
         # TODO this should be simplified with the separation of sample and project managers.
         if pipeline_type is not None:
-            table_name = self.get_table_name(pipeline_type)
-            mod = self.get_model(table_name=table_name, strict=True)
+            mod = self.get_model(table_name=self.table_name, strict=True)
             with self.session as s:
                 sample_list = []
                 stmt = sql_select(mod)
@@ -219,26 +219,9 @@ class DBBackend(PipestatBackend):
         :return str table name: "pipeline_id__sample" or "pipeline_id__project"
         """
 
-        # pipeline_type = pipeline_type or self.pipeline_type
-
         mods = self.orms
         if len(mods) == 1:
             return list(mods.keys())[0]
-        # elif len(mods) == 2:
-        #     if pipeline_type is None:
-        #         raise Exception(
-        #             f"Cannot determine table suffix with 2 models present and no project-level flag"
-        #         )
-        #     prelim = (
-        #         self.parsed_schema.project_table_name
-        #         if pipeline_type == "project"
-        #         else self.parsed_schema.sample_table_name
-        #     )
-        #     if prelim in mods:
-        #         return prelim
-        #     raise Exception(
-        #         f"Determined table name '{prelim}', which is not stored among these: {', '.join(mods.keys())}"
-        #     )
         raise Exception(f"Cannot determine table suffix with {len(mods)} model(s) present.")
 
     def list_results(
@@ -257,9 +240,10 @@ class DBBackend(PipestatBackend):
         :return List[str]: results identifiers that exist
         """
 
-        table_name = self.get_table_name(pipeline_type=pipeline_type)
         rid = record_identifier
-        record = self.get_one_record(rid=rid, table_name=table_name, pipeline_type=pipeline_type)
+        record = self.get_one_record(
+            rid=rid, table_name=self.table_name, pipeline_type=pipeline_type
+        )
 
         if restrict_to is None:
             return (
@@ -300,10 +284,10 @@ class DBBackend(PipestatBackend):
 
         rm_record = True if result_identifier is None else False
 
-        table_name = self.get_table_name(pipeline_type=pipeline_type)
-
         if not self.check_record_exists(
-            record_identifier=record_identifier, table_name=table_name, pipeline_type=pipeline_type
+            record_identifier=record_identifier,
+            table_name=self.table_name,
+            pipeline_type=pipeline_type,
         ):
             _LOGGER.error(f"Record '{record_identifier}' not found")
             return False
@@ -317,10 +301,10 @@ class DBBackend(PipestatBackend):
             return False
 
         try:
-            ORMClass = self.get_orm(table_name=table_name)
+            ORMClass = self.get_orm(table_name=self.table_name)
             if self.check_record_exists(
                 record_identifier=record_identifier,
-                table_name=table_name,
+                table_name=self.table_name,
                 pipeline_type=pipeline_type,
             ):
                 with self.session as s:
@@ -368,14 +352,14 @@ class DBBackend(PipestatBackend):
         :return bool: whether the result has been removed
         """
         pipeline_type = pipeline_type or self.pipeline_type
-        table_name = self.get_table_name(pipeline_type=pipeline_type)
+
         record_identifier = record_identifier or self.record_identifier
         if rm_record:
             try:
-                ORMClass = self.get_orm(table_name=table_name)
+                ORMClass = self.get_orm(table_name=self.table_name)
                 if self.check_record_exists(
                     record_identifier=record_identifier,
-                    table_name=table_name,
+                    table_name=self.table_name,
                     pipeline_type=pipeline_type,
                 ):
                     with self.session as s:
@@ -425,8 +409,6 @@ class DBBackend(PipestatBackend):
             raise SchemaNotFoundError("DB Backend report results requires schema")
         self.assert_results_defined(results=result_identifiers, pipeline_type=self.pipeline_type)
 
-        table_name = self.get_table_name(pipeline_type=self.pipeline_type)
-
         existing = self.list_results(
             record_identifier=record_identifier,
             restrict_to=result_identifiers,
@@ -439,19 +421,11 @@ class DBBackend(PipestatBackend):
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
         try:
-            ORMClass = self.get_orm(table_name=table_name)
+            ORMClass = self.get_orm(table_name=self.table_name)
             values.update({RECORD_IDENTIFIER: record_identifier})
-            # if pipeline_type == "sample":
-            #     values.update({RECORD_IDENTIFIER: record_identifier})
-            #     values.update({"project_name": self.project_name})
-            # if pipeline_type == "project":
-            #     # TODO this looks funny but its because project_name becomes the record_identifier in pipestat_report
-            #     # TODO for project pipelines.
-            #     # we should consider changing this back to record_identifier as the generic term.
-            #     values.update({"project_name": record_identifier})
             if not self.check_record_exists(
                 record_identifier=record_identifier,
-                table_name=table_name,
+                table_name=self.table_name,
                 pipeline_type=self.pipeline_type,
             ):
                 new_record = ORMClass(**values)
@@ -465,18 +439,6 @@ class DBBackend(PipestatBackend):
                         .filter(getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier)
                         .first()
                     )
-                    # if pipeline_type == "sample":
-                    #     record_to_update = (
-                    #         s.query(ORMClass)
-                    #         .filter(getattr(ORMClass, record_identifier) == record_identifier)
-                    #         .first()
-                    #     )
-                    # if pipeline_type == "project":
-                    #     record_to_update = (
-                    #         s.query(ORMClass)
-                    #         .filter(getattr(ORMClass, PROJECT_NAME) == record_identifier)
-                    #         .first()
-                    #     )
                     for result_id, result_value in values.items():
                         setattr(record_to_update, result_id, result_value)
                     s.commit()
@@ -516,7 +478,7 @@ class DBBackend(PipestatBackend):
 
         pipeline_type = pipeline_type or self.pipeline_type
         record_identifier = record_identifier or self.record_identifier
-        tn = self.get_table_name(pipeline_type=pipeline_type)
+        # tn = self.get_table_name(pipeline_type=pipeline_type)
 
         if result_identifier is not None:
             existing = self.list_results(
@@ -531,7 +493,7 @@ class DBBackend(PipestatBackend):
 
         with self.session as s:
             record = (
-                s.query(self.get_orm(table_name=tn))
+                s.query(self.get_orm(table_name=self.table_name))
                 .filter_by(record_identifier=record_identifier)
                 .first()
             )
@@ -576,9 +538,8 @@ class DBBackend(PipestatBackend):
         :param str pipeline_type: "sample" or "project"
         """
         pipeline_type = pipeline_type or self.pipeline_type
-        table_name = table_name or self.get_table_name(pipeline_type)
 
-        ORM = self.get_orm(table_name=table_name)
+        ORM = self.get_orm(table_name=self.table_name)
 
         with self.session as s:
             if columns is not None:
@@ -628,8 +589,8 @@ class DBBackend(PipestatBackend):
         :return List[Any]: a list of matched records
         """
         pipeline_type = pipeline_type or self.pipeline_type
-        table_name = table_name or self.get_table_name(pipeline_type)
-        ORM = self.get_orm(table_name=table_name)
+
+        ORM = self.get_orm(table_name=self.table_name)
         with self.session as s:
             if columns is not None:
                 q = (
@@ -661,8 +622,8 @@ class DBBackend(PipestatBackend):
         :return List[Any]: returns distinct values.
         """
         pipeline_type = pipeline_type or self.pipeline_type
-        table_name = table_name or self.get_table_name(pipeline_type)
-        ORM = self.get_orm(table_name=table_name)
+
+        ORM = self.get_orm(table_name=self.table_name)
         with self.session as s:
             query = s.query(*[getattr(ORM, column) for column in columns])
             query = query.distinct()
@@ -689,7 +650,7 @@ class DBBackend(PipestatBackend):
         :param str pipeline_type: whether status is being set for a project-level pipeline, or sample-level
         """
         pipeline_type = pipeline_type or self.pipeline_type
-        table_name = self.get_table_name(pipeline_type)
+
         record_identifier = record_identifier or self.record_identifier
         known_status_identifiers = self.status_schema.keys()
         if status_identifier not in known_status_identifiers:
@@ -706,7 +667,7 @@ class DBBackend(PipestatBackend):
             )
         except Exception as e:
             _LOGGER.error(
-                f"Could not insert into the status table ('{table_name}'). Exception: {e}"
+                f"Could not insert into the status table ('{self.table_name}'). Exception: {e}"
             )
             raise
         if prev_status:
@@ -714,19 +675,8 @@ class DBBackend(PipestatBackend):
 
     def _create_orms(self, pipeline_type):
         """Create ORMs."""
-        # _LOGGER.debug(f"Creating models for '{self.project_name}' table in '{PKG_NAME}' database")
+        _LOGGER.debug(f"Creating models for '{self.pipeline_name}' table in '{PKG_NAME}' database")
         model = self.parsed_schema.build_model(pipeline_type=pipeline_type)
-        # project_mod = self.parsed_schema.build_project_model()
-        # samples_mod = self.parsed_schema.build_sample_model()
-        # if project_mod and samples_mod:
-        #     return {
-        #         self.parsed_schema.sample_table_name: samples_mod,
-        #         self.parsed_schema.project_table_name: project_mod,
-        #     }
-        # elif samples_mod:
-        #     return {self.project_name: samples_mod}
-        # elif project_mod:
-        #     return {self.project_name: project_mod}
         # TODO reconsider line below. Why do we need to return a dict?
         if model:
             return {self.record_identifier: model}

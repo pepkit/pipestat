@@ -96,7 +96,6 @@ class PipestatManager(dict):
         )  # schema_path if schema_path is not None else None
         self.process_schema(schema_path)
 
-        # self[SCHEMA_PATH] = schema_path
         self[RECORD_IDENTIFIER] = record_identifier
 
         self[PIPELINE_NAME] = (
