@@ -69,7 +69,6 @@ class FileBackend(PipestatBackend):
     def check_record_exists(
         self,
         record_identifier: str,
-        pipeline_type: Optional[str] = None,
     ) -> bool:
         """
         Check if the specified record exists in self._data
@@ -78,11 +77,10 @@ class FileBackend(PipestatBackend):
         :param str pipeline_type: project or sample pipeline
         :return bool: whether the record exists in the table
         """
-        pipeline_type = pipeline_type or self.pipeline_type
 
         return (
             self.pipeline_name in self._data
-            and record_identifier in self._data[self.pipeline_name][pipeline_type]
+            and record_identifier in self._data[self.pipeline_name][self.pipeline_type]
         )
 
     def clear_status(
@@ -114,7 +112,7 @@ class FileBackend(PipestatBackend):
                 removed.append(f)
         return removed
 
-    def count_records(self, pipeline_type: Optional[str] = None):
+    def count_records(self):
         """
         Count records
         :param str pipeline_type: sample vs project designator needed to count records
@@ -167,9 +165,7 @@ class FileBackend(PipestatBackend):
             all_samples_list += sample_list
         return all_samples_list
 
-    def get_status(
-        self, record_identifier: str, pipeline_type: Optional[str] = None
-    ) -> Optional[str]:
+    def get_status(self, record_identifier: str) -> Optional[str]:
         """
         Get the current pipeline status
 
@@ -213,7 +209,6 @@ class FileBackend(PipestatBackend):
         self,
         restrict_to: Optional[List[str]] = None,
         record_identifier: Optional[str] = None,
-        pipeline_type: Optional[str] = None,
     ) -> List[str]:
         """
         Lists all, or a selected set of, reported results
@@ -223,13 +218,12 @@ class FileBackend(PipestatBackend):
         :param str pipeline_type: "sample" or "project"
         :return List[str]: names of results which exist
         """
-
-        pipeline_type = pipeline_type or self.pipeline_type
-        # record_identifier = record_identifier or self.record_identifier
-        record_identifier = record_identifier
+        record_identifier = record_identifier or self.record_identifier
 
         try:
-            results = list(self._data[self.pipeline_name][pipeline_type][record_identifier].keys())
+            results = list(
+                self._data[self.pipeline_name][self.pipeline_type][record_identifier].keys()
+            )
         except KeyError:
             return []
         if restrict_to:
@@ -240,7 +234,6 @@ class FileBackend(PipestatBackend):
         self,
         record_identifier: Optional[str] = None,
         result_identifier: Optional[str] = None,
-        pipeline_type: Optional[str] = None,
     ) -> bool:
         """
         Remove a result.
@@ -255,20 +248,18 @@ class FileBackend(PipestatBackend):
         :return bool: whether the result has been removed
         """
 
-        pipeline_type = pipeline_type or self.pipeline_type
         record_identifier = record_identifier or self.record_identifier
 
         rm_record = True if result_identifier is None else False
 
         if not self.check_record_exists(
             record_identifier=record_identifier,
-            pipeline_type=pipeline_type,
         ):
             _LOGGER.error(f"Record '{record_identifier}' not found")
             return False
 
         if result_identifier and not self.check_result_exists(
-            result_identifier, record_identifier, pipeline_type=pipeline_type
+            result_identifier, record_identifier
         ):
             _LOGGER.error(f"'{result_identifier}' has not been reported for '{record_identifier}'")
             return False
@@ -276,26 +267,26 @@ class FileBackend(PipestatBackend):
         if rm_record:
             self.remove_record(
                 record_identifier=record_identifier,
-                pipeline_type=pipeline_type,
                 rm_record=rm_record,
             )
         else:
-            val_backup = self._data[self.pipeline_name][pipeline_type][record_identifier][
+            val_backup = self._data[self.pipeline_name][self.pipeline_type][record_identifier][
                 result_identifier
             ]
-            del self._data[self.pipeline_name][pipeline_type][record_identifier][result_identifier]
+            del self._data[self.pipeline_name][self.pipeline_type][record_identifier][
+                result_identifier
+            ]
             _LOGGER.info(
                 f"Removed result '{result_identifier}' for record "
                 f"'{record_identifier}' from '{self.pipeline_name}' namespace"
             )
-            if not self._data[self.pipeline_name][pipeline_type][record_identifier]:
+            if not self._data[self.pipeline_name][self.pipeline_type][record_identifier]:
                 _LOGGER.info(
                     f"Last result removed for '{record_identifier}'. " f"Removing the record"
                 )
                 rm_record = True
                 self.remove_record(
                     record_identifier=record_identifier,
-                    pipeline_type=pipeline_type,
                     rm_record=rm_record,
                 )
             with self._data as locked_data:
@@ -305,7 +296,6 @@ class FileBackend(PipestatBackend):
     def remove_record(
         self,
         record_identifier: Optional[str] = None,
-        pipeline_type: Optional[str] = None,
         rm_record: Optional[bool] = False,
     ) -> bool:
         """
@@ -319,7 +309,7 @@ class FileBackend(PipestatBackend):
         if rm_record:
             try:
                 _LOGGER.info(f"Removing '{record_identifier}' record")
-                del self._data[self.pipeline_name][pipeline_type][record_identifier]
+                del self._data[self.pipeline_name][self.pipeline_type][record_identifier]
                 with self._data as locked_data:
                     locked_data.write()
                 return True
@@ -335,7 +325,6 @@ class FileBackend(PipestatBackend):
         self,
         values: Dict[str, Any],
         record_identifier: Optional[str] = None,
-        pipeline_type: Optional[str] = None,
         force_overwrite: bool = False,
         result_formatter: Optional[staticmethod] = None,
     ) -> Union[List[str], bool]:
@@ -354,7 +343,6 @@ class FileBackend(PipestatBackend):
         :return list results_formatted: return list of formatted string
         """
 
-        pipeline_type = pipeline_type or self.pipeline_type
         # record_identifier = record_identifier or self.record_identifier
         record_identifier = record_identifier
         result_formatter = result_formatter or self.result_formatter
@@ -368,7 +356,6 @@ class FileBackend(PipestatBackend):
         existing = self.list_results(
             record_identifier=record_identifier,
             restrict_to=result_identifiers,
-            pipeline_type=pipeline_type,
         )
         if existing:
             existing_str = ", ".join(existing)
@@ -377,10 +364,10 @@ class FileBackend(PipestatBackend):
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
 
-        self._data[self.pipeline_name][pipeline_type].setdefault(record_identifier, {})
+        self._data[self.pipeline_name][self.pipeline_type].setdefault(record_identifier, {})
 
         for res_id, val in values.items():
-            self._data[self.pipeline_name][pipeline_type][record_identifier][res_id] = val
+            self._data[self.pipeline_name][self.pipeline_type][record_identifier][res_id] = val
             results_formatted.append(
                 result_formatter(
                     pipeline_name=self.pipeline_name,
@@ -399,7 +386,6 @@ class FileBackend(PipestatBackend):
         self,
         record_identifier: Optional[str] = None,
         result_identifier: Optional[str] = None,
-        pipeline_type: Optional[str] = None,
     ) -> Union[Any, Dict[str, Any]]:
         """
         Retrieve a result for a record.
@@ -414,27 +400,27 @@ class FileBackend(PipestatBackend):
             results reported for the record
         """
 
-        pipeline_type = pipeline_type or self.pipeline_type
         record_identifier = record_identifier or self.record_identifier
 
-        if record_identifier not in self._data[self.pipeline_name][pipeline_type]:
+        if record_identifier not in self._data[self.pipeline_name][self.pipeline_type]:
             raise RecordNotFoundError(f"Record '{record_identifier}' not found")
         if result_identifier is None:
-            return self._data.exp[self.pipeline_name][pipeline_type][record_identifier]
+            return self._data.exp[self.pipeline_name][self.pipeline_type][record_identifier]
         if (
             result_identifier
-            not in self._data[self.pipeline_name][pipeline_type][record_identifier]
+            not in self._data[self.pipeline_name][self.pipeline_type][record_identifier]
         ):
             raise RecordNotFoundError(
                 f"Result '{result_identifier}' not found for record '{record_identifier}'"
             )
-        return self._data[self.pipeline_name][pipeline_type][record_identifier][result_identifier]
+        return self._data[self.pipeline_name][self.pipeline_type][record_identifier][
+            result_identifier
+        ]
 
     def set_status(
         self,
         status_identifier: str,
         record_identifier: str = None,
-        pipeline_type: Optional[str] = None,
     ) -> None:
         """
         Set pipeline run status.
@@ -449,7 +435,6 @@ class FileBackend(PipestatBackend):
             pipeline status for
         :param str pipeline_type: "sample" or "project"
         """
-        pipeline_type = pipeline_type or self.pipeline_type
         r_id = record_identifier or self.record_identifier
         if self.status_schema is not None:
             known_status_identifiers = self.status_schema.keys()
@@ -460,7 +445,6 @@ class FileBackend(PipestatBackend):
                 )
         prev_status = self.get_status(r_id)
 
-        # TODO: manage project-level flag here.
         if prev_status is not None:
             prev_flag_path = self.get_status_flag_path(prev_status, record_identifier)
             os.remove(prev_flag_path)

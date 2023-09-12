@@ -51,7 +51,6 @@ class PipestatBackend(ABC):
         self,
         result_identifier: str,
         record_identifier: Optional[str] = None,
-        pipeline_type: Optional[str] = None,
     ) -> bool:
         """
         Check if the result has been reported
@@ -62,7 +61,6 @@ class PipestatBackend(ABC):
         :return bool: whether the specified result has been reported for the
             indicated record in current namespace
         """
-        pipeline_type = pipeline_type or self.pipeline_type
         record_identifier = record_identifier or self.record_identifier
 
         return (

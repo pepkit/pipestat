@@ -281,7 +281,6 @@ class DBBackend(PipestatBackend):
         if result_identifier and not self.check_result_exists(
             result_identifier=result_identifier,
             record_identifier=record_identifier,
-            pipeline_type=self.pipeline_type,
         ):
             _LOGGER.error(f"'{result_identifier}' has not been reported for '{record_identifier}'")
             return False
@@ -305,7 +304,6 @@ class DBBackend(PipestatBackend):
                         if not self.check_result_exists(
                             record_identifier=record_identifier,
                             result_identifier=result_identifier,
-                            pipeline_type=self.pipeline_type,
                         ):
                             raise RecordNotFoundError(
                                 f"Result '{result_identifier}' not found for record "
