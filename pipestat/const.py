@@ -105,6 +105,7 @@ ENV_VARS = {
     "schema": "PIPESTAT_RESULTS_SCHEMA",
     "status_schema": "PIPESTAT_STATUS_SCHEMA",
     "sample_name": "PIPESTAT_SAMPLE_NAME",
+    "record_identifier": "RECORD_IDENTIFIER",
 }
 
 CLASSES_BY_TYPE = {

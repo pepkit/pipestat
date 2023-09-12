@@ -700,7 +700,7 @@ class TestEnvVars:
         test that the object can be created if the arguments
         are provided as env vars
         """
-        monkeypatch.setenv(ENV_VARS["project_name"], STANDARD_TEST_PIPE_ID)
+
         monkeypatch.setenv(ENV_VARS["record_identifier"], "sample1")
         monkeypatch.setenv(ENV_VARS["results_file"], results_file_path)
         monkeypatch.setenv(ENV_VARS["schema"], schema_file_path)
@@ -824,25 +824,6 @@ class TestHTMLReport:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
 
-            psm.report(
-                record_identifier=rec_id, values=val, force_overwrite=True, pipeline_type="project"
-            )
-            psm.set_status(
-                record_identifier=rec_id, status_identifier="completed", pipeline_type="project"
-            )
-
-            for i in values_project:
-                for r, v in i.items():
-                    psm.report(
-                        record_identifier=r,
-                        values=v,
-                        force_overwrite=True,
-                        pipeline_type="project",
-                    )
-                    psm.set_status(
-                        record_identifier=r, status_identifier="running", pipeline_type="project"
-                    )
-
             for i in values_sample:
                 for r, v in i.items():
                     psm.report(
@@ -852,13 +833,47 @@ class TestHTMLReport:
                         record_identifier=r, status_identifier="running", pipeline_type="sample"
                     )
 
+            #project level
+            psm2 = ProjectPipestatManager(**args)
+            psm2.report(
+                record_identifier=rec_id, values=val, force_overwrite=True, pipeline_type="project"
+            )
+            psm2.set_status(
+                record_identifier=rec_id, status_identifier="completed", pipeline_type="project"
+            )
+
+            for i in values_project:
+                for r, v in i.items():
+                    psm2.report(
+                        record_identifier=r,
+                        values=v,
+                        force_overwrite=True,
+                        pipeline_type="project",
+                    )
+                    psm2.set_status(
+                        record_identifier=r, status_identifier="running", pipeline_type="project"
+                    )
+
             try:
                 htmlreportpath = psm.summarize(amendment="")
                 assert htmlreportpath is not None
             except:
                 assert 0
+
+            try:
+                htmlreportpath = psm2.summarize(amendment="")
+                assert htmlreportpath is not None
+            except:
+                assert 0
+
             try:
                 table_paths = psm.table()
+                assert table_paths is not None
+            except:
+                assert 0
+
+            try:
+                table_paths = psm2.table()
                 assert table_paths is not None
             except:
                 assert 0

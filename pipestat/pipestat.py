@@ -97,6 +97,7 @@ class PipestatManager(dict):
         self.process_schema(schema_path)
 
         # self[SCHEMA_PATH] = schema_path
+        self[RECORD_IDENTIFIER] = record_identifier
 
         self[PIPELINE_NAME] = (
             self.schema.pipeline_name if self.schema is not None else pipeline_name
@@ -243,7 +244,7 @@ class PipestatManager(dict):
         # r_id = self._get_record_identifier(
         #     pipeline_type=pipeline_type, record_identifier=record_identifier, project_name=project_name
         # )
-        r_id = record_identifier
+        r_id = record_identifier or self.record_identifier
         return self.backend.clear_status(record_identifier=r_id, flag_names=flag_names)
 
     @require_backend
@@ -274,7 +275,7 @@ class PipestatManager(dict):
         # r_id = self._get_record_identifier(
         #     pipeline_type=pipeline_type, record_identifier=record_identifier, project_name=project_name
         # )
-        r_id = record_identifier
+        r_id = record_identifier or self.record_identifier
         return self.backend.get_status(record_identifier=r_id, pipeline_type=pipeline_type)
 
     def process_schema(self, schema_path):
@@ -367,7 +368,7 @@ class PipestatManager(dict):
         # r_id = self._get_record_identifier(
         #     pipeline_type=pipeline_type, record_identifier=record_identifier, project_name=project_name
         # )
-        r_id = record_identifier
+        r_id = record_identifier  or self.record_identifier
         return self.backend.remove(
             record_identifier=r_id,
             result_identifier=result_identifier,
@@ -410,7 +411,7 @@ class PipestatManager(dict):
         #     pipeline_type=pipeline_type, record_identifier=record_identifier, project_name=project_name
         # )
 
-        r_id = record_identifier or None
+        r_id = record_identifier or self.record_identifier
         if r_id is None:
             raise NotImplementedError("You must supply a record identifier to report results")
 
@@ -460,7 +461,7 @@ class PipestatManager(dict):
         # r_id = self._get_record_identifier(
         #     pipeline_type=pipeline_type, record_identifier=record_identifier, project_name=project_name
         # )
-        r_id = record_identifier
+        r_id = record_identifier or self.record_identifier
         return self.backend.retrieve(r_id, result_identifier)
 
     @require_backend
@@ -489,7 +490,7 @@ class PipestatManager(dict):
         # r_id = self._get_record_identifier(
         #     pipeline_type=pipeline_type, record_identifier=record_identifier, project_name=project_name
         # )
-        r_id = record_identifier
+        r_id = record_identifier or self.record_identifier
         self.backend.set_status(status_identifier, r_id)
 
     @require_backend
@@ -659,6 +660,15 @@ class PipestatManager(dict):
         :return str: pipeline type
         """
         return self.get(PIPELINE_TYPE)
+
+    @property
+    def record_identifier(self) -> str:
+        """
+        Pipeline type: "sample" or "project"
+
+        :return str: pipeline type
+        """
+        return self.get(RECORD_IDENTIFIER)
 
     @property
     def record_count(self) -> int:
