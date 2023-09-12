@@ -363,7 +363,6 @@ class PipestatManager(dict):
         self,
         values: Dict[str, Any],
         record_identifier: Optional[str] = None,
-        pipeline_type: Optional[str] = None,
         force_overwrite: bool = False,
         result_formatter: Optional[staticmethod] = None,
         strict_type: bool = True,
@@ -387,14 +386,8 @@ class PipestatManager(dict):
         :return str reported_results: return list of formatted string
         """
 
-        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-
         result_formatter = result_formatter or self[RESULT_FORMATTER]
         values = deepcopy(values)
-        # r_id = self._get_record_identifier(
-        #     pipeline_type=pipeline_type, record_identifier=record_identifier, project_name=project_name
-        # )
-
         r_id = record_identifier or self.record_identifier
         if r_id is None:
             raise NotImplementedError("You must supply a record identifier to report results")
@@ -425,7 +418,6 @@ class PipestatManager(dict):
         self,
         record_identifier: Optional[str] = None,
         result_identifier: Optional[str] = None,
-        pipeline_type: Optional[str] = None,
     ) -> Union[Any, Dict[str, Any]]:
         """
         Retrieve a result for a record.
@@ -441,10 +433,6 @@ class PipestatManager(dict):
             results reported for the record
         """
 
-        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        # r_id = self._get_record_identifier(
-        #     pipeline_type=pipeline_type, record_identifier=record_identifier, project_name=project_name
-        # )
         r_id = record_identifier or self.record_identifier
         return self.backend.retrieve(r_id, result_identifier)
 
@@ -453,7 +441,6 @@ class PipestatManager(dict):
         self,
         status_identifier: str,
         record_identifier: str = None,
-        pipeline_type: Optional[str] = None,
     ) -> None:
         """
         Set pipeline run status.
@@ -470,10 +457,6 @@ class PipestatManager(dict):
             pipeline status for
         :param str pipeline_type: "sample" or "project"
         """
-        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        # r_id = self._get_record_identifier(
-        #     pipeline_type=pipeline_type, record_identifier=record_identifier, project_name=project_name
-        # )
         r_id = record_identifier or self.record_identifier
         self.backend.set_status(status_identifier, r_id)
 
@@ -519,48 +502,6 @@ class PipestatManager(dict):
         :return:
         """
         return self.get(attr)
-
-    # def _get_record_identifier(
-    #     self,
-    #     pipeline_type: Optional[str] = None,
-    #     record_identifier: Optional[str] = None,
-    #     project_name: Optional[str] = None,
-    # ) -> str:
-    #     """
-    #     Get record identifier from the outer source or stored with this object depending on pipeline type
-    #
-    #     :param str pipeline_type: sample or project level pipeline
-    #     :param str record_identifier: return this value as r_id if sample_level pipeline
-    #     :param str project_name: return this value as r_id if project_level pipeline
-    #     :return str: r_id
-    #     """
-    #     # if no pipeline type is given, we assume sample level
-    #     if pipeline_type is None or pipeline_type == "sample":
-    #         r_id = record_identifier or self.record_identifier
-    #         if r_id is not None:
-    #             return r_id
-    #         else:
-    #             raise PipestatError(
-    #                 f"No pipeline type supplied, assuming sample_level. You must provide the record_identifier you want to perform "
-    #                 f"the action on. Either in the {self.__class__.__name__} "
-    #                 f"constructor or as an argument to the method."
-    #             )
-    #     elif pipeline_type == "project":
-    #         r_id = project_name or self.project_name
-    #         if r_id is not None:
-    #             return r_id
-    #         else:
-    #             raise PipestatError(
-    #                 f"Pipeline type supplied: {pipeline_type}. You must provide the project_name you want to perform "
-    #                 f"the action on. Either in the {self.__class__.__name__} "
-    #                 f"constructor or as an argument to the method."
-    #             )
-    #     else:
-    #         raise PipestatError(
-    #             f"You must provide the record identifier you want to perform "
-    #             f"the action on. Either in the {self.__class__.__name__} "
-    #             f"constructor or as an argument to the method."
-    #         )
 
     @property
     def config_path(self) -> str:

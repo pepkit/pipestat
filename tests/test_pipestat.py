@@ -608,7 +608,7 @@ class TestNoRecordID:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            psm.report(values=val, pipeline_type=pipeline_type)
+            psm.report(values=val)
             if backend == "file":
                 assert_is_in_files(results_file_path, str(list(val.values())[0]))
                 assert (
