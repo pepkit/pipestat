@@ -785,7 +785,7 @@ class TestHTMLReport:
         ],
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_basics(
+    def test_basics_samples(
         self,
         rec_id,
         val,
@@ -833,24 +833,93 @@ class TestHTMLReport:
                         record_identifier=r, status_identifier="running", pipeline_type="sample"
                     )
 
-            #project level
-            psm2 = ProjectPipestatManager(**args)
-            psm2.report(
-                record_identifier=rec_id, values=val, force_overwrite=True, pipeline_type="project"
+            # project level
+            # psm2 = ProjectPipestatManager(**args)
+            # psm2.report(
+            #     record_identifier=rec_id, values=val, force_overwrite=True, pipeline_type="project"
+            # )
+            # psm2.set_status(
+            #     record_identifier=rec_id, status_identifier="completed", pipeline_type="project"
+            # )
+            #
+            # for i in values_project:
+            #     for r, v in i.items():
+            #         psm2.report(
+            #             record_identifier=r,
+            #             values=v,
+            #             force_overwrite=True,
+            #             pipeline_type="project",
+            #         )
+            #         psm2.set_status(
+            #             record_identifier=r, status_identifier="running", pipeline_type="project"
+            #         )
+
+            try:
+                htmlreportpath = psm.summarize(amendment="")
+                assert htmlreportpath is not None
+            except:
+                assert 0
+
+            # try:
+            #     htmlreportpath = psm2.summarize(amendment="")
+            #     assert htmlreportpath is not None
+            # except:
+            #     assert 0
+
+            try:
+                table_paths = psm.table()
+                assert table_paths is not None
+            except:
+                assert 0
+
+            # try:
+            #     table_paths = psm2.table()
+            #     assert table_paths is not None
+            # except:
+            #     assert 0
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_basics_project(
+        self,
+        # rec_id,
+        # val,
+        config_file_path,
+        output_schema_html_report,
+        results_file_path,
+        backend,
+    ):
+        values_project = [
+            {"project_name_1": {"number_of_things": 2}},
+            {"project_name_1": {"name_of_something": "name of something string"}},
+        ]
+
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=output_schema_html_report, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
             )
-            psm2.set_status(
-                record_identifier=rec_id, status_identifier="completed", pipeline_type="project"
-            )
+            args.update(backend_data)
+            # project level
+            psm = ProjectPipestatManager(**args)
+            # psm2.report(
+            #     record_identifier=rec_id, values=val, force_overwrite=True, pipeline_type="project"
+            # )
+            # psm2.set_status(
+            #     record_identifier=rec_id, status_identifier="completed", pipeline_type="project"
+            # )
 
             for i in values_project:
                 for r, v in i.items():
-                    psm2.report(
+                    psm.report(
                         record_identifier=r,
                         values=v,
                         force_overwrite=True,
                         pipeline_type="project",
                     )
-                    psm2.set_status(
+                    psm.set_status(
                         record_identifier=r, status_identifier="running", pipeline_type="project"
                     )
 
@@ -861,19 +930,7 @@ class TestHTMLReport:
                 assert 0
 
             try:
-                htmlreportpath = psm2.summarize(amendment="")
-                assert htmlreportpath is not None
-            except:
-                assert 0
-
-            try:
                 table_paths = psm.table()
-                assert table_paths is not None
-            except:
-                assert 0
-
-            try:
-                table_paths = psm2.table()
                 assert table_paths is not None
             except:
                 assert 0

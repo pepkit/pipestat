@@ -160,10 +160,11 @@ class DBBackend(PipestatBackend):
                 stmt = sql_select(mod)
                 records = s.exec(stmt).all()
                 for i in records:
-                    if pipeline_type == "sample":
-                        pair = (i.record_identifier, pipeline_type)
-                    elif pipeline_type == "project_name":
-                        pair = (i.project_name, pipeline_type)
+                    pair = (i.record_identifier, pipeline_type)
+                    # if pipeline_type == "sample":
+                    #     pair = (i.record_identifier, pipeline_type)
+                    # elif pipeline_type == "project_name":
+                    #     pair = (i.project_name, pipeline_type)
                     sample_list.append(pair)
 
             return sample_list
@@ -178,10 +179,11 @@ class DBBackend(PipestatBackend):
                     stmt = sql_select(mod)
                     records = s.exec(stmt).all()
                     for i in records:
-                        if pipeline_type == "sample":
-                            pair = (i.record_identifier, pipeline_type)
-                        elif pipeline_type == "project_name":
-                            pair = (i.project_name, pipeline_type)
+                        pair = (i.record_identifier, pipeline_type)
+                        # if pipeline_type == "sample":
+                        #     pair = (i.record_identifier, pipeline_type)
+                        # elif pipeline_type == "project_name":
+                        #     pair = (i.project_name, pipeline_type)
                         sample_list.append(pair)
 
                 all_samples_list += sample_list

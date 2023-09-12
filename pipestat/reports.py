@@ -375,9 +375,9 @@ class HTMLReportBuilder(object):
         html_page = os.path.join(self.pipeline_reports, f"{sample_name}.html".lower())
 
         if pipeline_type == "sample":
-            flag = self.prj.get_status(sample_name=sample_name, pipeline_type=pipeline_type)
+            flag = self.prj.get_status(record_identifier=sample_name, pipeline_type=pipeline_type)
         if pipeline_type == "project":
-            flag = self.prj.get_status(project_name=sample_name, pipeline_type=pipeline_type)
+            flag = self.prj.get_status(record_identifier=sample_name, pipeline_type=pipeline_type)
         if not flag:
             button_class = "btn btn-secondary"
             flag = "Missing"
@@ -832,9 +832,9 @@ def fetch_pipeline_results(
     psm = project
     # exclude object-like results from the stats results mapping
     if pipeline_type == "sample":
-        rep_data = psm.retrieve(sample_name=sample_name, pipeline_type=pipeline_type)
+        rep_data = psm.retrieve(record_identifier=sample_name, pipeline_type=pipeline_type)
     if pipeline_type == "project":
-        rep_data = psm.retrieve(project_name=sample_name, pipeline_type=pipeline_type)
+        rep_data = psm.retrieve(record_identifier=sample_name, pipeline_type=pipeline_type)
     results = {
         k: casting_fun(v)
         for k, v in rep_data.items()
@@ -886,7 +886,7 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
         sample_names.append(sample_name)
         # status and status style
         try:
-            status = psm.get_status(sample_name=sample_name, pipeline_type=pipeline_type)
+            status = psm.get_status(record_identifier=sample_name, pipeline_type=pipeline_type)
             statuses.append(status)
             status_metadata = psm.status_schema[status]
             status_styles.append(_rgb2hex(*status_metadata["color"]))
@@ -1071,9 +1071,9 @@ def _create_stats_objs_summaries(prj, pipeline_name, pipeline_type) -> List[str]
 
         if pipeline_type == "sample":
             reported_stats = [record_index, record_name]
-            rep_data = prj.retrieve(sample_name=record_name, pipeline_type=pipeline_type)
+            rep_data = prj.retrieve(record_identifier=record_name, pipeline_type=pipeline_type)
         else:
-            rep_data = prj.retrieve(project_name=record_name, pipeline_type=pipeline_type)
+            rep_data = prj.retrieve(record_identifier=record_name, pipeline_type=pipeline_type)
             reported_stats = [
                 record_index,
                 prj.project_name or "No Project Name Supplied",
