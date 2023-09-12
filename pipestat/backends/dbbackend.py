@@ -527,18 +527,11 @@ class DBBackend(PipestatBackend):
                 )
 
         with self.session as s:
-            if pipeline_type == "sample":
-                record = (
-                    s.query(self.get_orm(table_name=tn))
-                    .filter_by(record_identifier=record_identifier)
-                    .first()
-                )
-            if pipeline_type == "project":
-                record = (
-                    s.query(self.get_orm(table_name=tn))
-                    .filter_by(project_name=record_identifier)
-                    .first()
-                )
+            record = (
+                s.query(self.get_orm(table_name=tn))
+                .filter_by(record_identifier=record_identifier)
+                .first()
+            )
 
         if record is not None:
             if result_identifier is not None:
