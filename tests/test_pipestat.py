@@ -117,34 +117,38 @@ class TestSplitClasses:
                 else {"results_file_path": results_file_path}
             )
             args.update(backend_data)
-            psm = SamplePipestatManager(**args)
+            psm = ProjectPipestatManager(**args)
             psm.report(
-                project_name=rec_id, values=val, force_overwrite=True, pipeline_type="project"
+                record_identifier=rec_id, values=val, force_overwrite=True, pipeline_type="project"
             )
             val_name = list(val.keys())[0]
             psm.set_status(
-                status_identifier="running", project_name=rec_id, pipeline_type="project"
+                status_identifier="running", record_identifier=rec_id, pipeline_type="project"
             )
-            status = psm.get_status(project_name=rec_id, pipeline_type="project")
+            status = psm.get_status(record_identifier=rec_id, pipeline_type="project")
             assert status == "running"
-            assert val_name in psm.retrieve(project_name=rec_id, pipeline_type="project")
-            psm.remove(project_name=rec_id, result_identifier=val_name, pipeline_type="project")
+            assert val_name in psm.retrieve(record_identifier=rec_id, pipeline_type="project")
+            psm.remove(
+                record_identifier=rec_id, result_identifier=val_name, pipeline_type="project"
+            )
             if backend == "file":
-                psm.clear_status(project_name=rec_id, pipeline_type="project")
-                status = psm.get_status(project_name=rec_id, pipeline_type="project")
+                psm.clear_status(record_identifier=rec_id, pipeline_type="project")
+                status = psm.get_status(record_identifier=rec_id, pipeline_type="project")
                 assert status is None
                 with pytest.raises(RecordNotFoundError):
-                    psm.retrieve(project_name=rec_id, pipeline_type="project")
+                    psm.retrieve(record_identifier=rec_id, pipeline_type="project")
             if backend == "db":
                 assert (
                     getattr(
-                        psm.retrieve(project_name=rec_id, pipeline_type="project"), val_name, None
+                        psm.retrieve(record_identifier=rec_id, pipeline_type="project"),
+                        val_name,
+                        None,
                     )
                     is None
                 )
-                psm.remove(project_name=rec_id, pipeline_type="project")
+                psm.remove(record_identifier=rec_id, pipeline_type="project")
                 with pytest.raises(RecordNotFoundError):
-                    psm.retrieve(project_name=rec_id, pipeline_type="project")
+                    psm.retrieve(record_identifier=rec_id, pipeline_type="project")
 
 
 class TestReporting:
@@ -344,7 +348,10 @@ class TestReporting:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
             results = psm.report(
-                record_identifier=rec_id, values=val, force_overwrite=True, result_formatter=formatter
+                record_identifier=rec_id,
+                values=val,
+                force_overwrite=True,
+                result_formatter=formatter,
             )
             assert rec_id in results[0]
             value = list(val.keys())[0]
@@ -383,7 +390,9 @@ class TestRetrieval:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
-            retrieved_val = psm.retrieve(record_identifier=rec_id, result_identifier=list(val.keys())[0])
+            retrieved_val = psm.retrieve(
+                record_identifier=rec_id, result_identifier=list(val.keys())[0]
+            )
             # Test Retrieve Basic
             assert str(retrieved_val) == str(list(val.values())[0])
             # Test Retrieve Whole Record
@@ -562,7 +571,9 @@ class TestRemoval:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            psm.report(record_identifier=rec_id, values={res_id: "something"}, force_overwrite=True)
+            psm.report(
+                record_identifier=rec_id, values={res_id: "something"}, force_overwrite=True
+            )
             assert psm.remove(record_identifier=rec_id, result_identifier=res_id)
             if backend == "file":
                 with pytest.raises(RecordNotFoundError):
@@ -814,19 +825,22 @@ class TestHTMLReport:
             psm = SamplePipestatManager(**args)
 
             psm.report(
-                project_name=rec_id, values=val, force_overwrite=True, pipeline_type="project"
+                record_identifier=rec_id, values=val, force_overwrite=True, pipeline_type="project"
             )
             psm.set_status(
-                project_name=rec_id, status_identifier="completed", pipeline_type="project"
+                record_identifier=rec_id, status_identifier="completed", pipeline_type="project"
             )
 
             for i in values_project:
                 for r, v in i.items():
                     psm.report(
-                        project_name=r, values=v, force_overwrite=True, pipeline_type="project"
+                        record_identifier=r,
+                        values=v,
+                        force_overwrite=True,
+                        pipeline_type="project",
                     )
                     psm.set_status(
-                        project_name=r, status_identifier="running", pipeline_type="project"
+                        record_identifier=r, status_identifier="running", pipeline_type="project"
                     )
 
             for i in values_sample:

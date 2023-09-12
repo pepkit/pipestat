@@ -168,8 +168,8 @@ class TestDatabaseOnly:
                 database_only=True,
                 config_file=config_file_path,
             )
-            psm.report(record_identifier=REC_ID,
-                values=val, force_overwrite=True
+            psm.report(
+                record_identifier=REC_ID, values=val, force_overwrite=True
             )  # Force overwrite so that resetting the SQL DB is unnecessary.
             val_name = list(val.keys())[0]
             assert psm.backend.select(json_filter_conditions=[(val_name, "eq", val[val_name])])

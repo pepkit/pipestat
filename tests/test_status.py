@@ -29,7 +29,7 @@ def test_status_not_configured(schema_file_path, config_file_path, backend_data,
             schema_path=schema_file_path,
         )
         args.update(backend_data)
-        #psm = SamplePipestatManager(**args)
+        # psm = SamplePipestatManager(**args)
         psm = SamplePipestatManager(**args)
         psm.set_status(record_identifier="sample1", status_identifier=status_id)
         assert psm.get_status(record_identifier="sample1") == status_id
