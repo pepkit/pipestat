@@ -321,14 +321,9 @@ class DBBackend(PipestatBackend):
                 pipeline_type=pipeline_type,
             ):
                 with self.session as s:
-                    if pipeline_type == "sample":
-                        records = s.query(ORMClass).filter(
-                            getattr(ORMClass, record_identifier) == record_identifier
-                        )
-                    if pipeline_type == "project":
-                        records = s.query(ORMClass).filter(
-                            getattr(ORMClass, PROJECT_NAME) == record_identifier
-                        )
+                    records = s.query(ORMClass).filter(
+                        getattr(ORMClass, "record_identifier") == record_identifier
+                    )
                     if rm_record is True:
                         self.remove_record(
                             record_identifier=record_identifier,
@@ -381,14 +376,9 @@ class DBBackend(PipestatBackend):
                     pipeline_type=pipeline_type,
                 ):
                     with self.session as s:
-                        if pipeline_type == "sample":
-                            records = s.query(ORMClass).filter(
-                                getattr(ORMClass, record_identifier) == record_identifier
-                            )
-                        if pipeline_type == "project":
-                            records = s.query(ORMClass).filter(
-                                getattr(ORMClass, PROJECT_NAME) == record_identifier
-                            )
+                        records = s.query(ORMClass).filter(
+                            getattr(ORMClass, "record_identifier") == record_identifier
+                        )
                         records.delete()
                         s.commit()
                 else:
