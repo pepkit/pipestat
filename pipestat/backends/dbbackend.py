@@ -65,7 +65,6 @@ class DBBackend(PipestatBackend):
         self,
         record_identifier: str,
         table_name: str,
-        pipeline_type: Optional[str] = None,
     ) -> bool:
         """
         Check if the specified record exists in the table
@@ -75,18 +74,15 @@ class DBBackend(PipestatBackend):
         :return bool: whether the record exists in the table
         """
 
-        query_hit = self.get_one_record(
-            rid=record_identifier, table_name=table_name, pipeline_type=self.pipeline_type
-        )
+        query_hit = self.get_one_record(rid=record_identifier, table_name=table_name)
         return query_hit is not None
 
-    def count_records(self, pipeline_type: Optional[str] = None):
+    def count_records(self):
         """
         Count rows in a selected table
         :param str pipeline_type: sample vs project designator needed to count records in table
         :return int: number of records
         """
-        pipeline_type = pipeline_type or self.pipeline_type
 
         mod = self.get_model(table_name=self.table_name, strict=True)
         with self.session as s:
@@ -127,7 +123,6 @@ class DBBackend(PipestatBackend):
         self,
         table_name: str,
         rid: Optional[str] = None,
-        pipeline_type: Optional[str] = None,
     ):
         """
         Retrieve single record from SQL table
@@ -190,9 +185,7 @@ class DBBackend(PipestatBackend):
                 all_samples_list += sample_list
             return all_samples_list
 
-    def get_status(
-        self, record_identifier: str, pipeline_type: Optional[str] = None
-    ) -> Optional[str]:
+    def get_status(self, record_identifier: str) -> Optional[str]:
         """
         Get pipeline status
 
@@ -206,7 +199,6 @@ class DBBackend(PipestatBackend):
             result = self.retrieve(
                 result_identifier=STATUS,
                 record_identifier=record_identifier,
-                pipeline_type=self.pipeline_type,
             )
         except RecordNotFoundError:
             return None
@@ -228,7 +220,6 @@ class DBBackend(PipestatBackend):
         self,
         restrict_to: Optional[List[str]] = None,
         record_identifier: str = None,
-        pipeline_type: str = None,
     ) -> List[str]:
         """
         Check if the specified results exist in the table
@@ -241,9 +232,7 @@ class DBBackend(PipestatBackend):
         """
 
         rid = record_identifier
-        record = self.get_one_record(
-            rid=rid, table_name=self.table_name, pipeline_type=pipeline_type
-        )
+        record = self.get_one_record(rid=rid, table_name=self.table_name)
 
         if restrict_to is None:
             return (
@@ -264,7 +253,6 @@ class DBBackend(PipestatBackend):
         self,
         record_identifier: Optional[str] = None,
         result_identifier: Optional[str] = None,
-        pipeline_type: Optional[str] = None,
     ) -> bool:
         """
         Remove a result.
@@ -279,7 +267,6 @@ class DBBackend(PipestatBackend):
         :return bool: whether the result has been removed
         """
 
-
         record_identifier = record_identifier or self.record_identifier
 
         rm_record = True if result_identifier is None else False
@@ -287,7 +274,6 @@ class DBBackend(PipestatBackend):
         if not self.check_record_exists(
             record_identifier=record_identifier,
             table_name=self.table_name,
-            pipeline_type=self.pipeline_type,
         ):
             _LOGGER.error(f"Record '{record_identifier}' not found")
             return False
@@ -305,7 +291,6 @@ class DBBackend(PipestatBackend):
             if self.check_record_exists(
                 record_identifier=record_identifier,
                 table_name=self.table_name,
-                pipeline_type=self.pipeline_type,
             ):
                 with self.session as s:
                     records = s.query(ORMClass).filter(
@@ -314,7 +299,6 @@ class DBBackend(PipestatBackend):
                     if rm_record is True:
                         self.remove_record(
                             record_identifier=record_identifier,
-                            pipeline_type=pipeline_type,
                             rm_record=rm_record,
                         )
                     else:
@@ -340,7 +324,6 @@ class DBBackend(PipestatBackend):
     def remove_record(
         self,
         record_identifier: Optional[str] = None,
-        pipeline_type: Optional[str] = None,
         rm_record: Optional[bool] = False,
     ) -> bool:
         """
@@ -352,7 +335,6 @@ class DBBackend(PipestatBackend):
         :return bool: whether the result has been removed
         """
 
-
         record_identifier = record_identifier or self.record_identifier
         if rm_record:
             try:
@@ -360,7 +342,6 @@ class DBBackend(PipestatBackend):
                 if self.check_record_exists(
                     record_identifier=record_identifier,
                     table_name=self.table_name,
-                    pipeline_type=self.pipeline_type,
                 ):
                     with self.session as s:
                         records = s.query(ORMClass).filter(
@@ -380,7 +361,6 @@ class DBBackend(PipestatBackend):
         self,
         values: Dict[str, Any],
         record_identifier: str,
-        pipeline_type: Optional[str] = None,
         force_overwrite: bool = False,
         result_formatter: Optional[staticmethod] = None,
     ) -> Union[List[str], bool]:
@@ -399,7 +379,6 @@ class DBBackend(PipestatBackend):
         :return list results_formatted: return list of formatted string
         """
 
-
         record_identifier = record_identifier or self.record_identifier
 
         result_formatter = result_formatter or self.result_formatter
@@ -412,7 +391,6 @@ class DBBackend(PipestatBackend):
         existing = self.list_results(
             record_identifier=record_identifier,
             restrict_to=result_identifiers,
-            pipeline_type=self.pipeline_type,
         )
         if existing:
             existing_str = ", ".join(existing)
@@ -426,7 +404,6 @@ class DBBackend(PipestatBackend):
             if not self.check_record_exists(
                 record_identifier=record_identifier,
                 table_name=self.table_name,
-                pipeline_type=self.pipeline_type,
             ):
                 new_record = ORMClass(**values)
                 with self.session as s:
@@ -461,7 +438,6 @@ class DBBackend(PipestatBackend):
         self,
         record_identifier: Optional[str] = None,
         result_identifier: Optional[str] = None,
-        pipeline_type: Optional[str] = None,
     ) -> Union[Any, Dict[str, Any]]:
         """
         Retrieve a result for a record.
@@ -476,15 +452,12 @@ class DBBackend(PipestatBackend):
             results reported for the record
         """
 
-
         record_identifier = record_identifier or self.record_identifier
-
 
         if result_identifier is not None:
             existing = self.list_results(
                 record_identifier=record_identifier,
                 restrict_to=[result_identifier],
-                pipeline_type=self.pipeline_type,
             )
             if not existing:
                 raise RecordNotFoundError(
@@ -516,7 +489,6 @@ class DBBackend(PipestatBackend):
         json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
-        pipeline_type: Optional[str] = None,
     ) -> List[Any]:
         """
         Perform a `SELECT` on the table
@@ -569,7 +541,6 @@ class DBBackend(PipestatBackend):
         table_name: Optional[str] = None,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
-        pipeline_type: Optional[str] = None,
     ) -> List[Any]:
         """
         Execute a query with a textual filter. Returns all results.
@@ -587,7 +558,6 @@ class DBBackend(PipestatBackend):
         :param str pipeline_type: sample vs project pipeline
         :return List[Any]: a list of matched records
         """
-        #pipeline_type = pipeline_type or self.pipeline_type
 
         ORM = self.get_orm(table_name=self.table_name)
         with self.session as s:
@@ -610,7 +580,6 @@ class DBBackend(PipestatBackend):
         self,
         table_name,
         columns,
-        pipeline_type: Optional[str] = None,
     ) -> List[Any]:
         """
         Perform a `SELECT DISTINCT` on given table and column
@@ -620,7 +589,6 @@ class DBBackend(PipestatBackend):
         :param str pipeline_type: "sample" or "project"
         :return List[Any]: returns distinct values.
         """
-        #pipeline_type = pipeline_type or self.pipeline_type
 
         ORM = self.get_orm(table_name=self.table_name)
         with self.session as s:
@@ -633,7 +601,6 @@ class DBBackend(PipestatBackend):
         self,
         status_identifier: str,
         record_identifier: str = None,
-        pipeline_type: Optional[str] = None,
     ) -> None:
         """
         Set pipeline run status.
@@ -648,7 +615,6 @@ class DBBackend(PipestatBackend):
             pipeline status for
         :param str pipeline_type: whether status is being set for a project-level pipeline, or sample-level
         """
-        #pipeline_type = pipeline_type or self.pipeline_type
 
         record_identifier = record_identifier or self.record_identifier
         known_status_identifiers = self.status_schema.keys()
@@ -657,12 +623,11 @@ class DBBackend(PipestatBackend):
                 f"'{status_identifier}' is not a defined status identifier. "
                 f"These are allowed: {known_status_identifiers}"
             )
-        prev_status = self.get_status(record_identifier, pipeline_type)
+        prev_status = self.get_status(record_identifier)
         try:
             self.report(
                 values={STATUS: status_identifier},
                 record_identifier=record_identifier,
-                pipeline_type=self.pipeline_type,
             )
         except Exception as e:
             _LOGGER.error(

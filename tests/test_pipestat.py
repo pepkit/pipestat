@@ -118,37 +118,31 @@ class TestSplitClasses:
             )
             args.update(backend_data)
             psm = ProjectPipestatManager(**args)
-            psm.report(
-                record_identifier=rec_id, values=val, force_overwrite=True, pipeline_type="project"
-            )
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
             val_name = list(val.keys())[0]
-            psm.set_status(
-                status_identifier="running", record_identifier=rec_id, pipeline_type="project"
-            )
-            status = psm.get_status(record_identifier=rec_id, pipeline_type="project")
+            psm.set_status(status_identifier="running", record_identifier=rec_id)
+            status = psm.get_status(record_identifier=rec_id)
             assert status == "running"
-            assert val_name in psm.retrieve(record_identifier=rec_id, pipeline_type="project")
-            psm.remove(
-                record_identifier=rec_id, result_identifier=val_name, pipeline_type="project"
-            )
+            assert val_name in psm.retrieve(record_identifier=rec_id)
+            psm.remove(record_identifier=rec_id, result_identifier=val_name)
             if backend == "file":
-                psm.clear_status(record_identifier=rec_id, pipeline_type="project")
-                status = psm.get_status(record_identifier=rec_id, pipeline_type="project")
+                psm.clear_status(record_identifier=rec_id)
+                status = psm.get_status(record_identifier=rec_id)
                 assert status is None
                 with pytest.raises(RecordNotFoundError):
-                    psm.retrieve(record_identifier=rec_id, pipeline_type="project")
+                    psm.retrieve(record_identifier=rec_id)
             if backend == "db":
                 assert (
                     getattr(
-                        psm.retrieve(record_identifier=rec_id, pipeline_type="project"),
+                        psm.retrieve(record_identifier=rec_id),
                         val_name,
                         None,
                     )
                     is None
                 )
-                psm.remove(record_identifier=rec_id, pipeline_type="project")
+                psm.remove(record_identifier=rec_id)
                 with pytest.raises(RecordNotFoundError):
-                    psm.retrieve(record_identifier=rec_id, pipeline_type="project")
+                    psm.retrieve(record_identifier=rec_id)
 
 
 class TestReporting:
@@ -826,20 +820,16 @@ class TestHTMLReport:
 
             for i in values_sample:
                 for r, v in i.items():
-                    psm.report(
-                        record_identifier=r, values=v, force_overwrite=True, pipeline_type="sample"
-                    )
-                    psm.set_status(
-                        record_identifier=r, status_identifier="running", pipeline_type="sample"
-                    )
+                    psm.report(record_identifier=r, values=v, force_overwrite=True)
+                    psm.set_status(record_identifier=r, status_identifier="running")
 
             # project level
             # psm2 = ProjectPipestatManager(**args)
             # psm2.report(
-            #     record_identifier=rec_id, values=val, force_overwrite=True, pipeline_type="project"
+            #     record_identifier=rec_id, values=val, force_overwrite=True
             # )
             # psm2.set_status(
-            #     record_identifier=rec_id, status_identifier="completed", pipeline_type="project"
+            #     record_identifier=rec_id, status_identifier="completed"
             # )
             #
             # for i in values_project:
@@ -851,7 +841,7 @@ class TestHTMLReport:
             #             pipeline_type="project",
             #         )
             #         psm2.set_status(
-            #             record_identifier=r, status_identifier="running", pipeline_type="project"
+            #             record_identifier=r, status_identifier="running"
             #         )
 
             try:
@@ -905,10 +895,10 @@ class TestHTMLReport:
             # project level
             psm = ProjectPipestatManager(**args)
             # psm2.report(
-            #     record_identifier=rec_id, values=val, force_overwrite=True, pipeline_type="project"
+            #     record_identifier=rec_id, values=val, force_overwrite=True
             # )
             # psm2.set_status(
-            #     record_identifier=rec_id, status_identifier="completed", pipeline_type="project"
+            #     record_identifier=rec_id, status_identifier="completed"
             # )
 
             for i in values_project:
@@ -917,11 +907,8 @@ class TestHTMLReport:
                         record_identifier=r,
                         values=v,
                         force_overwrite=True,
-                        pipeline_type="project",
                     )
-                    psm.set_status(
-                        record_identifier=r, status_identifier="running", pipeline_type="project"
-                    )
+                    psm.set_status(record_identifier=r, status_identifier="running")
 
             try:
                 htmlreportpath = psm.summarize(amendment="")

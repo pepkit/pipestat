@@ -98,7 +98,7 @@ class TestDatabaseOnly:
                         values=val,
                         force_overwrite=True,
                         strict_type=False,
-                        pipeline_type=pipeline_type,
+                        # pipeline_type=pipeline_type,
                     )
                     assert psm.backend.select(filter_conditions=[(val_name, "eq", val[val_name])])
                 else:
@@ -110,7 +110,7 @@ class TestDatabaseOnly:
                         values=val,
                         force_overwrite=True,
                         strict_type=False,
-                        pipeline_type=pipeline_type,
+                        # pipeline_type=pipeline_type,
                     )
                     val_name = list(val.keys())[0]
                     assert psm.backend.select(filter_conditions=[(val_name, "eq", val[val_name])])

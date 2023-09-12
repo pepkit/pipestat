@@ -227,7 +227,6 @@ class PipestatManager(dict):
         self,
         record_identifier: str = None,
         flag_names: List[str] = None,
-        pipeline_type: Optional[str] = None,
     ) -> List[Union[str, None]]:
         """
         Remove status flags
@@ -239,28 +238,23 @@ class PipestatManager(dict):
         :param str pipeline_type: "sample" or "project"
         :return List[str]: Collection of names of flags removed
         """
-        pipeline_type = pipeline_type or self.pipeline_type
-        # r_id = self._get_record_identifier(
-        #     pipeline_type=pipeline_type, record_identifier=record_identifier, project_name=project_name
-        # )
+
         r_id = record_identifier or self.record_identifier
         return self.backend.clear_status(record_identifier=r_id, flag_names=flag_names)
 
     @require_backend
-    def count_records(self, pipeline_type: Optional[str] = None) -> int:
+    def count_records(self) -> int:
         """
         Count records
         :param str pipeline_type: "sample" or "project"
         :return int: number of records
         """
-        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        return self.backend.count_records(pipeline_type)
+        return self.backend.count_records()
 
     @require_backend
     def get_status(
         self,
         record_identifier: str = None,
-        pipeline_type: Optional[str] = None,
     ) -> Optional[str]:
         """
         Get the current pipeline status
@@ -270,12 +264,8 @@ class PipestatManager(dict):
         :return str: status identifier, like 'running'
         """
 
-        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        # r_id = self._get_record_identifier(
-        #     pipeline_type=pipeline_type, record_identifier=record_identifier, project_name=project_name
-        # )
         r_id = record_identifier or self.record_identifier
-        return self.backend.get_status(record_identifier=r_id, pipeline_type=pipeline_type)
+        return self.backend.get_status(record_identifier=r_id)
 
     def process_schema(self, schema_path):
         # Load pipestat schema in two parts: 1) main and 2) status
@@ -347,7 +337,6 @@ class PipestatManager(dict):
         self,
         record_identifier: str = None,
         result_identifier: str = None,
-        pipeline_type: Optional[str] = None,
     ) -> bool:
         """
         Remove a result.
@@ -363,10 +352,6 @@ class PipestatManager(dict):
         :return bool: whether the result has been removed
         """
 
-        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        # r_id = self._get_record_identifier(
-        #     pipeline_type=pipeline_type, record_identifier=record_identifier, project_name=project_name
-        # )
         r_id = record_identifier or self.record_identifier
         return self.backend.remove(
             record_identifier=r_id,

@@ -70,7 +70,6 @@ class PipestatBackend(ABC):
                 self.list_results(
                     restrict_to=[result_identifier],
                     record_identifier=record_identifier,
-                    pipeline_type=pipeline_type,
                 )
             )
             > 0
