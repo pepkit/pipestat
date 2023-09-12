@@ -152,6 +152,7 @@ class DBBackend(PipestatBackend):
         """Returns list of sample names and pipeline type as a list of tuples that have been reported, regardless of sample or project level"""
         all_samples_list = []
 
+        # TODO this should be simplified with the separation of sample and project managers.
         if pipeline_type is not None:
             table_name = self.get_table_name(pipeline_type)
             mod = self.get_model(table_name=table_name, strict=True)

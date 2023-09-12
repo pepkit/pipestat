@@ -368,7 +368,7 @@ class PipestatManager(dict):
         # r_id = self._get_record_identifier(
         #     pipeline_type=pipeline_type, record_identifier=record_identifier, project_name=project_name
         # )
-        r_id = record_identifier  or self.record_identifier
+        r_id = record_identifier or self.record_identifier
         return self.backend.remove(
             record_identifier=r_id,
             result_identifier=result_identifier,
