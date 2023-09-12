@@ -187,7 +187,9 @@ class DBBackend(PipestatBackend):
                 all_samples_list += sample_list
             return all_samples_list
 
-    def get_status(self, record_identifier: str, pipeline_type: Optional[str] = None) -> Optional[str]:
+    def get_status(
+        self, record_identifier: str, pipeline_type: Optional[str] = None
+    ) -> Optional[str]:
         """
         Get pipeline status
 
@@ -314,7 +316,9 @@ class DBBackend(PipestatBackend):
         try:
             ORMClass = self.get_orm(table_name=table_name)
             if self.check_record_exists(
-                record_identifier=record_identifier, table_name=table_name, pipeline_type=pipeline_type
+                record_identifier=record_identifier,
+                table_name=table_name,
+                pipeline_type=pipeline_type,
             ):
                 with self.session as s:
                     if pipeline_type == "sample":
@@ -372,7 +376,9 @@ class DBBackend(PipestatBackend):
             try:
                 ORMClass = self.get_orm(table_name=table_name)
                 if self.check_record_exists(
-                    record_identifier=record_identifier, table_name=table_name, pipeline_type=pipeline_type
+                    record_identifier=record_identifier,
+                    table_name=table_name,
+                    pipeline_type=pipeline_type,
                 ):
                     with self.session as s:
                         if pipeline_type == "sample":
@@ -417,7 +423,7 @@ class DBBackend(PipestatBackend):
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
-        #record_identifier = record_identifier or self.record_identifier
+        # record_identifier = record_identifier or self.record_identifier
         record_identifier = record_identifier
         result_formatter = result_formatter or self.result_formatter
         results_formatted = []
@@ -451,7 +457,9 @@ class DBBackend(PipestatBackend):
             #     # we should consider changing this back to record_identifier as the generic term.
             #     values.update({"project_name": record_identifier})
             if not self.check_record_exists(
-                record_identifier=record_identifier, table_name=table_name, pipeline_type=self.pipeline_type
+                record_identifier=record_identifier,
+                table_name=table_name,
+                pipeline_type=self.pipeline_type,
             ):
                 new_record = ORMClass(**values)
                 with self.session as s:
@@ -531,7 +539,9 @@ class DBBackend(PipestatBackend):
         with self.session as s:
             if pipeline_type == "sample":
                 record = (
-                    s.query(self.get_orm(table_name=tn)).filter_by(record_identifier=record_identifier).first()
+                    s.query(self.get_orm(table_name=tn))
+                    .filter_by(record_identifier=record_identifier)
+                    .first()
                 )
             if pipeline_type == "project":
                 record = (
@@ -718,7 +728,7 @@ class DBBackend(PipestatBackend):
 
     def _create_orms(self, pipeline_type):
         """Create ORMs."""
-        #_LOGGER.debug(f"Creating models for '{self.project_name}' table in '{PKG_NAME}' database")
+        # _LOGGER.debug(f"Creating models for '{self.project_name}' table in '{PKG_NAME}' database")
         model = self.parsed_schema.build_model(pipeline_type=pipeline_type)
         # project_mod = self.parsed_schema.build_project_model()
         # samples_mod = self.parsed_schema.build_sample_model()

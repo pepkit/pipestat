@@ -94,7 +94,9 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
-    def get_status(self, record_identifier: str, pipeline_type: Optional[str] = None) -> Optional[str]:
+    def get_status(
+        self, record_identifier: str, pipeline_type: Optional[str] = None
+    ) -> Optional[str]:
         _LOGGER.warning("Not implemented yet for this backend")
 
     def clear_status(
@@ -117,11 +119,10 @@ class PipestatBackend(ABC):
     def report(
         self,
         values: Dict[str, Any],
-        record_identifier: Optional[str] = None,
-        force_overwrite: bool = False,
-        strict_type: bool = True,
-        return_id: bool = False,
+        record_identifier: str,
         pipeline_type: Optional[str] = None,
+        force_overwrite: bool = False,
+        result_formatter: Optional[staticmethod] = None,
     ) -> str:
         _LOGGER.warning("Not implemented yet for this backend")
 

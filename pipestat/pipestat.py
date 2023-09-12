@@ -369,19 +369,20 @@ class PipestatManager(dict):
         # )
         r_id = record_identifier
         return self.backend.remove(
-            record_identifier=r_id, result_identifier=result_identifier,
+            record_identifier=r_id,
+            result_identifier=result_identifier,
         )
 
     @require_backend
     def report(
         self,
         values: Dict[str, Any],
-        record_identifier: str = None,
+        record_identifier: Optional[str] = None,
+        pipeline_type: Optional[str] = None,
         force_overwrite: bool = False,
+        result_formatter: Optional[staticmethod] = None,
         strict_type: bool = True,
         return_id: bool = False,
-        pipeline_type: Optional[str] = None,
-        result_formatter: staticmethod = default_formatter,
     ) -> Union[List[str], bool]:
         """
         Report a result.
@@ -411,9 +412,7 @@ class PipestatManager(dict):
 
         r_id = record_identifier or None
         if r_id is None:
-            raise NotImplementedError(
-                "You must supply a record identifier to report results"
-            )
+            raise NotImplementedError("You must supply a record identifier to report results")
 
         if return_id and self[FILE_KEY] is not None:
             raise NotImplementedError(
@@ -428,7 +427,10 @@ class PipestatManager(dict):
                 )
 
         reported_results = self.backend.report(
-            values, r_id, force_overwrite, result_formatter
+            values=values,
+            record_identifier=r_id,
+            force_overwrite=force_overwrite,
+            result_formatter=result_formatter,
         )
 
         return reported_results
@@ -726,11 +728,11 @@ class PipestatManager(dict):
 
 class SamplePipestatManager(PipestatManager):
     def __init__(self, **kwargs):
-        PipestatManager.__init__(self, pipeline_type='sample',**kwargs)
+        PipestatManager.__init__(self, pipeline_type="sample", **kwargs)
         _LOGGER.warning("Initialize PipestatMgrSample")
 
 
 class ProjectPipestatManager(PipestatManager):
     def __init__(self, **kwargs):
-        PipestatManager.__init__(self, pipeline_type='project',**kwargs)
+        PipestatManager.__init__(self, pipeline_type="project", **kwargs)
         _LOGGER.warning("Initialize PipestatMgrProject")

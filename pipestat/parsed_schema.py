@@ -77,7 +77,6 @@ class ParsedSchema(object):
     _SAMPLES_KEY = "samples"
     _STATUS_KEY = "status"
 
-
     def __init__(self, data: Union[Dict[str, Any], Path, str]) -> None:
         # initial validation and parse
         if not isinstance(data, dict):
@@ -242,19 +241,17 @@ class ParsedSchema(object):
             data = self.sample_level_data
             table_name = self.sample_table_name
 
-
         if not self.sample_level_data and not self.project_level_data:
             return None
 
         field_defs = self._make_field_definitions(data, require_type=True)
         field_defs = self._add_status_field(field_defs)
-        #field_defs = self._add_sample_name_field(field_defs)
+        # field_defs = self._add_sample_name_field(field_defs)
         field_defs = self._add_record_identifier_field(field_defs)
         field_defs = self._add_id_field(field_defs)
         field_defs = self._add_project_name_field(field_defs)
         field_defs = self._add_pipeline_name_field(field_defs)
         return _create_model(table_name, **field_defs)
-
 
     def to_dict(self) -> Dict[str, Any]:
         """Create simple dictionary representation of this instance."""
@@ -308,6 +305,7 @@ class ParsedSchema(object):
             )
         field_defs[RECORD_IDENTIFIER] = (str, Field(default=None))
         return field_defs
+
     @staticmethod
     def _add_sample_name_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
         if SAMPLE_NAME in field_defs:

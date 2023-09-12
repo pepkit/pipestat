@@ -167,7 +167,9 @@ class FileBackend(PipestatBackend):
             all_samples_list += sample_list
         return all_samples_list
 
-    def get_status(self, record_identifier: str, pipeline_type: Optional[str] = None) -> Optional[str]:
+    def get_status(
+        self, record_identifier: str, pipeline_type: Optional[str] = None
+    ) -> Optional[str]:
         """
         Get the current pipeline status
 
@@ -223,7 +225,7 @@ class FileBackend(PipestatBackend):
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
-        #record_identifier = record_identifier or self.record_identifier
+        # record_identifier = record_identifier or self.record_identifier
         record_identifier = record_identifier
 
         try:
@@ -287,7 +289,9 @@ class FileBackend(PipestatBackend):
                 f"'{record_identifier}' from '{self.pipeline_name}' namespace"
             )
             if not self._data[self.pipeline_name][pipeline_type][record_identifier]:
-                _LOGGER.info(f"Last result removed for '{record_identifier}'. " f"Removing the record")
+                _LOGGER.info(
+                    f"Last result removed for '{record_identifier}'. " f"Removing the record"
+                )
                 rm_record = True
                 self.remove_record(
                     record_identifier=record_identifier,
@@ -351,14 +355,16 @@ class FileBackend(PipestatBackend):
         """
 
         pipeline_type = pipeline_type or self.pipeline_type
-        #record_identifier = record_identifier or self.record_identifier
+        # record_identifier = record_identifier or self.record_identifier
         record_identifier = record_identifier
         result_formatter = result_formatter or self.result_formatter
         results_formatted = []
 
         result_identifiers = list(values.keys())
         if self.parsed_schema is not None:
-            self.assert_results_defined(results=result_identifiers, pipeline_type=self.pipeline_type)
+            self.assert_results_defined(
+                results=result_identifiers, pipeline_type=self.pipeline_type
+            )
         existing = self.list_results(
             record_identifier=record_identifier,
             restrict_to=result_identifiers,
@@ -415,7 +421,10 @@ class FileBackend(PipestatBackend):
             raise RecordNotFoundError(f"Record '{record_identifier}' not found")
         if result_identifier is None:
             return self._data.exp[self.pipeline_name][pipeline_type][record_identifier]
-        if result_identifier not in self._data[self.pipeline_name][pipeline_type][record_identifier]:
+        if (
+            result_identifier
+            not in self._data[self.pipeline_name][pipeline_type][record_identifier]
+        ):
             raise RecordNotFoundError(
                 f"Result '{result_identifier}' not found for record '{record_identifier}'"
             )
