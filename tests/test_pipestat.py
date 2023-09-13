@@ -4,7 +4,7 @@ from collections.abc import Mapping
 import pytest
 from jsonschema import ValidationError
 
-from pipestat import SamplePipestatManager, ProjectPipestatManager
+from pipestat import SamplePipestatManager, ProjectPipestatManager, PipestatBoss
 from pipestat.const import *
 from pipestat.exceptions import *
 from pipestat.parsed_schema import ParsedSchema
@@ -771,6 +771,48 @@ def test_manager_has_correct_status_schema_and_status_schema_source(
     assert psm.status_schema_source == exp_status_schema_path
 
 
+class TestPipestatBoss:
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_basic_pipestatboss(
+        self,
+        config_file_path,
+        output_schema_html_report,
+        results_file_path,
+        backend,
+    ):
+        pipeline_list = ["sample", "project"]
+        values_project = [
+            {"project_name_1": {"number_of_things": 2}},
+            {"project_name_1": {"name_of_something": "name of something string"}},
+        ]
+
+        values_sample = [
+            {"sample4": {"smooth_bw": "smooth_bw string"}},
+            {"sample5": {"output_file": {"path": "path_string", "title": "title_string"}}},
+        ]
+
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=output_schema_html_report, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+
+            psb = PipestatBoss(pipeline_list=pipeline_list, **args)
+
+            for i in values_sample:
+                for r, v in i.items():
+                    psb.SampleManager.report(record_identifier=r, values=v, force_overwrite=True)
+                    psb.SampleManager.set_status(record_identifier=r, status_identifier="running")
+            for i in values_project:
+                for r, v in i.items():
+                    psb.ProjectManager.report(record_identifier=r, values=v, force_overwrite=True)
+                    psb.ProjectManager.set_status(record_identifier=r, status_identifier="running")
+
+
 class TestHTMLReport:
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -823,38 +865,11 @@ class TestHTMLReport:
                     psm.report(record_identifier=r, values=v, force_overwrite=True)
                     psm.set_status(record_identifier=r, status_identifier="running")
 
-            # project level
-            # psm2 = ProjectPipestatManager(**args)
-            # psm2.report(
-            #     record_identifier=rec_id, values=val, force_overwrite=True
-            # )
-            # psm2.set_status(
-            #     record_identifier=rec_id, status_identifier="completed"
-            # )
-            #
-            # for i in values_project:
-            #     for r, v in i.items():
-            #         psm2.report(
-            #             record_identifier=r,
-            #             values=v,
-            #             force_overwrite=True,
-            #             pipeline_type="project",
-            #         )
-            #         psm2.set_status(
-            #             record_identifier=r, status_identifier="running"
-            #         )
-
             try:
                 htmlreportpath = psm.summarize(amendment="")
                 assert htmlreportpath is not None
             except:
                 assert 0
-
-            # try:
-            #     htmlreportpath = psm2.summarize(amendment="")
-            #     assert htmlreportpath is not None
-            # except:
-            #     assert 0
 
             try:
                 table_paths = psm.table()
@@ -862,17 +877,9 @@ class TestHTMLReport:
             except:
                 assert 0
 
-            # try:
-            #     table_paths = psm2.table()
-            #     assert table_paths is not None
-            # except:
-            #     assert 0
-
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_basics_project(
         self,
-        # rec_id,
-        # val,
         config_file_path,
         output_schema_html_report,
         results_file_path,
@@ -894,12 +901,6 @@ class TestHTMLReport:
             args.update(backend_data)
             # project level
             psm = ProjectPipestatManager(**args)
-            # psm2.report(
-            #     record_identifier=rec_id, values=val, force_overwrite=True
-            # )
-            # psm2.set_status(
-            #     record_identifier=rec_id, status_identifier="completed"
-            # )
 
             for i in values_project:
                 for r, v in i.items():

@@ -3,6 +3,8 @@ from logging import getLogger
 from copy import deepcopy
 from typing import List
 
+from abc import ABC
+
 from pipestat.backends.filebackend import FileBackend
 from pipestat.backends.dbbackend import DBBackend
 
@@ -671,3 +673,40 @@ class ProjectPipestatManager(PipestatManager):
     def __init__(self, **kwargs):
         PipestatManager.__init__(self, pipeline_type="project", **kwargs)
         _LOGGER.warning("Initialize PipestatMgrProject")
+
+
+class PipestatBoss(ABC):
+    """
+    PipestatBoss simply holds Sample or Project Managers that are child classes of PipestatManager.
+        record_identifier: Optional[str] = None,
+        schema_path: Optional[str] = None,
+        results_file_path: Optional[str] = None,
+        database_only: Optional[bool] = True,
+        config_file: Optional[str] = None,
+        config_dict: Optional[dict] = None,
+        flag_file_dir: Optional[str] = None,
+        show_db_logs: bool = False,
+        pipeline_type: Optional[str] = None,
+        pipeline_name: Optional[str] = DEFAULT_PIPELINE_NAME,
+        result_formatter: staticmethod = default_formatter,
+        multi_pipelines: bool = False,
+        output_dir: Optional[str] = None,
+    """
+
+    def __init__(self, pipeline_list: Optional[list] = None, **kwargs):
+        _LOGGER.warning("Initialize PipestatBoss")
+        for i in pipeline_list:
+            if i == "sample":
+                print("assign sample manager here")
+                self["SampleManager"] = SamplePipestatManager(**kwargs)
+            elif i == "project":
+                print("assign project manager here")
+                self["ProjectManager"] = ProjectPipestatManager(**kwargs)
+            else:
+                print("This pipeline type is not supported. Pipeline supplied: ", i)
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
