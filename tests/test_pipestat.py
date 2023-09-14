@@ -805,12 +805,12 @@ class TestPipestatBoss:
 
             for i in values_sample:
                 for r, v in i.items():
-                    psb.SampleManager.report(record_identifier=r, values=v, force_overwrite=True)
-                    psb.SampleManager.set_status(record_identifier=r, status_identifier="running")
+                    psb.samplemanager.report(record_identifier=r, values=v, force_overwrite=True)
+                    psb.samplemanager.set_status(record_identifier=r, status_identifier="running")
             for i in values_project:
                 for r, v in i.items():
-                    psb.ProjectManager.report(record_identifier=r, values=v, force_overwrite=True)
-                    psb.ProjectManager.set_status(record_identifier=r, status_identifier="running")
+                    psb.projectmanager.report(record_identifier=r, values=v, force_overwrite=True)
+                    psb.projectmanager.set_status(record_identifier=r, status_identifier="running")
 
 
 class TestHTMLReport:

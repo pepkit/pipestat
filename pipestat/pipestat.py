@@ -718,10 +718,10 @@ class PipestatBoss(ABC):
         for i in pipeline_list:
             if i == "sample":
                 print("assign sample manager here")
-                self["SampleManager"] = SamplePipestatManager(**kwargs)
+                self["samplemanager"] = SamplePipestatManager(**kwargs)
             elif i == "project":
                 print("assign project manager here")
-                self["ProjectManager"] = ProjectPipestatManager(**kwargs)
+                self["projectmanager"] = ProjectPipestatManager(**kwargs)
             else:
                 print("This pipeline type is not supported. Pipeline supplied: ", i)
 
