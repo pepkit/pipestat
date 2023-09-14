@@ -113,9 +113,11 @@ class PipestatManager(MutableMapping):
         self[SAMPLE_NAME_ID_KEY] = self[CONFIG_KEY].priority_get(
             "record_identifier", env_var=ENV_VARS["sample_name"], override=record_identifier
         )
+
         self[DB_ONLY_KEY] = database_only
+
         self[PIPELINE_TYPE] = self[CONFIG_KEY].priority_get(
-            "pipeline_type", default="none", override=pipeline_type
+            "pipeline_type", default="sample", override=pipeline_type
         )
 
         self[FILE_KEY] = mk_abs_via_cfg(
