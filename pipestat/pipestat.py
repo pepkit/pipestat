@@ -698,32 +698,39 @@ class ProjectPipestatManager(PipestatManager):
 class PipestatBoss(ABC):
     """
     PipestatBoss simply holds Sample or Project Managers that are child classes of PipestatManager.
-        record_identifier: Optional[str] = None,
-        schema_path: Optional[str] = None,
-        results_file_path: Optional[str] = None,
-        database_only: Optional[bool] = True,
-        config_file: Optional[str] = None,
-        config_dict: Optional[dict] = None,
-        flag_file_dir: Optional[str] = None,
-        show_db_logs: bool = False,
-        pipeline_type: Optional[str] = None,
-        pipeline_name: Optional[str] = DEFAULT_PIPELINE_NAME,
-        result_formatter: staticmethod = default_formatter,
-        multi_pipelines: bool = False,
-        output_dir: Optional[str] = None,
+        :param list[str] pipeline_list: list that holds pipeline types, e.g. ['sample','project']
+        :param str record_identifier: record identifier to report for. This
+            creates a weak bound to the record, which can be overridden in
+            this object method calls
+        :param str schema_path: path to the output schema that formalizes
+            the results structure
+        :param str results_file_path: YAML file to report into, if file is
+            used as the object back-end
+        :param bool database_only: whether the reported data should not be
+            stored in the memory, but only in the database
+        :param str | dict config: path to the configuration file or a mapping
+            with the config file content
+        :param str flag_file_dir: path to directory containing flag files
+        :param bool show_db_logs: Defaults to False, toggles showing database logs
+        :param str pipeline_type: "sample" or "project"
+        :param str result_formatter: function for formatting result
+        :param bool multi_pipelines: allows for running multiple pipelines for one file backend
+        :param str output_dir: target directory for report generation via summarize and table generation via table.
     """
 
     def __init__(self, pipeline_list: Optional[list] = None, **kwargs):
         _LOGGER.warning("Initialize PipestatBoss")
+        if len(pipeline_list) > 3:
+            _LOGGER.warning(
+                "PipestatBoss currently only supports one 'sample' and one 'project' pipeline. Ignoring extra types."
+            )
         for i in pipeline_list:
             if i == "sample":
-                print("assign sample manager here")
-                self["samplemanager"] = SamplePipestatManager(**kwargs)
+                self.samplemanager = SamplePipestatManager(**kwargs)
             elif i == "project":
-                print("assign project manager here")
-                self["projectmanager"] = ProjectPipestatManager(**kwargs)
+                self.projectmanager = ProjectPipestatManager(**kwargs)
             else:
-                print("This pipeline type is not supported. Pipeline supplied: ", i)
+                _LOGGER.warning(f"This pipeline type is not supported. Pipeline supplied: {i}")
 
     def __getitem__(self, key):
         return getattr(self, key)
