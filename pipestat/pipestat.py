@@ -4,6 +4,7 @@ from copy import deepcopy
 from typing import List
 
 from abc import ABC
+from collections.abc import MutableMapping
 
 from pipestat.backends.filebackend import FileBackend
 from pipestat.backends.dbbackend import DBBackend
@@ -31,7 +32,7 @@ def require_backend(func):
     return inner
 
 
-class PipestatManager(dict):
+class PipestatManager(MutableMapping):
     """
     Pipestat standardizes reporting of pipeline results and
     pipeline status management. It formalizes a way for pipeline developers
@@ -83,6 +84,7 @@ class PipestatManager(dict):
         """
 
         super(PipestatManager, self).__init__()
+        self.store = dict()
 
         # Load and validate database configuration
         # If results_file_path is truthy, backend is a file
@@ -223,6 +225,24 @@ class PipestatManager(dict):
         if high_res:
             res += f"\nHighlighted results: {', '.join(high_res)}"
         return res
+
+    def __getitem__(self, key):
+        return self.store[self._keytransform(key)]
+
+    def __setitem__(self, key, value):
+        self.store[self._keytransform(key)] = value
+
+    def __delitem__(self, key):
+        del self.store[self._keytransform(key)]
+
+    def __iter__(self):
+        return iter(self.store)
+
+    def __len__(self):
+        return len(self.store)
+
+    def _keytransform(self, key):
+        return key
 
     @require_backend
     def clear_status(
