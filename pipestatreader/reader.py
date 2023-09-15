@@ -1,5 +1,5 @@
 import fastapi
-
+from typing import Optional
 from pipestat import RecordNotFoundError, SamplePipestatManager
 
 
@@ -42,6 +42,18 @@ async def retrieve_results(record_identifier: str, result_identifier: str):
         # TODO this should be more specific than record not found because maybe it's just the result that does not exist
         return {"result": "Record not found"}
     return {"result": result}
+
+@app.get("/output_schema/")
+async def retrieve_results(pipeline_type: Optional[str] = None):
+    """
+    Get specific result given a record identifier and a result identifier
+    """
+    if pipeline_type is None:
+        return {"output schema": psm.schema}
+    if pipeline_type == "sample":
+        return {"output schema":psm.schema._sample_level_data}
+    if pipeline_type == "project":
+        return {"output schema":psm.schema._project_level_data}
 
 # def pipestat_reader(db_config):
 #     print("hello from reader")
