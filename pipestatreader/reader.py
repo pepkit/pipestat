@@ -1,4 +1,5 @@
 import fastapi
+import uvicorn
 from typing import Optional
 from pipestat import RecordNotFoundError, SamplePipestatManager
 
@@ -72,3 +73,6 @@ async def retrieve_output_schema(pipeline_type: Optional[str] = None):
 #     @app.get("/items/{item_id}")
 #     async def read_item(item_id):
 #         return {"item_id": item_id}
+
+if __name__ == "__main__":
+    uvicorn.run("reader:app", host="0.0.0.0", port=8000, reload=True)
