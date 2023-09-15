@@ -44,16 +44,19 @@ async def retrieve_results(record_identifier: str, result_identifier: str):
     return {"result": result}
 
 @app.get("/output_schema/")
-async def retrieve_results(pipeline_type: Optional[str] = None):
+async def retrieve_output_schema(pipeline_type: Optional[str] = None):
     """
     Get specific result given a record identifier and a result identifier
     """
-    if pipeline_type is None:
-        return {"output schema": psm.schema}
+
     if pipeline_type == "sample":
         return {"output schema":psm.schema._sample_level_data}
     if pipeline_type == "project":
         return {"output schema":psm.schema._project_level_data}
+    if pipeline_type is None:
+        return {"output schema": psm.schema}
+    else:
+        return {"output schema": "output schema not found"}
 
 # def pipestat_reader(db_config):
 #     print("hello from reader")
