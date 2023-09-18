@@ -66,6 +66,29 @@ async def retrieve_output_schema(pipeline_type: Optional[str] = None):
         return {"output schema": "output schema not found"}
 
 
+@app.get("/table_contents/")
+async def retrieve_table_contents():
+    """
+    Get all table contents
+    """
+    # Add skip and limit here as well.
+    results = psm.backend.select()
+    return {"table_contents": results}
+
+
+@app.get("/table_contents/{column_name}")
+async def retrieve_column_contents(column_name: Optional[str] = None):
+    """
+    Get column contents for a specific column name
+    """
+    # Add skip and limit here as well.
+    results = psm.backend.select(columns=[column_name])
+    if results is not None:
+        return {"column_contents": results}
+    else:
+        return {"column_contents": "This column does not exist."}
+
+
 def main():
     uvicorn.run("reader:app", host="0.0.0.0", port=8000, reload=True)
 
