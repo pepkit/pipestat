@@ -14,9 +14,10 @@ app = fastapi.FastAPI(
     version="0.01",
 )
 
+
 class FilterQuery(BaseModel):
     column_names: list[str] | None = None
-    filter_conditions: list[tuple[str,str,str]] | None = None
+    filter_conditions: list[tuple[str, str, str]] | None = None
 
 
 @app.get("/")
@@ -79,6 +80,7 @@ async def retrieve_table_contents():
     results = psm.backend.select()
     return {"table_contents": results}
 
+
 @app.get("/images/")
 async def retrieve_images(pipeline_type: Optional[str] = None):
     """
@@ -86,12 +88,12 @@ async def retrieve_images(pipeline_type: Optional[str] = None):
     """
     list_columns = []
     if pipeline_type == "sample":
-        for k,v in psm.schema._sample_level_data.items():
+        for k, v in psm.schema._sample_level_data.items():
             if v["type"] == "image":
                 list_columns.append(k)
         return {"Image Results": psm.backend.select(columns=list_columns)}
     if pipeline_type == "project":
-        for k,v in psm.schema._project_level_data.items():
+        for k, v in psm.schema._project_level_data.items():
             if v["type"] == "image":
                 list_columns.append(k)
         return {"Image Results": psm.backend.select(columns=list_columns)}
@@ -114,12 +116,12 @@ async def retrieve_files(pipeline_type: Optional[str] = None):
     """
     list_columns = []
     if pipeline_type == "sample":
-        for k,v in psm.schema._sample_level_data.items():
+        for k, v in psm.schema._sample_level_data.items():
             if v["type"] == "file":
                 list_columns.append(k)
         return {"File Results": psm.backend.select(columns=list_columns)}
     if pipeline_type == "project":
-        for k,v in psm.schema._project_level_data.items():
+        for k, v in psm.schema._project_level_data.items():
             if v["type"] == "file":
                 list_columns.append(k)
         return {"File Results": psm.backend.select(columns=list_columns)}
@@ -134,21 +136,24 @@ async def retrieve_files(pipeline_type: Optional[str] = None):
                     list_columns.append(k)
         return {"File Results": psm.backend.select(columns=list_columns)}
 
+
 @app.post("/filtered_table_contents/")
 async def retrieve_filtered_table_contents(query_filter: Optional[FilterQuery] = None):
     """
-    Get column contents for specific column names and/or filter conditions
+        Get column contents for specific column names and/or filter conditions
 
-{
-  "column_names": [
-    "md5sum", "status"
-  ],
-  "filter_conditions": [["record_identifier", "eq", "random_sample_id2"]]
-}
+    {
+      "column_names": [
+        "md5sum", "status"
+      ],
+      "filter_conditions": [["record_identifier", "eq", "random_sample_id2"]]
+    }
 
     """
     try:
-        results = psm.backend.select(columns=query_filter.column_names, filter_conditions=query_filter.filter_conditions)
+        results = psm.backend.select(
+            columns=query_filter.column_names, filter_conditions=query_filter.filter_conditions
+        )
     except AttributeError:
         return {"response": f"Attribute error for query: {query_filter.column_names}"}
     return {"response": results}
