@@ -2,7 +2,7 @@ import fastapi
 import uvicorn
 from typing import Optional
 from pipestat import RecordNotFoundError, SamplePipestatManager
-from fastapi import Query
+from pydantic import BaseModel
 
 # For testing, simply hardcode config atm
 pipestatcfg = "/home/drc/PythonProjects/pipestat/testimport/drcdbconfig.yaml"
@@ -13,6 +13,10 @@ app = fastapi.FastAPI(
     description="Allows reading pipestat files from a POSTGRESQL Server",
     version="0.01",
 )
+
+class FilterQuery(BaseModel):
+    column_names: list[str] | None = None
+    filter_conditions: list[tuple[str,str,str]] | None = None
 
 
 @app.get("/")
@@ -97,44 +101,24 @@ async def retrieve_images():
     # check result schema first?
     return {"file_paths": "Not implemented."}
 
-@app.get("/filtered_table_contents/")
-async def retrieve_filtered_table_contents(
-        column_name_list: Optional[list[str]] = Query(default=None, description="List of column names to select from the table"),
-        #filter_conditions: Optional[list[tuple[str,str,str]]] = Query(None),
-                                   ):
+@app.post("/filtered_table_contents/")
+async def retrieve_filtered_table_contents(query_filter: Optional[FilterQuery] = None):
     """
-    Get column contents for a specific column name
-    """
-    # Add skip and limit here as well.
-    try:
-        results = psm.backend.select(columns=column_name_list, filter_conditions=None)
-    except AttributeError:
-        return {"column_contents": f"Attribute error for query: {column_name_list}"}
-    if results is not None:
-        return {"column_contents": results}
-    else:
-        return {"column_contents": "This column does not exist."}
+    Get column contents for specific column names and/or filter conditions
 
-# @app.get("/filtered_table_contents/")
-# async def retrieve_filtered_column_contents(column_name: Optional[str] = None, filter_conditions: Optional[tuple[str,str,str]] = None):
-#     """
-#     Filter table contents based on column names and/or filter conditions
-#     """
-#     # Add skip and limit here as well.
-#     # filter_conditions=[("record_identifier", "eq", "random_sample_i2")])
-#     if column_name is None and filter_conditions is None:
-#         return {"filtered_table_results": psm.backend.select()}
-#     if column_name and filter_conditions:
-#         results = psm.backend.select(columns=[column_name], filter_conditions=[filter_conditions])
-#     if column_name:
-#         results = psm.backend.select(columns=[column_name])
-#     if filter_conditions:
-#         filter_conditions = tuple(filter_conditions)
-#         results = psm.backend.select(filter_conditions=filter_conditions)
-#     if results is not None:
-#         return {"column_contents": results}
-#     else:
-#         return {"column_contents": "not found"}
+{
+  "column_names": [
+    "md5sum", "status"
+  ],
+  "filter_conditions": [["record_identifier", "eq", "random_sample_id2"]]
+}
+
+    """
+    try:
+        results = psm.backend.select(columns=query_filter.column_names, filter_conditions=query_filter.filter_conditions)
+    except AttributeError:
+        return {"response": f"Attribute error for query: {query_filter.column_names}"}
+    return {"response": results}
 
 
 def main():
