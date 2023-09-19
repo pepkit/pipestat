@@ -80,26 +80,59 @@ async def retrieve_table_contents():
     return {"table_contents": results}
 
 @app.get("/images/")
-async def retrieve_images():
+async def retrieve_images(pipeline_type: Optional[str] = None):
     """
     Get all image paths reported in the table.
     """
-    # Add skip and limit here as well.
-    #results = psm.backend.select()
-    # Should be able to determine if result schema has image type and then use select function to retrieve those
-    # check result schema first?
-    return {"image_paths": "Not implemented."}
+    list_columns = []
+    if pipeline_type == "sample":
+        for k,v in psm.schema._sample_level_data.items():
+            if v["type"] == "image":
+                list_columns.append(k)
+        return {"Image Results": psm.backend.select(columns=list_columns)}
+    if pipeline_type == "project":
+        for k,v in psm.schema._project_level_data.items():
+            if v["type"] == "image":
+                list_columns.append(k)
+        return {"Image Results": psm.backend.select(columns=list_columns)}
+    if pipeline_type is None:
+        if psm.schema._sample_level_data:
+            for k, v in psm.schema._sample_level_data.items():
+                if v["type"] == "image":
+                    list_columns.append(k)
+        if psm.schema._project_level_data:
+            for k, v in psm.schema._project_level_data.items():
+                if v["type"] == "image":
+                    list_columns.append(k)
+        return {"Image Results": psm.backend.select(columns=list_columns)}
+
 
 @app.get("/files/")
-async def retrieve_images():
+async def retrieve_files(pipeline_type: Optional[str] = None):
     """
-    Get all image paths reported in the table.
+    Get all file paths reported in the table.
     """
-    # Add skip and limit here as well.
-    # results = psm.backend.select()
-    # Should be able to determine if result schema has file type and then use select function to retrieve those
-    # check result schema first?
-    return {"file_paths": "Not implemented."}
+    list_columns = []
+    if pipeline_type == "sample":
+        for k,v in psm.schema._sample_level_data.items():
+            if v["type"] == "file":
+                list_columns.append(k)
+        return {"File Results": psm.backend.select(columns=list_columns)}
+    if pipeline_type == "project":
+        for k,v in psm.schema._project_level_data.items():
+            if v["type"] == "file":
+                list_columns.append(k)
+        return {"File Results": psm.backend.select(columns=list_columns)}
+    if pipeline_type is None:
+        if psm.schema._sample_level_data:
+            for k, v in psm.schema._sample_level_data.items():
+                if v["type"] == "file":
+                    list_columns.append(k)
+        if psm.schema._project_level_data:
+            for k, v in psm.schema._project_level_data.items():
+                if v["type"] == "file":
+                    list_columns.append(k)
+        return {"File Results": psm.backend.select(columns=list_columns)}
 
 @app.post("/filtered_table_contents/")
 async def retrieve_filtered_table_contents(query_filter: Optional[FilterQuery] = None):
