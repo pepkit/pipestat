@@ -1,6 +1,6 @@
 import pytest
 
-from pipestat import PipestatManager
+from pipestat import SamplePipestatManager, SamplePipestatManager, ProjectPipestatManager
 from pipestat.const import *
 from .conftest import DB_URL
 
@@ -33,9 +33,9 @@ class TestDatabaseOnly:
     def test_manager_can_be_built_without_exception(self, config_file_path, schema_file_path):
         with ContextManagerDBTesting(DB_URL):
             try:
-                PipestatManager(
+                SamplePipestatManager(
                     schema_path=schema_file_path,
-                    sample_name="irrelevant",
+                    record_identifier="irrelevant",
                     database_only=True,
                     config_file=config_file_path,
                 )
@@ -58,13 +58,13 @@ class TestDatabaseOnly:
         schema_file_path,
     ):
         with ContextManagerDBTesting(DB_URL):
-            psm = PipestatManager(
+            psm = SamplePipestatManager(
                 schema_path=schema_file_path,
-                sample_name="constant_record_id",
+                record_identifier="constant_record_id",
                 database_only=True,
                 config_file=config_file_path,
             )
-            psm.report(values=val, force_overwrite=True)
+            psm.report(record_identifier="constant_record_id", values=val, force_overwrite=True)
             val_name = list(val.keys())[0]
             assert psm.backend.select(filter_conditions=[(val_name, "eq", val[val_name])])
 
@@ -85,9 +85,9 @@ class TestDatabaseOnly:
         pipeline_type,
     ):
         with ContextManagerDBTesting(DB_URL):
-            psm = PipestatManager(
+            psm = SamplePipestatManager(
                 schema_path=schema_with_project_with_samples_without_status,
-                sample_name="constant_record_id",
+                record_identifier="constant_record_id",
                 database_only=True,
                 config_file=config_file_path,
             )
@@ -98,7 +98,7 @@ class TestDatabaseOnly:
                         values=val,
                         force_overwrite=True,
                         strict_type=False,
-                        pipeline_type=pipeline_type,
+                        # pipeline_type=pipeline_type,
                     )
                     assert psm.backend.select(filter_conditions=[(val_name, "eq", val[val_name])])
                 else:
@@ -110,7 +110,7 @@ class TestDatabaseOnly:
                         values=val,
                         force_overwrite=True,
                         strict_type=False,
-                        pipeline_type=pipeline_type,
+                        # pipeline_type=pipeline_type,
                     )
                     val_name = list(val.keys())[0]
                     assert psm.backend.select(filter_conditions=[(val_name, "eq", val[val_name])])
@@ -162,14 +162,14 @@ class TestDatabaseOnly:
     ):
         with ContextManagerDBTesting(DB_URL):
             REC_ID = "constant_record_id"
-            psm = PipestatManager(
+            psm = SamplePipestatManager(
                 schema_path=recursive_schema_file_path,
-                sample_name=REC_ID,
+                record_identifier=REC_ID,
                 database_only=True,
                 config_file=config_file_path,
             )
             psm.report(
-                values=val, force_overwrite=True
+                record_identifier=REC_ID, values=val, force_overwrite=True
             )  # Force overwrite so that resetting the SQL DB is unnecessary.
             val_name = list(val.keys())[0]
             assert psm.backend.select(json_filter_conditions=[(val_name, "eq", val[val_name])])
@@ -184,7 +184,7 @@ class TestDatabaseOnly:
     ):
         with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
-            psm = PipestatManager(**args)
+            psm = SamplePipestatManager(**args)
             with pytest.raises(ValueError):
                 psm.backend.select(
                     filter_conditions=[("bogus_column", "eq", rec_id)],
@@ -202,7 +202,7 @@ class TestDatabaseOnly:
     ):
         with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
-            psm = PipestatManager(**args)
+            psm = SamplePipestatManager(**args)
             with pytest.raises((ValueError, TypeError)):
                 psm.backend.select(
                     filter_conditions=[filter_condition],
@@ -221,9 +221,9 @@ class TestDatabaseOnly:
     ):
         with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
-            psm = PipestatManager(**args)
+            psm = SamplePipestatManager(**args)
             result = psm.backend.select(
-                filter_conditions=[(SAMPLE_NAME, "eq", rec_id)],
+                filter_conditions=[("record_identifier", "eq", rec_id)],
                 columns=[res_id],
                 limit=limit,
             )
@@ -238,7 +238,7 @@ class TestDatabaseOnly:
     ):
         with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
-            psm = PipestatManager(**args)
+            psm = SamplePipestatManager(**args)
             result = psm.backend.select(offset=offset)
             print(result)
             assert len(result) == max((psm.record_count - offset), 0)
@@ -255,7 +255,7 @@ class TestDatabaseOnly:
     ):
         with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
-            psm = PipestatManager(**args)
+            psm = SamplePipestatManager(**args)
             result = psm.backend.select(offset=offset, limit=limit)
             print(result)
             assert len(result) == min(max((psm.record_count - offset), 0), limit)
@@ -275,13 +275,13 @@ class TestDatabaseOnly:
         schema_file_path,
     ):
         with ContextManagerDBTesting(DB_URL):
-            psm = PipestatManager(
+            psm = SamplePipestatManager(
                 schema_path=schema_file_path,
-                sample_name="constant_record_id",
+                record_identifier="constant_record_id",
                 database_only=True,
                 config_file=config_file_path,
             )
-            psm.report(values=val, force_overwrite=True)
+            psm.report(record_identifier="constant_record_id", values=val, force_overwrite=True)
             val_name = list(val.keys())[0]
             # assert psm.backend.select(filter_conditions=[(val_name, "eq", val[val_name])])[0]
             assert val_name in str(psm.backend.select_txt())

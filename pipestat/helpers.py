@@ -240,7 +240,7 @@ def init_generic_config():
     return True
 
 
-def markdown_formatter(pipeline_name, sample_name, res_id, value) -> str:
+def markdown_formatter(pipeline_name, record_identifier, res_id, value) -> str:
     """
     Returns Markdown formatted value as string
     """
@@ -248,20 +248,20 @@ def markdown_formatter(pipeline_name, sample_name, res_id, value) -> str:
         nl = "\n"
         rep_strs = [f"`{res_id}`: ```{value}```"]
         formatted_result = (
-            f"\n > Reported records for `'{sample_name}'` in `'{pipeline_name}'` {nl} "
+            f"\n > Reported records for `'{record_identifier}'` in `'{pipeline_name}'` {nl} "
             + f"{nl} {(nl).join(rep_strs)}"
         )
     else:
         nl = "\n"
         rep_strs = [f"`{res_id}`:\n ```\n{dumps(value, indent=2)}\n```"]
         formatted_result = (
-            f"\n > Reported records for `'{sample_name}'` in `'{pipeline_name}'` {nl} "
+            f"\n > Reported records for `'{record_identifier}'` in `'{pipeline_name}'` {nl} "
             + f"{nl} {(nl).join(rep_strs)}"
         )
     return formatted_result
 
 
-def default_formatter(pipeline_name, sample_name, res_id, value) -> str:
+def default_formatter(pipeline_name, record_identifier, res_id, value) -> str:
     """
     Returns formatted value as string
     """
@@ -269,7 +269,7 @@ def default_formatter(pipeline_name, sample_name, res_id, value) -> str:
     nl = "\n"
     rep_strs = [f"{res_id}: {value}"]
     formatted_result = (
-        f"Reported records for '{sample_name}' in '{pipeline_name}' "
+        f"Reported records for '{record_identifier}' in '{pipeline_name}' "
         + f":{nl} - {(nl + ' - ').join(rep_strs)}"
     )
     return formatted_result
