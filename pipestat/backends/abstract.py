@@ -57,7 +57,6 @@ class PipestatBackend(ABC):
 
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to check
-        :param str pipeline_type: "sample" or "project"
         :return bool: whether the specified result has been reported for the
             indicated record in current namespace
         """

@@ -58,7 +58,7 @@ class DBBackend(PipestatBackend):
         self.result_formatter = result_formatter
 
         self.orms = self._create_orms(pipeline_type=pipeline_type)
-        self.table_name = self.get_table_name(pipeline_type)
+        self.table_name = self.get_table_name()
         SQLModel.metadata.create_all(self._engine)
 
     def check_record_exists(
@@ -166,7 +166,7 @@ class DBBackend(PipestatBackend):
             pipelines = ["sample", "project"]
             for i in pipelines:
                 pipeline_type = i
-                table_name = self.get_table_name(pipeline_type)
+                table_name = self.get_table_name()
                 mod = self.get_model(table_name=table_name, strict=True)
                 with self.session as s:
                     sample_list = []
@@ -185,7 +185,6 @@ class DBBackend(PipestatBackend):
 
         :param str record_identifier: record identifier to set the
             pipeline status for
-        :param str pipeline_type: whether status is being set for a project-level pipeline, or sample-level
         :return str status
         """
 
@@ -198,10 +197,9 @@ class DBBackend(PipestatBackend):
             return None
         return result
 
-    def get_table_name(self, pipeline_type: Optional[str] = None):
+    def get_table_name(self):
         """
-        Get tablename based on pipeline_type
-        :param str pipeline_type: "sample" or "project"
+        Get tablename
         :return str table name: "pipeline_id__sample" or "pipeline_id__project"
         """
 
@@ -220,7 +218,6 @@ class DBBackend(PipestatBackend):
 
         :param List[str] restrict_to: results identifiers to check for
         :param str record_identifier: record to check for
-        :param str pipeline_type: "sample" or "project"
         :return List[str] existing: if no result identifier specified, return all results for the record
         :return List[str]: results identifiers that exist
         """
@@ -257,7 +254,6 @@ class DBBackend(PipestatBackend):
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be removed or None
              if the record should be removed.
-        :param str pipeline_type: "sample" or "project"
         :return bool: whether the result has been removed
         """
 
@@ -322,7 +318,6 @@ class DBBackend(PipestatBackend):
         Remove a record, requires rm_record to be True
 
         :param str record_identifier: unique identifier of the record
-        :param str pipeline_type: "sample" or "project"
         :param bool rm_record: bool for removing record.
         :return bool: whether the result has been removed
         """
@@ -365,7 +360,6 @@ class DBBackend(PipestatBackend):
         :param str record_identifier: unique identifier of the record
         :param Dict[str, Any] values: dict of results identifiers and values
             to be reported
-        :param str pipeline_type: "sample" or "project"
         :param bool force_overwrite: force overwriting of results, defaults to False.
         :param str result_formatter: function for formatting result
         :return list results_formatted: return list of formatted string
@@ -439,7 +433,6 @@ class DBBackend(PipestatBackend):
 
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be retrieved
-        :param str pipeline_type: "sample" or "project"
         :return any | Dict[str, any]: a single result or a mapping with all the
             results reported for the record
         """
@@ -475,7 +468,6 @@ class DBBackend(PipestatBackend):
 
     def select(
         self,
-        table_name: Optional[str] = None,
         columns: Optional[List[str]] = None,
         filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
         json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
@@ -499,7 +491,6 @@ class DBBackend(PipestatBackend):
             supported in non-nested checks, e.g. [("other", "genome", "hg38")]
         :param int offset: skip this number of rows
         :param int limit: include this number of rows
-        :param str pipeline_type: "sample" or "project"
         """
 
         ORM = self.get_orm(table_name=self.table_name)
@@ -530,7 +521,6 @@ class DBBackend(PipestatBackend):
         columns: Optional[List[str]] = None,
         filter_templ: Optional[str] = "",
         filter_params: Optional[Dict[str, Any]] = {},
-        table_name: Optional[str] = None,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
     ) -> List[Any]:
@@ -544,10 +534,8 @@ class DBBackend(PipestatBackend):
              formatted as follows `id<:value and name=:name`
         :param Dict[str, Any] filter_params: a mapping keys specified in the `filter_templ`
             to parameters that are supposed to replace the placeholders
-        :param str table_name: name of the table to query
         :param int offset: skip this number of rows
         :param int limit: include this number of rows
-        :param str pipeline_type: sample vs project pipeline
         :return List[Any]: a list of matched records
         """
 
@@ -570,15 +558,12 @@ class DBBackend(PipestatBackend):
 
     def select_distinct(
         self,
-        table_name,
         columns,
     ) -> List[Any]:
         """
         Perform a `SELECT DISTINCT` on given table and column
 
-        :param str table_name: name of the table to SELECT from
         :param List[str] columns: columns to include in the result
-        :param str pipeline_type: "sample" or "project"
         :return List[Any]: returns distinct values.
         """
 
@@ -605,7 +590,6 @@ class DBBackend(PipestatBackend):
             in the status schema
         :param str record_identifier: record identifier to set the
             pipeline status for
-        :param str pipeline_type: whether status is being set for a project-level pipeline, or sample-level
         """
 
         record_identifier = record_identifier or self.record_identifier

@@ -74,7 +74,6 @@ class FileBackend(PipestatBackend):
         Check if the specified record exists in self._data
 
         :param str record_identifier: record to check for
-        :param str pipeline_type: project or sample pipeline
         :return bool: whether the record exists in the table
         """
 
@@ -115,7 +114,6 @@ class FileBackend(PipestatBackend):
     def count_records(self):
         """
         Count records
-        :param str pipeline_type: sample vs project designator needed to count records
         :return int: number of records
         """
 
@@ -172,7 +170,6 @@ class FileBackend(PipestatBackend):
 
         :param str record_identifier: record identifier to set the
             pipeline status for
-        :param str pipeline_type: "sample" or "project"
         :return str: status identifier, like 'running'
         """
         r_id = record_identifier or self.record_identifier
@@ -216,7 +213,6 @@ class FileBackend(PipestatBackend):
 
         :param List[str] restrict_to: selected subset of names of results to list
         :param str record_identifier: unique identifier of the record
-        :param str pipeline_type: "sample" or "project"
         :return List[str]: names of results which exist
         """
         record_identifier = record_identifier or self.record_identifier
@@ -245,7 +241,6 @@ class FileBackend(PipestatBackend):
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be removed or None
              if the record should be removed.
-        :param str pipeline_type: "sample" or "project"
         :return bool: whether the result has been removed
         """
 
@@ -303,7 +298,6 @@ class FileBackend(PipestatBackend):
         Remove a record, requires rm_record to be True
 
         :param str record_identifier: unique identifier of the record
-        :param str pipeline_type: "sample" or "project"
         :param bool rm_record: bool for removing record.
         :return bool: whether the result has been removed
         """
@@ -338,7 +332,6 @@ class FileBackend(PipestatBackend):
         :param Dict[str, Any] values: dict of results identifiers and values
             to be reported
         :param str record_identifier: unique identifier of the record
-        :param str pipeline_type: "sample" or "project"
         :param bool force_overwrite: Toggles force overwriting results, defaults to False
         :param str result_formatter: function for formatting result
         :return list results_formatted: return list of formatted string
@@ -396,7 +389,6 @@ class FileBackend(PipestatBackend):
 
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be retrieved
-        :param str pipeline_type: "sample" or "project"
         :return any | Dict[str, any]: a single result or a mapping with all the
             results reported for the record
         """
@@ -434,7 +426,6 @@ class FileBackend(PipestatBackend):
             in the status schema
         :param str record_identifier: record identifier to set the
             pipeline status for
-        :param str pipeline_type: "sample" or "project"
         """
         r_id = record_identifier or self.record_identifier
         if self.status_schema is not None:
