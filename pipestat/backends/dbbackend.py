@@ -148,6 +148,8 @@ class DBBackend(PipestatBackend):
         """Returns list of sample names and pipeline type as a list of tuples that have been reported, regardless of sample or project level"""
         all_samples_list = []
 
+        pipeline_type = pipeline_type or self.pipeline_type
+
         # TODO this should be simplified with the separation of sample and project managers.
         if pipeline_type is not None:
             mod = self.get_model(table_name=self.table_name, strict=True)
@@ -157,10 +159,6 @@ class DBBackend(PipestatBackend):
                 records = s.exec(stmt).all()
                 for i in records:
                     pair = (i.record_identifier, pipeline_type)
-                    # if pipeline_type == "sample":
-                    #     pair = (i.record_identifier, pipeline_type)
-                    # elif pipeline_type == "project_name":
-                    #     pair = (i.project_name, pipeline_type)
                     sample_list.append(pair)
 
             return sample_list
@@ -176,10 +174,6 @@ class DBBackend(PipestatBackend):
                     records = s.exec(stmt).all()
                     for i in records:
                         pair = (i.record_identifier, pipeline_type)
-                        # if pipeline_type == "sample":
-                        #     pair = (i.record_identifier, pipeline_type)
-                        # elif pipeline_type == "project_name":
-                        #     pair = (i.project_name, pipeline_type)
                         sample_list.append(pair)
 
                 all_samples_list += sample_list

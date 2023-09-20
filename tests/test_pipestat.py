@@ -392,6 +392,36 @@ class TestRetrieval:
             # Test Retrieve Whole Record
             assert isinstance(psm.retrieve(record_identifier=rec_id), Mapping)
 
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_get_records(
+        self,
+        config_file_path,
+        results_file_path,
+        schema_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            val_dict = {
+                "sample1": {"name_of_something": "test_name"},
+                "sample2": {"number_of_things": 2},
+            }
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args = dict(schema_path=schema_file_path)
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+            for k, v in val_dict.items():
+                psm.report(record_identifier=k, values=v, force_overwrite=True)
+
+            results = psm.get_records()
+            assert results[0][0] == list(val_dict.keys())[0]
+            assert results[1][0] == list(val_dict.keys())[1]
+            assert len(results) == len(list(val_dict.keys()))
+
     @pytest.mark.parametrize(
         ["rec_id", "res_id"],
         [("nonexistent", "name_of_something"), ("sample1", "nonexistent")],

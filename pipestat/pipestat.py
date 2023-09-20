@@ -276,6 +276,14 @@ class PipestatManager(MutableMapping):
         return self.backend.count_records()
 
     @require_backend
+    def get_records(
+        self,
+    ) -> Optional[list]:
+        """Returns list of sample names and pipeline type as a list of tuples that have been reported, regardless of sample or project level"""
+
+        return self.backend.get_records()
+
+    @require_backend
     def get_status(
         self,
         record_identifier: str = None,

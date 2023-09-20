@@ -84,7 +84,7 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
-    def get_samples(
+    def get_records(
         self,
         pipeline_type: Optional[str] = None,
     ):
