@@ -148,6 +148,7 @@ class FileBackend(PipestatBackend):
     ) -> Optional[list]:
         """Returns list of sample names and pipeline type as a list of tuples that have been reported, regardless of sample or project level"""
         all_samples_list = []
+        pipeline_type = pipeline_type or self.pipeline_type
 
         if pipeline_type is not None:
             for k in list(self._data.data[self.pipeline_name][pipeline_type].keys()):
