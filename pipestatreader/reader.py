@@ -4,8 +4,15 @@ from typing import Optional
 from pipestat import RecordNotFoundError, SamplePipestatManager
 from pydantic import BaseModel
 
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--config", type=str, help="an integer number")
+args = parser.parse_args()
+pipestatcfg = args.config
+
 # For testing, simply hardcode config atm
-pipestatcfg = "/home/drc/PythonProjects/pipestat/testimport/drcdbconfig.yaml"
+# pipestatcfg = "/home/drc/PythonProjects/pipestat/testimport/drcdbconfig.yaml"
 psm = SamplePipestatManager(config_file=pipestatcfg)
 
 app = fastapi.FastAPI(
