@@ -58,7 +58,7 @@ class DBBackend(PipestatBackend):
         self.result_formatter = result_formatter
 
         self.orms = self._create_orms(pipeline_type=pipeline_type)
-        self.table_name = self.get_table_name()
+        self.table_name = list(self.orms.keys())[0]
         SQLModel.metadata.create_all(self._engine)
 
     def check_record_exists(
@@ -166,7 +166,7 @@ class DBBackend(PipestatBackend):
             pipelines = ["sample", "project"]
             for i in pipelines:
                 pipeline_type = i
-                table_name = self.get_table_name()
+                table_name = self.table_name
                 mod = self.get_model(table_name=table_name, strict=True)
                 with self.session as s:
                     sample_list = []
@@ -196,17 +196,6 @@ class DBBackend(PipestatBackend):
         except RecordNotFoundError:
             return None
         return result
-
-    def get_table_name(self):
-        """
-        Get tablename
-        :return str table name: "pipeline_id__sample" or "pipeline_id__project"
-        """
-
-        mods = self.orms
-        if len(mods) == 1:
-            return list(mods.keys())[0]
-        raise Exception(f"Cannot determine table suffix with {len(mods)} model(s) present.")
 
     def list_results(
         self,
