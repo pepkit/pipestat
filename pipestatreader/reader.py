@@ -47,6 +47,18 @@ async def retrieve_results(record_identifier: str):
     return {"result": result}
 
 
+@app.get("/data/")
+async def retrieve_all_records():
+    """
+    Get all reported records
+    """
+    try:
+        result = psm.get_records()
+    except RecordNotFoundError:
+        return {"result": "Record not found"}
+    return {"result": result}
+
+
 @app.get("/data/{record_identifier}/{result_identifier}")
 async def retrieve_results(record_identifier: str, result_identifier: str):
     """
