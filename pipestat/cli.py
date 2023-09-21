@@ -47,11 +47,13 @@ def main():
             "constructor or via environment variable. \nPlease see: http://pipestat.databio.org/en/dev/cli/"
         )
         raise PipestatStartupError(msg)
+
     if args.command == SUMMARIZE_CMD:
         psm = PipestatManager(
             schema_path=args.schema,
             results_file_path=args.results_file,
             config_file=args.config,
+            pipeline_type=args.pipeline_type,
         )
         results_path = args.config or args.results_file
         html_report_path = psm.summarize()
@@ -65,6 +67,7 @@ def main():
         config_file=args.config,
         database_only=args.database_only,
         flag_file_dir=args.flag_dir,
+        pipeline_type=args.pipeline_type,
     )
     types_to_read_from_json = ["object"] + list(CANONICAL_TYPES.keys())
     if args.command == REPORT_CMD:
