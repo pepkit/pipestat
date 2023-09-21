@@ -84,39 +84,28 @@ class DBBackend(PipestatBackend):
         :return int: number of records
         """
 
-        mod = self.get_model(table_name=self.table_name, strict=True)
+        mod = self.get_model(table_name=self.table_name)
         with self.session as s:
             stmt = sql_select(mod)
             records = s.exec(stmt).all()
             return len(records)
 
-    def get_model(self, table_name: str, strict: bool):
+    def get_model(self, table_name: str):
         """
         Get model based on table_name
-        :param str table_name: "sample" or "project"
-        :return model
-        """
-        orms = self.orms
-
-        mod = orms.get(table_name)
-
-        if strict and mod is None:
-            raise PipestatDatabaseError(
-                f"No object relational mapper class defined for table '{table_name}'. "
-                f"{len(orms)} defined: {', '.join(orms.keys())}"
-            )
-        return mod
-
-    def get_orm(self, table_name: str) -> Any:
-        """
-        Get an object relational mapper class
-
-        :param str table_name: table name to get a class for
-        :return Any: Object relational mapper class
+        :param str table_name: pipelinename__sample or pipelinename__project
+        :return mod: model/orm associated with the table name
         """
         if self.orms is None:
             raise PipestatDatabaseError("Object relational mapper classes not defined.")
-        mod = self.get_model(table_name=table_name, strict=True)
+
+        mod = self.orms.get(table_name)
+
+        if mod is None:
+            raise PipestatDatabaseError(
+                f"No object relational mapper class defined for table '{table_name}'. "
+                f"{len(self.orms)} defined: {', '.join(self.orms.keys())}"
+            )
         return mod
 
     def get_one_record(
@@ -132,7 +121,9 @@ class DBBackend(PipestatBackend):
         :return Any: Record object
         """
 
-        models = [self.get_orm(table_name=table_name)] if table_name else list(self.orms.values())
+        models = (
+            [self.get_model(table_name=table_name)] if table_name else list(self.orms.values())
+        )
         with self.session as s:
             for mod in models:
                 stmt = sql_select(mod).where(mod.record_identifier == rid)
@@ -152,7 +143,7 @@ class DBBackend(PipestatBackend):
 
         # TODO this should be simplified with the separation of sample and project managers.
         if pipeline_type is not None:
-            mod = self.get_model(table_name=self.table_name, strict=True)
+            mod = self.get_model(table_name=self.table_name)
             with self.session as s:
                 sample_list = []
                 stmt = sql_select(mod)
@@ -167,7 +158,7 @@ class DBBackend(PipestatBackend):
             for i in pipelines:
                 pipeline_type = i
                 table_name = self.table_name
-                mod = self.get_model(table_name=table_name, strict=True)
+                mod = self.get_model(table_name=table_name)
                 with self.session as s:
                     sample_list = []
                     stmt = sql_select(mod)
@@ -265,7 +256,7 @@ class DBBackend(PipestatBackend):
             return False
 
         try:
-            ORMClass = self.get_orm(table_name=self.table_name)
+            ORMClass = self.get_model(table_name=self.table_name)
             if self.check_record_exists(
                 record_identifier=record_identifier,
                 table_name=self.table_name,
@@ -314,7 +305,7 @@ class DBBackend(PipestatBackend):
         record_identifier = record_identifier or self.record_identifier
         if rm_record:
             try:
-                ORMClass = self.get_orm(table_name=self.table_name)
+                ORMClass = self.get_model(table_name=self.table_name)
                 if self.check_record_exists(
                     record_identifier=record_identifier,
                     table_name=self.table_name,
@@ -374,7 +365,7 @@ class DBBackend(PipestatBackend):
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
         try:
-            ORMClass = self.get_orm(table_name=self.table_name)
+            ORMClass = self.get_model(table_name=self.table_name)
             values.update({RECORD_IDENTIFIER: record_identifier})
             if not self.check_record_exists(
                 record_identifier=record_identifier,
@@ -440,7 +431,7 @@ class DBBackend(PipestatBackend):
 
         with self.session as s:
             record = (
-                s.query(self.get_orm(table_name=self.table_name))
+                s.query(self.get_model(table_name=self.table_name))
                 .filter_by(record_identifier=record_identifier)
                 .first()
             )
@@ -482,7 +473,7 @@ class DBBackend(PipestatBackend):
         :param int limit: include this number of rows
         """
 
-        ORM = self.get_orm(table_name=self.table_name)
+        ORM = self.get_model(table_name=self.table_name)
 
         with self.session as s:
             if columns is not None:
@@ -528,7 +519,7 @@ class DBBackend(PipestatBackend):
         :return List[Any]: a list of matched records
         """
 
-        ORM = self.get_orm(table_name=self.table_name)
+        ORM = self.get_model(table_name=self.table_name)
         with self.session as s:
             if columns is not None:
                 q = (
@@ -556,7 +547,7 @@ class DBBackend(PipestatBackend):
         :return List[Any]: returns distinct values.
         """
 
-        ORM = self.get_orm(table_name=self.table_name)
+        ORM = self.get_model(table_name=self.table_name)
         with self.session as s:
             query = s.query(*[getattr(ORM, column) for column in columns])
             query = query.distinct()
