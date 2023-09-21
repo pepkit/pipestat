@@ -1,23 +1,23 @@
+import argparse
 import fastapi
 import uvicorn
 from typing import Optional
 from pipestat import RecordNotFoundError, SamplePipestatManager
 from pydantic import BaseModel
 
-import argparse
-
+# Simple Argument Parser
 parser = argparse.ArgumentParser()
-parser.add_argument("--config", type=str, help="an integer number")
+parser.add_argument("--config", type=str, help="absolute path to pipestat config file.")
 args = parser.parse_args()
 pipestatcfg = args.config
 
-# For testing, simply hardcode config atm
+# Create PipestatManager that will interface with the PostgreSQL database
 # pipestatcfg = "/home/drc/PythonProjects/pipestat/testimport/drcdbconfig.yaml"
 psm = SamplePipestatManager(config_file=pipestatcfg)
 
 app = fastapi.FastAPI(
     title="Pipestat Reader",
-    description="Allows reading pipestat files from a POSTGRESQL Server",
+    description="Allows reading pipestat files from a PostgreSQL Database",
     version="0.01",
 )
 
@@ -36,7 +36,7 @@ async def home():
 
 
 @app.get("/data/{record_identifier}")
-async def retrieve_results(record_identifier: str):
+async def retrieve_results_one_record(record_identifier: str):
     """
     Get all the results for one record
     """
@@ -77,7 +77,7 @@ async def retrieve_results(record_identifier: str, result_identifier: str):
 @app.get("/output_schema/")
 async def retrieve_output_schema(pipeline_type: Optional[str] = None):
     """
-    Get specific result given a record identifier and a result identifier
+    Get the output_schema used by the PipestatManager.
     """
 
     if pipeline_type == "sample":
