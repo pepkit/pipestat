@@ -84,7 +84,7 @@ def main():
                 _LOGGER.info(f"Path to read for {value} doesn't exist: {path_to_read}")
 
         reported_results = psm.report(
-            sample_name=args.sample_name,
+            record_identifier=args.record_identifier,
             values={args.result_identifier: value},
             force_overwrite=args.overwrite,
             strict_type=args.skip_convert,
@@ -101,22 +101,22 @@ def main():
     if args.command == REMOVE_CMD:
         psm.remove(
             result_identifier=args.result_identifier,
-            sample_name=args.sample_name,
+            record_identifier=args.record_identifier,
         )
     if args.command == RETRIEVE_CMD:
         print(
             psm.retrieve(
                 result_identifier=args.result_identifier,
-                sample_name=args.sample_name,
+                record_identifier=args.record_identifier,
             )
         )
     if args.command == STATUS_CMD:
         if args.subcommand == STATUS_GET_CMD:
-            print(psm.get_status(sample_name=args.sample_name))
+            print(psm.get_status(record_identifier=args.record_identifier))
         if args.subcommand == STATUS_SET_CMD:
             psm.set_status(
                 status_identifier=args.status_identifier,
-                sample_name=args.sample_name,
+                record_identifier=args.record_identifier,
             )
 
     sys.exit(0)

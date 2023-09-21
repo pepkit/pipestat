@@ -151,10 +151,10 @@ def build_argparser(desc):
         )
         status_sps[cmd].add_argument(
             "-r",
-            "--sample-name",
+            "--record-identifier",
             type=str,
             metavar="R",
-            help=f"ID of the record to report the result for. {_env_txt('sample_name')}",
+            help=f"ID of the record to report the result for. {_env_txt('record_identifier')}",
         )
 
     # remove, report and inspect
@@ -215,10 +215,10 @@ def build_argparser(desc):
         )
         sps[cmd].add_argument(
             "-r",
-            "--sample-name",
+            "--record-identifier",
             type=str,
             metavar="R",
-            help=f"ID of the record to report the result for. {_env_txt('sample_name')}",
+            help=f"ID of the record to report the result for. {_env_txt('record_identifier')}",
         )
 
     # report
