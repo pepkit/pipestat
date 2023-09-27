@@ -518,7 +518,6 @@ class PipestatManager(MutableMapping):
     @require_backend
     def table(
         self,
-        pipeline_type: Optional[str] = None,
     ) -> List[str]:
         """
         Generates stats (.tsv) and object (.yaml) files.
@@ -528,8 +527,7 @@ class PipestatManager(MutableMapping):
         """
 
         pipeline_name = self.pipeline_name
-        pipeline_type = pipeline_type or self[PIPELINE_TYPE]
-        table_path_list = _create_stats_objs_summaries(self, pipeline_name, pipeline_type)
+        table_path_list = _create_stats_objs_summaries(self, pipeline_name)
 
         return table_path_list
 

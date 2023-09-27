@@ -846,7 +846,6 @@ class TestPipestatBoss:
 
 
 class TestHTMLReport:
-    @pytest.mark.skip(reason="html report broken")
     @pytest.mark.parametrize(
         ["rec_id", "val"],
         [
@@ -910,7 +909,6 @@ class TestHTMLReport:
             except:
                 assert 0
 
-    @pytest.mark.skip(reason="html report broken")
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_basics_project(
         self,

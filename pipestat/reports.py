@@ -119,9 +119,8 @@ class HTMLReportBuilder(object):
             os.makedirs(self.pipeline_reports)
         pages = []
         labels = []
-        for sample in self.prj.backend.get_records():
-            sample_name = sample[0]
-            pipeline_type = sample[1]
+        for sample in self.prj.backend.get_records()["records"]:
+            sample_name = sample
             sample_dir = self.pipeline_reports
 
             # Confirm sample directory exists, then build page
@@ -260,14 +259,12 @@ class HTMLReportBuilder(object):
             links = []
             html_page_path = os.path.join(self.pipeline_reports, f"{file_result}.html".lower())
 
-            for sample in self.prj.backend.get_records():
-                sample_name = sample[0]
-                pipeline_type = sample[1]
+            for sample in self.prj.backend.get_records()["records"]:
+                sample_name = sample
                 sample_result = fetch_pipeline_results(
                     project=self.prj,
                     pipeline_name=self.pipeline_name,
                     sample_name=sample_name,
-                    pipeline_type=pipeline_type,
                 )
                 if file_result not in sample_result:
                     pass
@@ -306,14 +303,12 @@ class HTMLReportBuilder(object):
             html_page_path = os.path.join(self.pipeline_reports, f"{image_result}.html".lower())
             figures = []
 
-            for sample in self.prj.backend.get_records():
-                sample_name = sample[0]
-                pipeline_type = sample[1]
+            for sample in self.prj.backend.get_records()["records"]:
+                sample_name = sample
                 sample_result = fetch_pipeline_results(
                     project=self.prj,
                     pipeline_name=self.pipeline_name,
                     sample_name=sample_name,
-                    pipeline_type=pipeline_type,
                 )
                 if image_result not in sample_result:
                     pass
@@ -358,7 +353,7 @@ class HTMLReportBuilder(object):
         _LOGGER.debug(f"glossary.html | template_vars:\n{template_vars}")
         return render_jinja_template("glossary.html", self.jinja_env, template_vars)
 
-    def create_sample_html(self, sample_stats, navbar, footer, sample_name, pipeline_type):
+    def create_sample_html(self, sample_stats, navbar, footer, sample_name):
         """
         Produce an HTML page containing all of a sample's objects
         and the sample summary statistics
@@ -374,10 +369,7 @@ class HTMLReportBuilder(object):
             os.makedirs(self.pipeline_reports)
         html_page = os.path.join(self.pipeline_reports, f"{sample_name}.html".lower())
 
-        if pipeline_type == "sample":
-            flag = self.prj.get_status(record_identifier=sample_name)
-        if pipeline_type == "project":
-            flag = self.prj.get_status(record_identifier=sample_name)
+        flag = self.prj.get_status(record_identifier=sample_name)
         if not flag:
             button_class = "btn btn-secondary"
             flag = "Missing"
@@ -396,7 +388,6 @@ class HTMLReportBuilder(object):
             sample_name=sample_name,
             inclusion_fun=lambda x: x == "file",
             highlighted=True,
-            pipeline_type=pipeline_type,
         )
 
         for k in highlighted_results.keys():
@@ -410,7 +401,6 @@ class HTMLReportBuilder(object):
             pipeline_name=self.pipeline_name,
             sample_name=sample_name,
             inclusion_fun=lambda x: x == "file",
-            pipeline_type=pipeline_type,
         )
         for result_id, result in file_results.items():
             desc = (
@@ -429,7 +419,6 @@ class HTMLReportBuilder(object):
             pipeline_name=self.pipeline_name,
             sample_name=sample_name,
             inclusion_fun=lambda x: x == "image",
-            pipeline_type=pipeline_type,
         )
         figures = []
         for result_id, result in image_results.items():
@@ -521,19 +510,20 @@ class HTMLReportBuilder(object):
         # Produce table rows
         table_row_data = []
         _LOGGER.info(" * Creating sample pages")
-        for sample in self.prj.backend.get_records():
-            sample_name = sample[0]
-            pipeline_type = sample[1]
+        for sample in self.prj.backend.get_records()["records"]:
+            sample_name = sample
             sample_stat_results = fetch_pipeline_results(
                 project=self.prj,
                 pipeline_name=self.pipeline_name,
                 sample_name=sample_name,
                 inclusion_fun=None,
                 casting_fun=str,
-                pipeline_type=pipeline_type,
             )
             sample_html = self.create_sample_html(
-                sample_stat_results, navbar, footer, sample_name, pipeline_type
+                sample_stat_results,
+                navbar,
+                footer,
+                sample_name,
             )
             rel_sample_html = os.path.relpath(sample_html, self.pipeline_reports)
             # treat sample_name column differently - will need to provide
@@ -624,16 +614,14 @@ class HTMLReportBuilder(object):
 
     def _stats_to_json_str(self):
         results = {}
-        for sample in self.prj.backend.get_records():
-            sample_name = sample[0]
-            pipeline_type = sample[1]
+        for sample in self.prj.backend.get_records()["records"]:
+            sample_name = sample
             results[sample_name] = fetch_pipeline_results(
                 project=self.prj,
                 sample_name=sample_name,
                 pipeline_name=self.prj.pipeline_name,
                 inclusion_fun=lambda x: x not in OBJECT_TYPES,
                 casting_fun=str,
-                pipeline_type=pipeline_type,
             )
         return dumps(results)
 
@@ -653,9 +641,8 @@ class HTMLReportBuilder(object):
     def _get_navbar_dropdown_data_samples(self, wd, context):
         relpaths = []
         sample_names = []
-        for sample in self.prj.backend.get_records():
-            sample_name = sample[0]
-            pipeline_type = sample[1]
+        for sample in self.prj.backend.get_records()["records"]:
+            sample_name = sample
             page_name = os.path.join(
                 self.pipeline_reports,
                 f"{sample_name}.html".replace(" ", "_").lower(),
@@ -809,7 +796,6 @@ def fetch_pipeline_results(
     inclusion_fun=None,
     casting_fun=None,
     highlighted=False,
-    pipeline_type=None,
 ):
     """
     Get the specific pipeline results for sample based on inclusion function
@@ -831,10 +817,7 @@ def fetch_pipeline_results(
     casting_fun = casting_fun or pass_all_fun
     psm = project
     # exclude object-like results from the stats results mapping
-    if pipeline_type == "sample":
-        rep_data = psm.retrieve(record_identifier=sample_name)
-    if pipeline_type == "project":
-        rep_data = psm.retrieve(record_identifier=sample_name)
+    rep_data = psm.retrieve(record_identifier=sample_name)
     results = {
         k: casting_fun(v)
         for k, v in rep_data.items()
@@ -879,9 +862,8 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
     times = []
     mems = []
     status_descs = []
-    for sample in project.backend.get_records():
-        sample_name = sample[0]
-        pipeline_type = sample[1]
+    for sample in project.backend.get_records()["records"]:
+        sample_name = sample
         psm = project
         sample_names.append(sample_name)
         # status and status style
@@ -1041,7 +1023,7 @@ def get_file_for_table(prj, pipeline_name, appendix=None, directory=None):
     return fp
 
 
-def _create_stats_objs_summaries(prj, pipeline_name, pipeline_type) -> List[str]:
+def _create_stats_objs_summaries(prj, pipeline_name) -> List[str]:
     """
     Create stats spreadsheet and objects summary.
 
@@ -1058,18 +1040,18 @@ def _create_stats_objs_summaries(prj, pipeline_name, pipeline_type) -> List[str]
     reported_stats = []
     stats = []
 
-    if pipeline_type == "sample":
+    if prj.pipeline_type == "sample":
         columns = ["Sample Index", "Sample Name", "Results"]
     else:
         columns = ["Sample Index", "Project Name", "Sample Name", "Results"]
 
-    records = prj.backend.get_records(pipeline_type=pipeline_type)
+    records = prj.backend.get_records()["records"]
     record_index = 0
     for record in records:
         record_index += 1
-        record_name = record[0]
+        record_name = record
 
-        if pipeline_type == "sample":
+        if prj.pipeline_type == "sample":
             reported_stats = [record_index, record_name]
             rep_data = prj.retrieve(record_identifier=record_name)
         else:
