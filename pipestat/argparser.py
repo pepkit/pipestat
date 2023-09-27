@@ -14,6 +14,7 @@ RETRIEVE_CMD = "retrieve"
 STATUS_CMD = "status"
 INIT_CMD = "init"
 SUMMARIZE_CMD = "summarize"
+SERVE_CMD = "serve"
 SUBPARSER_MESSAGES = {
     REPORT_CMD: "Report a result.",
     INSPECT_CMD: "Inspect a database.",
@@ -270,7 +271,14 @@ def build_argparser(desc):
     sps[INSPECT_CMD].add_argument(
         "-d", "--data", action="store_true", help="Whether to display the data"
     )
-
+    # Serve
+    sps[SERVE_CMD].add_argument(
+        "-c",
+        "--config",
+        type=str,
+        metavar="C",
+        help=f"Path to the YAML configuration file. {_env_txt('config')}",
+    )
     # Summarize
     for cmd in [SUMMARIZE_CMD]:
         sps[cmd].add_argument(

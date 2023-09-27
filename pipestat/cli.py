@@ -16,11 +16,13 @@ from .argparser import (
     STATUS_SET_CMD,
     INIT_CMD,
     SUMMARIZE_CMD,
+    SERVE_CMD,
 )
 from .const import *
 from .exceptions import SchemaNotFoundError, PipestatStartupError
 from .pipestat import PipestatManager
 from .helpers import init_generic_config
+from pipestatreader import main as readermain
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -59,6 +61,10 @@ def main():
         html_report_path = psm.summarize()
         _LOGGER.info(f"\nGenerating HTML Report from {results_path} at: {html_report_path}\n")
 
+        sys.exit(0)
+
+    if args.command == SERVE_CMD:
+        readermain()
         sys.exit(0)
 
     psm = PipestatManager(
