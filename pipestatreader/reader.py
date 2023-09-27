@@ -7,10 +7,7 @@ from typing import Optional
 from pipestat import RecordNotFoundError, SamplePipestatManager
 from pydantic import BaseModel
 
-#global psm
-
 _LOGGER = logging.getLogger(__name__)
-#print(psm)
 
 app = fastapi.FastAPI(
     title="Pipestat Reader",
@@ -174,13 +171,23 @@ async def retrieve_filtered_table_contents(query_filter: Optional[FilterQuery] =
         return {"response": f"Attribute error for query: {query_filter.column_names}"}
     return {"response": results}
 
-# def create_global_pipestatmanager(pipestatcfg):
-#     """
-#     build a global pipestatmanager to be used by the endpoints
-#     """
-#     global psm
-#     psm = SamplePipestatManager(config_file=pipestatcfg)
-#     return psm
+
+def create_global_pipestatmanager(pipestatcfg):
+    """
+    build a global pipestatmanager to be used by the endpoints
+    """
+    global psm
+    psm = SamplePipestatManager(config_file=pipestatcfg)
+
+
+if __name__ != "__main__":
+    if os.environ.get("PIPESTAT_CONFIG") is not None:
+        pipestatcfg = os.environ.get("PIPESTAT_CONFIG")
+        create_global_pipestatmanager(pipestatcfg)
+    else:
+        _LOGGER.error("Configure by setting PIPESTAT_CONFIG env var")
+
+
 def main():
     # Simple Argument Parser
     parser = argparse.ArgumentParser()
@@ -188,22 +195,12 @@ def main():
     args = parser.parse_args()
     pipestatcfg = args.config
 
-    # Create PipestatManager that will interface with the PostgreSQL database
-    # pipestatcfg = "/home/drc/PythonProjects/pipestat/testimport/drcdbconfig.yaml"
-    #psm = create_global_pipestatmanager(pipestatcfg)
-    global psm
-    psm = SamplePipestatManager(config_file=pipestatcfg)
+    create_global_pipestatmanager(pipestatcfg)
+    # global psm
+    # psm = SamplePipestatManager(config_file=pipestatcfg)
 
     uvicorn.run("reader:app", host="0.0.0.0", port=8000, reload=True)
 
 
 if __name__ == "__main__":
     main()
-
-# if __name__ != "__main__":
-#     if os.environ.get("PIPESTAT_CONFIG") is not None:
-#         pipestatcfg = os.environ.get("PIPESTAT_CONFIG")
-#         create_global_pipestatmanager(pipestatcfg)
-#     else:
-#         _LOGGER.error("Configure by setting SEQCOLAPI_CONFIG env var")
-#
