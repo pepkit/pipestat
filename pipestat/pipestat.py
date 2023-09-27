@@ -278,10 +278,17 @@ class PipestatManager(MutableMapping):
     @require_backend
     def get_records(
         self,
-    ) -> Optional[list]:
-        """Returns list of sample names and pipeline type as a list of tuples that have been reported, regardless of sample or project level"""
+        limit: Optional[int] = 1000,
+        offset: Optional[int] = 0,
+    ) -> Optional[dict]:
+        """
+        Returns list of records
+        :param int limit: limit number of records to this amount
+        :param int offset: offset records by this amount
+        :return dict: dictionary of records
+        """
 
-        return self.backend.get_records()
+        return self.backend.get_records(limit=limit, offset=offset)
 
     @require_backend
     def get_status(

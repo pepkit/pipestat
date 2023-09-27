@@ -82,8 +82,9 @@ class PipestatBackend(ABC):
 
     def get_records(
         self,
-        pipeline_type: Optional[str] = None,
-    ):
+        limit: Optional[int] = 1000,
+        offset: Optional[int] = 0,
+    ) -> Optional[dict]:
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
