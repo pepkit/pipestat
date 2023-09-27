@@ -151,10 +151,17 @@ def build_argparser(desc):
         )
         status_sps[cmd].add_argument(
             "-r",
-            "--sample-name",
+            "--record-identifier",
             type=str,
             metavar="R",
-            help=f"ID of the record to report the result for. {_env_txt('sample_name')}",
+            help=f"ID of the record to report the result for. {_env_txt('record_identifier')}",
+        )
+        status_sps[cmd].add_argument(
+            "-p",
+            "--pipeline-type",
+            type=str,
+            metavar="P",
+            help=f"project or sample level pipeline type. ",
         )
 
     # remove, report and inspect
@@ -202,6 +209,13 @@ def build_argparser(desc):
             metavar="FD",
             help=f"Path to the flag directory in case YAML file is " f"the pipestat backend.",
         )
+        sps[cmd].add_argument(
+            "-p",
+            "--pipeline-type",
+            type=str,
+            metavar="P",
+            help=f"project or sample level pipeline type. ",
+        )
 
     # remove and report
     for cmd in [REMOVE_CMD, REPORT_CMD, RETRIEVE_CMD]:
@@ -215,10 +229,10 @@ def build_argparser(desc):
         )
         sps[cmd].add_argument(
             "-r",
-            "--sample-name",
+            "--record-identifier",
             type=str,
             metavar="R",
-            help=f"ID of the record to report the result for. {_env_txt('sample_name')}",
+            help=f"ID of the record to report the result for. {_env_txt('record_identifier')}",
         )
 
     # report
@@ -281,6 +295,13 @@ def build_argparser(desc):
             type=str,
             metavar="S",
             help=f"Path to the schema that defines the results that can be reported. {_env_txt('schema')}",
+        )
+        sps[cmd].add_argument(
+            "-p",
+            "--pipeline-type",
+            type=str,
+            metavar="P",
+            help=f"project or sample level pipeline type. ",
         )
 
     return parser

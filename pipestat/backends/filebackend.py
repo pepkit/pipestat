@@ -74,7 +74,6 @@ class FileBackend(PipestatBackend):
         Check if the specified record exists in self._data
 
         :param str record_identifier: record to check for
-        :param str pipeline_type: project or sample pipeline
         :return bool: whether the record exists in the table
         """
 
@@ -115,7 +114,6 @@ class FileBackend(PipestatBackend):
     def count_records(self):
         """
         Count records
-        :param str pipeline_type: sample vs project designator needed to count records
         :return int: number of records
         """
 
@@ -144,27 +142,34 @@ class FileBackend(PipestatBackend):
 
     def get_records(
         self,
-        pipeline_type: Optional[str] = None,
-    ) -> Optional[list]:
-        """Returns list of sample names and pipeline type as a list of tuples that have been reported, regardless of sample or project level"""
-        all_samples_list = []
-        pipeline_type = pipeline_type or self.pipeline_type
+        limit: Optional[int] = 1000,
+        offset: Optional[int] = 0,
+    ) -> Optional[dict]:
+        """Returns list of records
+        :param int limit: limit number of records to this amount
+        :param int offset: offset records by this amount
+        :return dict records_dict: dictionary of records
+        {
+          "count": x,
+          "limit": l,
+          "offset": o,
+          "records": [...]
+        }
+        """
+        record_list = []
+        for k in list(self._data.data[self.pipeline_name][self.pipeline_type].keys())[
+            offset : offset + limit
+        ]:
+            record_list.append(k)
 
-        if pipeline_type is not None:
-            for k in list(self._data.data[self.pipeline_name][pipeline_type].keys()):
-                pair = (k, pipeline_type)
-                all_samples_list.append(pair)
-            return all_samples_list
+        records_dict = {
+            "count": len(record_list),
+            "limit": limit,
+            "offset": offset,
+            "records": record_list,
+        }
 
-        else:
-            keys = self._data.data[self.pipeline_name].keys()
-        for k in keys:
-            sample_list = []
-            for i in list(self._data.data[self.pipeline_name][k].keys()):
-                pair = (i, k)
-                sample_list.append(pair)
-            all_samples_list += sample_list
-        return all_samples_list
+        return records_dict
 
     def get_status(self, record_identifier: str) -> Optional[str]:
         """
@@ -172,7 +177,6 @@ class FileBackend(PipestatBackend):
 
         :param str record_identifier: record identifier to set the
             pipeline status for
-        :param str pipeline_type: "sample" or "project"
         :return str: status identifier, like 'running'
         """
         r_id = record_identifier or self.record_identifier
@@ -216,7 +220,6 @@ class FileBackend(PipestatBackend):
 
         :param List[str] restrict_to: selected subset of names of results to list
         :param str record_identifier: unique identifier of the record
-        :param str pipeline_type: "sample" or "project"
         :return List[str]: names of results which exist
         """
         record_identifier = record_identifier or self.record_identifier
@@ -245,7 +248,6 @@ class FileBackend(PipestatBackend):
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be removed or None
              if the record should be removed.
-        :param str pipeline_type: "sample" or "project"
         :return bool: whether the result has been removed
         """
 
@@ -303,7 +305,6 @@ class FileBackend(PipestatBackend):
         Remove a record, requires rm_record to be True
 
         :param str record_identifier: unique identifier of the record
-        :param str pipeline_type: "sample" or "project"
         :param bool rm_record: bool for removing record.
         :return bool: whether the result has been removed
         """
@@ -338,7 +339,6 @@ class FileBackend(PipestatBackend):
         :param Dict[str, Any] values: dict of results identifiers and values
             to be reported
         :param str record_identifier: unique identifier of the record
-        :param str pipeline_type: "sample" or "project"
         :param bool force_overwrite: Toggles force overwriting results, defaults to False
         :param str result_formatter: function for formatting result
         :return list results_formatted: return list of formatted string
@@ -396,7 +396,6 @@ class FileBackend(PipestatBackend):
 
         :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to be retrieved
-        :param str pipeline_type: "sample" or "project"
         :return any | Dict[str, any]: a single result or a mapping with all the
             results reported for the record
         """
@@ -434,7 +433,6 @@ class FileBackend(PipestatBackend):
             in the status schema
         :param str record_identifier: record identifier to set the
             pipeline status for
-        :param str pipeline_type: "sample" or "project"
         """
         r_id = record_identifier or self.record_identifier
         if self.status_schema is not None:
