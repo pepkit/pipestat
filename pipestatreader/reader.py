@@ -5,7 +5,9 @@ import logging
 import uvicorn
 from typing import Optional
 from pipestat import RecordNotFoundError, SamplePipestatManager
+from pipestat.reports import fetch_pipeline_results
 from pydantic import BaseModel
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -94,60 +96,22 @@ async def retrieve_table_contents():
     return {"table_contents": results}
 
 
-@app.get("/images/")
-async def retrieve_images(pipeline_type: Optional[str] = None):
+@app.get("/{file_type}/")
+async def retrieve_filetype(file_type: str):
     """
-    Get all image paths reported in the table.
+    Get all records by filetype
     """
-    list_columns = []
-    if pipeline_type == "sample":
-        for k, v in psm.schema._sample_level_data.items():
-            if v["type"] == "image":
-                list_columns.append(k)
-        return {"Image Results": psm.backend.select(columns=list_columns)}
-    if pipeline_type == "project":
-        for k, v in psm.schema._project_level_data.items():
-            if v["type"] == "image":
-                list_columns.append(k)
-        return {"Image Results": psm.backend.select(columns=list_columns)}
-    if pipeline_type is None:
-        if psm.schema._sample_level_data:
-            for k, v in psm.schema._sample_level_data.items():
-                if v["type"] == "image":
-                    list_columns.append(k)
-        if psm.schema._project_level_data:
-            for k, v in psm.schema._project_level_data.items():
-                if v["type"] == "image":
-                    list_columns.append(k)
-        return {"Image Results": psm.backend.select(columns=list_columns)}
-
-
-@app.get("/files/")
-async def retrieve_files(pipeline_type: Optional[str] = None):
-    """
-    Get all file paths reported in the table.
-    """
-    list_columns = []
-    if pipeline_type == "sample":
-        for k, v in psm.schema._sample_level_data.items():
-            if v["type"] == "file":
-                list_columns.append(k)
-        return {"File Results": psm.backend.select(columns=list_columns)}
-    if pipeline_type == "project":
-        for k, v in psm.schema._project_level_data.items():
-            if v["type"] == "file":
-                list_columns.append(k)
-        return {"File Results": psm.backend.select(columns=list_columns)}
-    if pipeline_type is None:
-        if psm.schema._sample_level_data:
-            for k, v in psm.schema._sample_level_data.items():
-                if v["type"] == "file":
-                    list_columns.append(k)
-        if psm.schema._project_level_data:
-            for k, v in psm.schema._project_level_data.items():
-                if v["type"] == "file":
-                    list_columns.append(k)
-        return {"File Results": psm.backend.select(columns=list_columns)}
+    records_by_filetype = []
+    all_records = psm.get_records()["records"]
+    for sample in all_records:
+        file_result = fetch_pipeline_results(
+            project=psm,
+            pipeline_name=psm.pipeline_name,
+            sample_name=sample,
+            inclusion_fun=lambda x: x == file_type,
+        )
+        records_by_filetype.append(file_result)
+    return {"records_by_filetype": records_by_filetype}
 
 
 @app.post("/filtered_table_contents/")
@@ -196,10 +160,8 @@ def main():
     pipestatcfg = args.config
 
     create_global_pipestatmanager(pipestatcfg)
-    # global psm
-    # psm = SamplePipestatManager(config_file=pipestatcfg)
 
-    uvicorn.run("reader:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("reader:app", host="0.0.0.0", port=8001, reload=True)
 
 
 if __name__ == "__main__":
