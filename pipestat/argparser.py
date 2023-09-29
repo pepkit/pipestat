@@ -280,6 +280,17 @@ def build_argparser(desc):
         metavar="C",
         help=f"Path to the YAML configuration file. {_env_txt('config')}",
     )
+    sps[SERVE_CMD].add_argument(
+        "--host",
+        type=str,
+        help=f"host address for uvicorn server.",
+    )
+    sps[SERVE_CMD].add_argument(
+        "--port",
+        type=int,
+        help=f"host address for uvicorn port.",
+    )
+
     # Summarize
     for cmd in [SUMMARIZE_CMD]:
         sps[cmd].add_argument(

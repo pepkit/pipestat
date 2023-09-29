@@ -153,14 +153,22 @@ if __name__ != "__main__":
         _LOGGER.error("Configure by setting PIPESTAT_CONFIG env var")
 
 
-def main(configfile):
+def main(configfile: Optional[str] = None, host: Optional[str] = None, port: Optional[int] = None):
+    """
+    passes relevant info to create a global pipestat manager and then utilizes uvicorn to run at the host address and
+    port. These parameters are passed during `pipestat serve` cli usage.
+    param: str configfile: a path to a pipestat configfile
+    param: str host: host address for uvicorn server
+    param: str port: port number for uvicorn server
+
+    """
     pipestatcfg = configfile or os.environ.get("PIPESTAT_CONFIG")
     create_global_pipestatmanager(pipestatcfg)
     # Note input argument app vs "reader:app" causes different behavior when using uvicorn.run
     uvicorn.run(
         app,
-        host="0.0.0.0",
-        port=8001,
+        host=host or "0.0.0.0",
+        port=port or 8001,
     )
 
 

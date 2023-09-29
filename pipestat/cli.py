@@ -64,7 +64,7 @@ def main():
         sys.exit(0)
 
     if args.command == SERVE_CMD:
-        readermain(configfile=args.config)
+        readermain(configfile=args.config, host=args.host, port=args.port)
         sys.exit(0)
 
     psm = PipestatManager(
