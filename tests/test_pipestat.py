@@ -419,9 +419,11 @@ class TestRetrieval:
                 psm.report(record_identifier=k, values=v, force_overwrite=True)
 
             results = psm.get_records()
-            assert results[0][0] == list(val_dict.keys())[0]
-            assert results[1][0] == list(val_dict.keys())[1]
-            assert len(results) == len(list(val_dict.keys()))
+            assert results["records"][0] == list(val_dict.keys())[0]
+            assert results["count"] == len(list(val_dict.keys()))
+            results = psm.get_records(limit=1, offset=1)
+            assert results["records"][0] == list(val_dict.keys())[1]
+            assert results["count"] == 1
 
     @pytest.mark.parametrize(
         ["rec_id", "res_id"],

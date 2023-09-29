@@ -134,41 +134,39 @@ class DBBackend(PipestatBackend):
 
     def get_records(
         self,
-        pipeline_type: Optional[str] = None,
-    ) -> Optional[list]:
-        """Returns list of sample names and pipeline type as a list of tuples that have been reported, regardless of sample or project level"""
-        all_samples_list = []
+        limit: Optional[int] = 1000,
+        offset: Optional[int] = 0,
+    ) -> Optional[dict]:
+        """Returns list of records
 
-        pipeline_type = pipeline_type or self.pipeline_type
+        :param int limit: limit number of records to this amount
+        :param int offset: offset records by this amount
+        :return dict records_dict: dictionary of records
+        {
+          "count": x,
+          "limit": l,
+          "offset": o,
+          "records": [...]
+        }
+        """
 
-        # TODO this should be simplified with the separation of sample and project managers.
-        if pipeline_type is not None:
-            mod = self.get_model(table_name=self.table_name)
-            with self.session as s:
-                sample_list = []
-                stmt = sql_select(mod)
-                records = s.exec(stmt).all()
-                for i in records:
-                    pair = (i.record_identifier, pipeline_type)
-                    sample_list.append(pair)
+        mod = self.get_model(table_name=self.table_name)
 
-            return sample_list
-        else:
-            pipelines = ["sample", "project"]
-            for i in pipelines:
-                pipeline_type = i
-                table_name = self.table_name
-                mod = self.get_model(table_name=table_name)
-                with self.session as s:
-                    sample_list = []
-                    stmt = sql_select(mod)
-                    records = s.exec(stmt).all()
-                    for i in records:
-                        pair = (i.record_identifier, pipeline_type)
-                        sample_list.append(pair)
+        with self.session as s:
+            sample_list = []
+            stmt = sql_select(mod).offset(offset).limit(limit)
+            records = s.exec(stmt).all()
+            for i in records:
+                sample_list.append(i.record_identifier)
 
-                all_samples_list += sample_list
-            return all_samples_list
+        records_dict = {
+            "count": len(records),
+            "limit": limit,
+            "offset": offset,
+            "records": sample_list,
+        }
+
+        return records_dict
 
     def get_status(self, record_identifier: str) -> Optional[str]:
         """
