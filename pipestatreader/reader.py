@@ -163,6 +163,11 @@ def main(configfile: Optional[str] = None, host: Optional[str] = None, port: Opt
 
     """
     pipestatcfg = configfile or os.environ.get("PIPESTAT_CONFIG")
+    if pipestatcfg is None:
+        _LOGGER.error(
+            "A pipestat configuration file must be supplied."
+            "Configure by setting PIPESTAT_CONFIG env var or pass as input argument using --config"
+        )
     create_global_pipestatmanager(pipestatcfg)
     # Note input argument app vs "reader:app" causes different behavior when using uvicorn.run
     uvicorn.run(
