@@ -142,6 +142,7 @@ def create_global_pipestatmanager(pipestatcfg):
     """
     global psm
     psm = SamplePipestatManager(config_file=pipestatcfg)
+    print("GLOBAL PSM CREATED")
 
 
 if __name__ != "__main__":
@@ -152,16 +153,15 @@ if __name__ != "__main__":
         _LOGGER.error("Configure by setting PIPESTAT_CONFIG env var")
 
 
-def main():
-    # Simple Argument Parser
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, help="absolute path to pipestat config file.")
-    args = parser.parse_args()
-    pipestatcfg = args.config
-
+def main(configfile):
+    pipestatcfg = configfile or os.environ.get("PIPESTAT_CONFIG")
     create_global_pipestatmanager(pipestatcfg)
-
-    uvicorn.run("reader:app", host="0.0.0.0", port=8001, reload=True)
+    # Note input argument app vs "reader:app" causes different behavior when using uvicorn.run
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8001,
+    )
 
 
 if __name__ == "__main__":

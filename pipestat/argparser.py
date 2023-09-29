@@ -23,6 +23,7 @@ SUBPARSER_MESSAGES = {
     STATUS_CMD: "Manage pipeline status.",
     INIT_CMD: "Initialize generic config file",
     SUMMARIZE_CMD: "Generates HTML Report",
+    SERVE_CMD: "Initializes pipestatreader API",
 }
 
 STATUS_GET_CMD = "get"
