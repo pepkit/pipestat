@@ -9,6 +9,7 @@ from pipestat.const import *
 from pipestat.exceptions import *
 from pipestat.parsed_schema import ParsedSchema
 from pipestat.helpers import default_formatter, markdown_formatter
+from pipestat.cli import main
 from .conftest import (
     get_data_file_path,
     BACKEND_KEY_DB,
@@ -952,3 +953,101 @@ class TestHTMLReport:
                 assert table_paths is not None
             except:
                 assert 0
+
+
+class TestPipestatCLI:
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("sample1", {"name_of_something": "test_name"}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_basics(
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+
+            # report
+            if backend != "db":
+                x = [
+                    "report",
+                    "--record-identifier",
+                    rec_id,
+                    "--result-identifier",
+                    list(val.keys())[0],
+                    "--value",
+                    list(val.values())[0],
+                    "--results-file",
+                    results_file_path,
+                    "--schema",
+                    schema_file_path,
+                ]
+            else:
+                x = [
+                    "report",
+                    "--record-identifier",
+                    rec_id,
+                    "--result-identifier",
+                    list(val.keys())[0],
+                    "--value",
+                    list(val.values())[0],
+                    "--config-file",
+                    config_file_path,
+                    "--schema",
+                    schema_file_path,
+                ]
+
+            with pytest.raises(
+                SystemExit
+            ):  # pipestat cli normal behavior is to end with a "sys.exit(0)"
+                main(test_args=x)
+
+            # retrieve
+            if backend != "db":
+                x = [
+                    "retrieve",
+                    "--record-identifier",
+                    rec_id,
+                    "--result-identifier",
+                    list(val.keys())[0],
+                    "--value",
+                    list(val.values())[0],
+                    "--results-file",
+                    results_file_path,
+                    "--schema",
+                    schema_file_path,
+                ]
+            else:
+                x = [
+                    "retrieve",
+                    "--record-identifier",
+                    rec_id,
+                    "--result-identifier",
+                    list(val.keys())[0],
+                    "--value",
+                    list(val.values())[0],
+                    "--config-file",
+                    config_file_path,
+                    "--schema",
+                    schema_file_path,
+                ]
+
+            with pytest.raises(
+                SystemExit
+            ):  # pipestat cli normal behavior is to end with a "sys.exit(0)"
+                main(test_args=x)

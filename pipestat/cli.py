@@ -25,12 +25,15 @@ from .helpers import init_generic_config
 _LOGGER = getLogger(PKG_NAME)
 
 
-def main():
+def main(test_args=None):
     """Primary workflow"""
     from inspect import getdoc
 
     parser = logmuse.add_logging_options(build_argparser(getdoc(PipestatManager)))
-    args = parser.parse_args()
+    if test_args:
+        args = parser.parse_args(test_args)
+    else:
+        args = parser.parse_args()
     if args.command is None:
         parser.print_help(sys.stderr)
         sys.exit(1)
