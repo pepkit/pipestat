@@ -1,14 +1,13 @@
-For development, ensure you are running a docker instance hosting a postgressql DB whcih contains previously reported pipestat results:
+For development, ensure you are running a docker instance hosting a postgressql DB which contains previously reported pipestat results:
 
 Docker command:
 ```
 sudo docker run --rm -it -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=pipestat-password -e POSTGRES_DB=pipestat-test -p 5432:5432 postgres
 ```
 
-in reader.py change path to pipestatconfig yaml which will have the DB information, e.g.:
-`pipestatcfg = "/home/drc/PythonProjects/pipestat/testimport/drcdbconfig.yaml"`
+To run with reload on:
+`export PIPESTAT_CONFIG="path/to/pipestatconfigfile.yaml"`
+`uvicorn reader:app --reload --port 8000`
 
-navigate to pipestat reader folder in terminal:
-` uvicorn reader:app --reload
-`
-
+To run via pipestat cli:
+`pipestat --config "path/to/pipestatconfigfile.yaml" --host "0.0.0.0" --port 8000`
