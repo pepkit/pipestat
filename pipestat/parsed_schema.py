@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 from typing import *
 from pydantic import create_model
+from jsonschema import validate
 
 # from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy import Column, null
@@ -81,46 +82,62 @@ class ParsedSchema(object):
         # initial validation and parse
         if not isinstance(data, dict):
             _, data = read_yaml_data(data, "schema")
+
         data = copy.deepcopy(data)
 
-        # pipeline identifier
-        self._pipeline_name = data.pop(SCHEMA_PIPELINE_NAME_KEY, None)
+        # Currently supporting backwards compatibility with old output schema while now also supporting a JSON schema:
+        if "properties" in list(data.keys()):
+            # Assume top-level properties key implies proper JSON schema.
+            self._pipeline_name = data["properties"].pop(SCHEMA_PIPELINE_NAME_KEY, None)
+            if "samples" in list(data["properties"].keys()):
+                sample_data = _safe_pop_one_mapping(
+                    key="properties", data=data["properties"]["samples"]["items"], info_name="sample-level"
+                )
+            else:
+                sample_data = {}
+
+            if "project" in list(data["properties"].keys()):
+                prj_data = _safe_pop_one_mapping(
+                    key="properties",data=data["properties"]["project"]["items"], info_name="project-level"
+                )
+            else:
+                prj_data = {}
+            # Parse custom status declaration if present.
+            if "status" in list(data["properties"].keys()):
+                self._status_data = _safe_pop_one_mapping(
+                    key="properties", data=data["properties"]["status"], info_name="status"
+                )
+            else:
+                self._status_data = {}
+
+        else:
+            self._pipeline_name = data.pop(SCHEMA_PIPELINE_NAME_KEY, None)
+            sample_data = _safe_pop_one_mapping(
+                key=self._SAMPLES_KEY, data=data, info_name="sample-level"
+            )
+            prj_data = _safe_pop_one_mapping(
+                key=self._PROJECT_KEY, data=data, info_name="project-level"
+            )
+            # Parse custom status declaration if present.
+            self._status_data = _safe_pop_one_mapping(
+                key=self._STATUS_KEY, data=data, info_name="status"
+            )
+
         if not isinstance(self._pipeline_name, str):
             raise SchemaError(
                 f"Could not find valid pipeline identifier (key '{SCHEMA_PIPELINE_NAME_KEY}') in given schema data"
             )
 
-        # Parse sample-level data item declarations.
-        sample_data = _safe_pop_one_mapping(
-            key=self._SAMPLES_KEY, data=data, info_name="sample-level"
-        )
-
         self._sample_level_data = _recursively_replace_custom_types(sample_data)
 
-        # Parse project-level data item declarations.
-        prj_data = _safe_pop_one_mapping(
-            key=self._PROJECT_KEY, data=data, info_name="project-level"
-        )
         self._project_level_data = _recursively_replace_custom_types(prj_data)
 
         # Sample- and/or project-level data must be declared.
         if not self._sample_level_data and not self._project_level_data:
             raise SchemaError("Neither sample-level nor project-level data items are declared.")
 
-        # Parse custom status declaration if present.
-        self._status_data = _safe_pop_one_mapping(
-            key=self._STATUS_KEY, data=data, info_name="status"
-        )
-
-        if data:
-            _LOGGER.info(
-                "Top-Level arguments found in output schema. They will be assigned to project-level."
-            )
-            extra_project_data = _recursively_replace_custom_types(data)
-            self._project_level_data.update(extra_project_data)
-
         # Check that no reserved keywords were used as data items.
-        resv_kwds = {"id", SAMPLE_NAME}
+        resv_kwds = {"id", RECORD_IDENTIFIER}
         reserved_keywords_used = set()
         for data in [self.project_level_data, self.sample_level_data, self.status_data]:
             reserved_keywords_used |= set(data.keys()) & resv_kwds

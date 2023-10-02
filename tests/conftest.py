@@ -86,3 +86,7 @@ def custom_status_schema2():
 @pytest.fixture
 def output_schema_html_report():
     return get_data_file_path("output_schema_html_report.yaml")
+
+@pytest.fixture
+def output_schema_as_JSON_schema():
+    return get_data_file_path("output_schema_as_JSON_schema.yaml")
