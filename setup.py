@@ -52,7 +52,7 @@ except (IOError, ImportError, OSError):
 
 setup(
     name=PACKAGE,
-    packages=[PACKAGE],
+    packages=[PACKAGE, "pipestatreader"],
     version=version,
     description="A pipeline results reporter",
     long_description=long_description,

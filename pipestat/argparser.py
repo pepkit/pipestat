@@ -14,6 +14,7 @@ RETRIEVE_CMD = "retrieve"
 STATUS_CMD = "status"
 INIT_CMD = "init"
 SUMMARIZE_CMD = "summarize"
+SERVE_CMD = "serve"
 SUBPARSER_MESSAGES = {
     REPORT_CMD: "Report a result.",
     INSPECT_CMD: "Inspect a database.",
@@ -22,6 +23,7 @@ SUBPARSER_MESSAGES = {
     STATUS_CMD: "Manage pipeline status.",
     INIT_CMD: "Initialize generic config file",
     SUMMARIZE_CMD: "Generates HTML Report",
+    SERVE_CMD: "Initializes pipestatreader API",
 }
 
 STATUS_GET_CMD = "get"
@@ -269,6 +271,24 @@ def build_argparser(desc):
     # inspect
     sps[INSPECT_CMD].add_argument(
         "-d", "--data", action="store_true", help="Whether to display the data"
+    )
+    # Serve
+    sps[SERVE_CMD].add_argument(
+        "-c",
+        "--config",
+        type=str,
+        metavar="C",
+        help=f"Path to the YAML configuration file. {_env_txt('config')}",
+    )
+    sps[SERVE_CMD].add_argument(
+        "--host",
+        type=str,
+        help=f"host address for uvicorn server.",
+    )
+    sps[SERVE_CMD].add_argument(
+        "--port",
+        type=int,
+        help=f"host address for uvicorn port.",
     )
 
     # Summarize
