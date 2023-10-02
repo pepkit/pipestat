@@ -1,9 +1,9 @@
-import argparse
 import fastapi
 import os
 import logging
 import uvicorn
-from typing import Optional, List
+from typing import Optional, List, Union, Tuple
+
 from pipestat import RecordNotFoundError, SamplePipestatManager
 from pipestat.reports import fetch_pipeline_results
 from pydantic import BaseModel
@@ -19,8 +19,8 @@ app = fastapi.FastAPI(
 
 
 class FilterQuery(BaseModel):
-    column_names: List[str] | None = None
-    filter_conditions: List[tuple[str, str, str]] | None = None
+    column_names: Union[List[str], None] = None
+    filter_conditions: Union[List[Tuple[str, str, str]], None] = None
 
 
 @app.get("/")
