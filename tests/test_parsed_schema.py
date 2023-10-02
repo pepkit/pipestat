@@ -258,7 +258,8 @@ def test_sample_project_data_item_name_overlap__raises_expected_error_and_messag
     exp_msg = f"Overlap between project- and sample-level keys: {common_key}"
     assert obs_msg == exp_msg
 
+
 def test_JSON_schema_validation(output_schema_as_JSON_schema):
     ParsedSchema(output_schema_as_JSON_schema)
     assert True
-    #assert "reserved keyword(s) used" in observed_message
+    # assert "reserved keyword(s) used" in observed_message

@@ -50,13 +50,24 @@ def get_base_model():
     return BaseModel
 
 
-def _safe_pop_one_mapping(key: str, data: Dict[str, Any], info_name: str) -> Any:
-    value = data.pop(key, NULL_MAPPING_VALUE)
-    if isinstance(value, Mapping):
-        return value
-    raise SchemaError(
-        f"{info_name} info in schema definition has invalid type: {type(value).__name__}"
-    )
+def _safe_pop_one_mapping(
+    key: str, data: Dict[str, Any], info_name: str, keys: Optional[List[str]] = None
+) -> Any:
+    if keys:
+        # keys=["samples", "items"]
+        try:
+            value = data[keys[0]][keys[1]].pop(key, NULL_MAPPING_VALUE)
+        except KeyError:
+            value = {}
+        if isinstance(value, Mapping):
+            return value
+    else:
+        value = data.pop(key, NULL_MAPPING_VALUE)
+        if isinstance(value, Mapping):
+            return value
+        raise SchemaError(
+            f"{info_name} info in schema definition has invalid type: {type(value).__name__}"
+        )
 
 
 class ParsedSchema(object):
@@ -88,26 +99,27 @@ class ParsedSchema(object):
         if "properties" in list(data.keys()):
             # Assume top-level properties key implies proper JSON schema.
             self._pipeline_name = data["properties"].pop(SCHEMA_PIPELINE_NAME_KEY, None)
-            if "samples" in list(data["properties"].keys()):
-                sample_data = _safe_pop_one_mapping(
-                    key="properties", data=data["properties"]["samples"]["items"], info_name="sample-level"
-                )
-            else:
-                sample_data = {}
 
-            if "project" in list(data["properties"].keys()):
-                prj_data = _safe_pop_one_mapping(
-                    key="properties",data=data["properties"]["project"]["items"], info_name="project-level"
-                )
-            else:
-                prj_data = {}
-            # Parse custom status declaration if present.
-            if "status" in list(data["properties"].keys()):
-                self._status_data = _safe_pop_one_mapping(
-                    key="properties", data=data["properties"]["status"], info_name="status"
-                )
-            else:
-                self._status_data = {}
+            sample_data = _safe_pop_one_mapping(
+                keys=["samples", "items"],
+                data=data["properties"],
+                info_name="sample-level",
+                key="properties",
+            )
+
+            prj_data = _safe_pop_one_mapping(
+                keys=["project", "items"],
+                data=data["properties"],
+                info_name="project-level",
+                key="properties",
+            )
+
+            self._status_data = _safe_pop_one_mapping(
+                keys=["status", "items"],
+                data=data["properties"],
+                info_name="status",
+                key="properties",
+            )
 
         else:
             self._pipeline_name = data.pop(SCHEMA_PIPELINE_NAME_KEY, None)
