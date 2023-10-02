@@ -5,7 +5,6 @@ import logging
 from pathlib import Path
 from typing import *
 from pydantic import create_model
-from jsonschema import validate
 
 # from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy import Column, null
