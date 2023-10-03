@@ -10,16 +10,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Add PipestatBoss wrapper class which holds `SamplePipestatManager` and `ProjectSamplePipestatManager` classes.
 - Add `to_dict` methods to parsed schema object.
 
+### Fixed
+- Added path expansion when creating database url
+
 ### Changed
 - modify `get_records` to return new structure
 - Remove `get_orm` and replace with `get_model`
 - Remove `get_table_name` function
 - Refactor:
   - `sample_name` -> `record_identifier`  
-
-## [0.5.2] - 2023-08-14
-### Fixed
-- Added path expansion when creating database url
 
 ## [0.5.1] - 2023-08-14
 ### Fixed
