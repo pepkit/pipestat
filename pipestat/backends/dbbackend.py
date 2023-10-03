@@ -595,9 +595,10 @@ class DBBackend(PipestatBackend):
         """Create ORMs."""
         _LOGGER.debug(f"Creating models for '{self.pipeline_name}' table in '{PKG_NAME}' database")
         model = self.parsed_schema.build_model(pipeline_type=pipeline_type)
+        table_name = self.parsed_schema._table_name(pipeline_type)
         # TODO reconsider line below. Why do we need to return a dict?
         if model:
-            return {self.record_identifier: model}
+            return {table_name: model}
         else:
             raise SchemaError(
                 f"Neither project nor samples model could be built from schema source: {self.status_schema_source}"
