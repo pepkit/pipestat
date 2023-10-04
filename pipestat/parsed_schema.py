@@ -182,7 +182,10 @@ class ParsedSchema(object):
             res += f"\n Sample Level Data:"
             for k, v in self._sample_level_data.items():
                 res += f"\n -  {k} : {v}"
-        # TODO: add status schema data
+        if self._status_data is not None:
+            res += f"\n Status Data:"
+            for k, v in self._status_data.items():
+                res += f"\n -  {k} : {v}"
         return res
 
     @property
