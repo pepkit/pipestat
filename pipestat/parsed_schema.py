@@ -50,13 +50,27 @@ def get_base_model():
     return BaseModel
 
 
-def _safe_pop_one_mapping(key: str, data: Dict[str, Any], info_name: str) -> Any:
-    value = data.pop(key, NULL_MAPPING_VALUE)
-    if isinstance(value, Mapping):
-        return value
-    raise SchemaError(
-        f"{info_name} info in schema definition has invalid type: {type(value).__name__}"
-    )
+def _safe_pop_one_mapping(
+    mappingkey: str, data: Dict[str, Any], info_name: str, subkeys: Optional[List[str]] = None
+) -> Any:
+    """
+    mapping key: the dict key where the sample, project or status values are stored, e.g. data["mappingkey"]
+    subkeys: if using JSON schema, the dict is nested further, e.g. data["properties"]["samples"]["mappingkey"]
+    """
+    if subkeys:
+        try:
+            value = data[subkeys[0]].pop(mappingkey, NULL_MAPPING_VALUE)
+        except KeyError:
+            value = {}
+        if isinstance(value, Mapping):
+            return value
+    else:
+        value = data.pop(mappingkey, NULL_MAPPING_VALUE)
+        if isinstance(value, Mapping):
+            return value
+        raise SchemaError(
+            f"{info_name} info in schema definition has invalid type: {type(value).__name__}"
+        )
 
 
 class ParsedSchema(object):
@@ -81,46 +95,63 @@ class ParsedSchema(object):
         # initial validation and parse
         if not isinstance(data, dict):
             _, data = read_yaml_data(data, "schema")
+
         data = copy.deepcopy(data)
 
-        # pipeline identifier
-        self._pipeline_name = data.pop(SCHEMA_PIPELINE_NAME_KEY, None)
+        # Currently supporting backwards compatibility with old output schema while now also supporting a JSON schema:
+        if "properties" in list(data.keys()):
+            # Assume top-level properties key implies proper JSON schema.
+            self._pipeline_name = data["properties"].pop(SCHEMA_PIPELINE_NAME_KEY, None)
+
+            sample_data = _safe_pop_one_mapping(
+                subkeys=["samples"],
+                data=data["properties"],
+                info_name="sample-level",
+                mappingkey="properties",
+            )
+
+            prj_data = _safe_pop_one_mapping(
+                subkeys=["project"],
+                data=data["properties"],
+                info_name="project-level",
+                mappingkey="properties",
+            )
+
+            self._status_data = _safe_pop_one_mapping(
+                subkeys=["status"],
+                data=data["properties"],
+                info_name="status",
+                mappingkey="properties",
+            )
+
+        else:
+            self._pipeline_name = data.pop(SCHEMA_PIPELINE_NAME_KEY, None)
+            sample_data = _safe_pop_one_mapping(
+                mappingkey=self._SAMPLES_KEY, data=data, info_name="sample-level"
+            )
+            prj_data = _safe_pop_one_mapping(
+                mappingkey=self._PROJECT_KEY, data=data, info_name="project-level"
+            )
+            # Parse custom status declaration if present.
+            self._status_data = _safe_pop_one_mapping(
+                mappingkey=self._STATUS_KEY, data=data, info_name="status"
+            )
+
         if not isinstance(self._pipeline_name, str):
             raise SchemaError(
                 f"Could not find valid pipeline identifier (key '{SCHEMA_PIPELINE_NAME_KEY}') in given schema data"
             )
 
-        # Parse sample-level data item declarations.
-        sample_data = _safe_pop_one_mapping(
-            key=self._SAMPLES_KEY, data=data, info_name="sample-level"
-        )
-
         self._sample_level_data = _recursively_replace_custom_types(sample_data)
 
-        # Parse project-level data item declarations.
-        prj_data = _safe_pop_one_mapping(
-            key=self._PROJECT_KEY, data=data, info_name="project-level"
-        )
         self._project_level_data = _recursively_replace_custom_types(prj_data)
 
         # Sample- and/or project-level data must be declared.
         if not self._sample_level_data and not self._project_level_data:
             raise SchemaError("Neither sample-level nor project-level data items are declared.")
 
-        # Parse custom status declaration if present.
-        self._status_data = _safe_pop_one_mapping(
-            key=self._STATUS_KEY, data=data, info_name="status"
-        )
-
-        if data:
-            _LOGGER.info(
-                "Top-Level arguments found in output schema. They will be assigned to project-level."
-            )
-            extra_project_data = _recursively_replace_custom_types(data)
-            self._project_level_data.update(extra_project_data)
-
         # Check that no reserved keywords were used as data items.
-        resv_kwds = {"id", SAMPLE_NAME}
+        resv_kwds = {"id", RECORD_IDENTIFIER}
         reserved_keywords_used = set()
         for data in [self.project_level_data, self.sample_level_data, self.status_data]:
             reserved_keywords_used |= set(data.keys()) & resv_kwds
@@ -151,7 +182,10 @@ class ParsedSchema(object):
             res += f"\n Sample Level Data:"
             for k, v in self._sample_level_data.items():
                 res += f"\n -  {k} : {v}"
-        # TODO: add status schema data
+        if self._status_data is not None:
+            res += f"\n Status Data:"
+            for k, v in self._status_data.items():
+                res += f"\n -  {k} : {v}"
         return res
 
     @property

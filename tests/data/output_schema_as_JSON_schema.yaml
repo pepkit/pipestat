@@ -1,0 +1,43 @@
+title: An example Pipestat output schema
+description: A pipeline that uses pipestat to report sample and project level results.
+type: object
+properties:
+  pipeline_name: "default_pipeline_name"
+  samples:
+    type: object
+    properties:
+        number_of_things:
+          type: integer
+          description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+        smooth_bw:
+          type: string
+          description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce nec cursus nulla."
+          path: "aligned_{genome}/{sample_name}_smooth.bw"
+        collection_of_images:
+          type: array
+          description: A collection of images.
+          items:
+            type: object
+            properties:
+              prop1:
+                type: file
+                description: An example file.
+        output_file_in_object:
+          type: object
+          description: An object containing output files.
+          properties:
+            example_property_1:
+              type: file
+              description: An example file.
+            example_property_2:
+              type: image
+              description: An example image.
+  project:
+    type: object
+    properties:
+      project_output_file:
+        type: file
+        description: The path to the output file.
+      protocol:
+        type: string
+        description: example protocol description
