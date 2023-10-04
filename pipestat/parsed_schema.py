@@ -54,12 +54,12 @@ def _safe_pop_one_mapping(
     mappingkey: str, data: Dict[str, Any], info_name: str, subkeys: Optional[List[str]] = None
 ) -> Any:
     """
-    subkeys exist if the output schema is in a JSON schema format
-
+    mapping key: the dict key where the sample, project or status values are stored, e.g. data["mappingkey"]
+    subkeys: if using JSON schema, the dict is nested further, e.g. data["properties"]["samples"]["mappingkey"]
     """
     if subkeys:
         try:
-            value = data[subkeys[0]][subkeys[1]].pop(mappingkey, NULL_MAPPING_VALUE)
+            value = data[subkeys[0]].pop(mappingkey, NULL_MAPPING_VALUE)
         except KeyError:
             value = {}
         if isinstance(value, Mapping):
@@ -104,21 +104,21 @@ class ParsedSchema(object):
             self._pipeline_name = data["properties"].pop(SCHEMA_PIPELINE_NAME_KEY, None)
 
             sample_data = _safe_pop_one_mapping(
-                subkeys=["samples", "items"],
+                subkeys=["samples"],
                 data=data["properties"],
                 info_name="sample-level",
                 mappingkey="properties",
             )
 
             prj_data = _safe_pop_one_mapping(
-                subkeys=["project", "items"],
+                subkeys=["project"],
                 data=data["properties"],
                 info_name="project-level",
                 mappingkey="properties",
             )
 
             self._status_data = _safe_pop_one_mapping(
-                subkeys=["status", "items"],
+                subkeys=["status"],
                 data=data["properties"],
                 info_name="status",
                 mappingkey="properties",

@@ -4,10 +4,8 @@ type: object
 properties:
   pipeline_name: "default_pipeline_name"
   samples:
-    type: array
-    items:
-      type: object
-      properties:
+    type: object
+    properties:
         number_of_things:
           type: integer
           description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
@@ -35,13 +33,11 @@ properties:
               type: image
               description: An example image.
   project:
-    type: array
-    items:
-      type: object
-      properties:
-        project_output_file:
-          type: file
-          description: The path to the output file.
-        protocol:
-          type: string
-          description: example protocol description
+    type: object
+    properties:
+      project_output_file:
+        type: file
+        description: The path to the output file.
+      protocol:
+        type: string
+        description: example protocol description

@@ -260,6 +260,6 @@ def test_sample_project_data_item_name_overlap__raises_expected_error_and_messag
 
 
 def test_JSON_schema_validation(output_schema_as_JSON_schema):
-    ParsedSchema(output_schema_as_JSON_schema)
-    assert True
-    # assert "reserved keyword(s) used" in observed_message
+    schema = ParsedSchema(output_schema_as_JSON_schema)
+    assert "number_of_things" in dict(schema.sample_level_data).keys()
+    assert "protocol" in dict(schema.project_level_data).keys()
