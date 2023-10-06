@@ -537,12 +537,12 @@ class DBBackend(PipestatBackend):
     def select_distinct(
         self,
         columns,
-    ) -> List[Any]:
+    ) -> List[Tuple]:
         """
         Perform a `SELECT DISTINCT` on given table and column
 
         :param List[str] columns: columns to include in the result
-        :return List[Any]: returns distinct values.
+        :return List[Tuple]: returns distinct values.
         """
 
         ORM = self.get_model(table_name=self.table_name)

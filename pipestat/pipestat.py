@@ -453,6 +453,24 @@ class PipestatManager(MutableMapping):
         return reported_results
 
     @require_backend
+    def retrieve_distinct(
+        self,
+        columns: Optional[List[str]] = None,
+    ) -> List[Any]:
+        """
+        Retrieves unique results for a list of attributes.
+
+        :param List[str] columns: columns to include in the result
+        :return list[any] result: this is a list of distinct results
+        """
+        if self.file:
+            # Not implemented yet
+            result = self.backend.retrieve_distinct()
+        else:
+            result = self.backend.select_distinct(columns=columns)
+        return result
+
+    @require_backend
     def retrieve(
         self,
         record_identifier: Optional[str] = None,

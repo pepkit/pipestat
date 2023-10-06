@@ -116,6 +116,13 @@ class PipestatBackend(ABC):
     ) -> str:
         _LOGGER.warning("Not implemented yet for this backend")
 
+    def retrieve_distinct(
+        self,
+        columns: Optional[List[str]] = None,
+    ) -> List[Any]:
+        _LOGGER.warning("Not implemented yet for this backend")
+        pass
+
     def retrieve(
         self, record_identifier: Optional[str] = None, result_identifier: Optional[str] = None
     ) -> Union[Any, Dict[str, Any]]:
