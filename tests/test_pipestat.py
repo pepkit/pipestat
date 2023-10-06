@@ -1053,3 +1053,51 @@ class TestPipestatCLI:
                 SystemExit
             ):  # pipestat cli normal behavior is to end with a "sys.exit(0)"
                 main(test_args=x)
+
+class TestFileTypeLinking:
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("sample1", {"name_of_something": "test_name"}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["file"])
+    def test_linking(
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        output_schema_as_JSON_schema,
+        results_file_path,
+        backend,
+    ):
+        values_sample = [
+            {"sample4": {"smooth_bw": "smooth_bw string"}},
+            {"sample5": {"output_file": {"path": "path_string", "title": "title_string"}}},
+            {"sample4": {"aligned_bam": "aligned_bam string"}},
+            {"sample6": {"output_file": {"path": "path_string", "title": "title_string"}}},
+            {
+                "sample7": {
+                    "output_image": {
+                        "path": "path_string",
+                        "thumbnail_path": "path_string",
+                        "title": "title_string",
+                    }
+                }
+            },
+        ]
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=output_schema_as_JSON_schema, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in values_sample:
+                for r, v in i.items():
+                    psm.report(record_identifier=r, values=v, force_overwrite=True)
+                    psm.set_status(record_identifier=r, status_identifier="running")

@@ -500,6 +500,20 @@ class PipestatManager(MutableMapping):
         self.backend.set_status(status_identifier, r_id)
 
     @require_backend
+    def link(
+        self,
+    ) -> None:
+        """
+        This function creates a link structure such that results are organized by type.
+        """
+        # this should only operate for a file backend (right?)
+        # load results file, collect items by file types and get the actual paths (if it exists)
+        # create links: use this script or something similar: https://github.com/databio/scripts/blob/master/misc/linkme.py
+        # return and print link to the linked_results_folder
+        linked_results_path = "PATH TO RESULTS"
+        return linked_results_path
+
+    @require_backend
     def summarize(
         self,
         amendment: Optional[str] = None,
