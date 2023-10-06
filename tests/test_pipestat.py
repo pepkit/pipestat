@@ -1055,31 +1055,40 @@ class TestPipestatCLI:
                 main(test_args=x)
 
 class TestFileTypeLinking:
-    @pytest.mark.parametrize(
-        ["rec_id", "val"],
-        [
-            ("sample1", {"name_of_something": "test_name"}),
-        ],
-    )
     @pytest.mark.parametrize("backend", ["file"])
     def test_linking(
         self,
-        rec_id,
-        val,
         config_file_path,
         output_schema_as_JSON_schema,
         results_file_path,
         backend,
     ):
+        #paths to images and files
+        path_file_1 = os.path.abspath("./data/results/ex1.txt")
+        path_file_2 = os.path.abspath("./data/results/ex2.txt")
+        path_image_1 = os.path.abspath("./data/results/ex3.png")
+        path_image_2 = os.path.abspath("./data/results/ex4.png")
+        # Make absolute for the test to run successfully.
+
+
         values_sample = [
-            {"sample4": {"smooth_bw": "smooth_bw string"}},
-            {"sample5": {"output_file": {"path": "path_string", "title": "title_string"}}},
-            {"sample4": {"aligned_bam": "aligned_bam string"}},
-            {"sample6": {"output_file": {"path": "path_string", "title": "title_string"}}},
+            {"sample1": {"number_of_things": 100}},
+            {"sample2": {"number_of_things": 200}},
+            {"sample1": {"output_file": {"path": path_file_1, "title": "title_string"}}},
+            {"sample2": {"output_file": {"path": path_file_2, "title": "title_string"}}},
             {
-                "sample7": {
+                "sample1": {
                     "output_image": {
-                        "path": "path_string",
+                        "path": path_image_1,
+                        "thumbnail_path": "path_string",
+                        "title": "title_string",
+                    }
+                }
+            },
+            {
+                "sample2": {
+                    "output_image": {
+                        "path": path_image_2,
                         "thumbnail_path": "path_string",
                         "title": "title_string",
                     }
@@ -1087,6 +1096,7 @@ class TestFileTypeLinking:
             },
         ]
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+
             results_file_path = f.name
             args = dict(schema_path=output_schema_as_JSON_schema, database_only=False)
             backend_data = (
@@ -1096,8 +1106,24 @@ class TestFileTypeLinking:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
+            schema = ParsedSchema(output_schema_as_JSON_schema)
+            print(schema)
+
 
             for i in values_sample:
                 for r, v in i.items():
                     psm.report(record_identifier=r, values=v, force_overwrite=True)
                     psm.set_status(record_identifier=r, status_identifier="running")
+
+            output_dir = os.path.abspath("./tests/data/test_file_links/results")
+            try:
+                psm.link(output_dir=output_dir)
+            except Exception:
+                assert False
+
+            try:
+                psm.link()
+            except Exception:
+                assert False
+
+            print("done")

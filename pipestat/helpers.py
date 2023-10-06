@@ -2,6 +2,7 @@
 
 import logging
 import os
+import errno
 import yaml
 import jsonschema
 from json import dumps, loads
@@ -273,3 +274,97 @@ def default_formatter(pipeline_name, record_identifier, res_id, value) -> str:
         + f":{nl} - {(nl + ' - ').join(rep_strs)}"
     )
     return formatted_result
+
+def link_files_in_directory(output_dir: str):
+    """
+    Makes convenient folder hierarchy for results that is by file type instead of by sample.
+    """
+
+    project_dir = os.path.abspath(output_dir)
+
+    def force_symlink(file1, file2):
+        try:
+            os.symlink(file1, file2)
+        except OSError as e:
+            if e.errno == errno.EEXIST:
+                os.remove(file2)
+                os.symlink(file1, file2)
+
+
+    def uniqify(seq):
+        """
+        Fast way to uniqify while preserving input order.
+        """
+        # http://stackoverflow.com/questions/480214/
+        seen = set()
+        seen_add = seen.add
+        return [x for x in seq if not (x in seen or seen_add(x))]
+
+    #os.path.dirname(project_dir)
+    folders = os.listdir(project_dir)
+
+    linkdir = os.path.join(os.path.dirname(project_dir), "link_results")
+
+    try:
+        os.mkdir(linkdir)
+    except:
+        pass
+
+    subs = []
+    current_run = "None"
+    for root, dirs, files in os.walk(project_dir):
+        path = root.split(os.sep)
+        lp = len(path)
+        if len(path) == 6:
+            print(os.path.basename(root))
+            current_run = os.path.basename(root)
+
+        if len(path) == 7:
+            subs.append(os.path.basename(root))
+            try:
+                os.mkdir(os.path.join(linkdir, os.path.basename(root)))
+            except:
+                pass
+
+        print((len(path) - 1) * '-' + os.path.basename(root) + "(" + str(lp) + ")")
+        for file in files:
+            print(len(path) * '-' + file + "(" + str(lp) + ")")
+            if len(path) == 7:  # and it's a file.
+                linkname = os.path.join(linkdir, os.path.basename(root), current_run)
+                linkname = os.path.join(linkdir, os.path.basename(root), file)
+                src = os.path.join(root, file)
+                src_rel = os.path.relpath(src, os.path.dirname(linkname))
+                print(os.path.join(root, file), src, src_rel, linkname)
+                force_symlink(src_rel, linkname)
+
+    return True
+
+
+def link_files_from_results_file(data, link_dir):
+
+    all_paths = []
+    unique_file_extensions = []
+
+    items = ["sample", "project"]
+
+    for i in items:
+        if i in data:
+            for sample, values in data[i].items():
+                for k, v in values.items():
+                    if type(v) == dict:
+                        if 'path' in v.keys():
+                            _, file_extension = os.path.splitext(v['path'])
+                            all_paths.append((v['path'], file_extension))
+                            if file_extension not in unique_file_extensions:
+                                unique_file_extensions.append(file_extension)
+
+    for i in unique_file_extensions:
+        for path in all_paths:
+            if i == path[1]:
+                print(f"found {i}")
+
+
+
+
+
+    return True

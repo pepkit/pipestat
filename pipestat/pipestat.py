@@ -502,14 +502,18 @@ class PipestatManager(MutableMapping):
     @require_backend
     def link(
         self,
+        output_dir
     ) -> None:
         """
         This function creates a link structure such that results are organized by type.
         """
-        # this should only operate for a file backend (right?)
-        # load results file, collect items by file types and get the actual paths (if it exists)
-        # create links: use this script or something similar: https://github.com/databio/scripts/blob/master/misc/linkme.py
-        # return and print link to the linked_results_folder
+
+        if output_dir is not None:
+            # then we must use the results_file
+            linked_results_path = link_files_in_directory(output_dir)
+        else:
+            linked_results_path = link_files_from_results_file(data=self._data[self.pipeline_name], link_dir=os.path.dirname(self.file))
+
         linked_results_path = "PATH TO RESULTS"
         return linked_results_path
 
