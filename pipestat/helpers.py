@@ -300,7 +300,7 @@ def link_files_in_directory(output_dir: str):
 
     try:
         os.mkdir(linkdir)
-    except:
+    except FileExistsError:
         pass
 
     for root, dirs, files in os.walk(project_dir):
@@ -340,9 +340,10 @@ def link_files_from_results_file(data, results_dir):
     project_dir = os.path.abspath(results_dir)
     linkdir = os.path.join(project_dir, "link_results")
     items = ["sample", "project"]
+
     try:
         os.mkdir(linkdir)
-    except:
+    except FileExistsError:
         pass
 
     for i in items:
