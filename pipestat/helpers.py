@@ -277,10 +277,13 @@ def default_formatter(pipeline_name, record_identifier, res_id, value) -> str:
 
 def link_files_in_directory(output_dir: str):
     """
-    Makes convenient folder hierarchy for results that is by file type instead of by sample.
-    """
+    Creates link_results directory as well as subdirectories based on file types.
+    Places symlinks into subdirectories to group files by file type via symlink.
 
-    project_dir = os.path.abspath(output_dir)
+    :param str output_dir: directory containing all results files
+    :return str linkdir: path to directory containing symlinks grouped by filetypes.
+
+    """
 
     def force_symlink(file1, file2):
         try:
@@ -290,19 +293,7 @@ def link_files_in_directory(output_dir: str):
                 os.remove(file2)
                 os.symlink(file1, file2)
 
-
-    def uniqify(seq):
-        """
-        Fast way to uniqify while preserving input order.
-        """
-        # http://stackoverflow.com/questions/480214/
-        seen = set()
-        seen_add = seen.add
-        return [x for x in seq if not (x in seen or seen_add(x))]
-
-    #os.path.dirname(project_dir)
-    folders = os.listdir(project_dir)
-
+    project_dir = os.path.abspath(output_dir)
     linkdir = os.path.join(os.path.dirname(project_dir), "link_results")
 
     try:
@@ -310,34 +301,27 @@ def link_files_in_directory(output_dir: str):
     except:
         pass
 
-    subs = []
-    current_run = "None"
+    unique_file_extensions = []
     for root, dirs, files in os.walk(project_dir):
-        path = root.split(os.sep)
-        lp = len(path)
-        if len(path) == 6:
-            print(os.path.basename(root))
-            current_run = os.path.basename(root)
-
-        if len(path) == 7:
-            subs.append(os.path.basename(root))
-            try:
-                os.mkdir(os.path.join(linkdir, os.path.basename(root)))
-            except:
-                pass
-
-        print((len(path) - 1) * '-' + os.path.basename(root) + "(" + str(lp) + ")")
         for file in files:
-            print(len(path) * '-' + file + "(" + str(lp) + ")")
-            if len(path) == 7:  # and it's a file.
-                linkname = os.path.join(linkdir, os.path.basename(root), current_run)
-                linkname = os.path.join(linkdir, os.path.basename(root), file)
-                src = os.path.join(root, file)
-                src_rel = os.path.relpath(src, os.path.dirname(linkname))
-                print(os.path.join(root, file), src, src_rel, linkname)
-                force_symlink(src_rel, linkname)
+            _, file_extension = os.path.splitext(file)
+            if file_extension not in unique_file_extensions:
+                sub_dir_for_type = os.path.join(linkdir, "all_"+str(file_extension[1:]))
+                unique_file_extensions.append((file_extension, sub_dir_for_type))
+                try:
+                    os.mkdir(sub_dir_for_type)
+                except:
+                    pass
 
-    return True
+            for subdir in unique_file_extensions:
+                if file_extension == subdir[0]:
+                    target_dir = subdir[1]
+            linkname = os.path.join(target_dir, file)
+            src = os.path.join(root, file)
+            src_rel = os.path.relpath(src, os.path.dirname(linkname))
+            force_symlink(src_rel, linkname)
+
+    return linkdir
 
 
 def link_files_from_results_file(data, link_dir):

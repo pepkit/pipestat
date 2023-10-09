@@ -514,7 +514,6 @@ class PipestatManager(MutableMapping):
         else:
             linked_results_path = link_files_from_results_file(data=self._data[self.pipeline_name], link_dir=os.path.dirname(self.file))
 
-        linked_results_path = "PATH TO RESULTS"
         return linked_results_path
 
     @require_backend

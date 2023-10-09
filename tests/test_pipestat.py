@@ -1117,13 +1117,14 @@ class TestFileTypeLinking:
 
             output_dir = os.path.abspath("./tests/data/test_file_links/results")
             try:
-                psm.link(output_dir=output_dir)
+                linkdir = psm.link(output_dir=output_dir)
             except Exception:
                 assert False
 
-            try:
-                psm.link()
-            except Exception:
-                assert False
+            linkdir = os.path.join(linkdir, "all_txt")
+            for root, dirs, files in os.walk(linkdir):
+                assert "ex1.txt" in files
+
+
 
             print("done")
