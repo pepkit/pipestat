@@ -1054,6 +1054,7 @@ class TestPipestatCLI:
             ):  # pipestat cli normal behavior is to end with a "sys.exit(0)"
                 main(test_args=x)
 
+
 class TestFileTypeLinking:
     @pytest.mark.parametrize("backend", ["file"])
     def test_linking(
@@ -1063,13 +1064,14 @@ class TestFileTypeLinking:
         results_file_path,
         backend,
     ):
-        #paths to images and files
-        path_file_1 = os.path.abspath("./data/results/ex1.txt")
-        path_file_2 = os.path.abspath("./data/results/ex2.txt")
-        path_image_1 = os.path.abspath("./data/results/ex3.png")
-        path_image_2 = os.path.abspath("./data/results/ex4.png")
+        # paths to images and files
+        path_file_1 = get_data_file_path(
+            "test_file_links/results/project_dir_example_1/ex1.txt"
+        )  # os.path.abspath("tests/data/test_file_links/results/project_dir_example_1/ex1.txt")
+        path_file_2 = get_data_file_path("test_file_links/results/project_dir_example_1/ex2.txt")
+        path_image_1 = get_data_file_path("test_file_links/results/project_dir_example_1/ex3.png")
+        path_image_2 = get_data_file_path("test_file_links/results/project_dir_example_1/ex4.png")
         # Make absolute for the test to run successfully.
-
 
         values_sample = [
             {"sample1": {"number_of_things": 100}},
@@ -1096,7 +1098,6 @@ class TestFileTypeLinking:
             },
         ]
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
-
             results_file_path = f.name
             args = dict(schema_path=output_schema_as_JSON_schema, database_only=False)
             backend_data = (
@@ -1109,13 +1110,15 @@ class TestFileTypeLinking:
             schema = ParsedSchema(output_schema_as_JSON_schema)
             print(schema)
 
-
             for i in values_sample:
                 for r, v in i.items():
                     psm.report(record_identifier=r, values=v, force_overwrite=True)
                     psm.set_status(record_identifier=r, status_identifier="running")
 
-            output_dir = os.path.abspath("./tests/data/test_file_links/results")
+            # Just link files if given a outputdir full of different files and subdirectories
+            output_dir = get_data_file_path(
+                "test_file_links/results"
+            )  # os.path.abspath("tests/data/test_file_links/results")
             try:
                 linkdir = psm.link(output_dir=output_dir)
             except Exception:
@@ -1125,6 +1128,14 @@ class TestFileTypeLinking:
             for root, dirs, files in os.walk(linkdir):
                 assert "ex1.txt" in files
 
+            # Try linking files if not output directory, use results.yaml
+            try:
+                linkdir = psm.link()
+            except Exception:
+                assert False
 
+            linkdir = os.path.join(linkdir, "all_txt")
+            for root, dirs, files in os.walk(linkdir):
+                assert "ex1.txt" in files
 
             print("done")

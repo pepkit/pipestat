@@ -275,6 +275,17 @@ def default_formatter(pipeline_name, record_identifier, res_id, value) -> str:
     )
     return formatted_result
 
+
+def force_symlink(file1, file2):
+    """Create a symlink between two files."""
+    try:
+        os.symlink(file1, file2)
+    except OSError as e:
+        if e.errno == errno.EEXIST:
+            os.remove(file2)
+            os.symlink(file1, file2)
+
+
 def link_files_in_directory(output_dir: str):
     """
     Creates link_results directory as well as subdirectories based on file types.
@@ -282,16 +293,7 @@ def link_files_in_directory(output_dir: str):
 
     :param str output_dir: directory containing all results files
     :return str linkdir: path to directory containing symlinks grouped by filetypes.
-
     """
-
-    def force_symlink(file1, file2):
-        try:
-            os.symlink(file1, file2)
-        except OSError as e:
-            if e.errno == errno.EEXIST:
-                os.remove(file2)
-                os.symlink(file1, file2)
 
     project_dir = os.path.abspath(output_dir)
     linkdir = os.path.join(os.path.dirname(project_dir), "link_results")
@@ -306,7 +308,7 @@ def link_files_in_directory(output_dir: str):
         for file in files:
             _, file_extension = os.path.splitext(file)
             if file_extension not in unique_file_extensions:
-                sub_dir_for_type = os.path.join(linkdir, "all_"+str(file_extension[1:]))
+                sub_dir_for_type = os.path.join(linkdir, "all_" + str(file_extension[1:]))
                 unique_file_extensions.append((file_extension, sub_dir_for_type))
                 try:
                     os.mkdir(sub_dir_for_type)
@@ -324,31 +326,51 @@ def link_files_in_directory(output_dir: str):
     return linkdir
 
 
-def link_files_from_results_file(data, link_dir):
+def link_files_from_results_file(data, results_dir):
+    """
+    Creates link_results directory as well as subdirectories based on file types.
+    Places symlinks into subdirectories to group files by file type via symlink.
 
+    :param dict data: dict contianing data from pipestat filebackend
+    :param results_dir: parent directory of the results.yaml for the pipestat file backend
+    :return str linkdir: path to directory containing symlinks grouped by filetypes.
+
+    """
     all_paths = []
     unique_file_extensions = []
-
     items = ["sample", "project"]
+    project_dir = os.path.abspath(results_dir)
+    linkdir = os.path.join(project_dir, "link_results")
+    try:
+        os.mkdir(linkdir)
+    except:
+        pass
 
     for i in items:
         if i in data:
             for sample, values in data[i].items():
                 for k, v in values.items():
                     if type(v) == dict:
-                        if 'path' in v.keys():
-                            _, file_extension = os.path.splitext(v['path'])
-                            all_paths.append((v['path'], file_extension))
+                        if "path" in v.keys():
+                            file = os.path.basename(v["path"])
+                            file_name, file_extension = os.path.splitext(file)
+                            all_paths.append((v["path"], file_extension))
                             if file_extension not in unique_file_extensions:
-                                unique_file_extensions.append(file_extension)
+                                sub_dir_for_type = os.path.join(
+                                    linkdir, "all_" + str(file_extension[1:])
+                                )
+                                unique_file_extensions.append((file_extension, sub_dir_for_type))
+                                try:
+                                    os.mkdir(sub_dir_for_type)
+                                except:
+                                    pass
 
-    for i in unique_file_extensions:
-        for path in all_paths:
-            if i == path[1]:
-                print(f"found {i}")
+                            for subdir in unique_file_extensions:
+                                if file_extension == subdir[0]:
+                                    target_dir = subdir[1]
+                            linkname = os.path.join(target_dir, file)
+                            src = v["path"]
+                            src_rel = os.path.relpath(src, os.path.dirname(linkname))
+                            force_symlink(src_rel, linkname)
 
-
-
-
-
-    return True
+    return linkdir
