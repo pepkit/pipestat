@@ -294,7 +294,7 @@ def link_files_in_directory(output_dir: str):
     :param str output_dir: directory containing all results files
     :return str linkdir: path to directory containing symlinks grouped by filetypes.
     """
-
+    unique_file_extensions = []
     project_dir = os.path.abspath(output_dir)
     linkdir = os.path.join(os.path.dirname(project_dir), "link_results")
 
@@ -303,7 +303,6 @@ def link_files_in_directory(output_dir: str):
     except:
         pass
 
-    unique_file_extensions = []
     for root, dirs, files in os.walk(project_dir):
         for file in files:
             _, file_extension = os.path.splitext(file)
@@ -331,16 +330,16 @@ def link_files_from_results_file(data, results_dir):
     Creates link_results directory as well as subdirectories based on file types.
     Places symlinks into subdirectories to group files by file type via symlink.
 
-    :param dict data: dict contianing data from pipestat filebackend
+    :param dict data: dict containing data from pipestat filebackend
     :param results_dir: parent directory of the results.yaml for the pipestat file backend
     :return str linkdir: path to directory containing symlinks grouped by filetypes.
 
     """
-    all_paths = []
+
     unique_file_extensions = []
-    items = ["sample", "project"]
     project_dir = os.path.abspath(results_dir)
     linkdir = os.path.join(project_dir, "link_results")
+    items = ["sample", "project"]
     try:
         os.mkdir(linkdir)
     except:
@@ -354,7 +353,6 @@ def link_files_from_results_file(data, results_dir):
                         if "path" in v.keys():
                             file = os.path.basename(v["path"])
                             file_name, file_extension = os.path.splitext(file)
-                            all_paths.append((v["path"], file_extension))
                             if file_extension not in unique_file_extensions:
                                 sub_dir_for_type = os.path.join(
                                     linkdir, "all_" + str(file_extension[1:])
