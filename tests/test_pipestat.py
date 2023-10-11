@@ -19,7 +19,7 @@ from .conftest import (
     STANDARD_TEST_PIPE_ID,
     DB_URL,
 )
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 from .test_db_only_mode import ContextManagerDBTesting
 
@@ -1071,6 +1071,7 @@ class TestFileTypeLinking:
         path_file_2 = get_data_file_path("test_file_links/results/project_dir_example_1/ex2.txt")
         path_image_1 = get_data_file_path("test_file_links/results/project_dir_example_1/ex3.png")
         path_image_2 = get_data_file_path("test_file_links/results/project_dir_example_1/ex4.png")
+        # path_file_3 = get_data_file_path("test_file_links/results/project_dir_example_2/sub_project_dir_example_2/ex7.txt")
         # Make absolute for the test to run successfully.
 
         values_sample = [
@@ -1096,9 +1097,26 @@ class TestFileTypeLinking:
                     }
                 }
             },
+            {
+                "sample2": {
+                    "output_file_in_object": {
+                        "example_property_1": {
+                            "path": path_file_1,
+                            "thumbnail_path": "path_string",
+                            "title": "title_string",
+                        },
+                        "example_property_2": {
+                            "path": path_image_1,
+                            "thumbnail_path": "path_string",
+                            "title": "title_string",
+                        },
+                    }
+                }
+            },
         ]
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, TemporaryDirectory() as d, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
+            temp_dir = d
             args = dict(schema_path=output_schema_as_JSON_schema, database_only=False)
             backend_data = (
                 {"config_file": config_file_path}
@@ -1115,29 +1133,15 @@ class TestFileTypeLinking:
                     psm.report(record_identifier=r, values=v, force_overwrite=True)
                     psm.set_status(record_identifier=r, status_identifier="running")
 
-            # # Just link files if given a outputdir full of different files and subdirectories
-            # output_dir = get_data_file_path(
-            #     "test_file_links/results"
-            # )  # os.path.abspath("tests/data/test_file_links/results")
-            # try:
-            #     linkdir = psm.link(output_dir=output_dir)
-            # except Exception:
-            #     assert False
-            #
-            # linkdir = os.path.join(linkdir, "all_txt")
-            # for root, dirs, files in os.walk(linkdir):
-            #     assert "ex1.txt" in files
-
-            # Try linking files if not output directory, use results.yaml
-
-            output_dir = get_data_file_path("test_file_links")
+            os.mkdir(temp_dir + "/test_file_links")
+            output_dir = get_data_file_path(temp_dir + "/test_file_links")
             try:
                 linkdir = psm.link(output_dir=output_dir)
             except Exception:
                 assert False
 
-            linkdir = os.path.join(linkdir, "all_txt")
+            linkdir = os.path.join(linkdir, "output_file")
             for root, dirs, files in os.walk(linkdir):
-                assert "ex1.txt" in files
+                assert "sample1ex1.txt" in files
 
             print("done")

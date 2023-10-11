@@ -230,9 +230,7 @@ class FileBackend(PipestatBackend):
                         file = os.path.basename(v["path"])
                         file_name, file_extension = os.path.splitext(file)
                         if k not in unique_result_identifiers:
-                            sub_dir_for_type = os.path.join(
-                                linkdir, k
-                            )
+                            sub_dir_for_type = os.path.join(linkdir, k)
                             unique_result_identifiers.append((k, sub_dir_for_type))
                             try:
                                 os.mkdir(sub_dir_for_type)

@@ -505,20 +505,6 @@ class PipestatManager(MutableMapping):
         This function creates a link structure such that results are organized by type.
         """
 
-        # if output_dir is not None:
-        #     # then we must use the results_file
-        #     linked_results_path = link_files_in_directory(output_dir)
-        # else:
-        #     if self.file:
-        #         linked_results_path = link_files_from_results_file(
-        #             data=self.backend._data[self.pipeline_name],
-        #             results_dir=os.path.dirname(self.file),
-        #         )
-        #     else:
-        #         raise NotImplementedError(
-        #             "You must supply either an output directory or the pipestamanager must have an associated results file."
-        #         )
-
         linked_results_path = self.backend.link(output_dir=output_dir)
 
         return linked_results_path
