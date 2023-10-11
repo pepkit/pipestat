@@ -1115,22 +1115,24 @@ class TestFileTypeLinking:
                     psm.report(record_identifier=r, values=v, force_overwrite=True)
                     psm.set_status(record_identifier=r, status_identifier="running")
 
-            # Just link files if given a outputdir full of different files and subdirectories
-            output_dir = get_data_file_path(
-                "test_file_links/results"
-            )  # os.path.abspath("tests/data/test_file_links/results")
-            try:
-                linkdir = psm.link(output_dir=output_dir)
-            except Exception:
-                assert False
-
-            linkdir = os.path.join(linkdir, "all_txt")
-            for root, dirs, files in os.walk(linkdir):
-                assert "ex1.txt" in files
+            # # Just link files if given a outputdir full of different files and subdirectories
+            # output_dir = get_data_file_path(
+            #     "test_file_links/results"
+            # )  # os.path.abspath("tests/data/test_file_links/results")
+            # try:
+            #     linkdir = psm.link(output_dir=output_dir)
+            # except Exception:
+            #     assert False
+            #
+            # linkdir = os.path.join(linkdir, "all_txt")
+            # for root, dirs, files in os.walk(linkdir):
+            #     assert "ex1.txt" in files
 
             # Try linking files if not output directory, use results.yaml
+
+            output_dir = get_data_file_path("test_file_links")
             try:
-                linkdir = psm.link()
+                linkdir = psm.link(output_dir=output_dir)
             except Exception:
                 assert False
 

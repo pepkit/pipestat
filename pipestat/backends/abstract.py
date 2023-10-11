@@ -91,6 +91,12 @@ class PipestatBackend(ABC):
     def get_status(self, record_identifier: str) -> Optional[str]:
         _LOGGER.warning("Not implemented yet for this backend")
 
+    def link(self, output_dir: Optional[str] = None) -> str:
+        """
+        This function creates a link structure such that results are organized by type.
+        """
+        _LOGGER.warning("Not implemented yet for this backend")
+
     def clear_status(
         self, record_identifier: str = None, flag_names: List[str] = None
     ) -> List[Union[str, None]]:

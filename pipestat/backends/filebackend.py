@@ -1,3 +1,4 @@
+import os.path
 import sys
 
 from glob import glob
@@ -209,6 +210,47 @@ class FileBackend(PipestatBackend):
         return os.path.join(
             self.status_file_dir, f"{self.pipeline_name}_{r_id}_{status_identifier}.flag"
         )
+
+    def link(self, output_dir: Optional[str] = None) -> str:
+        """
+        This function creates a link structure such that results are organized by type.
+        """
+
+        linkdir = output_dir or os.path.abspath(os.path.dirname(self.results_file_path))
+        unique_file_extensions = []
+
+        all_records = self.get_records()
+
+        for record in all_records["records"]:
+            result_identifiers = self.retrieve(record_identifier=record)
+            print(result_identifiers)
+            for k, v in result_identifiers.items():
+                if type(v) == dict:
+                    if "path" in v.keys():
+                        file = os.path.basename(v["path"])
+                        file_name, file_extension = os.path.splitext(file)
+                        if file_extension not in unique_file_extensions:
+                            sub_dir_for_type = os.path.join(
+                                linkdir, "all_" + str(file_extension[1:])
+                            )
+                            unique_file_extensions.append((file_extension, sub_dir_for_type))
+                            try:
+                                os.mkdir(sub_dir_for_type)
+                            except:
+                                pass
+
+                        for subdir in unique_file_extensions:
+                            if file_extension == subdir[0]:
+                                target_dir = subdir[1]
+                        linkname = os.path.join(target_dir, record + file)
+                        # src = os.path.join(root, file)
+                        src = os.path.abspath(v["path"])
+                        src_rel = os.path.relpath(src, os.path.dirname(linkname))
+                        force_symlink(src_rel, linkname)
+
+        print(all_records)
+
+        return linkdir
 
     def list_results(
         self,
