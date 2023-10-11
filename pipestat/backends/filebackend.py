@@ -217,7 +217,7 @@ class FileBackend(PipestatBackend):
         """
 
         linkdir = output_dir or os.path.abspath(os.path.dirname(self.results_file_path))
-        unique_file_extensions = []
+        unique_result_identifiers = []
 
         all_records = self.get_records()
 
@@ -229,18 +229,18 @@ class FileBackend(PipestatBackend):
                     if "path" in v.keys():
                         file = os.path.basename(v["path"])
                         file_name, file_extension = os.path.splitext(file)
-                        if file_extension not in unique_file_extensions:
+                        if k not in unique_result_identifiers:
                             sub_dir_for_type = os.path.join(
-                                linkdir, "all_" + str(file_extension[1:])
+                                linkdir, k
                             )
-                            unique_file_extensions.append((file_extension, sub_dir_for_type))
+                            unique_result_identifiers.append((k, sub_dir_for_type))
                             try:
                                 os.mkdir(sub_dir_for_type)
                             except:
                                 pass
 
-                        for subdir in unique_file_extensions:
-                            if file_extension == subdir[0]:
+                        for subdir in unique_result_identifiers:
+                            if k == subdir[0]:
                                 target_dir = subdir[1]
                         linkname = os.path.join(target_dir, record + file)
                         # src = os.path.join(root, file)
