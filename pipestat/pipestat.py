@@ -500,7 +500,7 @@ class PipestatManager(MutableMapping):
         self.backend.set_status(status_identifier, r_id)
 
     @require_backend
-    def link(self, output_dir: Optional[str] = None) -> str:
+    def link(self, output_dir) -> str:
         """
         This function creates a link structure such that results are organized by type.
         """

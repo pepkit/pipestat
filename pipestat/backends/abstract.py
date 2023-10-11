@@ -91,11 +91,49 @@ class PipestatBackend(ABC):
     def get_status(self, record_identifier: str) -> Optional[str]:
         _LOGGER.warning("Not implemented yet for this backend")
 
-    def link(self, output_dir: Optional[str] = None) -> str:
-        """
-        This function creates a link structure such that results are organized by type.
-        """
-        _LOGGER.warning("Not implemented yet for this backend")
+    def link(self, output_dir) -> str:
+        def get_all_paths(parent_key, result_identifier_value):
+            """If the result identifier is a complex object which contains nested paths"""
+
+            key_value_pairs = []
+
+            for k, v in result_identifier_value.items():
+                if isinstance(v, dict):
+                    key_value_pairs.extend(get_all_paths(k, v))
+                elif k == "path":
+                    key_value_pairs.append((parent_key, v))
+            return key_value_pairs
+
+        linkdir = output_dir
+
+        unique_result_identifiers = []
+
+        all_records = self.get_records()
+
+        for record in all_records["records"]:
+            result_identifiers = self.retrieve(record_identifier=record)
+            print(result_identifiers)
+            for k, v in result_identifiers.items():
+                if type(v) == dict:
+                    all_paths = get_all_paths(k, v)
+                    for path in all_paths:
+                        file = os.path.basename(path[1])
+                        if k not in unique_result_identifiers:
+                            sub_dir_for_type = os.path.join(linkdir, k)
+                            unique_result_identifiers.append((k, sub_dir_for_type))
+                            try:
+                                os.mkdir(sub_dir_for_type)
+                            except:
+                                pass
+                        for subdir in unique_result_identifiers:
+                            if k == subdir[0]:
+                                target_dir = subdir[1]
+                        linkname = os.path.join(target_dir, record + "_" + path[0] + "_" + file)
+                        src = os.path.abspath(path[1])
+                        src_rel = os.path.relpath(src, os.path.dirname(linkname))
+                        force_symlink(src_rel, linkname)
+
+        return linkdir
 
     def clear_status(
         self, record_identifier: str = None, flag_names: List[str] = None

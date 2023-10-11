@@ -1056,7 +1056,7 @@ class TestPipestatCLI:
 
 
 class TestFileTypeLinking:
-    @pytest.mark.parametrize("backend", ["file"])
+    @pytest.mark.parametrize("backend", ["file", "db"])
     def test_linking(
         self,
         config_file_path,
