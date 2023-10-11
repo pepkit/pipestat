@@ -1065,14 +1065,10 @@ class TestFileTypeLinking:
         backend,
     ):
         # paths to images and files
-        path_file_1 = get_data_file_path(
-            "test_file_links/results/project_dir_example_1/ex1.txt"
-        )  # os.path.abspath("tests/data/test_file_links/results/project_dir_example_1/ex1.txt")
+        path_file_1 = get_data_file_path("test_file_links/results/project_dir_example_1/ex1.txt")
         path_file_2 = get_data_file_path("test_file_links/results/project_dir_example_1/ex2.txt")
         path_image_1 = get_data_file_path("test_file_links/results/project_dir_example_1/ex3.png")
         path_image_2 = get_data_file_path("test_file_links/results/project_dir_example_1/ex4.png")
-        # path_file_3 = get_data_file_path("test_file_links/results/project_dir_example_2/sub_project_dir_example_2/ex7.txt")
-        # Make absolute for the test to run successfully.
 
         values_sample = [
             {"sample1": {"number_of_things": 100}},
@@ -1140,8 +1136,11 @@ class TestFileTypeLinking:
             except Exception:
                 assert False
 
-            linkdir = os.path.join(linkdir, "output_file")
-            for root, dirs, files in os.walk(linkdir):
-                assert "sample1ex1.txt" in files
+            # Test simple
+            for root, dirs, files in os.walk(os.path.join(linkdir, "output_file")):
+                assert "sample1_output_file_ex1.txt" in files
+            # Test complex types
+            for root, dirs, files in os.walk(os.path.join(linkdir, "output_file_in_object")):
+                assert "sample2_example_property_1_ex1.txt" in files
 
             print("done")
