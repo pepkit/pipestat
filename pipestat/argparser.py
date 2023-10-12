@@ -14,6 +14,7 @@ RETRIEVE_CMD = "retrieve"
 STATUS_CMD = "status"
 INIT_CMD = "init"
 SUMMARIZE_CMD = "summarize"
+LINK_CMD = "link"
 SERVE_CMD = "serve"
 SUBPARSER_MESSAGES = {
     REPORT_CMD: "Report a result.",
@@ -23,6 +24,7 @@ SUBPARSER_MESSAGES = {
     STATUS_CMD: "Manage pipeline status.",
     INIT_CMD: "Initialize generic config file",
     SUMMARIZE_CMD: "Generates HTML Report",
+    LINK_CMD: "Create symlinks of reported files",
     SERVE_CMD: "Initializes pipestatreader API",
 }
 
@@ -322,6 +324,37 @@ def build_argparser(desc):
             type=str,
             metavar="P",
             help=f"project or sample level pipeline type. ",
+        )
+
+    # LINK
+    for cmd in [LINK_CMD]:
+        sps[cmd].add_argument(
+            "-f",
+            "--results-file",
+            type=str,
+            metavar="F",
+            help=f"Path to the YAML file where the results will be stored. "
+            f"This file will be used as {PKG_NAME} backend and to restore"
+            f" the reported results across sessions",
+        )
+        sps[cmd].add_argument(
+            "-c",
+            "--config",
+            type=str,
+            metavar="C",
+            help=f"Path to the YAML configuration file. {_env_txt('config')}",
+        )
+        sps[cmd].add_argument(
+            "-s",
+            "--schema",
+            type=str,
+            metavar="S",
+            help=f"Path to the schema that defines the results that can be reported. {_env_txt('schema')}",
+        )
+        sps[cmd].add_argument(
+            "--link-dir",
+            type=str,
+            help=f"Path to symlink directory ",
         )
 
     return parser
