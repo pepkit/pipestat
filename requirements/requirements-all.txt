@@ -12,3 +12,4 @@ eido
 uvicorn
 fastapi
 pydantic
+jinja2

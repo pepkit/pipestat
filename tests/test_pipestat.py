@@ -19,7 +19,7 @@ from .conftest import (
     STANDARD_TEST_PIPE_ID,
     DB_URL,
 )
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 from .test_db_only_mode import ContextManagerDBTesting
 
@@ -1053,3 +1053,117 @@ class TestPipestatCLI:
                 SystemExit
             ):  # pipestat cli normal behavior is to end with a "sys.exit(0)"
                 main(test_args=x)
+
+
+class TestFileTypeLinking:
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_linking(
+        self,
+        config_file_path,
+        output_schema_as_JSON_schema,
+        results_file_path,
+        backend,
+    ):
+        # paths to images and files
+        path_file_1 = get_data_file_path("test_file_links/results/project_dir_example_1/ex1.txt")
+        path_file_2 = get_data_file_path("test_file_links/results/project_dir_example_1/ex2.txt")
+        path_image_1 = get_data_file_path("test_file_links/results/project_dir_example_1/ex3.png")
+        path_image_2 = get_data_file_path("test_file_links/results/project_dir_example_1/ex4.png")
+
+        values_sample = [
+            {"sample1": {"number_of_things": 100}},
+            {"sample2": {"number_of_things": 200}},
+            {"sample1": {"output_file": {"path": path_file_1, "title": "title_string"}}},
+            {"sample2": {"output_file": {"path": path_file_2, "title": "title_string"}}},
+            {
+                "sample1": {
+                    "output_image": {
+                        "path": path_image_1,
+                        "thumbnail_path": "path_string",
+                        "title": "title_string",
+                    }
+                }
+            },
+            {
+                "sample2": {
+                    "output_image": {
+                        "path": path_image_2,
+                        "thumbnail_path": "path_string",
+                        "title": "title_string",
+                    }
+                }
+            },
+            {
+                "sample2": {
+                    "output_file_in_object": {
+                        "example_property_1": {
+                            "path": path_file_1,
+                            "thumbnail_path": "path_string",
+                            "title": "title_string",
+                        },
+                        "example_property_2": {
+                            "path": path_image_1,
+                            "thumbnail_path": "path_string",
+                            "title": "title_string",
+                        },
+                    }
+                }
+            },
+            {
+                "sample2": {
+                    "output_file_nested_object": {
+                        "example_property_1": {
+                            "third_level_property_1": {
+                                "path": path_file_1,
+                                "thumbnail_path": "path_string",
+                                "title": "title_string",
+                            }
+                        },
+                        "example_property_2": {
+                            "third_level_property_1": {
+                                "path": path_file_1,
+                                "thumbnail_path": "path_string",
+                                "title": "title_string",
+                            }
+                        },
+                    }
+                }
+            },
+        ]
+
+        with NamedTemporaryFile() as f, TemporaryDirectory() as d, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            temp_dir = d
+            args = dict(schema_path=output_schema_as_JSON_schema, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+            schema = ParsedSchema(output_schema_as_JSON_schema)
+            print(schema)
+
+            for i in values_sample:
+                for r, v in i.items():
+                    psm.report(record_identifier=r, values=v, force_overwrite=True)
+                    psm.set_status(record_identifier=r, status_identifier="running")
+
+            os.mkdir(temp_dir + "/test_file_links")
+            output_dir = get_data_file_path(temp_dir + "/test_file_links")
+            try:
+                linkdir = psm.link(output_dir=output_dir)
+            except Exception:
+                assert False
+
+            # Test simple
+            for root, dirs, files in os.walk(os.path.join(linkdir, "output_file")):
+                assert "sample1_output_file_ex1.txt" in files
+            # Test complex types
+            for root, dirs, files in os.walk(os.path.join(linkdir, "output_file_in_object")):
+                assert "sample2_example_property_1_ex1.txt" in files
+
+            for root, dirs, files in os.walk(os.path.join(linkdir, "output_file_nested_object")):
+                # TODO This example will have collision if the file names and property names are the same
+                print(files)

@@ -2,6 +2,7 @@
 
 import logging
 import os
+import errno
 import yaml
 import jsonschema
 from json import dumps, loads
@@ -273,3 +274,16 @@ def default_formatter(pipeline_name, record_identifier, res_id, value) -> str:
         + f":{nl} - {(nl + ' - ').join(rep_strs)}"
     )
     return formatted_result
+
+
+def force_symlink(file1, file2):
+    """Create a symlink between two files."""
+    try:
+        os.symlink(file1, file2)
+    except OSError as e:
+        if e.errno == errno.EEXIST:
+            _LOGGER.warning(
+                f"Symlink collision detected for {file1} and {file2}. Overwriting symlink."
+            )
+            os.remove(file2)
+            os.symlink(file1, file2)

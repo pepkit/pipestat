@@ -17,6 +17,7 @@ from .argparser import (
     INIT_CMD,
     SUMMARIZE_CMD,
     SERVE_CMD,
+    LINK_CMD,
 )
 from .const import *
 from .exceptions import SchemaNotFoundError, PipestatStartupError
@@ -64,6 +65,16 @@ def main(test_args=None):
         html_report_path = psm.summarize()
         _LOGGER.info(f"\nGenerating HTML Report from {results_path} at: {html_report_path}\n")
 
+        sys.exit(0)
+
+    if args.command == LINK_CMD:
+        psm = PipestatManager(
+            schema_path=args.schema,
+            results_file_path=args.results_file,
+            config_file=args.config,
+        )
+        linkdir = psm.link(output_dir=args.link_dir)
+        _LOGGER.info(f"\nGenerating symlink directory at: {linkdir}\n")
         sys.exit(0)
 
     if args.command == SERVE_CMD:

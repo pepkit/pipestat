@@ -518,6 +518,16 @@ class PipestatManager(MutableMapping):
         self.backend.set_status(status_identifier, r_id)
 
     @require_backend
+    def link(self, output_dir) -> str:
+        """
+        This function creates a link structure such that results are organized by type.
+        """
+
+        linked_results_path = self.backend.link(output_dir=output_dir)
+
+        return linked_results_path
+
+    @require_backend
     def summarize(
         self,
         amendment: Optional[str] = None,
