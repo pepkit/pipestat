@@ -80,7 +80,6 @@ class DBBackend(PipestatBackend):
     def count_records(self):
         """
         Count rows in a selected table
-        :param str pipeline_type: sample vs project designator needed to count records in table
         :return int: number of records
         """
 
@@ -116,8 +115,8 @@ class DBBackend(PipestatBackend):
         """
         Retrieve single record from SQL table
 
-        :param str rid: record to check for
         :param str table_name: table name to check
+        :param str rid: record to check for
         :return Any: Record object
         """
 
@@ -335,12 +334,12 @@ class DBBackend(PipestatBackend):
         This method overwrites any existing data and creates the required
          hierarchical mapping structure if needed.
 
-        :param str record_identifier: unique identifier of the record
         :param Dict[str, Any] values: dict of results identifiers and values
             to be reported
+        :param str record_identifier: unique identifier of the record
         :param bool force_overwrite: force overwriting of results, defaults to False.
         :param str result_formatter: function for formatting result
-        :return list results_formatted: return list of formatted string
+        :return list[str] list results_formatted | bool: return list of formatted string
         """
 
         record_identifier = record_identifier or self.record_identifier
@@ -455,7 +454,6 @@ class DBBackend(PipestatBackend):
         """
         Perform a `SELECT` on the table
 
-        :param str table_name: name of the table to SELECT from
         :param List[str] columns: columns to include in the result
         :param [(key,operator,value)] filter_conditions: e.g. [("id", "eq", 1)], operator list:
             - eq for ==
@@ -508,6 +506,7 @@ class DBBackend(PipestatBackend):
         To retrieve all table contents, leave the filter arguments out.
         Table name uses pipeline_type
 
+        :param List[str] columns: columns to include in the result
         :param str filter_templ: filter template with value placeholders,
              formatted as follows `id<:value and name=:name`
         :param Dict[str, Any] filter_params: a mapping keys specified in the `filter_templ`

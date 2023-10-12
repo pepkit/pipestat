@@ -178,7 +178,7 @@ class FileBackend(PipestatBackend):
 
         :param str record_identifier: record identifier to set the
             pipeline status for
-        :return str: status identifier, like 'running'
+        :return str: status identifier, e.g. 'running'
         """
         r_id = record_identifier or self.record_identifier
         flag_file = self.get_flag_file(record_identifier=record_identifier)
@@ -200,8 +200,7 @@ class FileBackend(PipestatBackend):
         Get the path to the status file flag
 
         :param str status_identifier: one of the defined status IDs in schema
-        :param str record_identifier: unique record ID, optional if
-            specified in the object constructor
+        :param str record_identifier: unique record ID
         :return str: absolute path to the flag file or None if object is
             backed by a DB
         """
@@ -342,7 +341,7 @@ class FileBackend(PipestatBackend):
         :param str record_identifier: unique identifier of the record
         :param bool force_overwrite: Toggles force overwriting results, defaults to False
         :param str result_formatter: function for formatting result
-        :return list results_formatted: return list of formatted string
+        :return bool | list[str] results_formatted: return list of formatted string
         """
 
         # record_identifier = record_identifier or self.record_identifier

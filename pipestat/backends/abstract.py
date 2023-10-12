@@ -54,9 +54,8 @@ class PipestatBackend(ABC):
     ) -> bool:
         """
         Check if the result has been reported
-
-        :param str record_identifier: unique identifier of the record
         :param str result_identifier: name of the result to check
+        :param str record_identifier: unique identifier of the record
         :return bool: whether the specified result has been reported for the
             indicated record in current namespace
         """
@@ -92,6 +91,11 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
 
     def link(self, link_dir) -> str:
+        """
+        This function creates a link structure such that results are organized by type.
+        :param str link_dir: path to desired symlink output directory (does not have to be absolute)
+        :return str link_dir: returns absolute path to symlink directory
+        """
         def get_all_paths(parent_key, result_identifier_value):
             """If the result identifier is a complex object which contains nested paths"""
 
@@ -103,8 +107,6 @@ class PipestatBackend(ABC):
                 elif k == "path":
                     key_value_pairs.append((parent_key, v))
             return key_value_pairs
-
-        linkdir = link_dir
 
         unique_result_identifiers = []
 
@@ -119,7 +121,7 @@ class PipestatBackend(ABC):
                     for path in all_paths:
                         file = os.path.basename(path[1])
                         if k not in unique_result_identifiers:
-                            sub_dir_for_type = os.path.join(linkdir, k)
+                            sub_dir_for_type = os.path.join(link_dir, k)
                             unique_result_identifiers.append((k, sub_dir_for_type))
                             try:
                                 os.mkdir(sub_dir_for_type)
@@ -133,7 +135,7 @@ class PipestatBackend(ABC):
                         src_rel = os.path.relpath(src, os.path.dirname(linkname))
                         force_symlink(src_rel, linkname)
 
-        return linkdir
+        return link_dir
 
     def clear_status(
         self, record_identifier: str = None, flag_names: List[str] = None
