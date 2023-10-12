@@ -1109,7 +1109,52 @@ class TestFileTypeLinking:
                     }
                 }
             },
+            {
+                "sample2": {
+                    "output_file_nested_object": {
+                        "example_property_1": {
+                            "third_level_property_1": {
+                                "path": path_file_1,
+                                "thumbnail_path": "path_string",
+                                "title": "title_string",
+                            }
+                        },
+                        "example_property_2": {
+                            "third_level_property_1": {
+                                "path": path_file_1,
+                                "thumbnail_path": "path_string",
+                                "title": "title_string",
+                            }
+                        },
+                    }
+                }
+            },
         ]
+
+        # values_sample = [
+        #     {
+        #         "sample2": {
+        #             "output_file_nested_object": {
+        #                 "example_property_1": {
+        #                     "third_level_property_1": {
+        #                         "path": path_file_1,
+        #                         "thumbnail_path": "path_string",
+        #                         "title": "title_string",
+        #                     }
+        #                 },
+        #                     "example_property_2": {
+        #                         "third_level_property_1": {
+        #                             "path": path_file_1,
+        #                             "thumbnail_path": "path_string",
+        #                             "title": "title_string",
+        #                         }
+        #                     }
+        #                 },
+        #             }
+        #         }
+        #
+        # ]
+
         with NamedTemporaryFile() as f, TemporaryDirectory() as d, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             temp_dir = d
@@ -1142,5 +1187,8 @@ class TestFileTypeLinking:
             # Test complex types
             for root, dirs, files in os.walk(os.path.join(linkdir, "output_file_in_object")):
                 assert "sample2_example_property_1_ex1.txt" in files
+
+            for root, dirs, files in os.walk(os.path.join(linkdir, "output_file_nested_object")):
+                print(files)
 
             print("done")

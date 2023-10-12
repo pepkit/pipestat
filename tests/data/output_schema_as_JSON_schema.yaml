@@ -46,6 +46,24 @@ properties:
             example_property_2:
               type: image
               description: An example image.
+        output_file_nested_object:
+          type: object
+          description: First Level
+          properties:
+            example_property_1:
+              type: object
+              description: Second Level
+              properties:
+                third_level_property_1:
+                  type: file
+                  description: Third Level
+            example_property_2:
+              type: object
+              description: Second Level
+              properties:
+                third_level_property_1:
+                  type: file
+                  description: Third Level
   project:
     type: object
     properties:
