@@ -91,7 +91,7 @@ class PipestatBackend(ABC):
     def get_status(self, record_identifier: str) -> Optional[str]:
         _LOGGER.warning("Not implemented yet for this backend")
 
-    def link(self, output_dir) -> str:
+    def link(self, link_dir) -> str:
         def get_all_paths(parent_key, result_identifier_value):
             """If the result identifier is a complex object which contains nested paths"""
 
@@ -104,7 +104,7 @@ class PipestatBackend(ABC):
                     key_value_pairs.append((parent_key, v))
             return key_value_pairs
 
-        linkdir = output_dir
+        linkdir = link_dir
 
         unique_result_identifiers = []
 

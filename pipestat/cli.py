@@ -73,7 +73,7 @@ def main(test_args=None):
             results_file_path=args.results_file,
             config_file=args.config,
         )
-        linkdir = psm.link(output_dir=args.link_dir)
+        linkdir = psm.link(link_dir=args.link_dir)
         _LOGGER.info(f"\nGenerating symlink directory at: {linkdir}\n")
         sys.exit(0)
 

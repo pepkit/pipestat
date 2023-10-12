@@ -73,11 +73,12 @@ class PipestatManager(MutableMapping):
             used as the object back-end
         :param bool database_only: whether the reported data should not be
             stored in the memory, but only in the database
-        :param str | dict config: path to the configuration file or a mapping
-            with the config file content
+        :param str config_file: path to the configuration file
+        :param dict config_dict:  a mapping with the config file content
         :param str flag_file_dir: path to directory containing flag files
         :param bool show_db_logs: Defaults to False, toggles showing database logs
         :param str pipeline_type: "sample" or "project"
+        :param str pipeline_name: name of the current pipeline, defaults to
         :param str result_formatter: function for formatting result
         :param bool multi_pipelines: allows for running multiple pipelines for one file backend
         :param str output_dir: target directory for report generation via summarize and table generation via table.
@@ -256,11 +257,9 @@ class PipestatManager(MutableMapping):
         Remove status flags
 
         :param str record_identifier: name of the sample_level record to remove flags for
-        :param str project_name: name of the project_level record to remove flags for
         :param Iterable[str] flag_names: Names of flags to remove, optional; if
             unspecified, all schema-defined flag names will be used.
-        :param str pipeline_type: "sample" or "project"
-        :return List[str]: Collection of names of flags removed
+        :return List[Union[str,None]]: Collection of names of flags removed
         """
 
         r_id = record_identifier or self.record_identifier
@@ -270,7 +269,6 @@ class PipestatManager(MutableMapping):
     def count_records(self) -> int:
         """
         Count records
-        :param str pipeline_type: "sample" or "project"
         :return int: number of records
         """
         return self.backend.count_records()
@@ -298,9 +296,7 @@ class PipestatManager(MutableMapping):
         """
         Get the current pipeline status
         :param str record_identifier: name of the sample_level record
-        :param str project_name: name of the project_level record
-        :param str pipeline_type: "sample" or "project"
-        :return str: status identifier, like 'running'
+        :return str: status identifier, e.g. 'running'
         """
 
         r_id = record_identifier or self.record_identifier
@@ -384,10 +380,8 @@ class PipestatManager(MutableMapping):
         will be removed.
 
         :param str record_identifier: name of the sample_level record
-        :param str project_name: name of the project_level record
         :param str result_identifier: name of the result to be removed or None
              if the record should be removed.
-        :param str pipeline_type: "sample" or "project"
         :return bool: whether the result has been removed
         """
 
@@ -405,7 +399,6 @@ class PipestatManager(MutableMapping):
         force_overwrite: bool = False,
         result_formatter: Optional[staticmethod] = None,
         strict_type: bool = True,
-        return_id: bool = False,
     ) -> Union[List[str], bool]:
         """
         Report a result.
@@ -414,14 +407,11 @@ class PipestatManager(MutableMapping):
         :param str record_identifier: unique identifier of the record, value
             in 'record_identifier' column to look for to determine if the record
             already exists
-        :param str project_name: name of the project_level record
         :param bool force_overwrite: whether to overwrite the existing record
+        :param str result_formatter: function for formatting result
         :param bool strict_type: whether the type of the reported values should
             remain as is. Pipestat would attempt to convert to the
             schema-defined one otherwise
-        :param str pipeline_type: whether what's being reported pertains to project-level,
-            rather than sample-level, attribute(s)
-        :param str result_formatter: function for formatting result
         :return str reported_results: return list of formatted string
         """
 
@@ -431,11 +421,6 @@ class PipestatManager(MutableMapping):
         if r_id is None:
             raise NotImplementedError("You must supply a record identifier to report results")
 
-        if return_id and self[FILE_KEY] is not None:
-            raise NotImplementedError(
-                "There is no way to return the updated object ID while using "
-                "results file as the object backend"
-            )
         result_identifiers = list(values.keys())
         if self.schema is not None:
             for r in result_identifiers:
@@ -483,9 +468,7 @@ class PipestatManager(MutableMapping):
         be returned.
 
         :param str record_identifier: name of the sample_level record
-        :param str project_name: name of the project_level record
         :param str result_identifier: name of the result to be retrieved
-        :param str pipeline_type: "sample" or "project"
         :return any | Dict[str, any]: a single result or a mapping with all the
             results reported for the record
         """
@@ -510,20 +493,19 @@ class PipestatManager(MutableMapping):
             in the status schema
         :param str record_identifier: sample_level record identifier to set the
             pipeline status for
-        :param str project_name: name of the project_level record to set the
-            pipeline status for
-        :param str pipeline_type: "sample" or "project"
         """
         r_id = record_identifier or self.record_identifier
         self.backend.set_status(status_identifier, r_id)
 
     @require_backend
-    def link(self, output_dir) -> str:
+    def link(self, link_dir) -> str:
         """
         This function creates a link structure such that results are organized by type.
+        :param str link_dir: path to desired symlink output directory
+        :return str linked_results_path: path to symlink directory
         """
 
-        linked_results_path = self.backend.link(output_dir=output_dir)
+        linked_results_path = self.backend.link(link_dir=link_dir)
 
         return linked_results_path
 
@@ -549,7 +531,6 @@ class PipestatManager(MutableMapping):
     ) -> List[str]:
         """
         Generates stats (.tsv) and object (.yaml) files.
-        :param Optional[str] pipeline_type: sample or project pipeline
         :return list[str] table_path_list: list containing output file paths of stats and objects
 
         """

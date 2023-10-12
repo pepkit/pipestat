@@ -1153,7 +1153,7 @@ class TestFileTypeLinking:
             os.mkdir(temp_dir + "/test_file_links")
             output_dir = get_data_file_path(temp_dir + "/test_file_links")
             try:
-                linkdir = psm.link(output_dir=output_dir)
+                linkdir = psm.link(link_dir=output_dir)
             except Exception:
                 assert False
 
