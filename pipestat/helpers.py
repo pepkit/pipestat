@@ -282,6 +282,9 @@ def force_symlink(file1, file2):
         os.symlink(file1, file2)
     except OSError as e:
         if e.errno == errno.EEXIST:
+            _LOGGER.warning(
+                f"Symlink collision detected for {file1} and {file2}. Overwriting symlink."
+            )
             os.remove(file2)
             os.symlink(file1, file2)
 
