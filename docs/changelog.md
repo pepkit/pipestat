@@ -9,16 +9,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Add ability to create `SamplePipestatManager` and `ProjectSamplePipestatManager` which are sample/project specific PipestatManager objects.
 - Add PipestatBoss wrapper class which holds `SamplePipestatManager` and `ProjectSamplePipestatManager` classes.
 - Add `to_dict` methods to parsed schema object.
+- Add `retrieve_distinct` function which retrieves unique results for a list of attributes.
+- Add `pipestat link` which creates a directory of symlinks for reported results
 
 ### Fixed
 - Added path expansion when creating database url
+- added jinja2 requirement
 
 ### Changed
 - modify `get_records` to return new structure
 - Remove `get_orm` and replace with `get_model`
 - Remove `get_table_name` function
 - Refactor:
-  - `sample_name` -> `record_identifier`  
+  - `sample_name` -> `record_identifier`
+  - `pipeline_type` has been removed from most functions
 
 ## [0.5.1] - 2023-08-14
 ### Fixed
