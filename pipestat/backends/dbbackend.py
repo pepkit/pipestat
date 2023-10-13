@@ -188,11 +188,9 @@ class DBBackend(PipestatBackend):
 
     def list_recent_results(self, limit, range) -> List[str]:
         """Lists recent results based on time filter
-
         limit number of results
-
         range  = list -> [start, end]
-
+        return - > just list of record identifers
         """
 
         results = ["demo results"]
@@ -383,7 +381,9 @@ class DBBackend(PipestatBackend):
                 record_identifier=record_identifier,
                 table_name=self.table_name,
             ):
-                values.update({CREATED_TIME: datetime.datetime.now()})
+                current_time = datetime.datetime.now()
+                values.update({CREATED_TIME: current_time})
+                values.update({MODIFIED_TIME: current_time})
                 new_record = ORMClass(**values)
                 with self.session as s:
                     s.add(new_record)

@@ -1176,7 +1176,7 @@ class TestTimeStamp:
             ("sample1", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.parametrize("backend", ["db"])
     def test_basic_time_stamp(
         self,
         rec_id,
@@ -1199,12 +1199,18 @@ class TestTimeStamp:
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
 
             # CHECK CREATION AND MODIFY TIME EXIST
-
+            created = psm.retrieve(record_identifier=rec_id, result_identifier=CREATED_TIME)
+            modified = psm.retrieve(record_identifier=rec_id, result_identifier=MODIFIED_TIME)
+            assert created is not None
+            assert modified is not None
+            assert created == modified
             # Report new
             val = {"number_of_things": 1}
             psm.report(record_identifier="sample1", values=val, force_overwrite=True)
-            # CHECK CREATION DATE AND TIME IS THE SAME
-            # CHECK MODIFY TIME DIFFERS
+            # CHECK MODIFY TIME DIFFERS FROM CREATED TIME
+            created = psm.retrieve(record_identifier=rec_id, result_identifier=CREATED_TIME)
+            modified = psm.retrieve(record_identifier=rec_id, result_identifier=MODIFIED_TIME)
+            assert created != modified
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],

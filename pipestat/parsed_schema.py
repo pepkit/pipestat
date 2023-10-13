@@ -1,13 +1,14 @@
 """Abstraction of a parse of a schema definition"""
 
 import copy
+import datetime
 import logging
 from pathlib import Path
 from typing import *
 from pydantic import create_model
 
 # from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy import Column, null, DateTime
+from sqlalchemy import Column, null
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 from .const import *
@@ -365,7 +366,7 @@ class ParsedSchema(object):
             raise SchemaError(
                 f"'{CREATED_TIME}' is reserved for time reporting and can't be part of schema."
             )
-        field_defs[CREATED_TIME] = (DateTime, Field(default=None))
+        field_defs[CREATED_TIME] = (datetime.datetime, Field(default=None))
         return field_defs
 
     @staticmethod
@@ -374,7 +375,7 @@ class ParsedSchema(object):
             raise SchemaError(
                 f"'{MODIFIED_TIME}' is reserved for time reporting and can't be part of schema."
             )
-        field_defs[MODIFIED_TIME] = (DateTime, Field(default=None))
+        field_defs[MODIFIED_TIME] = (datetime.datetime, Field(default=None))
         return field_defs
 
     def _table_name(self, suffix: str) -> str:
