@@ -153,6 +153,10 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
+    def list_recent_results(self) -> List[str]:
+        _LOGGER.warning("Not implemented yet for this backend")
+        pass
+
     def report(
         self,
         values: Dict[str, Any],

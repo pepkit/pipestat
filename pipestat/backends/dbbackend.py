@@ -1,4 +1,5 @@
 import sys
+import datetime
 
 from logging import getLogger
 
@@ -185,6 +186,18 @@ class DBBackend(PipestatBackend):
             return None
         return result
 
+    def list_recent_results(self, limit, range) -> List[str]:
+        """Lists recent results based on time filter
+
+        limit number of results
+
+        range  = list -> [start, end]
+
+        """
+
+        results = ["demo results"]
+        return results
+
     def list_results(
         self,
         restrict_to: Optional[List[str]] = None,
@@ -361,13 +374,16 @@ class DBBackend(PipestatBackend):
             if not force_overwrite:
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
+
         try:
             ORMClass = self.get_model(table_name=self.table_name)
             values.update({RECORD_IDENTIFIER: record_identifier})
+
             if not self.check_record_exists(
                 record_identifier=record_identifier,
                 table_name=self.table_name,
             ):
+                values.update({CREATED_TIME: datetime.datetime.now()})
                 new_record = ORMClass(**values)
                 with self.session as s:
                     s.add(new_record)
@@ -379,6 +395,7 @@ class DBBackend(PipestatBackend):
                         .filter(getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier)
                         .first()
                     )
+                    values.update({MODIFIED_TIME: datetime.datetime.now()})
                     for result_id, result_value in values.items():
                         setattr(record_to_update, result_id, result_value)
                     s.commit()

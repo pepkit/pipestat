@@ -210,6 +210,18 @@ class FileBackend(PipestatBackend):
             self.status_file_dir, f"{self.pipeline_name}_{r_id}_{status_identifier}.flag"
         )
 
+    def list_recent_results(self, limit, range) -> List[str]:
+        """Lists recent results based on time filter
+
+        limit number of results
+
+        range  = list -> [start, end]
+
+        """
+
+        results = ["demo results"]
+        return results
+
     def list_results(
         self,
         restrict_to: Optional[List[str]] = None,
