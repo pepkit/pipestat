@@ -96,6 +96,7 @@ class PipestatBackend(ABC):
         :param str link_dir: path to desired symlink output directory (does not have to be absolute)
         :return str link_dir: returns absolute path to symlink directory
         """
+
         def get_all_paths(parent_key, result_identifier_value):
             """If the result identifier is a complex object which contains nested paths"""
 
@@ -114,7 +115,6 @@ class PipestatBackend(ABC):
 
         for record in all_records["records"]:
             result_identifiers = self.retrieve(record_identifier=record)
-            print(result_identifiers)
             for k, v in result_identifiers.items():
                 if type(v) == dict:
                     all_paths = get_all_paths(k, v)
