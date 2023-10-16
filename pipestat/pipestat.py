@@ -670,11 +670,11 @@ class PipestatManager(MutableMapping):
         return {**self.schema.project_level_data, **self.schema.sample_level_data}
 
     @property
-    def schema(self) -> Dict:
+    def schema(self) -> ParsedSchema:
         """
         Schema mapping
 
-        :return dict: schema that formalizes the results structure
+        :return ParsedSchema: schema object that formalizes the results structure
         """
         return self.get(SCHEMA_KEY)
 
