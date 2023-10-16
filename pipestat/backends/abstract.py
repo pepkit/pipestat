@@ -1,7 +1,6 @@
 import sys
-
+import datetime
 from abc import ABC
-
 from logging import getLogger
 
 from pipestat.helpers import *
@@ -150,6 +149,16 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
 
     def list_results(self) -> List[str]:
+        _LOGGER.warning("Not implemented yet for this backend")
+        pass
+
+    def list_recent_results(
+        self,
+        limit: Optional[int] = None,
+        start: Optional[datetime.datetime] = None,
+        end: Optional[datetime.datetime] = None,
+        type: Optional[str] = None,
+    ) -> List[str]:
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 

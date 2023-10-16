@@ -59,6 +59,8 @@ __all__ = [
     "PROFILE_COLNAMES",
     "OUTPUT_DIR",
     "RECORD_IDENTIFIER",
+    "CREATED_TIME",
+    "MODIFIED_TIME",
 ]
 
 PKG_NAME = "pipestat"
@@ -77,6 +79,8 @@ SCHEMA_ITEMS_KEY = "items"
 SAMPLE_NAME = "sample_name"
 RECORD_IDENTIFIER = "record_identifier"
 STATUS = "status"
+CREATED_TIME = "pipestat_created_time"
+MODIFIED_TIME = "pipestat_modified_time"
 
 CANONICAL_TYPES = {
     "image": {
