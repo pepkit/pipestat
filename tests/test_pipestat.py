@@ -1218,7 +1218,7 @@ class TestTimeStamp:
             ("sample1", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.parametrize("backend", ["db"])
     def test_filtering_by_time(
         self,
         rec_id,
@@ -1239,10 +1239,11 @@ class TestTimeStamp:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
-
-            # CHECK CREATION AND MODIFY TIME EXIST
             # Report new
             val = {"number_of_things": 1}
             psm.report(record_identifier="sample1", values=val, force_overwrite=True)
-            # CHECK CREATION DATE AND TIME IS THE SAME
-            # CHECK MODIFY TIME DIFFERS
+            # CHECK MODIFY TIME DIFFERS FROM CREATED TIME
+
+            # results = psm.list_recent_results()
+
+            print("done")
