@@ -1,6 +1,7 @@
 """Abstraction of a parse of a schema definition"""
 
 import copy
+import datetime
 import logging
 from pathlib import Path
 from typing import *
@@ -284,6 +285,8 @@ class ParsedSchema(object):
         field_defs = self._add_id_field(field_defs)
         # field_defs = self._add_project_name_field(field_defs)
         field_defs = self._add_pipeline_name_field(field_defs)
+        field_defs = self._add_created_time_field(field_defs)
+        field_defs = self._add_modified_time_field(field_defs)
         return _create_model(table_name, **field_defs)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -355,6 +358,24 @@ class ParsedSchema(object):
                 f"'{STATUS}' is reserved for status reporting and can't be part of schema."
             )
         field_defs[STATUS] = (str, Field(default=None))
+        return field_defs
+
+    @staticmethod
+    def _add_created_time_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
+        if CREATED_TIME in field_defs:
+            raise SchemaError(
+                f"'{CREATED_TIME}' is reserved for time reporting and can't be part of schema."
+            )
+        field_defs[CREATED_TIME] = (datetime.datetime, Field(default=None))
+        return field_defs
+
+    @staticmethod
+    def _add_modified_time_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
+        if MODIFIED_TIME in field_defs:
+            raise SchemaError(
+                f"'{MODIFIED_TIME}' is reserved for time reporting and can't be part of schema."
+            )
+        field_defs[MODIFIED_TIME] = (datetime.datetime, Field(default=None))
         return field_defs
 
     def _table_name(self, suffix: str) -> str:

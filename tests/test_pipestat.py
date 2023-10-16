@@ -1167,3 +1167,83 @@ class TestFileTypeLinking:
             for root, dirs, files in os.walk(os.path.join(linkdir, "output_file_nested_object")):
                 # TODO This example will have collision if the file names and property names are the same
                 print(files)
+
+
+class TestTimeStamp:
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("sample1", {"name_of_something": "test_name"}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["db"])
+    def test_basic_time_stamp(
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+
+            # CHECK CREATION AND MODIFY TIME EXIST
+            created = psm.retrieve(record_identifier=rec_id, result_identifier=CREATED_TIME)
+            modified = psm.retrieve(record_identifier=rec_id, result_identifier=MODIFIED_TIME)
+            assert created is not None
+            assert modified is not None
+            assert created == modified
+            # Report new
+            val = {"number_of_things": 1}
+            psm.report(record_identifier="sample1", values=val, force_overwrite=True)
+            # CHECK MODIFY TIME DIFFERS FROM CREATED TIME
+            created = psm.retrieve(record_identifier=rec_id, result_identifier=CREATED_TIME)
+            modified = psm.retrieve(record_identifier=rec_id, result_identifier=MODIFIED_TIME)
+            assert created != modified
+
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("sample1", {"name_of_something": "test_name"}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["db"])
+    def test_filtering_by_time(
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            # Report new
+            val = {"number_of_things": 1}
+            psm.report(record_identifier="sample1", values=val, force_overwrite=True)
+            # CHECK MODIFY TIME DIFFERS FROM CREATED TIME
+
+            # results = psm.list_recent_results()
+
+            print("done")

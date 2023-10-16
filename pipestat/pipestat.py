@@ -1,4 +1,6 @@
 import csv
+import datetime
+import time
 from logging import getLogger
 from copy import deepcopy
 from typing import List
@@ -301,6 +303,30 @@ class PipestatManager(MutableMapping):
 
         r_id = record_identifier or self.record_identifier
         return self.backend.get_status(record_identifier=r_id)
+
+    @require_backend
+    def list_recent_results(
+        self,
+        limit: Optional[int] = 1000,
+        start: Optional[datetime.datetime] = datetime.datetime.now(),
+        end: Optional[datetime.datetime] = None,
+        type: Optional[str] = "modified",
+    ) -> List[str]:
+        """
+        :param int  limit: limit number of results returned
+        :param datetime.datetime start: most recent result  to filter on, e.g. 2023-10-16 13:03:04.680400
+        :param datetime.datetime end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
+        :param type: created or modified
+        :return list[str]: status identifier, e.g. 'running'
+        """
+        # date_format = '%Y-%m-%d %H:%M:%S'
+        # # start = time.strptime(start, date_format)
+        # # if end is None:
+        # #     end = time.strptime("1900-01-01 00:00:00", date_format)
+        #
+        # results = self.backend.list_recent_results(limit=limit, start=start,end=end, type=type)
+
+        pass
 
     def process_schema(self, schema_path):
         # Load pipestat schema in two parts: 1) main and 2) status

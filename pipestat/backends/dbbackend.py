@@ -1,4 +1,6 @@
 import sys
+import datetime
+
 
 from logging import getLogger
 
@@ -185,6 +187,30 @@ class DBBackend(PipestatBackend):
             return None
         return result
 
+    def list_recent_results(
+        self,
+        limit: Optional[int] = None,
+        start: Optional[datetime.datetime] = None,
+        end: Optional[datetime.datetime] = None,
+        type: Optional[str] = None,
+    ) -> List[str]:
+        """Lists recent results based on time filter
+        limit number of results
+        range  = list -> [start, end]
+        return - > just list of record identifers
+        """
+        mod = self.get_model(table_name=self.table_name)
+
+        with self.session as s:
+            stmt = sql_select(mod).where(mod.pipestat_modified_time < start)
+            record = s.exec(stmt).first()
+
+            if record:
+                return record
+
+        # results = ["demo results"]
+        return record
+
     def list_results(
         self,
         restrict_to: Optional[List[str]] = None,
@@ -361,13 +387,18 @@ class DBBackend(PipestatBackend):
             if not force_overwrite:
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
+
         try:
             ORMClass = self.get_model(table_name=self.table_name)
             values.update({RECORD_IDENTIFIER: record_identifier})
+
             if not self.check_record_exists(
                 record_identifier=record_identifier,
                 table_name=self.table_name,
             ):
+                current_time = datetime.datetime.now()
+                values.update({CREATED_TIME: current_time})
+                values.update({MODIFIED_TIME: current_time})
                 new_record = ORMClass(**values)
                 with self.session as s:
                     s.add(new_record)
@@ -379,6 +410,7 @@ class DBBackend(PipestatBackend):
                         .filter(getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier)
                         .first()
                     )
+                    values.update({MODIFIED_TIME: datetime.datetime.now()})
                     for result_id, result_value in values.items():
                         setattr(record_to_update, result_id, result_value)
                     s.commit()
