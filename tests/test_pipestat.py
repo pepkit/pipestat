@@ -1242,8 +1242,20 @@ class TestTimeStamp:
             # Report new
             val = {"number_of_things": 1}
             psm.report(record_identifier="sample1", values=val, force_overwrite=True)
-            # CHECK MODIFY TIME DIFFERS FROM CREATED TIME
+            psm.report(record_identifier="sample2", values=val, force_overwrite=True)
+            psm.report(record_identifier="sample3", values=val, force_overwrite=True)
+            psm.report(record_identifier="sample4", values=val, force_overwrite=True)
+            psm.report(record_identifier="sample5", values=val, force_overwrite=True)
+            psm.report(record_identifier="sample6", values=val, force_overwrite=True)
+            psm.report(record_identifier="sample7", values=val, force_overwrite=True)
+            psm.report(record_identifier="sample8", values=val, force_overwrite=True)
+            psm.report(record_identifier="sample9", values=val, force_overwrite=True)
+            psm.report(record_identifier="sample10", values=val, force_overwrite=True)
 
-            # results = psm.list_recent_results()
+            val = {"number_of_things": 2}
+            psm.report(record_identifier="sample3", values=val, force_overwrite=True)
+            psm.report(record_identifier="sample4", values=val, force_overwrite=True)
+
+            results = psm.list_recent_results()
 
             print("done")

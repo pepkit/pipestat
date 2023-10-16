@@ -193,7 +193,7 @@ class DBBackend(PipestatBackend):
         start: Optional[datetime.datetime] = None,
         end: Optional[datetime.datetime] = None,
         type: Optional[str] = None,
-    ) -> List[str]:
+    ) -> Optional[dict]:
         """Lists recent results based on time filter
         limit number of results
         range  = list -> [start, end]
@@ -202,14 +202,37 @@ class DBBackend(PipestatBackend):
         mod = self.get_model(table_name=self.table_name)
 
         with self.session as s:
-            stmt = sql_select(mod).where(mod.pipestat_modified_time < start)
-            record = s.exec(stmt).first()
+            records_list = []
+            if type == "modified":
+                stmt = (
+                    sql_select(mod)
+                    .where(mod.pipestat_modified_time <= start)
+                    .where(mod.pipestat_modified_time >= end)
+                    .limit(limit)
+                )
+            else:
+                stmt = (
+                    sql_select(mod)
+                    .where(mod.pipestat_created_time <= start)
+                    .where(mod.pipestat_created_time >= end)
+                    .limit(limit)
+                )
+            records = s.exec(stmt).all()
+            if records:
+                for i in records:
+                    if type == "modified":
+                        records_list.append((i.record_identifier, i.pipestat_modified_time))
+                    else:
+                        records_list.append((i.record_identifier, i.pipestat_created_time))
 
-            if record:
-                return record
+        records_dict = {
+            "count": len(records),
+            "start": start,
+            "end": end,
+            "records": records_list,
+        }
 
-        # results = ["demo results"]
-        return record
+        return records_dict
 
     def list_results(
         self,
