@@ -455,6 +455,15 @@ class FileBackend(PipestatBackend):
 
         return results_formatted
 
+    def retrieve_multiple(
+        self,
+        record_identifier: Optional[List[str]] = None,
+        result_identifier: Optional[List[str]] = None,
+        limit: Optional[int] = 1000,
+        offset: Optional[int] = 0,
+    ) -> Union[Any, Dict[str, Any]]:
+        pass
+
     def retrieve(
         self,
         record_identifier: Optional[str] = None,

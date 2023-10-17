@@ -184,6 +184,16 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
+    def retrieve_multiple(
+        self,
+        record_identifier: Optional[List[str]] = None,
+        result_identifier: Optional[List[str]] = None,
+        limit: Optional[int] = 1000,
+        offset: Optional[int] = 0,
+    ) -> Union[Any, Dict[str, Any]]:
+        _LOGGER.warning("Not implemented yet for this backend")
+        pass
+
     def remove(
         self,
         record_identifier: Optional[str] = None,

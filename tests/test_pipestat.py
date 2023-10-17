@@ -395,6 +395,46 @@ class TestRetrieval:
             assert isinstance(psm.retrieve(record_identifier=rec_id), Mapping)
 
     @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_retrieve_multiple(
+        self,
+        config_file_path,
+        results_file_path,
+        schema_file_path,
+        backend,
+    ):
+        values_sample = [
+            {"sample1": {"name_of_something": "name_of_something string"}},
+            {"sample1": {"number_of_things": 1}},
+            {"sample2": {"name_of_something": "name_of_something string"}},
+            {"sample2": {"number_of_things": 1}},
+            {"sample3": {"name_of_something": "name_of_something string"}},
+            {"sample3": {"number_of_things": 1}},
+        ]
+
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in values_sample:
+                for k, v in i.items():
+                    psm.report(record_identifier=k, values=v, force_overwrite=True)
+
+            # Test singular list works as expected
+            r_id = list(values_sample[0].keys())[0]
+            res_id = list(list(values_sample[0].values())[0].keys())[0]
+            results = psm.retrieve(record_identifier=[r_id], result_identifier=[res_id])
+            assert results == list(list(values_sample[0].values())[0].values())[0]
+
+            print("done")
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
     def test_get_records(
         self,
         config_file_path,

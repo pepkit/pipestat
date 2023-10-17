@@ -501,6 +501,15 @@ class DBBackend(PipestatBackend):
             }
         raise RecordNotFoundError(f"Record '{record_identifier}' not found")
 
+    def retrieve_multiple(
+        self,
+        record_identifier: Optional[List[str]] = None,
+        result_identifier: Optional[List[str]] = None,
+        limit: Optional[int] = 1000,
+        offset: Optional[int] = 0,
+    ) -> Union[Any, Dict[str, Any]]:
+        pass
+
     def select(
         self,
         columns: Optional[List[str]] = None,
