@@ -340,6 +340,23 @@ class FileBackend(PipestatBackend):
                     record_identifier=record_identifier,
                     rm_record=rm_record,
                 )
+            # Check if the last remaining attributes are the timestamps
+            remaining_attributes = list(
+                self._data[self.pipeline_name][self.pipeline_type][record_identifier].keys()
+            )
+            if (
+                len(remaining_attributes) == 2
+                and CREATED_TIME in remaining_attributes
+                and MODIFIED_TIME in remaining_attributes
+            ):
+                _LOGGER.info(
+                    f"Last result removed for '{record_identifier}'. " f"Removing the record"
+                )
+                rm_record = True
+                self.remove_record(
+                    record_identifier=record_identifier,
+                    rm_record=rm_record,
+                )
             with self._data as locked_data:
                 locked_data.write()
         return True
