@@ -508,7 +508,58 @@ class DBBackend(PipestatBackend):
         limit: Optional[int] = 1000,
         offset: Optional[int] = 0,
     ) -> Union[Any, Dict[str, Any]]:
-        pass
+
+        columns = result_identifier
+        ORM = self.get_model(table_name=self.table_name)
+        with self.session as s:
+
+            # If nothing is specified, get all the values within a limit.
+            if record_identifier is None and result_identifier is None:
+                record_list = []
+                stmt = sql_select(ORM).offset(offset).limit(limit)
+                records = s.exec(stmt).all()
+                for i in records:
+                    retrieved_record = {}
+                    record_id = i.record_identifier
+                    record_dict = dict(i)
+                    for k,v in record_dict.items():
+                        if k not in self.parsed_schema.results_data.keys():
+                            record_dict.pop(k)
+                    retrieved_record.update({record_id: record_dict})
+                    record_list.append(retrieved_record)
+            else:
+                if columns is not None:
+                    statement = sqlmodel.select(*[getattr(ORM, column) for column in columns])
+                else:
+                    statement = sqlmodel.select(ORM)
+                if isinstance(offset, int):
+                    statement = statement.offset(offset)
+                if isinstance(limit, int):
+                    statement = statement.limit(limit)
+
+                record_list = []
+                for r_id in record_identifier:
+                    statement = statement.where(getattr(ORM, "record_identifier") == r_id)
+                    record = s.exec(statement).all()
+                    for i in record:
+                        retrieved_record = {}
+                        record_id = r_id
+                        record_dict = dict(i)
+                        for k, v in record_dict.items():
+                            if k not in self.parsed_schema.results_data.keys():
+                                record_dict.pop(k)
+                        retrieved_record.update({record_id: record_dict})
+                        record_list.append(retrieved_record)
+
+        records_dict = {
+            "count": len(record_list),
+            "limit": limit,
+            "offset": offset,
+            "type": type,
+            "records": record_list,
+        }
+
+        return records_dict
 
     def select(
         self,

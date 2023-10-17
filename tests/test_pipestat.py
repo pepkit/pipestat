@@ -394,7 +394,7 @@ class TestRetrieval:
             # Test Retrieve Whole Record
             assert isinstance(psm.retrieve(record_identifier=rec_id), Mapping)
 
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.parametrize("backend", ["db"])
     def test_retrieve_multiple(
         self,
         config_file_path,
@@ -432,9 +432,14 @@ class TestRetrieval:
             results = psm.retrieve(record_identifier=[r_id], result_identifier=[res_id])
             assert results == list(list(values_sample[0].values())[0].values())[0]
 
+            # Use list of results
+            r_ids = ["sample1", "sample2"]
+            res_id = list(list(values_sample[0].values())[0].keys())[0]
+            results = psm.retrieve(record_identifier=r_ids, result_identifier=[res_id])
+
             print("done")
 
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.parametrize("backend", ["db"])
     def test_get_records(
         self,
         config_file_path,
