@@ -219,7 +219,7 @@ class DBBackend(PipestatBackend):
                 )
             records = s.exec(stmt).all()
             if records:
-                for i in records:
+                for i in reversed(records):
                     if type == "modified":
                         records_list.append((i.record_identifier, i.pipestat_modified_time))
                     else:
