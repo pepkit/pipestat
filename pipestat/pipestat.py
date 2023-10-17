@@ -5,6 +5,7 @@ from logging import getLogger
 from copy import deepcopy
 from typing import List
 
+
 from abc import ABC
 from collections.abc import MutableMapping
 
@@ -323,9 +324,16 @@ class PipestatManager(MutableMapping):
         if start is None:
             start = datetime.datetime.now()
         else:
-            start = datetime.datetime.strptime(start, date_format)
+            try:
+                start = datetime.datetime.strptime(start, date_format)
+            except ValueError:
+                raise InvalidTimeFormatError(msg=f"Incorrect time format, requires:{date_format}")
+
         if end is None:
-            end = datetime.datetime.strptime("1900-01-01 00:00:00", date_format)
+            try:
+                end = datetime.datetime.strptime("1900-01-01 00:00:00", date_format)
+            except ValueError:
+                raise InvalidTimeFormatError(msg=f"Incorrect time format, requires: {date_format}")
 
         results = self.backend.list_recent_results(limit=limit, start=start, end=end, type=type)
 

@@ -1,4 +1,5 @@
 import os.path
+import datetime
 from collections.abc import Mapping
 
 import pytest
@@ -1212,17 +1213,9 @@ class TestTimeStamp:
             modified = psm.retrieve(record_identifier=rec_id, result_identifier=MODIFIED_TIME)
             assert created != modified
 
-    @pytest.mark.parametrize(
-        ["rec_id", "val"],
-        [
-            ("sample1", {"name_of_something": "test_name"}),
-        ],
-    )
     @pytest.mark.parametrize("backend", ["db"])
     def test_filtering_by_time(
         self,
-        rec_id,
-        val,
         config_file_path,
         schema_file_path,
         results_file_path,
@@ -1238,24 +1231,30 @@ class TestTimeStamp:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
-            # Report new
-            val = {"number_of_things": 1}
-            psm.report(record_identifier="sample1", values=val, force_overwrite=True)
-            psm.report(record_identifier="sample2", values=val, force_overwrite=True)
-            psm.report(record_identifier="sample3", values=val, force_overwrite=True)
-            psm.report(record_identifier="sample4", values=val, force_overwrite=True)
-            psm.report(record_identifier="sample5", values=val, force_overwrite=True)
-            psm.report(record_identifier="sample6", values=val, force_overwrite=True)
-            psm.report(record_identifier="sample7", values=val, force_overwrite=True)
-            psm.report(record_identifier="sample8", values=val, force_overwrite=True)
-            psm.report(record_identifier="sample9", values=val, force_overwrite=True)
-            psm.report(record_identifier="sample10", values=val, force_overwrite=True)
 
+            # Report a few values
+            val = {"number_of_things": 1}
+            for i in range(10):
+                rid = "sample" + str(i)
+                psm.report(record_identifier=rid, values=val, force_overwrite=True)
+
+            # Modify a couple of records
             val = {"number_of_things": 2}
             psm.report(record_identifier="sample3", values=val, force_overwrite=True)
             psm.report(record_identifier="sample4", values=val, force_overwrite=True)
 
+            # Test default
             results = psm.list_recent_results()
+            assert len(results["records"]) == 10
 
-            print("done")
+            # Test limit
+            results = psm.list_recent_results(limit=2)
+            assert len(results["records"]) == 2
+
+            # Test garbled time raises error
+            with pytest.raises(InvalidTimeFormatError):
+                results = psm.list_recent_results(start="2100-01-01dsfds", end="1970-01-01")
+
+            # Test large window
+            results = psm.list_recent_results(start="2100-01-01 0:0:0", end="1970-01-01 0:0:0")
+            assert len(results["records"]) == 10
