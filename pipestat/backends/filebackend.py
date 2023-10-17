@@ -1,3 +1,4 @@
+import datetime
 import os.path
 import sys
 
@@ -210,17 +211,54 @@ class FileBackend(PipestatBackend):
             self.status_file_dir, f"{self.pipeline_name}_{r_id}_{status_identifier}.flag"
         )
 
-    def list_recent_results(self, limit, range) -> List[str]:
+    def list_recent_results(
+        self,
+        limit: Optional[int] = None,
+        start: Optional[datetime.datetime] = None,
+        end: Optional[datetime.datetime] = None,
+        type: Optional[str] = None,
+    ) -> Optional[dict]:
         """Lists recent results based on time filter
-
-        limit number of results
-
-        range  = list -> [start, end]
-
+        :param int  limit: limit number of results returned
+        :param datetime.datetime start: most recent result to filter on, defaults to now, e.g. 2023-10-16 13:03:04.680400
+        :param datetime.datetime end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
+        :param str type: created or modified
+        :return dict results: a dict containing start, end, num of records, and list of retrieved records
         """
 
-        results = ["demo results"]
-        return results
+        def key_function(tuple):
+            return tuple[1]
+
+        # first collect records that exist  between the start and end times
+        date_format = "%Y-%m-%d %H:%M:%S"
+        record_list = []
+        if type == "modified":
+            time_attribute = MODIFIED_TIME
+        else:
+            time_attribute = CREATED_TIME
+
+        for k in list(self._data.data[self.pipeline_name][self.pipeline_type].keys()):
+            time_stamp = datetime.datetime.strptime(
+                self._data.data[self.pipeline_name][self.pipeline_type][k][time_attribute],
+                date_format,
+            )
+            if time_stamp >= end and time_stamp <= start:
+                record_list.append((k, time_stamp))
+
+        # sort by tuple[1]
+        record_list.sort(key=key_function, reverse=True)
+        # limit
+        record_list = record_list[:limit]
+
+        records_dict = {
+            "count": len(record_list),
+            "start": start,
+            "end": end,
+            "type": type,
+            "records": record_list,
+        }
+
+        return records_dict
 
     def list_results(
         self,
@@ -304,6 +342,23 @@ class FileBackend(PipestatBackend):
                     record_identifier=record_identifier,
                     rm_record=rm_record,
                 )
+            # Check if the last remaining attributes are the timestamps
+            remaining_attributes = list(
+                self._data[self.pipeline_name][self.pipeline_type][record_identifier].keys()
+            )
+            if (
+                len(remaining_attributes) == 2
+                and CREATED_TIME in remaining_attributes
+                and MODIFIED_TIME in remaining_attributes
+            ):
+                _LOGGER.info(
+                    f"Last result removed for '{record_identifier}'. " f"Removing the record"
+                )
+                rm_record = True
+                self.remove_record(
+                    record_identifier=record_identifier,
+                    rm_record=rm_record,
+                )
             with self._data as locked_data:
                 locked_data.write()
         return True
@@ -360,6 +415,7 @@ class FileBackend(PipestatBackend):
         record_identifier = record_identifier
         result_formatter = result_formatter or self.result_formatter
         results_formatted = []
+        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         result_identifiers = list(values.keys())
         if self.parsed_schema is not None:
@@ -376,6 +432,10 @@ class FileBackend(PipestatBackend):
             if not force_overwrite:
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
+            values.update({MODIFIED_TIME: current_time})
+        if not existing:
+            values.update({CREATED_TIME: current_time})
+            values.update({MODIFIED_TIME: current_time})
 
         self._data[self.pipeline_name][self.pipeline_type].setdefault(record_identifier, {})
 

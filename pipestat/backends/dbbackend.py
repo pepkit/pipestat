@@ -193,23 +193,49 @@ class DBBackend(PipestatBackend):
         start: Optional[datetime.datetime] = None,
         end: Optional[datetime.datetime] = None,
         type: Optional[str] = None,
-    ) -> List[str]:
-        """Lists recent results based on time filter
-        limit number of results
-        range  = list -> [start, end]
-        return - > just list of record identifers
+    ) -> Optional[dict]:
+        """Lists recent results based on start and end time filter
+        :param int  limit: limit number of results returned
+        :param datetime.datetime start: most recent result to filter on, defaults to now, e.g. 2023-10-16 13:03:04.680400
+        :param datetime.datetime end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
+        :param str type: created or modified
+        :return dict results: a dict containing start, end, num of records, and list of retrieved records
         """
         mod = self.get_model(table_name=self.table_name)
 
         with self.session as s:
-            stmt = sql_select(mod).where(mod.pipestat_modified_time < start)
-            record = s.exec(stmt).first()
+            records_list = []
+            if type == "modified":
+                stmt = (
+                    sql_select(mod)
+                    .where(mod.pipestat_modified_time <= start)
+                    .where(mod.pipestat_modified_time >= end)
+                    .limit(limit)
+                )
+            else:
+                stmt = (
+                    sql_select(mod)
+                    .where(mod.pipestat_created_time <= start)
+                    .where(mod.pipestat_created_time >= end)
+                    .limit(limit)
+                )
+            records = s.exec(stmt).all()
+            if records:
+                for i in reversed(records):
+                    if type == "modified":
+                        records_list.append((i.record_identifier, i.pipestat_modified_time))
+                    else:
+                        records_list.append((i.record_identifier, i.pipestat_created_time))
 
-            if record:
-                return record
+        records_dict = {
+            "count": len(records),
+            "start": start,
+            "end": end,
+            "type": type,
+            "records": records_list,
+        }
 
-        # results = ["demo results"]
-        return record
+        return records_dict
 
     def list_results(
         self,

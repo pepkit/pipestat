@@ -5,6 +5,7 @@ from logging import getLogger
 from copy import deepcopy
 from typing import List
 
+
 from abc import ABC
 from collections.abc import MutableMapping
 
@@ -308,25 +309,37 @@ class PipestatManager(MutableMapping):
     def list_recent_results(
         self,
         limit: Optional[int] = 1000,
-        start: Optional[datetime.datetime] = datetime.datetime.now(),
+        start: Optional[datetime.datetime] = None,
         end: Optional[datetime.datetime] = None,
         type: Optional[str] = "modified",
-    ) -> List[str]:
+    ) -> dict:
         """
         :param int  limit: limit number of results returned
-        :param datetime.datetime start: most recent result  to filter on, e.g. 2023-10-16 13:03:04.680400
+        :param datetime.datetime start: most recent result to filter on, defaults to now, e.g. 2023-10-16 13:03:04.680400
         :param datetime.datetime end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
-        :param type: created or modified
-        :return list[str]: status identifier, e.g. 'running'
+        :param str type: created or modified
+        :return dict results: a dict containing start, end, num of records, and list of retrieved records
         """
-        # date_format = '%Y-%m-%d %H:%M:%S'
-        # # start = time.strptime(start, date_format)
-        # # if end is None:
-        # #     end = time.strptime("1900-01-01 00:00:00", date_format)
-        #
-        # results = self.backend.list_recent_results(limit=limit, start=start,end=end, type=type)
+        date_format = "%Y-%m-%d %H:%M:%S"
+        if start is None:
+            start = datetime.datetime.now()
+        else:
+            try:
+                start = datetime.datetime.strptime(start, date_format)
+            except ValueError:
+                raise InvalidTimeFormatError(msg=f"Incorrect time format, requires:{date_format}")
 
-        pass
+        if end is None:
+            end = datetime.datetime.strptime("1900-01-01 00:00:00", date_format)
+        else:
+            try:
+                end = datetime.datetime.strptime(end, date_format)
+            except ValueError:
+                raise InvalidTimeFormatError(msg=f"Incorrect time format, requires: {date_format}")
+
+        results = self.backend.list_recent_results(limit=limit, start=start, end=end, type=type)
+
+        return results
 
     def process_schema(self, schema_path):
         # Load pipestat schema in two parts: 1) main and 2) status
