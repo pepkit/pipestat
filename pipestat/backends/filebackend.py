@@ -219,9 +219,11 @@ class FileBackend(PipestatBackend):
         type: Optional[str] = None,
     ) -> Optional[dict]:
         """Lists recent results based on time filter
-        limit number of results
-        range  = list -> [start, end]
-        return - > just list of record identifers
+        :param int  limit: limit number of results returned
+        :param datetime.datetime start: most recent result to filter on, defaults to now, e.g. 2023-10-16 13:03:04.680400
+        :param datetime.datetime end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
+        :param str type: created or modified
+        :return dict results: a dict containing start, end, num of records, and list of retrieved records
         """
 
         def key_function(tuple):
