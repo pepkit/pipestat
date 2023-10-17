@@ -11,10 +11,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Add `to_dict` methods to parsed schema object.
 - Add `retrieve_distinct` function which retrieves unique results for a list of attributes.
 - Add `pipestat link` which creates a directory of symlinks for reported results
+- `list_reecent_results` which allows for retrieving record id filtered via a start and end time
 
 ### Fixed
 - Added path expansion when creating database url
 - added jinja2 requirement
+- `pipeline_name` column not populating in postgres db backend.
 
 ### Changed
 - modify `get_records` to return new structure
