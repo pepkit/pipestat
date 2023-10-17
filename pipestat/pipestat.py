@@ -330,8 +330,10 @@ class PipestatManager(MutableMapping):
                 raise InvalidTimeFormatError(msg=f"Incorrect time format, requires:{date_format}")
 
         if end is None:
+            end = datetime.datetime.strptime("1900-01-01 00:00:00", date_format)
+        else:
             try:
-                end = datetime.datetime.strptime("1900-01-01 00:00:00", date_format)
+                end = datetime.datetime.strptime(end, date_format)
             except ValueError:
                 raise InvalidTimeFormatError(msg=f"Incorrect time format, requires: {date_format}")
 

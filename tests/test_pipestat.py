@@ -79,6 +79,7 @@ class TestSplitClasses:
             assert status == "running"
             assert val_name in psm.retrieve(record_identifier=rec_id)
             psm.remove(record_identifier=rec_id, result_identifier=val_name)
+            #psm.remove(record_identifier=rec_id)
             if backend == "file":
                 psm.clear_status(record_identifier=rec_id)
                 status = psm.get_status(record_identifier=rec_id)
@@ -1213,7 +1214,7 @@ class TestTimeStamp:
             modified = psm.retrieve(record_identifier=rec_id, result_identifier=MODIFIED_TIME)
             assert created != modified
 
-    @pytest.mark.parametrize("backend", ["db"])
+    @pytest.mark.parametrize("backend", ["db", "file"])
     def test_filtering_by_time(
         self,
         config_file_path,

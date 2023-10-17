@@ -229,6 +229,7 @@ class DBBackend(PipestatBackend):
             "count": len(records),
             "start": start,
             "end": end,
+            "type": type,
             "records": records_list,
         }
 
