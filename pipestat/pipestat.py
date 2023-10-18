@@ -515,11 +515,18 @@ class PipestatManager(MutableMapping):
         :return any | Dict[str, any]: a single result or a mapping with all the
             results reported for the record
         """
+        if record_identifier is None and result_identifier is None:
+            return self.backend.retrieve_multiple(
+                record_identifier, result_identifier, limit, offset
+            )
+
         if type(record_identifier) is list or type(result_identifier) is list:
             if len(record_identifier) == 1 and len(result_identifier) == 1:
                 return self.backend.retrieve(record_identifier[0], result_identifier[0])
             else:
-                return self.backend.retrieve_multiple(record_identifier, result_identifier)
+                return self.backend.retrieve_multiple(
+                    record_identifier, result_identifier, limit, offset
+                )
 
         r_id = record_identifier or self.record_identifier
         return self.backend.retrieve(r_id, result_identifier)

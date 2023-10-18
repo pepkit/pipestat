@@ -403,12 +403,12 @@ class TestRetrieval:
         backend,
     ):
         values_sample = [
-            {"sample1": {"name_of_something": "name_of_something string"}},
+            {"sample1": {"name_of_something": "string 1"}},
             {"sample1": {"number_of_things": 1}},
-            {"sample2": {"name_of_something": "name_of_something string"}},
-            {"sample2": {"number_of_things": 1}},
-            {"sample3": {"name_of_something": "name_of_something string"}},
-            {"sample3": {"number_of_things": 1}},
+            {"sample2": {"name_of_something": "string 2"}},
+            {"sample2": {"number_of_things": 20}},
+            {"sample3": {"name_of_something": "string 3"}},
+            {"sample3": {"number_of_things": 300}},
         ]
 
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
@@ -434,10 +434,27 @@ class TestRetrieval:
 
             # Use list of results
             r_ids = ["sample1", "sample2"]
-            res_id = list(list(values_sample[0].values())[0].keys())[0]
-            results = psm.retrieve(record_identifier=r_ids, result_identifier=[res_id])
+            res_id = ["md5sum", "number_of_things"]
+            # res_id = list(list(values_sample[0].values())[0].keys())[0]
+            results = psm.retrieve(record_identifier=r_ids, result_identifier=res_id)
+            assert r_ids[0] == list(results["records"][0].keys())[0]
+            assert (
+                list(list(values_sample[3].values())[0].values())[0]
+                == list(results["records"][1].values())[0]["number_of_things"]
+            )
 
-            print("done")
+            # Test combinations of empty list for either record or result identifiers.
+            results = psm.retrieve(record_identifier=r_ids, result_identifier=[])
+            assert results["result_identifiers"] is None
+            assert len(results["records"]) == 2
+
+            results = psm.retrieve(record_identifier=[], result_identifier=[])
+            assert results["result_identifiers"] is None
+            assert len(results["records"]) == 3
+
+            results = psm.retrieve(record_identifier=[], result_identifier=res_id)
+            assert "md5sum" in results["result_identifiers"]
+            assert len(results["records"]) == 3
 
     @pytest.mark.parametrize("backend", ["db"])
     def test_get_records(
