@@ -552,7 +552,8 @@ class DBBackend(PipestatBackend):
             "limit": limit,
             "offset": offset,
             "record_identifiers": record_identifier,
-            "result_identifiers": result_identifier,
+            "result_identifiers": result_identifier
+            or list(self.parsed_schema.results_data.keys()) + [CREATED_TIME] + [MODIFIED_TIME],
             "records": record_list,
         }
 

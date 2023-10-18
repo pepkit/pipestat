@@ -394,7 +394,7 @@ class TestRetrieval:
             # Test Retrieve Whole Record
             assert isinstance(psm.retrieve(record_identifier=rec_id), Mapping)
 
-    @pytest.mark.parametrize("backend", ["db"])
+    @pytest.mark.parametrize("backend", ["file", "db"])
     def test_retrieve_multiple(
         self,
         config_file_path,
@@ -445,11 +445,11 @@ class TestRetrieval:
 
             # Test combinations of empty list for either record or result identifiers.
             results = psm.retrieve(record_identifier=r_ids, result_identifier=[])
-            assert results["result_identifiers"] is None
+            assert len(results["result_identifiers"]) == 9
             assert len(results["records"]) == 2
 
             results = psm.retrieve(record_identifier=[], result_identifier=[])
-            assert results["result_identifiers"] is None
+            assert len(results["result_identifiers"]) == 9
             assert len(results["records"]) == 3
 
             results = psm.retrieve(record_identifier=[], result_identifier=res_id)
