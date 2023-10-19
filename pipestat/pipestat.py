@@ -1,23 +1,37 @@
 import csv
+import sys
 import datetime
 import time
 from logging import getLogger
 from copy import deepcopy
 from typing import List
-
+from .exceptions import PipestatDependencyError
 
 from abc import ABC
 from collections.abc import MutableMapping
 
 from pipestat.backends.filebackend import FileBackend
-from pipestat.backends.dbbackend import DBBackend
+
+try:
+    from pipestat.backends.dbbackend import DBBackend
+    from .helpersdb import *
+except:
+    print("Unable to import DB backend")
+    pass
+
+try:
+    from .parsed_schema_db import ParsedSchema
+except:
+    print("Unable to import Parsed schema DB")
+    from .parsed_schema import ParsedSchema
+
 
 from jsonschema import validate
 
 from yacman import YAMLConfigManager, select_config
 
 from .helpers import *
-from .parsed_schema import ParsedSchema
+
 
 from .reports import HTMLReportBuilder, get_file_for_table, _create_stats_objs_summaries
 
@@ -163,6 +177,7 @@ class PipestatManager(MutableMapping):
             )
 
         else:  # database backend
+            check_db_dependencies()
             _LOGGER.debug("Determined database as backend")
             if self[SCHEMA_KEY] is None:
                 raise SchemaNotFoundError("Output schema must be supplied for DB backends.")
@@ -800,3 +815,20 @@ class PipestatBoss(ABC):
 
     def __setitem__(self, key, value):
         setattr(self, key, value)
+
+
+def check_db_dependencies():
+    """Decorator for db dependencies checking"""
+    modulename = ["DBBackend"]
+    dependencies_satisfied = True
+    for i in modulename:
+        if i not in globals():
+            _LOGGER.warning(msg="Need db dependencies")
+            dependencies_satisfied = False
+
+    if dependencies_satisfied is False:
+        raise PipestatDependencyError(
+            msg="Missing required dependencies for this usage. Try pip install pipestat['db-backend']"
+        )
+
+    return dependencies_satisfied

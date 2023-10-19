@@ -6,10 +6,15 @@ from logging import getLogger
 
 from contextlib import contextmanager
 
+# try:
 from sqlalchemy import text
 from sqlmodel import Session, create_engine, select as sql_select
 
+# except:
+#     pass
+
 from pipestat.helpers import *
+from pipestat.helpersdb import *
 from .abstract import PipestatBackend
 
 if int(sys.version.split(".")[1]) < 9:

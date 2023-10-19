@@ -89,6 +89,13 @@ class InvalidTimeFormatError(PipestatError):
         super(InvalidTimeFormatError, self).__init__(msg)
 
 
+class PipestatDependencyError(PipestatError):
+    """Dependency error"""
+
+    def __init__(self, msg):
+        super(PipestatDependencyError, self).__init__(msg)
+
+
 class PipestatDatabaseError(PipestatError):
     """Database error"""
 
