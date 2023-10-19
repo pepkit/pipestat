@@ -10,4 +10,4 @@ To run with reload on:
 `uvicorn reader:app --reload --port 8000`
 
 To run via pipestat cli:
-`pipestat --config "path/to/pipestatconfigfile.yaml" --host "0.0.0.0" --port 8000`
+`pipestat serve --config "path/to/pipestatconfigfile.yaml" --host "0.0.0.0" --port 8000`
