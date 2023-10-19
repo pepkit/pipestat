@@ -497,8 +497,8 @@ class PipestatManager(MutableMapping):
     @require_backend
     def retrieve(
         self,
-        record_identifier: Optional[str] = None,
-        result_identifier: Optional[str] = None,
+        record_identifier: Optional[Union[str, List[str]]] = None,
+        result_identifier: Optional[Union[str, List[str]]] = None,
         limit: Optional[int] = 1000,
         offset: Optional[int] = 0,
     ) -> Union[Any, Dict[str, Any]]:
@@ -508,11 +508,11 @@ class PipestatManager(MutableMapping):
         If no result ID specified, results for the entire record will
         be returned.
 
-        :param str record_identifier: name of the sample_level record
-        :param str result_identifier: name of the result to be retrieved
+        :param str | List[str] record_identifier: name of the sample_level record
+        :param str | List[str] result_identifier: name of the result to be retrieved
         :param int limit: limit number of records to this amount
         :param int offset: offset records by this amount
-        :return any | Dict[str, any]: a single result or a mapping with all the
+        :return any | Dict[str, any]: a single result or a mapping with filtered
             results reported for the record
         """
         if record_identifier is None and result_identifier is None:

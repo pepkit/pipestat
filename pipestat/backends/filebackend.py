@@ -462,6 +462,14 @@ class FileBackend(PipestatBackend):
         limit: Optional[int] = 1000,
         offset: Optional[int] = 0,
     ) -> Union[Any, Dict[str, Any]]:
+        """
+        :param List[str] record_identifier: list of record identifiers
+        :param List[str] result_identifier: list of result identifiers to be retrieved
+        :param int limit: limit number of records to this amount
+        :param int offset: offset records by this amount
+        :return Dict[str, any]: a mapping with filtered results reported for the record
+        """
+
         record_list = []
 
         if result_identifier == []:
