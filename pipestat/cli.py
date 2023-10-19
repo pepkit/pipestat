@@ -23,7 +23,7 @@ from .const import *
 from .exceptions import SchemaNotFoundError, PipestatStartupError
 from .pipestat import PipestatManager
 from .helpers import init_generic_config
-from pipestatreader import main as readermain
+from pipestat.pipestatreader import main as readermain
 
 _LOGGER = getLogger(PKG_NAME)
 
