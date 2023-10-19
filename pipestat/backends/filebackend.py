@@ -472,7 +472,7 @@ class FileBackend(PipestatBackend):
 
         record_list = []
 
-        if result_identifier == []:
+        if result_identifier == [] or result_identifier is None:
             result_identifier = (
                 list(self.parsed_schema.results_data.keys()) + [CREATED_TIME] + [MODIFIED_TIME]
             )

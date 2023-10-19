@@ -516,19 +516,23 @@ class PipestatManager(MutableMapping):
             results reported for the record
         """
         if record_identifier is None and result_identifier is None:
+            # This will retrieve all records and columns.
             return self.backend.retrieve_multiple(
                 record_identifier, result_identifier, limit, offset
             )
 
         if type(record_identifier) is list or type(result_identifier) is list:
             if len(record_identifier) == 1 and len(result_identifier) == 1:
+                # If user gives single values, just use retrieve.
                 return self.backend.retrieve(record_identifier[0], result_identifier[0])
             else:
+                # If user gives lists, retrieve_multiple
                 return self.backend.retrieve_multiple(
                     record_identifier, result_identifier, limit, offset
                 )
 
         r_id = record_identifier or self.record_identifier
+
         return self.backend.retrieve(r_id, result_identifier)
 
     @require_backend

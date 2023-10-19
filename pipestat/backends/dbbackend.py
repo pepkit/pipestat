@@ -532,11 +532,11 @@ class DBBackend(PipestatBackend):
                     columns=result_identifier, filter_conditions=filter, limit=limit, offset=offset
                 )
                 retrieved_record = {}
-                record_dict = dict(result[0])
-                for k, v in list(record_dict.items()):
+                result_dict = dict(result[0])
+                for k, v in list(result_dict.items()):
                     if k not in self.parsed_schema.results_data.keys():
-                        record_dict.pop(k)
-                retrieved_record.update({r_id: record_dict})
+                        result_dict.pop(k)
+                retrieved_record.update({r_id: result_dict})
                 record_list.append(retrieved_record)
         if record_identifier is None:
             if result_identifier is not None:
@@ -545,14 +545,14 @@ class DBBackend(PipestatBackend):
             records = self.select(
                 columns=result_identifier, filter_conditions=None, limit=limit, offset=offset
             )
-            for i in records:
+            for record in records:
                 retrieved_record = {}
-                record_id = i.record_identifier
-                record_dict = dict(i)
+                r_id = record.record_identifier
+                record_dict = dict(record)
                 for k, v in list(record_dict.items()):
                     if k not in self.parsed_schema.results_data.keys():
                         record_dict.pop(k)
-                retrieved_record.update({record_id: record_dict})
+                retrieved_record.update({r_id: record_dict})
                 record_list.append(retrieved_record)
 
         records_dict = {
