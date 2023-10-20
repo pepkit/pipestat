@@ -8,7 +8,7 @@ from yacman import YAMLConfigManager
 from ubiquerg import create_lock, remove_lock
 
 from pipestat.helpers import *
-from .abstract import PipestatBackend
+from pipestat.backends.abstract import PipestatBackend
 
 if int(sys.version.split(".")[1]) < 9:
     from typing import List, Dict, Any, Optional, Union

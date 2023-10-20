@@ -1,7 +1,4 @@
-import csv
-import sys
 import datetime
-import time
 from logging import getLogger
 from copy import deepcopy
 from typing import List
@@ -10,17 +7,17 @@ from .exceptions import PipestatDependencyError
 from abc import ABC
 from collections.abc import MutableMapping
 
-from pipestat.backends.filebackend import FileBackend
+from pipestat.backends.file_backend.filebackend import FileBackend
 
 try:
-    from pipestat.backends.dbbackend import DBBackend
-    from .helpersdb import *
+    from pipestat.backends.db_backend.dbbackend import DBBackend
+    from pipestat.backends.db_backend.db_helpers import *
 except:
     print("Unable to import DB backend")
     pass
 
 try:
-    from .parsed_schema_db import ParsedSchema
+    from pipestat.backends.db_backend.db_parsed_schema import ParsedSchema
 except:
     print("Unable to import Parsed schema DB")
     from .parsed_schema import ParsedSchema
@@ -33,7 +30,7 @@ from yacman import YAMLConfigManager, select_config
 from .helpers import *
 
 
-from .reports import HTMLReportBuilder, get_file_for_table, _create_stats_objs_summaries
+from .reports import HTMLReportBuilder, _create_stats_objs_summaries
 
 _LOGGER = getLogger(PKG_NAME)
 

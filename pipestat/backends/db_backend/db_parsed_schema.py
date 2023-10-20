@@ -11,9 +11,9 @@ from pydantic import create_model
 from sqlalchemy import Column, null
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
-from .const import *
-from .exceptions import SchemaError
-from .helpers import read_yaml_data
+from pipestat.const import *
+from pipestat.exceptions import SchemaError
+from pipestat.helpers import read_yaml_data
 
 
 _LOGGER = logging.getLogger(__name__)
