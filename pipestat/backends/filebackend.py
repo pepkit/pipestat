@@ -159,13 +159,13 @@ class FileBackend(PipestatBackend):
         }
         """
         record_list = []
-        for k in list(self._data.data[self.pipeline_name][self.pipeline_type].keys())[
-            offset : offset + limit
-        ]:
-            record_list.append(k)
+        all_records = list(self._data.data[self.pipeline_name][self.pipeline_type].keys())
+        total_count = len(all_records)
+        for record in all_records[offset : offset + limit]:
+            record_list.append(record)
 
         records_dict = {
-            "count": len(record_list),
+            "count": total_count,
             "limit": limit,
             "offset": offset,
             "records": record_list,

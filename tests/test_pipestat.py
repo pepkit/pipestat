@@ -424,7 +424,7 @@ class TestRetrieval:
             assert results["count"] == len(list(val_dict.keys()))
             results = psm.get_records(limit=1, offset=1)
             assert results["records"][0] == list(val_dict.keys())[1]
-            assert results["count"] == 1
+            assert results["count"] == 2
 
     @pytest.mark.parametrize(
         ["rec_id", "res_id"],

@@ -154,6 +154,7 @@ class DBBackend(PipestatBackend):
         mod = self.get_model(table_name=self.table_name)
 
         with self.session as s:
+            total_count = len(s.exec(sql_select(mod)).all())
             sample_list = []
             stmt = sql_select(mod).offset(offset).limit(limit)
             records = s.exec(stmt).all()
@@ -161,7 +162,7 @@ class DBBackend(PipestatBackend):
                 sample_list.append(i.record_identifier)
 
         records_dict = {
-            "count": len(records),
+            "count": total_count,
             "limit": limit,
             "offset": offset,
             "records": sample_list,
