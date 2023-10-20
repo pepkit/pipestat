@@ -12,14 +12,13 @@ from pipestat.backends.file_backend.filebackend import FileBackend
 try:
     from pipestat.backends.db_backend.dbbackend import DBBackend
     from pipestat.backends.db_backend.db_helpers import *
-except:
-    print("Unable to import DB backend")
+except ImportError:
+    # We let this pass, but if the user attempts to create DBBackend, check_db_dependencies raises exception.
     pass
 
 try:
     from pipestat.backends.db_backend.db_parsed_schema import ParsedSchemaDB as ParsedSchema
-except:
-    print("Unable to import Parsed schema DB")
+except ImportError:
     from .parsed_schema import ParsedSchema
 
 
@@ -815,7 +814,7 @@ class PipestatBoss(ABC):
 
 
 def check_db_dependencies():
-    """Decorator for db dependencies checking"""
+    """Function to check that the DB Backend has successfully been imported."""
     modulename = ["DBBackend"]
     dependencies_satisfied = True
     for i in modulename:

@@ -17,6 +17,7 @@ __all__ = [
     "RecordNotFoundError",
     "PipelineTypeNotSuppliedError",
     "InvalidTimeFormatError",
+    "PipestatDependencyError",
 ]
 
 
