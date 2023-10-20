@@ -14,6 +14,7 @@ from sqlmodel import Field, SQLModel
 from pipestat.const import *
 from pipestat.exceptions import SchemaError
 from pipestat.helpers import read_yaml_data
+from pipestat.parsed_schema import ParsedSchema
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,7 +75,7 @@ def _safe_pop_one_mapping(
         )
 
 
-class ParsedSchema(object):
+class ParsedSchemaDB(ParsedSchema):
     """
     Store the results of parsing a pipestat schema configuration file.
 
@@ -92,102 +93,9 @@ class ParsedSchema(object):
     _SAMPLES_KEY = "samples"
     _STATUS_KEY = "status"
 
-    def __init__(self, data: Union[Dict[str, Any], Path, str]) -> None:
-        # initial validation and parse
-        if not isinstance(data, dict):
-            _, data = read_yaml_data(data, "schema")
-
-        data = copy.deepcopy(data)
-
-        # Currently supporting backwards compatibility with old output schema while now also supporting a JSON schema:
-        if "properties" in list(data.keys()):
-            # Assume top-level properties key implies proper JSON schema.
-            self._pipeline_name = data["properties"].pop(SCHEMA_PIPELINE_NAME_KEY, None)
-
-            sample_data = _safe_pop_one_mapping(
-                subkeys=["samples"],
-                data=data["properties"],
-                info_name="sample-level",
-                mappingkey="properties",
-            )
-
-            prj_data = _safe_pop_one_mapping(
-                subkeys=["project"],
-                data=data["properties"],
-                info_name="project-level",
-                mappingkey="properties",
-            )
-
-            self._status_data = _safe_pop_one_mapping(
-                subkeys=["status"],
-                data=data["properties"],
-                info_name="status",
-                mappingkey="properties",
-            )
-
-        else:
-            self._pipeline_name = data.pop(SCHEMA_PIPELINE_NAME_KEY, None)
-            sample_data = _safe_pop_one_mapping(
-                mappingkey=self._SAMPLES_KEY, data=data, info_name="sample-level"
-            )
-            prj_data = _safe_pop_one_mapping(
-                mappingkey=self._PROJECT_KEY, data=data, info_name="project-level"
-            )
-            # Parse custom status declaration if present.
-            self._status_data = _safe_pop_one_mapping(
-                mappingkey=self._STATUS_KEY, data=data, info_name="status"
-            )
-
-        if not isinstance(self._pipeline_name, str):
-            raise SchemaError(
-                f"Could not find valid pipeline identifier (key '{SCHEMA_PIPELINE_NAME_KEY}') in given schema data"
-            )
-
-        self._sample_level_data = _recursively_replace_custom_types(sample_data)
-
-        self._project_level_data = _recursively_replace_custom_types(prj_data)
-
-        # Sample- and/or project-level data must be declared.
-        if not self._sample_level_data and not self._project_level_data:
-            raise SchemaError("Neither sample-level nor project-level data items are declared.")
-
-        # Check that no reserved keywords were used as data items.
-        resv_kwds = {"id", RECORD_IDENTIFIER}
-        reserved_keywords_used = set()
-        for data in [self.project_level_data, self.sample_level_data, self.status_data]:
-            reserved_keywords_used |= set(data.keys()) & resv_kwds
-        if reserved_keywords_used:
-            raise SchemaError(
-                f"{len(reserved_keywords_used)} reserved keyword(s) used: {', '.join(reserved_keywords_used)}"
-            )
-
-        # Check that no data item name overlap exists between project- and sample-level data.
-        project_sample_overlap = set(self.project_level_data) & set(self.sample_level_data)
-        if project_sample_overlap:
-            raise SchemaError(
-                f"Overlap between project- and sample-level keys: {', '.join(project_sample_overlap)}"
-            )
-
-    def __str__(self):
-        """
-        Generate string representation of the object.
-
-        :return str: string representation of the object
-        """
-        res = f"{self.__class__.__name__} ({self._pipeline_name})"
-        if self._project_level_data is not None:
-            res += f"\n Project Level Data:"
-            for k, v in self._project_level_data.items():
-                res += f"\n -  {k} : {v}"
-        if self._sample_level_data is not None:
-            res += f"\n Sample Level Data:"
-            for k, v in self._sample_level_data.items():
-                res += f"\n -  {k} : {v}"
-        if self._status_data is not None:
-            res += f"\n Status Data:"
-            for k, v in self._status_data.items():
-                res += f"\n -  {k} : {v}"
-        return res
+    # def __init__(self, data: Union[Dict[str, Any], Path, str]) -> None:
+    #     # initial validation and parse
+    # def __init__(self):
 
     @property
     def pipeline_name(self):

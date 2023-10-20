@@ -17,7 +17,7 @@ except:
     pass
 
 try:
-    from pipestat.backends.db_backend.db_parsed_schema import ParsedSchema
+    from pipestat.backends.db_backend.db_parsed_schema import ParsedSchemaDB as ParsedSchema
 except:
     print("Unable to import Parsed schema DB")
     from .parsed_schema import ParsedSchema
