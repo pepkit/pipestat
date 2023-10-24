@@ -34,6 +34,35 @@ from .reports import HTMLReportBuilder, _create_stats_objs_summaries
 _LOGGER = getLogger(PKG_NAME)
 
 
+def check_dependency_list(dependency_list):
+    """Function to check that the DB Backend has successfully been imported."""
+    dependencies_satisfied = True
+
+    if dependency_list is not None:
+        for i in dependency_list:
+            if i not in globals():
+                _LOGGER.warning(msg="Need db dependencies")
+                dependencies_satisfied = False
+
+    if dependencies_satisfied is False:
+        raise PipestatDependencyError(
+            msg="Missing required dependencies for this usage. Try pip install pipestat['db-backend']"
+        )
+
+
+def check_dependencies(dependency_list):
+    """Function to check that the DB Backend has successfully been imported."""
+
+    def wrapper(func):
+        def inner(*args, **kwargs):
+            check_dependency_list(dependency_list)
+            return func(*args, **kwargs)
+
+        return inner
+
+    return wrapper
+
+
 def require_backend(func):
     """Decorator to ensure a backend exists for functions that require one"""
 
@@ -153,7 +182,6 @@ class PipestatManager(MutableMapping):
 
         else:
             # database backend
-            check_db_dependencies()
             self.initialize_dbbackend(record_identifier, show_db_logs)
 
     def __str__(self):
@@ -243,6 +271,7 @@ class PipestatManager(MutableMapping):
 
         return
 
+    @check_dependencies(dependency_list=["DBBackend"])
     def initialize_dbbackend(self, record_identifier, show_db_logs):
         _LOGGER.debug("Determined database as backend")
         if self[SCHEMA_KEY] is None:
@@ -820,20 +849,3 @@ class PipestatBoss(ABC):
 
     def __setitem__(self, key, value):
         setattr(self, key, value)
-
-
-def check_db_dependencies():
-    """Function to check that the DB Backend has successfully been imported."""
-    modulename = ["DBBackend"]
-    dependencies_satisfied = True
-    for i in modulename:
-        if i not in globals():
-            _LOGGER.warning(msg="Need db dependencies")
-            dependencies_satisfied = False
-
-    if dependencies_satisfied is False:
-        raise PipestatDependencyError(
-            msg="Missing required dependencies for this usage. Try pip install pipestat['db-backend']"
-        )
-
-    return dependencies_satisfied
