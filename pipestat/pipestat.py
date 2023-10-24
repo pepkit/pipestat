@@ -147,60 +147,14 @@ class PipestatManager(MutableMapping):
 
         self[OUTPUT_DIR] = self[CONFIG_KEY].priority_get("output_dir", override=output_dir)
 
-        if self[FILE_KEY]:  # file backend
-            _LOGGER.debug(f"Determined file as backend: {results_file_path}")
-            if self[DB_ONLY_KEY]:
-                _LOGGER.debug(
-                    "Running in database only mode does not make sense with a YAML file as a backend. "
-                    "Changing back to using memory."
-                )
-                self[DB_ONLY_KEY] = False
+        if self[FILE_KEY]:
+            # file backend
+            self.initialize_filebackend(record_identifier, results_file_path, flag_file_dir)
 
-            flag_file_dir = self[CONFIG_KEY].priority_get(
-                "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.file)
-            )
-            self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path or self.file)
-            self.backend = FileBackend(
-                self[FILE_KEY],
-                record_identifier,
-                self[PIPELINE_NAME],
-                self[PIPELINE_TYPE],
-                self[SCHEMA_KEY],
-                self[STATUS_SCHEMA_KEY],
-                self[STATUS_FILE_DIR],
-                self[RESULT_FORMATTER],
-                self[MULTI_PIPELINE],
-            )
-
-        else:  # database backend
+        else:
+            # database backend
             check_db_dependencies()
-            _LOGGER.debug("Determined database as backend")
-            if self[SCHEMA_KEY] is None:
-                raise SchemaNotFoundError("Output schema must be supplied for DB backends.")
-            if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
-                raise NoBackendSpecifiedError()
-            try:
-                dbconf = self[CONFIG_KEY].exp[
-                    CFG_DATABASE_KEY
-                ]  # the .exp expands the paths before url construction
-                self[DB_URL] = construct_db_url(dbconf)
-            except KeyError:
-                raise PipestatDatabaseError(
-                    f"No database section ('{CFG_DATABASE_KEY}') in config"
-                )
-            self._show_db_logs = show_db_logs
-
-            self.backend = DBBackend(
-                record_identifier,
-                self[PIPELINE_NAME],
-                show_db_logs,
-                self[PIPELINE_TYPE],
-                self[SCHEMA_KEY],
-                self[STATUS_SCHEMA_KEY],
-                self[DB_URL],
-                self[STATUS_SCHEMA_SOURCE_KEY],
-                self[RESULT_FORMATTER],
-            )
+            self.initialize_dbbackend(record_identifier, show_db_logs)
 
     def __str__(self):
         """
@@ -260,6 +214,61 @@ class PipestatManager(MutableMapping):
 
     def _keytransform(self, key):
         return key
+
+    def initialize_filebackend(self, record_identifier, results_file_path, flag_file_dir):
+        _LOGGER.debug(f"Determined file as backend: {results_file_path}")
+        if self[DB_ONLY_KEY]:
+            _LOGGER.debug(
+                "Running in database only mode does not make sense with a YAML file as a backend. "
+                "Changing back to using memory."
+            )
+            self[DB_ONLY_KEY] = False
+
+        flag_file_dir = self[CONFIG_KEY].priority_get(
+            "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.file)
+        )
+        self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path or self.file)
+
+        self.backend = FileBackend(
+            self[FILE_KEY],
+            record_identifier,
+            self[PIPELINE_NAME],
+            self[PIPELINE_TYPE],
+            self[SCHEMA_KEY],
+            self[STATUS_SCHEMA_KEY],
+            self[STATUS_FILE_DIR],
+            self[RESULT_FORMATTER],
+            self[MULTI_PIPELINE],
+        )
+
+        return
+
+    def initialize_dbbackend(self, record_identifier, show_db_logs):
+        _LOGGER.debug("Determined database as backend")
+        if self[SCHEMA_KEY] is None:
+            raise SchemaNotFoundError("Output schema must be supplied for DB backends.")
+        if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
+            raise NoBackendSpecifiedError()
+        try:
+            dbconf = self[CONFIG_KEY].exp[
+                CFG_DATABASE_KEY
+            ]  # the .exp expands the paths before url construction
+            self[DB_URL] = construct_db_url(dbconf)
+        except KeyError:
+            raise PipestatDatabaseError(f"No database section ('{CFG_DATABASE_KEY}') in config")
+        self._show_db_logs = show_db_logs
+
+        self.backend = DBBackend(
+            record_identifier,
+            self[PIPELINE_NAME],
+            show_db_logs,
+            self[PIPELINE_TYPE],
+            self[SCHEMA_KEY],
+            self[STATUS_SCHEMA_KEY],
+            self[DB_URL],
+            self[STATUS_SCHEMA_SOURCE_KEY],
+            self[RESULT_FORMATTER],
+        )
 
     @require_backend
     def clear_status(
