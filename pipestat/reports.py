@@ -33,7 +33,7 @@ class HTMLReportBuilder(object):
         self.prj = prj
         self.jinja_env = get_jinja_env()
         results_file_path = getattr(self.prj.backend, "results_file_path", None)
-        config_path = getattr(self.prj, "config_path", None)
+        config_path = self.prj.store.get('config_path', None)
         output_dir = getattr(self.prj, "output_dir", None)
         self.output_dir = output_dir or results_file_path or config_path
         self.output_dir = os.path.dirname(self.output_dir)
@@ -1011,7 +1011,7 @@ def get_file_for_table(prj, pipeline_name, appendix=None, directory=None):
     """
     # TODO make determining the output_dir its own small function since we use the same code in HTML report building.
     results_file_path = getattr(prj.backend, "results_file_path", None)
-    config_path = getattr(prj, "config_path", None)
+    config_path = prj.store.get("config_path", None)
     output_dir = getattr(prj, "output_dir", None)
     table_dir = output_dir or results_file_path or config_path
     if not os.path.isdir(table_dir):
