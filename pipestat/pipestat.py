@@ -34,28 +34,19 @@ from .reports import HTMLReportBuilder, _create_stats_objs_summaries
 _LOGGER = getLogger(PKG_NAME)
 
 
-def check_dependency_list(dependency_list: list = None):
-    """Function to check that the dependency list has successfully been imported."""
-    dependencies_satisfied = True
-
-    if dependency_list is not None:
-        for i in dependency_list:
-            if i not in globals():
-                _LOGGER.warning(msg=f"Missing dependency: {i}")
-                dependencies_satisfied = False
-
-    if dependencies_satisfied is False:
-        raise PipestatDependencyError(
-            msg="Missing required dependencies for this usage, e.g. try pip install pipestat['db-backend']"
-        )
-
-
-def check_dependencies(dependency_list: list = None):
+def check_dependencies(dependency_list: list = None, msg: str = None):
     """Decorator to check that the dependency list has successfully been imported."""
 
     def wrapper(func):
         def inner(*args, **kwargs):
-            check_dependency_list(dependency_list)
+            dependencies_satisfied = True
+            if dependency_list is not None:
+                for i in dependency_list:
+                    if i not in globals():
+                        _LOGGER.warning(msg=f"Missing dependency: {i}")
+                        dependencies_satisfied = False
+            if dependencies_satisfied is False:
+                raise PipestatDependencyError(msg=msg)
             return func(*args, **kwargs)
 
         return inner
@@ -271,7 +262,10 @@ class PipestatManager(MutableMapping):
 
         return
 
-    @check_dependencies(dependency_list=["DBBackend"])
+    @check_dependencies(
+        dependency_list=["DBBackend"],
+        msg="Missing required dependencies for this usage, e.g. try pip install pipestat['db-backend']",
+    )
     def initialize_dbbackend(self, record_identifier, show_db_logs):
         _LOGGER.debug("Determined database as backend")
         if self[SCHEMA_KEY] is None:
