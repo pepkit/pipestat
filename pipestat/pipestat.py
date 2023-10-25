@@ -540,8 +540,10 @@ class PipestatManager(MutableMapping):
     @require_backend
     def retrieve(
         self,
-        record_identifier: Optional[str] = None,
-        result_identifier: Optional[str] = None,
+        record_identifier: Optional[Union[str, List[str]]] = None,
+        result_identifier: Optional[Union[str, List[str]]] = None,
+        limit: Optional[int] = 1000,
+        offset: Optional[int] = 0,
     ) -> Union[Any, Dict[str, Any]]:
         """
         Retrieve a result for a record.
@@ -549,13 +551,31 @@ class PipestatManager(MutableMapping):
         If no result ID specified, results for the entire record will
         be returned.
 
-        :param str record_identifier: name of the sample_level record
-        :param str result_identifier: name of the result to be retrieved
-        :return any | Dict[str, any]: a single result or a mapping with all the
+        :param str | List[str] record_identifier: name of the sample_level record
+        :param str | List[str] result_identifier: name of the result to be retrieved
+        :param int limit: limit number of records to this amount
+        :param int offset: offset records by this amount
+        :return any | Dict[str, any]: a single result or a mapping with filtered
             results reported for the record
         """
+        if record_identifier is None and result_identifier is None:
+            # This will retrieve all records and columns.
+            return self.backend.retrieve_multiple(
+                record_identifier, result_identifier, limit, offset
+            )
+
+        if type(record_identifier) is list or type(result_identifier) is list:
+            if len(record_identifier) == 1 and len(result_identifier) == 1:
+                # If user gives single values, just use retrieve.
+                return self.backend.retrieve(record_identifier[0], result_identifier[0])
+            else:
+                # If user gives lists, retrieve_multiple
+                return self.backend.retrieve_multiple(
+                    record_identifier, result_identifier, limit, offset
+                )
 
         r_id = record_identifier or self.record_identifier
+
         return self.backend.retrieve(r_id, result_identifier)
 
     @require_backend
