@@ -455,6 +455,58 @@ class FileBackend(PipestatBackend):
 
         return results_formatted
 
+    def retrieve_multiple(
+        self,
+        record_identifier: Optional[List[str]] = None,
+        result_identifier: Optional[List[str]] = None,
+        limit: Optional[int] = 1000,
+        offset: Optional[int] = 0,
+    ) -> Union[Any, Dict[str, Any]]:
+        """
+        :param List[str] record_identifier: list of record identifiers
+        :param List[str] result_identifier: list of result identifiers to be retrieved
+        :param int limit: limit number of records to this amount
+        :param int offset: offset records by this amount
+        :return Dict[str, any]: a mapping with filtered results reported for the record
+        """
+
+        record_list = []
+
+        if result_identifier == [] or result_identifier is None:
+            result_identifier = (
+                list(self.parsed_schema.results_data.keys()) + [CREATED_TIME] + [MODIFIED_TIME]
+            )
+        if record_identifier == [] or record_identifier is None:
+            record_identifier = list(
+                self._data.data[self.pipeline_name][self.pipeline_type].keys()
+            )
+
+        for k in list(self._data.data[self.pipeline_name][self.pipeline_type].keys())[
+            offset : offset + limit
+        ]:
+            if k in record_identifier:
+                retrieved_record = {}
+                retrieved_results = {}
+                for key, value in self._data.data[self.pipeline_name][self.pipeline_type][
+                    k
+                ].items():
+                    if key in result_identifier:
+                        retrieved_results.update({key: value})
+
+                if retrieved_results != {}:
+                    retrieved_record.update({k: retrieved_results})
+                    record_list.append(retrieved_record)
+
+        records_dict = {
+            "count": len(record_list),
+            "limit": limit,
+            "offset": offset,
+            "record_identifiers": record_identifier,
+            "result_identifiers": result_identifier,
+            "records": record_list,
+        }
+        return records_dict
+
     def retrieve(
         self,
         record_identifier: Optional[str] = None,
