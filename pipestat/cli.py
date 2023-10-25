@@ -20,10 +20,16 @@ from .argparser import (
     LINK_CMD,
 )
 from .const import *
-from .exceptions import SchemaNotFoundError, PipestatStartupError
+from .exceptions import SchemaNotFoundError, PipestatStartupError, PipestatDependencyError
 from .pipestat import PipestatManager
 from .helpers import init_generic_config
-from pipestatreader import main as readermain
+
+try:
+    from pipestat.pipestatreader.reader import main as readermain
+except ImportError:
+    raise PipestatDependencyError(
+        msg="Missing required dependencies for this usage. Try pip install pipestat['pipestatreader']"
+    )
 
 _LOGGER = getLogger(PKG_NAME)
 

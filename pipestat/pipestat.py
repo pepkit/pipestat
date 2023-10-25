@@ -1,27 +1,57 @@
-import csv
 import datetime
-import time
 from logging import getLogger
 from copy import deepcopy
 from typing import List
-
+from .exceptions import PipestatDependencyError
 
 from abc import ABC
 from collections.abc import MutableMapping
 
-from pipestat.backends.filebackend import FileBackend
-from pipestat.backends.dbbackend import DBBackend
+from pipestat.backends.file_backend.filebackend import FileBackend
+
+try:
+    from pipestat.backends.db_backend.dbbackend import DBBackend
+    from pipestat.backends.db_backend.db_helpers import *
+except ImportError:
+    # We let this pass, but if the user attempts to create DBBackend, check_dependencies raises exception.
+    pass
+
+try:
+    from pipestat.backends.db_backend.db_parsed_schema import ParsedSchemaDB as ParsedSchema
+except ImportError:
+    from .parsed_schema import ParsedSchema
+
 
 from jsonschema import validate
 
 from yacman import YAMLConfigManager, select_config
 
 from .helpers import *
-from .parsed_schema import ParsedSchema
 
-from .reports import HTMLReportBuilder, get_file_for_table, _create_stats_objs_summaries
+
+from .reports import HTMLReportBuilder, _create_stats_objs_summaries
 
 _LOGGER = getLogger(PKG_NAME)
+
+
+def check_dependencies(dependency_list: list = None, msg: str = None):
+    """Decorator to check that the dependency list has successfully been imported."""
+
+    def wrapper(func):
+        def inner(*args, **kwargs):
+            dependencies_satisfied = True
+            if dependency_list is not None:
+                for i in dependency_list:
+                    if i not in globals():
+                        _LOGGER.warning(msg=f"Missing dependency: {i}")
+                        dependencies_satisfied = False
+            if dependencies_satisfied is False:
+                raise PipestatDependencyError(msg=msg)
+            return func(*args, **kwargs)
+
+        return inner
+
+    return wrapper
 
 
 def require_backend(func):
@@ -137,59 +167,13 @@ class PipestatManager(MutableMapping):
 
         self[OUTPUT_DIR] = self[CONFIG_KEY].priority_get("output_dir", override=output_dir)
 
-        if self[FILE_KEY]:  # file backend
-            _LOGGER.debug(f"Determined file as backend: {results_file_path}")
-            if self[DB_ONLY_KEY]:
-                _LOGGER.debug(
-                    "Running in database only mode does not make sense with a YAML file as a backend. "
-                    "Changing back to using memory."
-                )
-                self[DB_ONLY_KEY] = False
+        if self[FILE_KEY]:
+            # file backend
+            self.initialize_filebackend(record_identifier, results_file_path, flag_file_dir)
 
-            flag_file_dir = self[CONFIG_KEY].priority_get(
-                "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.file)
-            )
-            self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path or self.file)
-            self.backend = FileBackend(
-                self[FILE_KEY],
-                record_identifier,
-                self[PIPELINE_NAME],
-                self[PIPELINE_TYPE],
-                self[SCHEMA_KEY],
-                self[STATUS_SCHEMA_KEY],
-                self[STATUS_FILE_DIR],
-                self[RESULT_FORMATTER],
-                self[MULTI_PIPELINE],
-            )
-
-        else:  # database backend
-            _LOGGER.debug("Determined database as backend")
-            if self[SCHEMA_KEY] is None:
-                raise SchemaNotFoundError("Output schema must be supplied for DB backends.")
-            if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
-                raise NoBackendSpecifiedError()
-            try:
-                dbconf = self[CONFIG_KEY].exp[
-                    CFG_DATABASE_KEY
-                ]  # the .exp expands the paths before url construction
-                self[DB_URL] = construct_db_url(dbconf)
-            except KeyError:
-                raise PipestatDatabaseError(
-                    f"No database section ('{CFG_DATABASE_KEY}') in config"
-                )
-            self._show_db_logs = show_db_logs
-
-            self.backend = DBBackend(
-                record_identifier,
-                self[PIPELINE_NAME],
-                show_db_logs,
-                self[PIPELINE_TYPE],
-                self[SCHEMA_KEY],
-                self[STATUS_SCHEMA_KEY],
-                self[DB_URL],
-                self[STATUS_SCHEMA_SOURCE_KEY],
-                self[RESULT_FORMATTER],
-            )
+        else:
+            # database backend
+            self.initialize_dbbackend(record_identifier, show_db_logs)
 
     def __str__(self):
         """
@@ -249,6 +233,65 @@ class PipestatManager(MutableMapping):
 
     def _keytransform(self, key):
         return key
+
+    def initialize_filebackend(self, record_identifier, results_file_path, flag_file_dir):
+        _LOGGER.debug(f"Determined file as backend: {results_file_path}")
+        if self[DB_ONLY_KEY]:
+            _LOGGER.debug(
+                "Running in database only mode does not make sense with a YAML file as a backend. "
+                "Changing back to using memory."
+            )
+            self[DB_ONLY_KEY] = False
+
+        flag_file_dir = self[CONFIG_KEY].priority_get(
+            "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.file)
+        )
+        self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path or self.file)
+
+        self.backend = FileBackend(
+            self[FILE_KEY],
+            record_identifier,
+            self[PIPELINE_NAME],
+            self[PIPELINE_TYPE],
+            self[SCHEMA_KEY],
+            self[STATUS_SCHEMA_KEY],
+            self[STATUS_FILE_DIR],
+            self[RESULT_FORMATTER],
+            self[MULTI_PIPELINE],
+        )
+
+        return
+
+    @check_dependencies(
+        dependency_list=["DBBackend"],
+        msg="Missing required dependencies for this usage, e.g. try pip install pipestat['db-backend']",
+    )
+    def initialize_dbbackend(self, record_identifier, show_db_logs):
+        _LOGGER.debug("Determined database as backend")
+        if self[SCHEMA_KEY] is None:
+            raise SchemaNotFoundError("Output schema must be supplied for DB backends.")
+        if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
+            raise NoBackendSpecifiedError()
+        try:
+            dbconf = self[CONFIG_KEY].exp[
+                CFG_DATABASE_KEY
+            ]  # the .exp expands the paths before url construction
+            self[DB_URL] = construct_db_url(dbconf)
+        except KeyError:
+            raise PipestatDatabaseError(f"No database section ('{CFG_DATABASE_KEY}') in config")
+        self._show_db_logs = show_db_logs
+
+        self.backend = DBBackend(
+            record_identifier,
+            self[PIPELINE_NAME],
+            show_db_logs,
+            self[PIPELINE_TYPE],
+            self[SCHEMA_KEY],
+            self[STATUS_SCHEMA_KEY],
+            self[DB_URL],
+            self[STATUS_SCHEMA_SOURCE_KEY],
+            self[RESULT_FORMATTER],
+        )
 
     @require_backend
     def clear_status(

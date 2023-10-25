@@ -17,6 +17,7 @@ __all__ = [
     "RecordNotFoundError",
     "PipelineTypeNotSuppliedError",
     "InvalidTimeFormatError",
+    "PipestatDependencyError",
 ]
 
 
@@ -87,6 +88,13 @@ class InvalidTimeFormatError(PipestatError):
 
     def __init__(self, msg):
         super(InvalidTimeFormatError, self).__init__(msg)
+
+
+class PipestatDependencyError(PipestatError):
+    """Dependency error"""
+
+    def __init__(self, msg):
+        super(PipestatDependencyError, self).__init__(msg)
 
 
 class PipestatDatabaseError(PipestatError):

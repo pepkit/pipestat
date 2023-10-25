@@ -6,11 +6,16 @@ from logging import getLogger
 
 from contextlib import contextmanager
 
+# try:
 from sqlalchemy import text
 from sqlmodel import Session, create_engine, select as sql_select
 
+# except:
+#     pass
+
 from pipestat.helpers import *
-from .abstract import PipestatBackend
+from pipestat.backends.db_backend.db_helpers import *
+from pipestat.backends.abstract import PipestatBackend
 
 if int(sys.version.split(".")[1]) < 9:
     from typing import List, Dict, Any, Optional, Union
