@@ -215,3 +215,14 @@ class PipestatBackend(ABC):
         rm_record: Optional[bool] = False,
     ) -> bool:
         _LOGGER.warning("Not implemented yet for this backend")
+
+
+def select_records(
+    self,
+    columns: Optional[List[str]] = None,
+    filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
+    json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
+    offset: Optional[int] = None,
+    limit: Optional[int] = None,
+) -> List[Any]:
+    _LOGGER.warning("Not implemented yet for this backend")

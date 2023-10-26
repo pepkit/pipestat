@@ -603,6 +603,56 @@ class TestRetrieval:
                 with pytest.raises(RecordNotFoundError):
                     psm.retrieve(result_identifier=res_id, record_identifier=rec_id)
 
+    @pytest.mark.parametrize("backend", ["db"])
+    def test_select_records(
+        self,
+        config_file_path,
+        results_file_path,
+        schema_file_path,
+        backend,
+    ):
+        values_sample = [
+            {"sample1": {"name_of_something": "string 1"}},
+            {"sample1": {"number_of_things": 1}},
+            {"sample2": {"name_of_something": "string 2"}},
+            {"sample2": {"number_of_things": 20}},
+            {"sample3": {"name_of_something": "string 3"}},
+            {"sample3": {"number_of_things": 300}},
+        ]
+
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in values_sample:
+                for k, v in i.items():
+                    psm.report(record_identifier=k, values=v, force_overwrite=True)
+
+            result1 = psm.backend.select(
+                filter_conditions=[("name_of_something", "eq", "string 1")]
+            )
+            result2 = psm.backend.select(
+                columns=["name_of_something", "record_identifier"],
+                filter_conditions=[("name_of_something", "eq", "string 1")],
+            )
+            result3 = psm.backend.select(
+                filter_conditions=[("record_identifier", "eq", "sample1")]
+            )
+            # Gets one or many records
+            result4 = psm.retrieve_one(record_identifier="sample1")
+            result5 = psm.retrieve_many(["sample1", "sample3"])
+            # Gets everything, need to implement paging
+            result6 = psm.select_records()
+
+            print("Done")
+
 
 class TestRemoval:
     @pytest.mark.parametrize(["rec_id", "res_id", "val"], [("sample2", "number_of_things", 1)])

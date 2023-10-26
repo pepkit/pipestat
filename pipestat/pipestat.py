@@ -559,6 +559,67 @@ class PipestatManager(MutableMapping):
         return result
 
     @require_backend
+    def select_records(
+        self,
+        columns: Optional[List[str]] = None,
+        filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
+        json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+    ) -> List[Any]:
+        """
+        Retrieve a result for a record.
+
+        If no result ID specified, results for the entire record will
+        be returned.
+
+        :param str | List[str] record_identifier: name of the sample_level record
+        :param str | List[str] result_identifier: name of the result to be retrieved
+        :param int limit: limit number of records to this amount
+        :param int offset: offset records by this amount
+        :return any | Dict[str, any]: a single result or a mapping with filtered
+            results reported for the record
+        """
+
+        return self.backend.select_records(
+            columns=columns,
+            filter_conditions=filter_conditions,
+            json_filter_conditions=json_filter_conditions,
+        )
+
+    @require_backend
+    def retrieve_one(
+        self,
+        record_identifier: str,
+    ) -> Union[Any, Dict[str, Any]]:
+        """
+        Retrieve a single record
+
+        return a single record and its associated results
+        """
+
+        filter_conditions = [("record_identifier", "eq", record_identifier)]
+        return self.backend.select_records(filter_conditions=filter_conditions)
+
+    def retrieve_many(
+        self,
+        record_identifiers: List[str],
+    ) -> Union[Any, Dict[str, Any]]:
+        """
+        Retrieve multiple records given a list of strings
+
+        returns list of records
+
+        """
+
+        many_records = []
+        for r_id in record_identifiers:
+            filter_conditions = [("record_identifier", "eq", r_id)]
+            many_records.append(self.backend.select_records(filter_conditions=filter_conditions))
+
+        return many_records
+
+    @require_backend
     def retrieve(
         self,
         record_identifier: Optional[Union[str, List[str]]] = None,
