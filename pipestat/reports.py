@@ -384,7 +384,7 @@ class HTMLReportBuilder(object):
                 flag = flag_dict["flag"]
         highlighted_results = fetch_pipeline_results(
             project=self.prj,
-            pipeline_name=self.prj.pipeline_name,
+            pipeline_name=self.prj.cfg[PIPELINE_NAME],
             sample_name=sample_name,
             inclusion_fun=lambda x: x == "file",
             highlighted=True,
@@ -482,7 +482,7 @@ class HTMLReportBuilder(object):
         # Add stats_summary.tsv button link
         stats_file_path = get_file_for_project(
             prj=self.prj,
-            pipeline_name=self.prj.pipeline_name,
+            pipeline_name=self.prj.cfg[PIPELINE_NAME],
             appendix="stats_summary.tsv",
             reportdir=self.reports_dir,
         )
@@ -495,7 +495,7 @@ class HTMLReportBuilder(object):
         # Add objects_summary.yaml button link
         objs_file_path = get_file_for_project(
             prj=self.prj,
-            pipeline_name=self.prj.pipeline_name,
+            pipeline_name=self.prj.cfg[PIPELINE_NAME],
             appendix="objs_summary.yaml",
             reportdir=self.reports_dir,
         )
@@ -548,7 +548,7 @@ class HTMLReportBuilder(object):
         )
         # Create status page with each sample's status listed
         status_tab = create_status_table(
-            pipeline_name=self.prj.pipeline_name,
+            pipeline_name=self.prj.cfg[PIPELINE_NAME],
             project=self.prj,
             pipeline_reports_dir=self.pipeline_reports,
         )
@@ -571,8 +571,8 @@ class HTMLReportBuilder(object):
             columns=columns,
             columns_json=dumps(columns),
             table_row_data=table_row_data,
-            project_name=self.prj.project_name,
-            pipeline_name=self.prj.pipeline_name,
+            project_name=self.prj.cfg[PROJECT_NAME],
+            pipeline_name=self.prj.cfg[PIPELINE_NAME],
             stats_json=self._stats_to_json_str(),
             footer=footer,
             amendments="",
@@ -619,7 +619,7 @@ class HTMLReportBuilder(object):
             results[sample_name] = fetch_pipeline_results(
                 project=self.prj,
                 sample_name=sample_name,
-                pipeline_name=self.prj.pipeline_name,
+                pipeline_name=self.prj.cfg[PIPELINE_NAME],
                 inclusion_fun=lambda x: x not in OBJECT_TYPES,
                 casting_fun=str,
             )
@@ -983,10 +983,10 @@ def get_file_for_project(prj, pipeline_name, appendix=None, directory=None, repo
         output_dir = output_dir or results_file_path or config_path
         output_dir = os.path.dirname(output_dir)
         reportdir = os.path.join(output_dir, "reports")
-    if prj["project_name"] is None:
+    if prj.cfg["project_name"] is None:
         fp = os.path.join(reportdir, directory or "", f"NO_PROJECT_NAME_{pipeline_name}")
     else:
-        fp = os.path.join(reportdir, directory or "", f"{prj['project_name']}_{pipeline_name}")
+        fp = os.path.join(reportdir, directory or "", f"{prj.cfg['project_name']}_{pipeline_name}")
 
     if hasattr(prj, "amendments") and getattr(prj, "amendments"):
         fp += f"_{'_'.join(prj.amendments)}"
@@ -1040,7 +1040,7 @@ def _create_stats_objs_summaries(prj, pipeline_name) -> List[str]:
     reported_stats = []
     stats = []
 
-    if prj.pipeline_type == "sample":
+    if prj.cfg[PIPELINE_TYPE] == "sample":
         columns = ["Sample Index", "Sample Name", "Results"]
     else:
         columns = ["Sample Index", "Project Name", "Sample Name", "Results"]
@@ -1051,7 +1051,7 @@ def _create_stats_objs_summaries(prj, pipeline_name) -> List[str]:
         record_index += 1
         record_name = record
 
-        if prj.pipeline_type == "sample":
+        if prj.cfg[PIPELINE_TYPE] == "sample":
             reported_stats = [record_index, record_name]
             rep_data = prj.retrieve(record_identifier=record_name)
         else:

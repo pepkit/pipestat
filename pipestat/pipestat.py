@@ -220,7 +220,7 @@ class PipestatManager(MutableMapping):
         res += f"\nStatus Schema key: {self.cfg[STATUS_SCHEMA_KEY]}"
         res += f"\nResults formatter: {str(self.cfg[RESULT_FORMATTER].__name__)}"
         res += f"\nResults schema source: {self.cfg[SCHEMA_PATH]}"
-        res += f"\nStatus schema source: {self.status_schema_source}"
+        res += f"\nStatus schema source: {self.cfg[STATUS_SCHEMA_SOURCE_KEY]}"
         res += f"\nRecords count: {self.record_count}"
         if self.cfg[SCHEMA_PATH] is not None:
             high_res = self.highlighted_results
@@ -231,14 +231,14 @@ class PipestatManager(MutableMapping):
         return res
 
     def __getitem__(self, key):
-        # return self.cfg[self._keytransform(key)]
-        print(key)
+        # This is a wrapper for the retrieve function:
+        result = self.retrieve(record_identifier=key)
+        return result
 
     def __setitem__(self, key, value):
         # This is a wrapper for the report function:
         result = self.report(record_identifier=key, values=value)
         return result
-
 
     def __delitem__(self, key):
         del self.cfg[self._keytransform(key)]
@@ -488,7 +488,7 @@ class PipestatManager(MutableMapping):
         :return bool: whether the result has been removed
         """
 
-        r_id = record_identifier or self.record_identifier
+        r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
         return self.backend.remove(
             record_identifier=r_id,
             result_identifier=result_identifier,
@@ -518,7 +518,7 @@ class PipestatManager(MutableMapping):
         :return str reported_results: return list of formatted string
         """
 
-        result_formatter = result_formatter or self[RESULT_FORMATTER]
+        result_formatter = result_formatter or self.cfg[RESULT_FORMATTER]
         values = deepcopy(values)
         r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
         if r_id is None:
@@ -595,7 +595,7 @@ class PipestatManager(MutableMapping):
                     record_identifier, result_identifier, limit, offset
                 )
 
-        r_id = record_identifier or self.record_identifier
+        r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
 
         return self.backend.retrieve(r_id, result_identifier)
 

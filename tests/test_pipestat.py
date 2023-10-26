@@ -204,13 +204,13 @@ class TestReporting:
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_report_setitem(
-            self,
-            rec_id,
-            val,
-            config_file_path,
-            schema_file_path,
-            results_file_path,
-            backend,
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        backend,
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
@@ -222,7 +222,7 @@ class TestReporting:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            #psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            # psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
             psm[rec_id] = val
             if backend == "file":
                 print(psm.backend._data[STANDARD_TEST_PIPE_ID])
@@ -230,8 +230,8 @@ class TestReporting:
                 assert rec_id in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
                 print("Test if", list(val.keys())[0], " is in ", rec_id)
                 assert (
-                        list(val.keys())[0]
-                        in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
+                    list(val.keys())[0]
+                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
                 )
                 if backend == "file":
                     assert_is_in_files(results_file_path, str(list(val.values())[0]))
@@ -437,6 +437,40 @@ class TestRetrieval:
             assert str(retrieved_val) == str(list(val.values())[0])
             # Test Retrieve Whole Record
             assert isinstance(psm.retrieve(record_identifier=rec_id), Mapping)
+
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("sample1", {"name_of_something": "test_name"}),
+            ("sample1", {"number_of_things": 2}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_retrieve_getitem(
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        results_file_path,
+        schema_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            retrieved_val = psm[rec_id]
+            # Test Retrieve Basic
+            assert str(retrieved_val[str(list(retrieved_val.keys())[0])]) == str(
+                list(val.values())[0]
+            )
 
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_retrieve_multiple(
