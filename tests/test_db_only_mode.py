@@ -93,7 +93,7 @@ class TestDatabaseOnly:
             )
             val_name = list(val.keys())[0]
             if pipeline_type is True:
-                if val_name in psm.store[SCHEMA_KEY].project_level_data:
+                if val_name in psm.cfg[SCHEMA_KEY].project_level_data:
                     psm.report(
                         values=val,
                         force_overwrite=True,
@@ -105,7 +105,7 @@ class TestDatabaseOnly:
                     pass
                     # assert that this would fail to report otherwise.
             if pipeline_type == "sample":
-                if val_name in psm.store[SCHEMA_KEY].sample_level_data:
+                if val_name in psm.cfg[SCHEMA_KEY].sample_level_data:
                     psm.report(
                         values=val,
                         force_overwrite=True,

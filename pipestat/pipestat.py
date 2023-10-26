@@ -120,75 +120,70 @@ class PipestatManager(MutableMapping):
         super(PipestatManager, self).__init__()
 
         # Initialize the initial dict
-        self.store = {}
-
-        # Uses setitem
-        self["test"] = "test2"
-        # Does NOT use setitem
-        self.test3 = "test4"
+        self.cfg = {}
 
         # Load and validate database configuration
         # If results_file_path is truthy, backend is a file
         # Otherwise, backend is a database.
         # self._config_path = select_config(config_file, ENV_VARS["config"])
 
-        self.store["config_path"] = select_config(config_file, ENV_VARS["config"])
+        self.cfg["config_path"] = select_config(config_file, ENV_VARS["config"])
 
-        # _LOGGER.info(f"Config: {self.store["config_path"]}.")
+        # _LOGGER.info(f"Config: {self.cfg["config_path"]}.")
 
-        self.store[CONFIG_KEY] = YAMLConfigManager(
-            entries=config_dict, filepath=self.store["config_path"]
+        self.cfg[CONFIG_KEY] = YAMLConfigManager(
+            entries=config_dict, filepath=self.cfg["config_path"]
         )
 
         _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
-        validate(self.store[CONFIG_KEY].exp, cfg_schema)
+        validate(self.cfg[CONFIG_KEY].exp, cfg_schema)
 
-        self.store[SCHEMA_PATH] = self.store[CONFIG_KEY].priority_get(
+        self.cfg[SCHEMA_PATH] = self.cfg[CONFIG_KEY].priority_get(
             "schema_path", env_var=ENV_VARS["schema"], override=schema_path
         )  # schema_path if schema_path is not None else None
         self.process_schema(schema_path)
 
         # self[RECORD_IDENTIFIER] = record_identifier
         # self.record_identifier = record_identifier
-        self.store[RECORD_IDENTIFIER] = record_identifier
+        self.cfg[RECORD_IDENTIFIER] = record_identifier
 
-        print(self.store[SCHEMA_KEY])
-        self.store[PIPELINE_NAME] = (
-            self.store[SCHEMA_KEY].pipeline_name
-            if self.store[SCHEMA_KEY] is not None
+        print(self.cfg[SCHEMA_KEY])
+        self.cfg[PIPELINE_NAME] = (
+            self.cfg[SCHEMA_KEY].pipeline_name
+            if self.cfg[SCHEMA_KEY] is not None
             else pipeline_name
         )
 
-        self.store[PROJECT_NAME] = self.store[CONFIG_KEY].priority_get(
+        self.cfg[PROJECT_NAME] = self.cfg[CONFIG_KEY].priority_get(
             "project_name", env_var=ENV_VARS["project_name"], override=project_name
         )
 
-        self.store[SAMPLE_NAME_ID_KEY] = self.store[CONFIG_KEY].priority_get(
+        self.cfg[SAMPLE_NAME_ID_KEY] = self.cfg[CONFIG_KEY].priority_get(
             "record_identifier", env_var=ENV_VARS["sample_name"], override=record_identifier
         )
 
-        self.store[DB_ONLY_KEY] = database_only
+        self.cfg[DB_ONLY_KEY] = database_only
 
-        self.store[PIPELINE_TYPE] = self.store[CONFIG_KEY].priority_get(
+        self.cfg[PIPELINE_TYPE] = self.cfg[CONFIG_KEY].priority_get(
             "pipeline_type", default="sample", override=pipeline_type
         )
 
-        self.store[FILE_KEY] = mk_abs_via_cfg(
-            self.store[CONFIG_KEY].priority_get(
+        self.cfg[FILE_KEY] = mk_abs_via_cfg(
+            self.cfg[CONFIG_KEY].priority_get(
                 "results_file_path", env_var=ENV_VARS["results_file"], override=results_file_path
             ),
-            self.store["config_path"],
+            self.cfg["config_path"],
         )
 
-        self.store[RESULT_FORMATTER] = result_formatter
+        self.cfg[RESULT_FORMATTER] = result_formatter
 
-        self.store[MULTI_PIPELINE] = multi_pipelines
+        self.cfg[MULTI_PIPELINE] = multi_pipelines
 
-        self.store[OUTPUT_DIR] = self.store[CONFIG_KEY].priority_get(
+        self.cfg[OUTPUT_DIR] = self.cfg[CONFIG_KEY].priority_get(
             "output_dir", override=output_dir
         )
 
-        if self.store[FILE_KEY]:
+        if self.cfg[FILE_KEY]:
             # file backend
             self.initialize_filebackend(record_identifier, results_file_path, flag_file_dir)
 
@@ -202,34 +197,34 @@ class PipestatManager(MutableMapping):
 
         :return str: string representation of the object
         """
-        res = f"{self.__class__.__name__} ({self.store[PIPELINE_NAME]})"
+        res = f"{self.__class__.__name__} ({self.cfg[PIPELINE_NAME]})"
         res += "\nBackend: {}".format(
-            f"File\n - results: {self.store[FILE_KEY]}\n - status: {self.store[STATUS_FILE_DIR]}"
-            if self.store[FILE_KEY]
+            f"File\n - results: {self.cfg[FILE_KEY]}\n - status: {self.cfg[STATUS_FILE_DIR]}"
+            if self.cfg[FILE_KEY]
             else f"Database (dialect: {self.backend.db_engine_key})"
         )
-        if self.store[FILE_KEY]:
-            res += f"\nMultiple Pipelines Allowed: {self.store[MULTI_PIPELINE]}"
+        if self.cfg[FILE_KEY]:
+            res += f"\nMultiple Pipelines Allowed: {self.cfg[MULTI_PIPELINE]}"
         else:
-            res += f"\nProject Name: {self.store[PROJECT_NAME]}"
-            res += f"\nDatabase URL: {self.store[DB_URL]}"
+            res += f"\nProject Name: {self.cfg[PROJECT_NAME]}"
+            res += f"\nDatabase URL: {self.cfg[DB_URL]}"
             res += f"\nConfig File: {self.config_path}"
 
-        res += f"\nPipeline name: {self.store[PIPELINE_NAME]}"
-        res += f"\nPipeline type: {self.store[PIPELINE_TYPE]}"
-        if self.store[SCHEMA_PATH] is not None:
+        res += f"\nPipeline name: {self.cfg[PIPELINE_NAME]}"
+        res += f"\nPipeline type: {self.cfg[PIPELINE_TYPE]}"
+        if self.cfg[SCHEMA_PATH] is not None:
             res += f"\nProject Level Data:"
-            for k, v in self.store[SCHEMA_KEY].project_level_data.items():
+            for k, v in self.cfg[SCHEMA_KEY].project_level_data.items():
                 res += f"\n {k} : {v}"
             res += f"\nSample Level Data:"
-            for k, v in self.store[SCHEMA_KEY].sample_level_data.items():
+            for k, v in self.cfg[SCHEMA_KEY].sample_level_data.items():
                 res += f"\n {k} : {v}"
-        res += f"\nStatus Schema key: {self.store[STATUS_SCHEMA_KEY]}"
-        res += f"\nResults formatter: {str(self.store[RESULT_FORMATTER].__name__)}"
-        res += f"\nResults schema source: {self.store[SCHEMA_PATH]}"
+        res += f"\nStatus Schema key: {self.cfg[STATUS_SCHEMA_KEY]}"
+        res += f"\nResults formatter: {str(self.cfg[RESULT_FORMATTER].__name__)}"
+        res += f"\nResults schema source: {self.cfg[SCHEMA_PATH]}"
         res += f"\nStatus schema source: {self.status_schema_source}"
         res += f"\nRecords count: {self.record_count}"
-        if self.store[SCHEMA_PATH] is not None:
+        if self.cfg[SCHEMA_PATH] is not None:
             high_res = self.highlighted_results
         else:
             high_res = None
@@ -238,52 +233,52 @@ class PipestatManager(MutableMapping):
         return res
 
     def __getitem__(self, key):
-        # return self.store[self._keytransform(key)]
+        # return self.cfg[self._keytransform(key)]
         print(key)
 
     def __setitem__(self, key, value):
-        # self.store[self._keytransform(key)] = value
+        # self.cfg[self._keytransform(key)] = value
         print(key)
         # self.report()
 
     def __delitem__(self, key):
-        del self.store[self._keytransform(key)]
+        del self.cfg[self._keytransform(key)]
 
     def __iter__(self):
-        return iter(self.store)
+        return iter(self.cfg)
 
     def __len__(self):
-        return len(self.store)
+        return len(self.cfg)
 
     def _keytransform(self, key):
         return key
 
     def initialize_filebackend(self, record_identifier, results_file_path, flag_file_dir):
         _LOGGER.debug(f"Determined file as backend: {results_file_path}")
-        if self.store[DB_ONLY_KEY]:
+        if self.cfg[DB_ONLY_KEY]:
             _LOGGER.debug(
                 "Running in database only mode does not make sense with a YAML file as a backend. "
                 "Changing back to using memory."
             )
-            self.store[DB_ONLY_KEY] = False
+            self.cfg[DB_ONLY_KEY] = False
 
-        flag_file_dir = self.store[CONFIG_KEY].priority_get(
-            "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.store[FILE_KEY])
+        flag_file_dir = self.cfg[CONFIG_KEY].priority_get(
+            "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.cfg[FILE_KEY])
         )
-        self.store[STATUS_FILE_DIR] = mk_abs_via_cfg(
-            flag_file_dir, self.config_path or self.store[FILE_KEY]
+        self.cfg[STATUS_FILE_DIR] = mk_abs_via_cfg(
+            flag_file_dir, self.config_path or self.cfg[FILE_KEY]
         )
 
         self.backend = FileBackend(
-            self.store[FILE_KEY],
+            self.cfg[FILE_KEY],
             record_identifier,
-            self.store[PIPELINE_NAME],
-            self.store[PIPELINE_TYPE],
-            self.store[SCHEMA_KEY],
-            self.store[STATUS_SCHEMA_KEY],
-            self.store[STATUS_FILE_DIR],
-            self.store[RESULT_FORMATTER],
-            self.store[MULTI_PIPELINE],
+            self.cfg[PIPELINE_NAME],
+            self.cfg[PIPELINE_TYPE],
+            self.cfg[SCHEMA_KEY],
+            self.cfg[STATUS_SCHEMA_KEY],
+            self.cfg[STATUS_FILE_DIR],
+            self.cfg[RESULT_FORMATTER],
+            self.cfg[MULTI_PIPELINE],
         )
 
         return
@@ -294,29 +289,29 @@ class PipestatManager(MutableMapping):
     )
     def initialize_dbbackend(self, record_identifier, show_db_logs):
         _LOGGER.debug("Determined database as backend")
-        if self.store[SCHEMA_KEY] is None:
+        if self.cfg[SCHEMA_KEY] is None:
             raise SchemaNotFoundError("Output schema must be supplied for DB backends.")
-        if CFG_DATABASE_KEY not in self.store[CONFIG_KEY]:
+        if CFG_DATABASE_KEY not in self.cfg[CONFIG_KEY]:
             raise NoBackendSpecifiedError()
         try:
-            dbconf = self.store[CONFIG_KEY].exp[
+            dbconf = self.cfg[CONFIG_KEY].exp[
                 CFG_DATABASE_KEY
             ]  # the .exp expands the paths before url construction
-            self.store[DB_URL] = construct_db_url(dbconf)
+            self.cfg[DB_URL] = construct_db_url(dbconf)
         except KeyError:
             raise PipestatDatabaseError(f"No database section ('{CFG_DATABASE_KEY}') in config")
         self._show_db_logs = show_db_logs
 
         self.backend = DBBackend(
             record_identifier,
-            self.store[PIPELINE_NAME],
+            self.cfg[PIPELINE_NAME],
             show_db_logs,
-            self.store[PIPELINE_TYPE],
-            self.store[SCHEMA_KEY],
-            self.store[STATUS_SCHEMA_KEY],
-            self.store[DB_URL],
-            self.store[STATUS_SCHEMA_SOURCE_KEY],
-            self.store[RESULT_FORMATTER],
+            self.cfg[PIPELINE_TYPE],
+            self.cfg[SCHEMA_KEY],
+            self.cfg[STATUS_SCHEMA_KEY],
+            self.cfg[DB_URL],
+            self.cfg[STATUS_SCHEMA_SOURCE_KEY],
+            self.cfg[RESULT_FORMATTER],
         )
 
     @require_backend
@@ -412,33 +407,33 @@ class PipestatManager(MutableMapping):
 
     def process_schema(self, schema_path):
         # Load pipestat schema in two parts: 1) main and 2) status
-        self._schema_path = self.store[CONFIG_KEY].priority_get(
+        self._schema_path = self.cfg[CONFIG_KEY].priority_get(
             "schema_path", env_var=ENV_VARS["schema"], override=schema_path
         )
 
         if self._schema_path is None:
             _LOGGER.warning("No schema supplied.")
-            self.store[SCHEMA_KEY] = None
-            self.store[STATUS_SCHEMA_KEY] = None
-            self.store[STATUS_SCHEMA_SOURCE_KEY] = None
+            self.cfg[SCHEMA_KEY] = None
+            self.cfg[STATUS_SCHEMA_KEY] = None
+            self.cfg[STATUS_SCHEMA_SOURCE_KEY] = None
             # return None
             # raise SchemaNotFoundError("PipestatManager creation failed; no schema")
         else:
             # Main schema
-            schema_to_read = mk_abs_via_cfg(self._schema_path, self.store["config_path"])
+            schema_to_read = mk_abs_via_cfg(self._schema_path, self.cfg["config_path"])
             self._schema_path = schema_to_read
             parsed_schema = ParsedSchema(schema_to_read)
-            self.store[SCHEMA_KEY] = parsed_schema
+            self.cfg[SCHEMA_KEY] = parsed_schema
 
             # Status schema
-            self.store[STATUS_SCHEMA_KEY] = parsed_schema.status_data
-            if not self.store[STATUS_SCHEMA_KEY]:
+            self.cfg[STATUS_SCHEMA_KEY] = parsed_schema.status_data
+            if not self.cfg[STATUS_SCHEMA_KEY]:
                 (
-                    self.store[STATUS_SCHEMA_SOURCE_KEY],
-                    self.store[STATUS_SCHEMA_KEY],
+                    self.cfg[STATUS_SCHEMA_SOURCE_KEY],
+                    self.cfg[STATUS_SCHEMA_KEY],
                 ) = read_yaml_data(path=STATUS_SCHEMA, what="default status schema")
             else:
-                self.store[STATUS_SCHEMA_SOURCE_KEY] = schema_to_read
+                self.cfg[STATUS_SCHEMA_SOURCE_KEY] = schema_to_read
 
     def validate_schema(self) -> None:
         """
@@ -526,12 +521,12 @@ class PipestatManager(MutableMapping):
 
         result_formatter = result_formatter or self[RESULT_FORMATTER]
         values = deepcopy(values)
-        r_id = record_identifier or self.store[RECORD_IDENTIFIER]
+        r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
         if r_id is None:
             raise NotImplementedError("You must supply a record identifier to report results")
 
         result_identifiers = list(values.keys())
-        if self.store[SCHEMA_KEY] is not None:
+        if self.cfg[SCHEMA_KEY] is not None:
             for r in result_identifiers:
                 validate_type(
                     value=values[r], schema=self.result_schemas[r], strict_type=strict_type
@@ -652,7 +647,7 @@ class PipestatManager(MutableMapping):
 
         html_report_builder = HTMLReportBuilder(prj=self)
         report_path = html_report_builder(
-            pipeline_name=self.store[PIPELINE_NAME], amendment=amendment
+            pipeline_name=self.cfg[PIPELINE_NAME], amendment=amendment
         )
         return report_path
 
@@ -799,8 +794,8 @@ class PipestatManager(MutableMapping):
             in a canonical jsonschema way
         """
         return {
-            **self.store[SCHEMA_KEY].project_level_data,
-            **self.store[SCHEMA_KEY].sample_level_data,
+            **self.cfg[SCHEMA_KEY].project_level_data,
+            **self.cfg[SCHEMA_KEY].sample_level_data,
         }
 
     @property

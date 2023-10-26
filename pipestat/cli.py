@@ -98,9 +98,9 @@ def main(test_args=None):
     types_to_read_from_json = ["object"] + list(CANONICAL_TYPES.keys())
     if args.command == REPORT_CMD:
         value = args.value
-        if psm.store[SCHEMA_KEY] is None:
+        if psm.cfg[SCHEMA_KEY] is None:
             raise SchemaNotFoundError(msg="report", cli=True)
-        result_metadata = psm.store[SCHEMA_KEY].results_data[args.result_identifier]
+        result_metadata = psm.cfg[SCHEMA_KEY].results_data[args.result_identifier]
         if result_metadata[SCHEMA_TYPE_KEY] in types_to_read_from_json:
             path_to_read = expandpath(value)
             if os.path.exists(path_to_read):

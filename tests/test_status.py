@@ -17,7 +17,7 @@ def test_status_file_default_location(schema_file_path, results_file_path):
         results_file_path=results_file_path,
         schema_path=schema_file_path,
     )
-    assert psm.store[STATUS_FILE_DIR] == os.path.dirname(psm.store[FILE_KEY])
+    assert psm.cfg[STATUS_FILE_DIR] == os.path.dirname(psm.cfg[FILE_KEY])
 
 
 @pytest.mark.parametrize("backend_data", ["file", "db"], indirect=True)
