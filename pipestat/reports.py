@@ -1012,11 +1012,11 @@ def get_file_for_table(prj, pipeline_name, appendix=None, directory=None):
     # TODO make determining the output_dir its own small function since we use the same code in HTML report building.
     results_file_path = getattr(prj.backend, "results_file_path", None)
     config_path = prj.cfg.get("config_path", None)
-    output_dir = getattr(prj, "output_dir", None)
+    output_dir = prj.cfg.get("output_dir", None)
     table_dir = output_dir or results_file_path or config_path
     if not os.path.isdir(table_dir):
         table_dir = os.path.dirname(table_dir)
-    fp = os.path.join(table_dir, directory or "", f"{prj[PROJECT_NAME]}_{pipeline_name}")
+    fp = os.path.join(table_dir, directory or "", f"{prj.cfg[PROJECT_NAME]}_{pipeline_name}")
     if hasattr(prj, "amendments") and getattr(prj, "amendments"):
         fp += f"_{'_'.join(prj.amendments)}"
     fp += f"_{appendix}"
@@ -1058,7 +1058,7 @@ def _create_stats_objs_summaries(prj, pipeline_name) -> List[str]:
             rep_data = prj.retrieve(record_identifier=record_name)
             reported_stats = [
                 record_index,
-                prj.project_name or "No Project Name Supplied",
+                prj.cfg[PROJECT_NAME] or "No Project Name Supplied",
                 record_name,
             ]
 

@@ -179,9 +179,7 @@ class PipestatManager(MutableMapping):
 
         self.cfg[MULTI_PIPELINE] = multi_pipelines
 
-        self.cfg[OUTPUT_DIR] = self.cfg[CONFIG_KEY].priority_get(
-            "output_dir", override=output_dir
-        )
+        self.cfg[OUTPUT_DIR] = self.cfg[CONFIG_KEY].priority_get("output_dir", override=output_dir)
 
         if self.cfg[FILE_KEY]:
             # file backend
@@ -661,7 +659,7 @@ class PipestatManager(MutableMapping):
 
         """
 
-        pipeline_name = self.pipeline_name
+        pipeline_name = self.cfg[PIPELINE_NAME]
         table_path_list = _create_stats_objs_summaries(self, pipeline_name)
 
         return table_path_list
