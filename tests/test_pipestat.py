@@ -618,6 +618,8 @@ class TestRetrieval:
             {"sample2": {"number_of_things": 20}},
             {"sample3": {"name_of_something": "string 3"}},
             {"sample3": {"number_of_things": 300}},
+            {"sample4": {"name_of_something": "string 3"}},
+            {"sample4": {"number_of_things": 300}},
         ]
 
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
@@ -635,21 +637,49 @@ class TestRetrieval:
                 for k, v in i.items():
                     psm.report(record_identifier=k, values=v, force_overwrite=True)
 
-            result1 = psm.backend.select(
-                filter_conditions=[("name_of_something", "eq", "string 1")]
-            )
-            result2 = psm.backend.select(
-                columns=["name_of_something", "record_identifier"],
-                filter_conditions=[("name_of_something", "eq", "string 1")],
-            )
-            result3 = psm.backend.select(
-                filter_conditions=[("record_identifier", "eq", "sample1")]
-            )
+            for i in range(100):
+                r_id = "sample" + str(i)
+                val = {"md5sum": "hash" + str(i)}
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
             # Gets one or many records
             result4 = psm.retrieve_one(record_identifier="sample1")
+
             result5 = psm.retrieve_many(["sample1", "sample3"])
+
             # Gets everything, need to implement paging
             result6 = psm.select_records()
+
+            # Attempt filtering with columns and filter conditions
+            result11 = psm.backend.select_records(
+                columns=["name_of_something", "record_identifier", "md5sum"],
+                filter_conditions=[("record_identifier", "eq", "sample4")],
+            )
+
+            result12 = psm.backend.select_records(
+                columns=["name_of_something", "record_identifier", "md5sum"],
+                filter_conditions=[("record_identifier", "eq", "sample4")],
+                cursor=4,
+            )
+
+            result13 = psm.backend.select_records(
+                columns=["name_of_something", "record_identifier", "md5sum"],
+                limit=10,
+            )
+
+            next_cursor = result13["next_page_token"]
+
+            result14 = psm.backend.select_records(
+                columns=["name_of_something", "record_identifier", "md5sum"],
+                cursor=next_cursor,
+                limit=10,
+            )
+
+            result15 = psm.backend.select_records(
+                columns=["name_of_something", "record_identifier", "md5sum"],
+                cursor=95,
+                limit=100,
+            )
 
             print("Done")
 

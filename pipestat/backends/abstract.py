@@ -222,7 +222,7 @@ def select_records(
     columns: Optional[List[str]] = None,
     filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
     json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
-    offset: Optional[int] = None,
-    limit: Optional[int] = None,
+    limit: Optional[int] = 1000,
+    cursor: Optional[int] = None,
 ) -> List[Any]:
     _LOGGER.warning("Not implemented yet for this backend")

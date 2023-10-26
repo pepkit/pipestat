@@ -564,8 +564,8 @@ class PipestatManager(MutableMapping):
         columns: Optional[List[str]] = None,
         filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
         json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
-        offset: Optional[int] = None,
-        limit: Optional[int] = None,
+        limit: Optional[int] = 1000,
+        cursor: Optional[int] = None,
     ) -> List[Any]:
         """
         Retrieve a result for a record.
@@ -585,6 +585,8 @@ class PipestatManager(MutableMapping):
             columns=columns,
             filter_conditions=filter_conditions,
             json_filter_conditions=json_filter_conditions,
+            limit=limit,
+            cursor=cursor,
         )
 
     @require_backend

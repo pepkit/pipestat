@@ -627,8 +627,8 @@ class DBBackend(PipestatBackend):
         columns: Optional[List[str]] = None,
         filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
         json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
-        offset: Optional[int] = None,
-        limit: Optional[int] = None,
+        limit: Optional[int] = 1000,
+        cursor: Optional[int] = None,
     ) -> List[Any]:
         """
         Perform a `SELECT` on the table
@@ -651,10 +651,18 @@ class DBBackend(PipestatBackend):
         ORM = self.get_model(table_name=self.table_name)
 
         with self.session as s:
+            total_count = len(s.exec(sql_select(ORM)).all())
+
             if columns is not None:
-                statement = sqlmodel.select(*[getattr(ORM, column) for column in columns])
+                columns = ["id"] + columns  # Must add id, need it for cursor
+                statement = sqlmodel.select(
+                    *[getattr(ORM, column) for column in columns]
+                ).order_by(ORM.id)
             else:
-                statement = sqlmodel.select(ORM)
+                statement = sqlmodel.select(ORM).order_by(ORM.id)
+
+            if cursor is not None:
+                statement = statement.where(ORM.id > cursor)
 
             statement = dynamic_filter(
                 ORM=ORM,
@@ -662,14 +670,25 @@ class DBBackend(PipestatBackend):
                 filter_conditions=filter_conditions,
                 json_filter_conditions=json_filter_conditions,
             )
-            if isinstance(offset, int):
-                statement = statement.offset(offset)
+
             if isinstance(limit, int):
                 statement = statement.limit(limit)
-            results = s.exec(statement)
-            result = results.all()
 
-        return result
+            results = s.exec(statement).all()
+
+        if results != []:
+            next_cursor = results[-1].id
+        else:
+            next_cursor = None
+
+        records_dict = {
+            "total_size": total_count,
+            "page_size": limit,
+            "next_page_token": next_cursor,
+            "records": results,
+        }
+
+        return records_dict
 
     def select_txt(
         self,
@@ -810,6 +829,6 @@ class DBBackend(PipestatBackend):
             session.rollback()
             raise
         finally:
-            _LOGGER.info("session.close")
+            # _LOGGER.info("session.close")
             session.close()
         _LOGGER.debug("Ending session")
