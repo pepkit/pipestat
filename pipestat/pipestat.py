@@ -235,9 +235,10 @@ class PipestatManager(MutableMapping):
         print(key)
 
     def __setitem__(self, key, value):
-        # self.cfg[self._keytransform(key)] = value
-        print(key)
-        # self.report()
+        # This is a wrapper for the report function:
+        result = self.report(record_identifier=key, values=value)
+        return result
+
 
     def __delitem__(self, key):
         del self.cfg[self._keytransform(key)]
