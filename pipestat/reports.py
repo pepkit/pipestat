@@ -33,8 +33,8 @@ class HTMLReportBuilder(object):
         self.prj = prj
         self.jinja_env = get_jinja_env()
         results_file_path = getattr(self.prj.backend, "results_file_path", None)
-        config_path = self.prj.store.get('config_path', None)
-        output_dir = getattr(self.prj, "output_dir", None)
+        config_path = self.prj.store.get("config_path", None)
+        output_dir = getattr(self.prj.store[OUTPUT_DIR], "output_dir", None)
         self.output_dir = output_dir or results_file_path or config_path
         self.output_dir = os.path.dirname(self.output_dir)
         self.reports_dir = os.path.join(self.output_dir, "reports")
