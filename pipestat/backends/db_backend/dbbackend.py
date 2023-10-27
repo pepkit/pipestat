@@ -664,7 +664,7 @@ class DBBackend(PipestatBackend):
             if cursor is not None:
                 statement = statement.where(ORM.id > cursor)
 
-            statement = dynamic_filter(
+            statement = selection_filter(
                 ORM=ORM,
                 statement=statement,
                 filter_conditions=filter_conditions,

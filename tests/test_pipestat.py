@@ -639,46 +639,91 @@ class TestRetrieval:
 
             for i in range(100):
                 r_id = "sample" + str(i)
-                val = {"md5sum": "hash" + str(i)}
+                val = {"md5sum": "hash" + str(i),
+                       "number_of_things": i*10,
+                       "switch_value": bool(i%2),
+                        "output_image": {
+                        "path": "path_to_"+str(i),
+                        "thumbnail_path": "thumbnail_path"+str(i),
+                        "title": "title_string"+str(i),},
+                }
+
+
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
             # Gets one or many records
-            result4 = psm.retrieve_one(record_identifier="sample1")
-
-            result5 = psm.retrieve_many(["sample1", "sample3"])
+            # result4 = psm.retrieve_one(record_identifier="sample1")
+            #
+            # result5 = psm.retrieve_many(["sample1", "sample3"])
 
             # Gets everything, need to implement paging
             result6 = psm.select_records()
+            #
+            # # Attempt filtering with columns and filter conditions
+            # result11 = psm.backend.select_records(
+            #     columns=["name_of_something", "record_identifier", "md5sum"],
+            #     filter_conditions=[("record_identifier", "eq", "sample4")],
+            # )
+            #
+            # result12 = psm.backend.select_records(
+            #     columns=["name_of_something", "record_identifier", "md5sum"],
+            #     filter_conditions=[("record_identifier", "eq", "sample4")],
+            #     cursor=4,
+            # )
+            #
+            # result13 = psm.backend.select_records(
+            #     columns=["name_of_something", "record_identifier", "md5sum"],
+            #     limit=10,
+            # )
+            #
+            # next_cursor = result13["next_page_token"]
+            #
+            # result14 = psm.backend.select_records(
+            #     columns=["md5sum", "record_identifier"],
+            #     cursor=next_cursor,
+            #     limit=50,
+            # )
+            #
+            # result15 = psm.backend.select_records(
+            #     columns=["name_of_something", "record_identifier", "md5sum"],
+            #     cursor=95,
+            #     limit=100,
+            # )
+            #
+            #
+            # result16 = psm.backend.select_records(
+            #     columns=["name_of_something", "record_identifier", "md5sum", "number_of_things"],
+            #     filter_conditions=[("id", "ge", "0"),("id", "lt", "25") ],
+            #     limit=50,
+            # )
+            #
+            # result17 = psm.backend.select_records(
+            #     columns=["name_of_something", "record_identifier", "md5sum", "number_of_things"],
+            #     filter_conditions=[("id", "ge", "0"),("id", "lt", "25") ],
+            #     limit=50,
+            # )
+            # json_entry = '{"path": "path_to_39", "title": "title_string39", "thumbnail_path": "thumbnail_path39"}'
+            #
+            # result18 = psm.backend.select_records(
+            #     #columns=["name_of_something", "record_identifier", "md5sum", "number_of_things"],
+            #     json_filter_conditions=[("output_image", "ge", json_entry)],
+            #     limit=50,
+            # )
 
-            # Attempt filtering with columns and filter conditions
-            result11 = psm.backend.select_records(
-                columns=["name_of_something", "record_identifier", "md5sum"],
-                filter_conditions=[("record_identifier", "eq", "sample4")],
-            )
+            # # THis should not return any results
+            # tuple_example = ("number_of_things", "eq", 390)
+            # result19 = psm.backend.select_records(
+            #     #columns=["name_of_something", "record_identifier", "md5sum", "number_of_things"],
+            #     filter_conditions=[("output_image", "eq", tuple_example)],
+            #     limit=50,
+            # )
 
-            result12 = psm.backend.select_records(
-                columns=["name_of_something", "record_identifier", "md5sum"],
-                filter_conditions=[("record_identifier", "eq", "sample4")],
-                cursor=4,
-            )
-
-            result13 = psm.backend.select_records(
-                columns=["name_of_something", "record_identifier", "md5sum"],
-                limit=10,
-            )
-
-            next_cursor = result13["next_page_token"]
-
-            result14 = psm.backend.select_records(
-                columns=["name_of_something", "record_identifier", "md5sum"],
-                cursor=next_cursor,
-                limit=10,
-            )
-
-            result15 = psm.backend.select_records(
-                columns=["name_of_something", "record_identifier", "md5sum"],
-                cursor=95,
-                limit=100,
+            # This works for filtering based on items within the JSONB!
+            json_entry = '{"path": "path_to_39"}'
+            result19 = psm.backend.select_records(
+                #columns=["name_of_something", "record_identifier", "md5sum", "number_of_things"],
+                json_filter_conditions=[("output_image", "eq", json_entry)],
+                limit=50,
             )
 
             print("Done")
