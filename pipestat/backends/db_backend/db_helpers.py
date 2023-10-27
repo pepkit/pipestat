@@ -8,6 +8,7 @@ try:
     import sqlmodel.sql.expression
     from sqlmodel.main import SQLModel
     from sqlmodel.sql.expression import SelectOfScalar
+    from sqlmodel import and_, or_
 except:
     pass
 
@@ -95,6 +96,7 @@ def selection_filter(
     statement: Any,
     filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
     json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
+    bool_operator: Optional[str] = "AND",
 ) -> Any:
     """
     Return filtered query based on condition.
@@ -112,6 +114,15 @@ def selection_filter(
     :return: query
     """
 
+    if bool_operator.lower() == "or":
+        sqlmodel_operator = or_
+    elif bool_operator.lower() == "and":
+        sqlmodel_operator = and_
+    else:
+        # Create warning here
+        sqlmodel_operator = and_
+
+
     def _unpack_tripartite(x):
         if not (isinstance(x, List) or isinstance(x, Tuple)):
             raise TypeError("Wrong filter class; a List or Tuple is required")
@@ -122,6 +133,7 @@ def selection_filter(
         return tuple(x)
 
     if filter_conditions is not None:
+        filter_list = []
         for filter_condition in filter_conditions: # These are ANDs
             key, op, value = _unpack_tripartite(filter_condition)
             column = getattr(ORM, key, None)
@@ -139,7 +151,9 @@ def selection_filter(
                 if value == "null":
                     value = None
                 filt = getattr(column, attr)(value)
-            statement = statement.where(filt)
+            filter_list.append(filt)
+
+        statement = statement.where(sqlmodel_operator(*filter_list))
 
     if json_filter_conditions is not None:
         for json_filter_condition in json_filter_conditions: #These are ANDs

@@ -629,6 +629,7 @@ class DBBackend(PipestatBackend):
         json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
         limit: Optional[int] = 1000,
         cursor: Optional[int] = None,
+        bool_operator: Optional[str] = "AND",
     ) -> List[Any]:
         """
         Perform a `SELECT` on the table
@@ -669,6 +670,7 @@ class DBBackend(PipestatBackend):
                 statement=statement,
                 filter_conditions=filter_conditions,
                 json_filter_conditions=json_filter_conditions,
+                bool_operator=bool_operator,
             )
 
             if isinstance(limit, int):
