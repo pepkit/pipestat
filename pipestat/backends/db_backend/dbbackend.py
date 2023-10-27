@@ -626,7 +626,6 @@ class DBBackend(PipestatBackend):
         self,
         columns: Optional[List[str]] = None,
         filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
-        json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
         limit: Optional[int] = 1000,
         cursor: Optional[int] = None,
         bool_operator: Optional[str] = "AND",
@@ -669,7 +668,6 @@ class DBBackend(PipestatBackend):
                 ORM=ORM,
                 statement=statement,
                 filter_conditions=filter_conditions,
-                json_filter_conditions=json_filter_conditions,
                 bool_operator=bool_operator,
             )
 

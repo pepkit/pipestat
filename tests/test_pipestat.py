@@ -639,22 +639,28 @@ class TestRetrieval:
 
             for i in range(100):
                 r_id = "sample" + str(i)
-                val = {"md5sum": "hash" + str(i),
-                       "number_of_things": i*10,
-                       "switch_value": bool(i%2),
-                        "output_image": {
-                        "path": "path_to_"+str(i),
-                        "thumbnail_path": "thumbnail_path"+str(i),
-                        "title": "title_string"+str(i),},
+                val = {
+                    "md5sum": "hash" + str(i),
+                    "number_of_things": i * 10,
+                    "switch_value": bool(i % 2),
+                    "output_image": {
+                        "path": "path_to_" + str(i),
+                        "thumbnail_path": "thumbnail_path" + str(i),
+                        "title": "title_string" + str(i),
+                    },
+                    "output_file_in_object": {
+                        "prop1": {
+                            "prop2": i,
+                        },
+                    },
                 }
-
 
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
             # # Gets one or many records
             # result4 = psm.retrieve_one(record_identifier="sample1")
             #
-            result5 = psm.retrieve_many(["sample1", "sample3"])
+            # result5 = psm.retrieve_many(["sample1", "sample3"])
             #
             # # Gets everything, need to implement paging
             # result6 = psm.select_records()
@@ -719,20 +725,40 @@ class TestRetrieval:
             # )
 
             # This works for filtering based on items within the JSONB!
-            #json_entry = '"path"'
+            # json_entry = '"path"'
             json_entry2 = '{"title": "title_string25"}'
             # json_entry = '{"path": 26}'
-            result19 = psm.backend.select_records(
-                #columns=["md5sum"],
-                #filter_conditions=[("id", "ge", "0"),("id", "lt", "50")],
-                json_filter_conditions=[("output_image", "eq", json_entry2)],
-                limit=50,
-            )
+            # result19 = psm.backend.select_records(
+            #     #columns=["md5sum"],
+            #     #filter_conditions=[("id", "ge", "0"),("id", "lt", "50")],
+            #     json_filter_conditions=[("output_image", "eq", json_entry2)],
+            #     limit=50,
+            # )
 
+            result20 = psm.backend.select_records(
+                # columns=["md5sum"],
+                filter_conditions=[
+                    {
+                        "key": ["output_file_in_object", "prop1", "prop2"],
+                        "operator": "in",
+                        "value": [5, 20],
+                    },
+                    {
+                        "key": ["output_file_in_object", "prop1", "prop2"],
+                        "operator": "in",
+                        "value": [7, 21],
+                    },
+                ],
+                limit=50,
+                bool_operator="or",
+            )
             # result20 = psm.backend.select_records(
-            #     columns=["md5sum"],
-            #     filter_conditions=[("id", "eq", "1"),("id", "eq", "50")],
-            #     #json_filter_conditions=[("output_image", "eq", json_entry)],
+            #     # columns=["md5sum"],
+            #     filter_conditions=[{
+            #         "key": "number_of_things",
+            #         "operator": "ge",
+            #         "value": 0,
+            #     }],
             #     limit=50,
             #     bool_operator="or",
             # )

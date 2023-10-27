@@ -22,3 +22,14 @@ samples:
     type: string
     description: "MD5SUM of an object"
     highlight: true
+#  output_file_in_object:
+#    type: object
+#    description: "This is an example file"
+#    properties:
+#      prop1:
+#        description: "This is an example file"
+#        type: object
+#        properties:
+#          prop2:
+#            description: "This is an example file"
+#            type: integer

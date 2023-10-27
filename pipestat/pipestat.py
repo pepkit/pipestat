@@ -625,7 +625,9 @@ class PipestatManager(MutableMapping):
         for r_id in record_identifiers:
             filter_conditions.append(("record_identifier", "eq", r_id))
 
-        many_records.append(self.select_records(filter_conditions=filter_conditions, bool_operator="OR"))
+        many_records.append(
+            self.select_records(filter_conditions=filter_conditions, bool_operator="OR")
+        )
 
         return many_records
 
