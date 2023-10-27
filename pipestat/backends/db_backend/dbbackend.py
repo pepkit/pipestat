@@ -53,7 +53,7 @@ class DBBackend(PipestatBackend):
         :param dict status_schema_source: filepath of status schema
         :param str result_formatter: function for formatting result
         """
-        _LOGGER.warning(f"Initialize DBBackend for pipeline '{pieline_name}'")
+        _LOGGER.warning(f"Initializing DBBackend for pipeline '{pieline_name}'")
         self.pipeline_name = pipeline_name
         self.pipeline_type = pipeline_type or "sample"
         self.record_identifier = record_identifier
