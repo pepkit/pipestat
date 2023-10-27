@@ -16,6 +16,8 @@ __all__ = [
     "UnrecognizedStatusError",
     "RecordNotFoundError",
     "PipelineTypeNotSuppliedError",
+    "InvalidTimeFormatError",
+    "PipestatDependencyError",
 ]
 
 
@@ -79,6 +81,20 @@ class PipestatDataError(PipestatError):
 
     def __init__(self, msg):
         super(PipestatDataError, self).__init__(msg)
+
+
+class InvalidTimeFormatError(PipestatError):
+    """Data error for local data associated with file backend"""
+
+    def __init__(self, msg):
+        super(InvalidTimeFormatError, self).__init__(msg)
+
+
+class PipestatDependencyError(PipestatError):
+    """Dependency error"""
+
+    def __init__(self, msg):
+        super(PipestatDependencyError, self).__init__(msg)
 
 
 class PipestatDatabaseError(PipestatError):
