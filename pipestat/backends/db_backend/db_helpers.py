@@ -122,7 +122,7 @@ def selection_filter(
         return tuple(x)
 
     if filter_conditions is not None:
-        for filter_condition in filter_conditions:
+        for filter_condition in filter_conditions: # These are ANDs
             key, op, value = _unpack_tripartite(filter_condition)
             column = getattr(ORM, key, None)
             if column is None:
@@ -142,10 +142,12 @@ def selection_filter(
             statement = statement.where(filt)
 
     if json_filter_conditions is not None:
-        for json_filter_condition in json_filter_conditions:
+        for json_filter_condition in json_filter_conditions: #These are ANDs
             col, key, value = _unpack_tripartite(json_filter_condition)
             column = getattr(ORM, col)
             #statement = statement.where(getattr(ORM, col) == value)
+
+            # This needs error handling so that the user understands when they give it a string that cannot be converted
             value = json.loads(value)
             statement = statement.where(column.contains(value))
             print(statement)

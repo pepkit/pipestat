@@ -224,5 +224,6 @@ def select_records(
     json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
     limit: Optional[int] = 1000,
     cursor: Optional[int] = None,
+
 ) -> List[Any]:
     _LOGGER.warning("Not implemented yet for this backend")
