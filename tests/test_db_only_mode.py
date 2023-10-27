@@ -28,7 +28,7 @@ class ContextManagerDBTesting:
         self.connection.close()
 
 
-@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestDatabaseOnly:
     # TODO: parameterize this against different schemas.
     def test_manager_can_be_built_without_exception(self, config_file_path, schema_file_path):
