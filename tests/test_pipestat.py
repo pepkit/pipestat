@@ -654,7 +654,7 @@ class TestRetrieval:
             # # Gets one or many records
             # result4 = psm.retrieve_one(record_identifier="sample1")
             #
-            # result5 = psm.retrieve_many(["sample1", "sample3"])
+            result5 = psm.retrieve_many(["sample1", "sample3"])
             #
             # # Gets everything, need to implement paging
             # result6 = psm.select_records()
@@ -719,23 +719,23 @@ class TestRetrieval:
             # )
 
             # This works for filtering based on items within the JSONB!
-            json_entry = '{"path": "path_to_39"}'
+            #json_entry = '"path"'
             json_entry2 = '{"title": "title_string25"}'
-            #json_entry = '{"path": 26}'
-            # result19 = psm.backend.select_records(
+            # json_entry = '{"path": 26}'
+            result19 = psm.backend.select_records(
+                #columns=["md5sum"],
+                #filter_conditions=[("id", "ge", "0"),("id", "lt", "50")],
+                json_filter_conditions=[("output_image", "eq", json_entry2)],
+                limit=50,
+            )
+
+            # result20 = psm.backend.select_records(
             #     columns=["md5sum"],
-            #     filter_conditions=[("id", "ge", "0"),("id", "lt", "50")],
+            #     filter_conditions=[("id", "eq", "1"),("id", "eq", "50")],
             #     #json_filter_conditions=[("output_image", "eq", json_entry)],
             #     limit=50,
+            #     bool_operator="or",
             # )
-
-            result20 = psm.backend.select_records(
-                columns=["md5sum"],
-                filter_conditions=[("id", "eq", "1"),("id", "eq", "50")],
-                #json_filter_conditions=[("output_image", "eq", json_entry)],
-                limit=50,
-                bool_operator="or",
-            )
 
             # bool_operator: Optional[str] = "AND",
 

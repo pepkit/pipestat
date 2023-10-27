@@ -566,6 +566,7 @@ class PipestatManager(MutableMapping):
         json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
         limit: Optional[int] = 1000,
         cursor: Optional[int] = None,
+        bool_operator: Optional[str] = "AND",
     ) -> List[Any]:
         """
         Retrieve a result for a record.
@@ -587,6 +588,7 @@ class PipestatManager(MutableMapping):
             json_filter_conditions=json_filter_conditions,
             limit=limit,
             cursor=cursor,
+            bool_operator=bool_operator,
         )
 
     @require_backend
@@ -615,9 +617,15 @@ class PipestatManager(MutableMapping):
         """
 
         many_records = []
+        # for r_id in record_identifiers:
+        #     filter_conditions = [("record_identifier", "eq", r_id)]
+        #     many_records.append(self.backend.select_records(filter_conditions=filter_conditions))
+        filter_conditions = []
+        # For large list of recrds, we need ot use in operations.
         for r_id in record_identifiers:
-            filter_conditions = [("record_identifier", "eq", r_id)]
-            many_records.append(self.backend.select_records(filter_conditions=filter_conditions))
+            filter_conditions.append(("record_identifier", "eq", r_id))
+
+        many_records.append(self.select_records(filter_conditions=filter_conditions, bool_operator="OR"))
 
         return many_records
 

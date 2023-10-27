@@ -108,7 +108,8 @@ def selection_filter(
         - lt for <
         - ge for >=
         - in for in_
-        - like for like
+        - like for like -> get rid of this one!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
     :param [(col,key,value)] json_filter_conditions: conditions for JSONB column to query.
         Only '==' is supported e.g. [("other", "genome", "hg38")]
     :return: query
