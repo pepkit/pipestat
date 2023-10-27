@@ -3,7 +3,7 @@ import pytest
 from pipestat import SamplePipestatManager, SamplePipestatManager, ProjectPipestatManager
 from pipestat.const import *
 from .conftest import DB_URL
-
+from .conftest import SERVICE_UNAVAILABLE
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.main import default_registry
 
@@ -28,6 +28,7 @@ class ContextManagerDBTesting:
         self.connection.close()
 
 
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
 class TestDatabaseOnly:
     # TODO: parameterize this against different schemas.
     def test_manager_can_be_built_without_exception(self, config_file_path, schema_file_path):

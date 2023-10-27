@@ -17,6 +17,7 @@ from .conftest import (
     COMMON_CUSTOM_STATUS_DATA,
     DEFAULT_STATUS_DATA,
     STANDARD_TEST_PIPE_ID,
+    SERVICE_UNAVAILABLE,
     DB_URL,
 )
 from tempfile import NamedTemporaryFile, TemporaryDirectory
@@ -61,6 +62,8 @@ class TestSplitClasses:
         results_file_path,
         backend,
     ):
+        if SERVICE_UNAVAILABLE and backend == "file":
+            pytest.skip(reason="requires postgres service to be available")
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path, database_only=False)
@@ -109,6 +112,8 @@ class TestSplitClasses:
         results_file_path,
         backend,
     ):
+        if SERVICE_UNAVAILABLE and backend == "file":
+            pytest.skip(reason="requires postgres service to be available")
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report, database_only=False)
@@ -146,6 +151,7 @@ class TestSplitClasses:
                     psm.retrieve(record_identifier=rec_id)
 
 
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
 class TestReporting:
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -168,6 +174,8 @@ class TestReporting:
         results_file_path,
         backend,
     ):
+        if SERVICE_UNAVAILABLE and backend == "file":
+            pytest.skip(reason="requires postgres service to be available")
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path, database_only=False)
@@ -244,6 +252,8 @@ class TestReporting:
         results_file_path,
         backend,
     ):
+        if SERVICE_UNAVAILABLE and backend == "file":
+            pytest.skip(reason="requires postgres service to be available")
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path, database_only=False)
@@ -285,6 +295,8 @@ class TestReporting:
         backend,
         success,
     ):
+        if SERVICE_UNAVAILABLE and backend == "file":
+            pytest.skip(reason="requires postgres service to be available")
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path)
@@ -374,6 +386,8 @@ class TestRetrieval:
         schema_file_path,
         backend,
     ):
+        if SERVICE_UNAVAILABLE and backend == "file":
+            pytest.skip(reason="requires postgres service to be available")
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path, database_only=False)
@@ -401,6 +415,8 @@ class TestRetrieval:
         schema_file_path,
         backend,
     ):
+        if SERVICE_UNAVAILABLE and backend == "file":
+            pytest.skip(reason="requires postgres service to be available")
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             val_dict = {
@@ -463,6 +479,7 @@ class TestRetrieval:
                     psm.retrieve(result_identifier=res_id, record_identifier=rec_id)
 
 
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
 class TestRemoval:
     @pytest.mark.parametrize(["rec_id", "res_id", "val"], [("sample2", "number_of_things", 1)])
     @pytest.mark.parametrize("backend", ["file", "db"])
@@ -607,6 +624,7 @@ class TestRemoval:
                     psm.retrieve(record_identifier=rec_id)
 
 
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
 class TestNoRecordID:
     @pytest.mark.parametrize(
         "val",

@@ -10,10 +10,12 @@ from pipestat.exceptions import *
 from pipestat.parsed_schema import SCHEMA_PIPELINE_NAME_KEY
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 from .conftest import STANDARD_TEST_PIPE_ID
+from .conftest import SERVICE_UNAVAILABLE
 from pipestat.helpers import init_generic_config
 from pipestat.const import PIPESTAT_GENERIC_CONFIG
 
 
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
 class TestPipestatManagerInstantiation:
     def test_obj_creation_file(self, schema_file_path, results_file_path):
         """Object constructor works with file as backend"""
