@@ -629,7 +629,7 @@ class DBBackend(PipestatBackend):
         limit: Optional[int] = 1000,
         cursor: Optional[int] = None,
         bool_operator: Optional[str] = "AND",
-    ) -> List[Any]:
+    ) -> Dict[str, Any]:
         """
         Perform a `SELECT` on the table
 
@@ -642,7 +642,8 @@ class DBBackend(PipestatBackend):
             - like for like
         :param int limit: maximum number of results to retrieve per page
         :param int cursor: cursor position to begin retrieving records
-        :return dict[int,int,int,list]
+        :param bool bool_operator: Perform filtering with AND or OR Logic.
+        :return Dict[str, Any]
         """
 
         ORM = self.get_model(table_name=self.table_name)

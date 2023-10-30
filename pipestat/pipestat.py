@@ -119,17 +119,13 @@ class PipestatManager(MutableMapping):
 
         super(PipestatManager, self).__init__()
 
-        # Initialize the initial dict
+        # Initialize the cfg dict as an attribute that holds all configuration data
         self.cfg = {}
 
         # Load and validate database configuration
-        # If results_file_path is truthy, backend is a file
-        # Otherwise, backend is a database.
-        # self._config_path = select_config(config_file, ENV_VARS["config"])
+        # If results_file_path exists, backend is a file else backend is database.
 
         self.cfg["config_path"] = select_config(config_file, ENV_VARS["config"])
-
-        # _LOGGER.info(f"Config: {self.cfg["config_path"]}.")
 
         self.cfg[CONFIG_KEY] = YAMLConfigManager(
             entries=config_dict, filepath=self.cfg["config_path"]
@@ -140,11 +136,9 @@ class PipestatManager(MutableMapping):
 
         self.cfg[SCHEMA_PATH] = self.cfg[CONFIG_KEY].priority_get(
             "schema_path", env_var=ENV_VARS["schema"], override=schema_path
-        )  # schema_path if schema_path is not None else None
+        )
         self.process_schema(schema_path)
 
-        # self[RECORD_IDENTIFIER] = record_identifier
-        # self.record_identifier = record_identifier
         self.cfg[RECORD_IDENTIFIER] = record_identifier
 
         print(self.cfg[SCHEMA_KEY])
@@ -182,11 +176,9 @@ class PipestatManager(MutableMapping):
         self.cfg[OUTPUT_DIR] = self.cfg[CONFIG_KEY].priority_get("output_dir", override=output_dir)
 
         if self.cfg[FILE_KEY]:
-            # file backend
             self.initialize_filebackend(record_identifier, results_file_path, flag_file_dir)
 
         else:
-            # database backend
             self.initialize_dbbackend(record_identifier, show_db_logs)
 
     def __str__(self):
@@ -241,7 +233,9 @@ class PipestatManager(MutableMapping):
         return result
 
     def __delitem__(self, key):
-        del self.cfg[self._keytransform(key)]
+        # This is a wrapper for the remove function; it removes the entire record:
+        result = self.remove(record_identifier=key)
+        return result
 
     def __iter__(self):
         return iter(self.cfg)
@@ -566,19 +560,19 @@ class PipestatManager(MutableMapping):
         limit: Optional[int] = 1000,
         cursor: Optional[int] = None,
         bool_operator: Optional[str] = "AND",
-    ) -> List[Any]:
+    ) -> Dict[str, Any]:
         """
-        Retrieve a result for a record.
-
-        If no result ID specified, results for the entire record will
-        be returned.
-
-        :param str | List[str] record_identifier: name of the sample_level record
-        :param str | List[str] result_identifier: name of the result to be retrieved
-        :param int limit: limit number of records to this amount
-        :param int offset: offset records by this amount
-        :return any | Dict[str, any]: a single result or a mapping with filtered
-            results reported for the record
+        :param list[str] columns: columns to include in the result
+        :param list[dict]  filter_conditions: e.g. [{"key": ["id"], "operator": "eq", "value": 1)], operator list:
+            - eq for ==
+            - lt for <
+            - ge for >=
+            - in for in_
+            - like for like
+        :param int limit: maximum number of results to retrieve per page
+        :param int cursor: cursor position to begin retrieving records
+        :param bool bool_operator: Perform filtering with AND or OR Logic.
+        :return Dict[str, Any]
         """
 
         return self.backend.select_records(
@@ -596,8 +590,9 @@ class PipestatManager(MutableMapping):
     ) -> Union[Any, Dict[str, Any]]:
         """
         Retrieve a single record
-
-        return a single record and its associated results
+        :param str record_identifiers: single record_identifier
+        :return: Dict[str, any]: a mapping with filtered
+            results reported for the record
         """
 
         filter_conditions = [
@@ -614,10 +609,9 @@ class PipestatManager(MutableMapping):
         record_identifiers: List[str],
     ) -> Union[Any, Dict[str, Any]]:
         """
-        Retrieve multiple records given a list of strings
-
-        returns list of records
-
+        :param record_identifiers: list of record identifiers
+        :return: Dict[str, any]: a mapping with filtered
+            results reported for the record
         """
 
         filter = {
