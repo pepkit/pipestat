@@ -124,26 +124,6 @@ def selection_filter(
         # Create warning here
         sqlmodel_operator = and_
 
-    def get_nested_column(ORM_column, key_list):
-        if len(key_list) == 1:
-            return ORM_column[key_list[0]]
-        else:
-            return get_nested_column(ORM_column[key_list[0]], key_list[1:])
-
-    def define_sqlalchemy_type(value: Any):
-        if isinstance(value, (list, tuple)):
-            value = value[0]
-        if isinstance(value, int):
-            return Integer
-        elif isinstance(value, float):
-            return Float
-        elif isinstance(value, str):
-            return String
-        elif isinstance(value, bool):
-            return Boolean
-        else:
-            raise ValueError(f"Value type {type(value)} not supported")
-
     if filter_conditions is not None:
         filter_list = []
         for filter_condition in filter_conditions:
@@ -190,3 +170,25 @@ def selection_filter(
         statement = statement.where(sqlmodel_operator(*filter_list))
 
     return statement
+
+
+def get_nested_column(ORM_column, key_list):
+    if len(key_list) == 1:
+        return ORM_column[key_list[0]]
+    else:
+        return get_nested_column(ORM_column[key_list[0]], key_list[1:])
+
+
+def define_sqlalchemy_type(value: Any):
+    if isinstance(value, (list, tuple)):
+        value = value[0]
+    if isinstance(value, int):
+        return Integer
+    elif isinstance(value, float):
+        return Float
+    elif isinstance(value, str):
+        return String
+    elif isinstance(value, bool):
+        return Boolean
+    else:
+        raise ValueError(f"Value type {type(value)} not supported")
