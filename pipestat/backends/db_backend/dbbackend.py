@@ -625,7 +625,7 @@ class DBBackend(PipestatBackend):
     def select_records(
         self,
         columns: Optional[List[str]] = None,
-        filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
+        filter_conditions: Optional[List[Dict[str, Any]]] = None,
         limit: Optional[int] = 1000,
         cursor: Optional[int] = None,
         bool_operator: Optional[str] = "AND",
