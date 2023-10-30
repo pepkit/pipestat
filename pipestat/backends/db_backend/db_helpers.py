@@ -101,8 +101,9 @@ def selection_filter(
     Return filtered query based on condition.
 
     :param sqlalchemy.orm.DeclarativeMeta ORM:
-    :param sqlalchemy.orm.Query query: takes query
-    :param [{key: key,
+    :param sqlalchemy.orm.Query statement: sql.alchemy query
+    :param list filter_conditions
+            [{key: key,
             operator: operator,
             value: value}]
     filter_conditions:
@@ -110,7 +111,9 @@ def selection_filter(
         - lt for <
         - ge for >=
         - in for in_
-    :return: query
+    :param bool bool_operator
+
+    :return: query statement
     """
 
     if bool_operator.lower() == "or":

@@ -633,19 +633,16 @@ class DBBackend(PipestatBackend):
         """
         Perform a `SELECT` on the table
 
-        :param List[str] columns: columns to include in the result
-        :param [(key,operator,value)] filter_conditions: e.g. [("id", "eq", 1)], operator list:
+        :param list[str] columns: columns to include in the result
+        :param list[tuple(str,str,str)] [(key,operator,value)] filter_conditions: e.g. [("id", "eq", 1)], operator list:
             - eq for ==
             - lt for <
             - ge for >=
             - in for in_
             - like for like
-        :param [(col,key,value)] json_filter_conditions: conditions for JSONB column to
-            query that include JSON column name, key withing the JSON object in that
-            column and the value to check the identity against. Therefore only '==' is
-            supported in non-nested checks, e.g. [("other", "genome", "hg38")]
-        :param int offset: skip this number of rows
-        :param int limit: include this number of rows
+        :param int limit: maximum number of results to retrieve per page
+        :param int cursor: cursor position to begin retrieving records
+        :return dict[int,int,int,list]
         """
 
         ORM = self.get_model(table_name=self.table_name)

@@ -563,7 +563,6 @@ class PipestatManager(MutableMapping):
         self,
         columns: Optional[List[str]] = None,
         filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
-        json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
         limit: Optional[int] = 1000,
         cursor: Optional[int] = None,
         bool_operator: Optional[str] = "AND",
@@ -585,7 +584,6 @@ class PipestatManager(MutableMapping):
         return self.backend.select_records(
             columns=columns,
             filter_conditions=filter_conditions,
-            json_filter_conditions=json_filter_conditions,
             limit=limit,
             cursor=cursor,
             bool_operator=bool_operator,
@@ -602,8 +600,14 @@ class PipestatManager(MutableMapping):
         return a single record and its associated results
         """
 
-        filter_conditions = [("record_identifier", "eq", record_identifier)]
-        return self.backend.select_records(filter_conditions=filter_conditions)
+        filter_conditions = [
+            {
+                "key": "record_identifier",
+                "operator": "eq",
+                "value": record_identifier,
+            },
+        ]
+        return self.select_records(filter_conditions=filter_conditions)
 
     def retrieve_many(
         self,
@@ -616,20 +620,18 @@ class PipestatManager(MutableMapping):
 
         """
 
-        many_records = []
-        # for r_id in record_identifiers:
-        #     filter_conditions = [("record_identifier", "eq", r_id)]
-        #     many_records.append(self.backend.select_records(filter_conditions=filter_conditions))
         filter_conditions = []
         # For large list of recrds, we need ot use in operations.
         for r_id in record_identifiers:
-            filter_conditions.append(("record_identifier", "eq", r_id))
+            filter = {
+                "key": "record_identifier",
+                "operator": "eq",
+                "value": r_id,
+            }
 
-        many_records.append(
-            self.select_records(filter_conditions=filter_conditions, bool_operator="OR")
-        )
+            filter_conditions.append(filter)
 
-        return many_records
+        return self.select_records(filter_conditions=filter_conditions, bool_operator="OR")
 
     @require_backend
     def retrieve(
