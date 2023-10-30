@@ -634,7 +634,7 @@ class DBBackend(PipestatBackend):
         Perform a `SELECT` on the table
 
         :param list[str] columns: columns to include in the result
-        :param list[tuple(str,str,str)] [(key,operator,value)] filter_conditions: e.g. [("id", "eq", 1)], operator list:
+        :param list[dict]  filter_conditions: e.g. [{"key": ["id"], "operator": "eq", "value": 1)], operator list:
             - eq for ==
             - lt for <
             - ge for >=
