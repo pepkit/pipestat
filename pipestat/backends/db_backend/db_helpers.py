@@ -131,7 +131,7 @@ def selection_filter(
             return get_nested_column(ORM_column[key_list[0]], key_list[1:])
 
     def define_sqlalchemy_type(value: Any):
-        if isinstance(value, Union[list, tuple]):
+        if isinstance(value, (list, tuple)):
             value = value[0]
         if isinstance(value, int):
             return Integer
