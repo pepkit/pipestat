@@ -111,7 +111,7 @@ def selection_filter(
         - lt for <
         - ge for >=
         - in for in_
-    :param bool bool_operator
+    :param bool bool_operator:
 
     :return: query statement
     """
@@ -173,6 +173,11 @@ def selection_filter(
 
 
 def get_nested_column(ORM_column, key_list):
+    """
+    :param sqlalchemy.orm.DeclarativeMeta ORM_column: column attribute on the current ORM
+    :param key_list: list of keys, e.g. if the column contains a complex object
+    :return sqlalchemy.orm.DeclarativeMeta ORM: column attribute of ORM.
+    """
     if len(key_list) == 1:
         return ORM_column[key_list[0]]
     else:
@@ -180,6 +185,7 @@ def get_nested_column(ORM_column, key_list):
 
 
 def define_sqlalchemy_type(value: Any):
+    """Determines the data type of input value"""
     if isinstance(value, (list, tuple)):
         value = value[0]
     if isinstance(value, int):
