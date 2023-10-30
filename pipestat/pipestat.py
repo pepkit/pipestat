@@ -620,18 +620,13 @@ class PipestatManager(MutableMapping):
 
         """
 
-        filter_conditions = []
-        # For large list of recrds, we need ot use in operations.
-        for r_id in record_identifiers:
-            filter = {
-                "key": "record_identifier",
-                "operator": "eq",
-                "value": r_id,
-            }
+        filter = {
+            "key": "record_identifier",
+            "operator": "in",
+            "value": record_identifiers,
+        }
 
-            filter_conditions.append(filter)
-
-        return self.select_records(filter_conditions=filter_conditions, bool_operator="OR")
+        return self.select_records(filter_conditions=[filter])
 
     @require_backend
     def retrieve(
