@@ -220,10 +220,9 @@ class PipestatBackend(ABC):
 def select_records(
     self,
     columns: Optional[List[str]] = None,
-    filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
-    json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
+    filter_conditions: Optional[List[Dict[str, Any]]] = None,
     limit: Optional[int] = 1000,
     cursor: Optional[int] = None,
     bool_operator: Optional[str] = "AND",
-) -> List[Any]:
+) -> Dict[str, Any]:
     _LOGGER.warning("Not implemented yet for this backend")
