@@ -65,7 +65,7 @@ def require_backend(func):
     return inner
 
 
-class PipestatManager:
+class PipestatManager(MutableMapping):
     """
     Pipestat standardizes reporting of pipeline results and
     pipeline status management. It formalizes a way for pipeline developers
