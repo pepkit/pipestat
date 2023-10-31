@@ -640,6 +640,24 @@ class DBBackend(PipestatBackend):
 
         return records_dict
 
+    def select_distinct(
+        self,
+        columns,
+    ) -> List[Tuple]:
+        """
+        Perform a `SELECT DISTINCT` on given table and column
+
+        :param List[str] columns: columns to include in the result
+        :return List[Tuple]: returns distinct values.
+        """
+
+        ORM = self.get_model(table_name=self.table_name)
+        with self.session as s:
+            query = s.query(*[getattr(ORM, column) for column in columns])
+            query = query.distinct()
+            result = query.all()
+        return result
+
     def set_status(
         self,
         status_identifier: str,
