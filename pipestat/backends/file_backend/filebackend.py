@@ -1,5 +1,6 @@
 import datetime
 import os.path
+import operator
 import sys
 
 from glob import glob
@@ -405,6 +406,23 @@ class FileBackend(PipestatBackend):
             locked_data.write()
 
         return results_formatted
+    def select_distinct(
+        self,
+        columns,
+    ) -> List[Tuple]:
+        """
+        Perform a `SELECT DISTINCT` on given table and column
+
+        :param List[str] columns: columns to include in the result
+        :return List[Tuple]: returns distinct values.
+        """
+
+        # ORM = self.get_model(table_name=self.table_name)
+        # with self.session as s:
+        #     query = s.query(*[getattr(ORM, column) for column in columns])
+        #     query = query.distinct()
+        #     result = query.all()
+        return result
 
     def select_records(
         self,
@@ -430,38 +448,53 @@ class FileBackend(PipestatBackend):
         :return Dict[str, Any]
         """
 
-        # ORM = self.get_model(table_name=self.table_name)
-        #
-        # with self.session as s:
-        #     total_count = len(s.exec(sql_select(ORM)).all())
-        #
-        #     if columns is not None:
-        #         columns = ["id"] + columns  # Must add id, need it for cursor
-        #         statement = sqlmodel.select(
-        #             *[getattr(ORM, column) for column in columns]
-        #         ).order_by(ORM.id)
-        #     else:
-        #         statement = sqlmodel.select(ORM).order_by(ORM.id)
-        #
-        #     if cursor is not None:
-        #         statement = statement.where(ORM.id > cursor)
-        #
-        #     statement = selection_filter(
-        #         ORM=ORM,
-        #         statement=statement,
-        #         filter_conditions=filter_conditions,
-        #         bool_operator=bool_operator,
-        #     )
-        #
-        #     if isinstance(limit, int):
-        #         statement = statement.limit(limit)
-        #
-        #     results = s.exec(statement).all()
-        #
-        # if results != []:
-        #     next_cursor = results[-1].id
-        # else:
-        #     next_cursor = None
+        def get_operator(operator):
+
+            if operator == "eq":
+                return operator.__eq__
+            if operator == "lt":
+                return operator.__lt__
+            if operator == "gt":
+                return operator.__gt__
+
+            return None
+
+        record_list = []
+
+        result_identifier = columns
+
+        total_count = len( self._data.data[self.pipeline_name][self.pipeline_type].keys())
+
+        if result_identifier == [] or result_identifier is None:
+            result_identifier = (
+                list(self.parsed_schema.results_data.keys()) + [CREATED_TIME] + [MODIFIED_TIME]
+            )
+
+        for filter_condition in filter_conditions:
+            if list(filter_condition.keys()) != ["key", "operator", "value"]:
+                raise ValueError(
+                    "Filter conditions must be a dictionary with keys 'key', 'operator', and 'value'"
+                )
+
+            retrieved_operator = get_operator(filter_condition["operator"])
+
+            #Check each sample's dict
+            for k in list(self._data.data[self.pipeline_name][self.pipeline_type].keys())[0: limit]:
+                retrieved_record = {}
+                retrieved_results = {}
+                for key, value in self._data.data[self.pipeline_name][self.pipeline_type][
+                    k
+                ].items():
+                    if k not in retrieved_results: # Just check and see if its already been retrieved
+                        #value is a dict
+                        # filter conditions [{"key": ["id"], "operator": "eq", "value": 1)]
+                        if key in result_identifier:
+
+                            retrieved_results.update({key: value})
+
+                if retrieved_results != {}:
+                    retrieved_record.update({k: retrieved_results})
+                    record_list.append(retrieved_record)
 
         records_dict = {
             "total_size": total_count,

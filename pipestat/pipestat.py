@@ -395,9 +395,9 @@ class PipestatManager(MutableMapping):
                 raise InvalidTimeFormatError(msg=f"Incorrect time format, requires: {date_format}")
 
         if time_column == "created":
-            col_name = "pipestat_created_time"
+            col_name = CREATED_TIME
         else:
-            col_name = "pipestat_modified_time"
+            col_name = MODIFIED_TIME
         results = self.select_records(
             limit=limit,
             filter_conditions=[
@@ -553,7 +553,7 @@ class PipestatManager(MutableMapping):
         return reported_results
 
     @require_backend
-    def retrieve_distinct(
+    def select_distinct(
         self,
         columns: Optional[List[str]] = None,
     ) -> List[Any]:
@@ -563,11 +563,8 @@ class PipestatManager(MutableMapping):
         :param List[str] columns: columns to include in the result
         :return list[any] result: this is a list of distinct results
         """
-        if self.file:
-            # Not implemented yet
-            result = self.backend.retrieve_distinct()
-        else:
-            result = self.backend.select_distinct(columns=columns)
+
+        result = self.backend.select_distinct(columns=columns)
         return result
 
     @require_backend
