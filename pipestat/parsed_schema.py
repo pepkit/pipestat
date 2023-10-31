@@ -104,7 +104,7 @@ class ParsedSchema(object):
                 info_name="status",
                 mappingkey="properties",
             )
-
+            # TODO We should add the ability to look at an external source beyond the source schema (data)
             sample_data = replace_JSON_refs(sample_data, data)
 
             prj_data = replace_JSON_refs(prj_data, data)
