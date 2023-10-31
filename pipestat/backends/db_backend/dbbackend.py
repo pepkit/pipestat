@@ -574,55 +574,6 @@ class DBBackend(PipestatBackend):
 
         return records_dict
 
-    def select(
-        self,
-        columns: Optional[List[str]] = None,
-        filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
-        json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
-        offset: Optional[int] = None,
-        limit: Optional[int] = None,
-    ) -> List[Any]:
-        """
-        Perform a `SELECT` on the table
-
-        :param List[str] columns: columns to include in the result
-        :param [(key,operator,value)] filter_conditions: e.g. [("id", "eq", 1)], operator list:
-            - eq for ==
-            - lt for <
-            - ge for >=
-            - in for in_
-            - like for like
-        :param [(col,key,value)] json_filter_conditions: conditions for JSONB column to
-            query that include JSON column name, key withing the JSON object in that
-            column and the value to check the identity against. Therefore only '==' is
-            supported in non-nested checks, e.g. [("other", "genome", "hg38")]
-        :param int offset: skip this number of rows
-        :param int limit: include this number of rows
-        """
-
-        ORM = self.get_model(table_name=self.table_name)
-
-        with self.session as s:
-            if columns is not None:
-                statement = sqlmodel.select(*[getattr(ORM, column) for column in columns])
-            else:
-                statement = sqlmodel.select(ORM)
-
-            statement = dynamic_filter(
-                ORM=ORM,
-                statement=statement,
-                filter_conditions=filter_conditions,
-                json_filter_conditions=json_filter_conditions,
-            )
-            if isinstance(offset, int):
-                statement = statement.offset(offset)
-            if isinstance(limit, int):
-                statement = statement.limit(limit)
-            results = s.exec(statement)
-            result = results.all()
-
-        return result
-
     def select_records(
         self,
         columns: Optional[List[str]] = None,

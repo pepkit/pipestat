@@ -66,7 +66,16 @@ class TestDatabaseOnly:
             )
             psm.report(record_identifier="constant_record_id", values=val, force_overwrite=True)
             val_name = list(val.keys())[0]
-            assert psm.backend.select(filter_conditions=[(val_name, "eq", val[val_name])])
+
+            assert psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": val_name,
+                        "operator": "eq",
+                        "value": val[val_name],
+                    },
+                ],
+            )
 
     @pytest.mark.parametrize(
         "val",
@@ -172,7 +181,15 @@ class TestDatabaseOnly:
                 record_identifier=REC_ID, values=val, force_overwrite=True
             )  # Force overwrite so that resetting the SQL DB is unnecessary.
             val_name = list(val.keys())[0]
-            assert psm.backend.select(json_filter_conditions=[(val_name, "eq", val[val_name])])
+            assert psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": val_name,
+                        "operator": "eq",
+                        "value": val[val_name],
+                    }
+                ]
+            )
 
     @pytest.mark.parametrize(["rec_id", "res_id"], [("sample2", "number_of_things")])
     def test_select_invalid_filter_column__raises_expected_exception(
@@ -186,9 +203,15 @@ class TestDatabaseOnly:
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = SamplePipestatManager(**args)
             with pytest.raises(ValueError):
-                psm.backend.select(
-                    filter_conditions=[("bogus_column", "eq", rec_id)],
+                assert psm.select_records(
                     columns=[res_id],
+                    filter_conditions=[
+                        {
+                            "key": "bogus_name",
+                            "operator": "eq",
+                            "value": rec_id,
+                        },
+                    ],
                 )
 
     @pytest.mark.parametrize("res_id", ["number_of_things"])
@@ -203,8 +226,8 @@ class TestDatabaseOnly:
         with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = SamplePipestatManager(**args)
-            with pytest.raises((ValueError, TypeError)):
-                psm.backend.select(
+            with pytest.raises(AttributeError):
+                psm.select_records(
                     filter_conditions=[filter_condition],
                     columns=[res_id],
                 )
@@ -222,26 +245,18 @@ class TestDatabaseOnly:
         with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = SamplePipestatManager(**args)
-            result = psm.backend.select(
-                filter_conditions=[("record_identifier", "eq", rec_id)],
+            result = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": rec_id,
+                    }
+                ],
                 columns=[res_id],
                 limit=limit,
             )
-            assert len(result) <= limit
-
-    @pytest.mark.parametrize("offset", [0, 1, 2, 3, 15555])
-    def test_select_offset(
-        self,
-        config_file_path,
-        schema_file_path,
-        offset,
-    ):
-        with ContextManagerDBTesting(DB_URL):
-            args = dict(schema_path=schema_file_path, config_file=config_file_path)
-            psm = SamplePipestatManager(**args)
-            result = psm.backend.select(offset=offset)
-            print(result)
-            assert len(result) == max((psm.record_count - offset), 0)
+            assert len(result["records"]) <= limit
 
     @pytest.mark.parametrize(
         ["offset", "limit"], [(0, 0), (0, 1), (0, 2), (0, 11111), (1, 1), (1, 0)]
@@ -256,9 +271,9 @@ class TestDatabaseOnly:
         with ContextManagerDBTesting(DB_URL):
             args = dict(schema_path=schema_file_path, config_file=config_file_path)
             psm = SamplePipestatManager(**args)
-            result = psm.backend.select(offset=offset, limit=limit)
+            result = psm.select_records(cursor=offset, limit=limit)
             print(result)
-            assert len(result) == min(max((psm.record_count - offset), 0), limit)
+            assert len(result["records"]) == min(max((psm.record_count - offset), 0), limit)
 
     @pytest.mark.parametrize(
         "val",
