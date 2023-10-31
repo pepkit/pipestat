@@ -211,7 +211,6 @@ class FileBackend(PipestatBackend):
             self.status_file_dir, f"{self.pipeline_name}_{r_id}_{status_identifier}.flag"
         )
 
-
     def list_results(
         self,
         restrict_to: Optional[List[str]] = None,
@@ -407,6 +406,71 @@ class FileBackend(PipestatBackend):
 
         return results_formatted
 
+    def select_records(
+        self,
+        columns: Optional[List[str]] = None,
+        filter_conditions: Optional[List[Dict[str, Any]]] = None,
+        limit: Optional[int] = 1000,
+        cursor: Optional[int] = None,
+        bool_operator: Optional[str] = "AND",
+    ) -> Dict[str, Any]:
+        """
+        Perform a `SELECT` on the table
+
+        :param list[str] columns: columns to include in the result
+        :param list[dict]  filter_conditions: e.g. [{"key": ["id"], "operator": "eq", "value": 1)], operator list:
+            - eq for ==
+            - lt for <
+            - ge for >=
+            - in for in_
+            - like for like
+        :param int limit: maximum number of results to retrieve per page
+        :param int cursor: cursor position to begin retrieving records
+        :param bool bool_operator: Perform filtering with AND or OR Logic.
+        :return Dict[str, Any]
+        """
+
+        # ORM = self.get_model(table_name=self.table_name)
+        #
+        # with self.session as s:
+        #     total_count = len(s.exec(sql_select(ORM)).all())
+        #
+        #     if columns is not None:
+        #         columns = ["id"] + columns  # Must add id, need it for cursor
+        #         statement = sqlmodel.select(
+        #             *[getattr(ORM, column) for column in columns]
+        #         ).order_by(ORM.id)
+        #     else:
+        #         statement = sqlmodel.select(ORM).order_by(ORM.id)
+        #
+        #     if cursor is not None:
+        #         statement = statement.where(ORM.id > cursor)
+        #
+        #     statement = selection_filter(
+        #         ORM=ORM,
+        #         statement=statement,
+        #         filter_conditions=filter_conditions,
+        #         bool_operator=bool_operator,
+        #     )
+        #
+        #     if isinstance(limit, int):
+        #         statement = statement.limit(limit)
+        #
+        #     results = s.exec(statement).all()
+        #
+        # if results != []:
+        #     next_cursor = results[-1].id
+        # else:
+        #     next_cursor = None
+
+        records_dict = {
+            "total_size": total_count,
+            "page_size": limit,
+            "next_page_token": next_cursor,
+            "records": results,
+        }
+
+        return records_dict
 
     def retrieve(
         self,

@@ -368,13 +368,13 @@ class PipestatManager(MutableMapping):
         limit: Optional[int] = 1000,
         start: Optional[datetime.datetime] = None,
         end: Optional[datetime.datetime] = None,
-        type: Optional[str] = "modified",
+        time_column: Optional[str] = "modified",
     ) -> dict:
         """
         :param int  limit: limit number of results returned
         :param datetime.datetime start: most recent result to filter on, defaults to now, e.g. 2023-10-16 13:03:04.680400
         :param datetime.datetime end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
-        :param str type: created or modified
+        :param str type: created or modified column/attribute to filter on
         :return dict results: a dict containing start, end, num of records, and list of retrieved records
         """
         date_format = "%Y-%m-%d %H:%M:%S"
@@ -394,7 +394,25 @@ class PipestatManager(MutableMapping):
             except ValueError:
                 raise InvalidTimeFormatError(msg=f"Incorrect time format, requires: {date_format}")
 
-        results = self.backend.list_recent_results(limit=limit, start=start, end=end, type=type)
+        if time_column == "created":
+            col_name = "pipestat_created_time"
+        else:
+            col_name = "pipestat_modified_time"
+        results = self.select_records(
+            limit=limit,
+            filter_conditions=[
+                {
+                    "key": col_name,
+                    "operator": "lt",
+                    "value": start,
+                },
+                {
+                    "key": col_name,
+                    "operator": "gt",
+                    "value": end,
+                },
+            ],
+        )
 
         return results
 
