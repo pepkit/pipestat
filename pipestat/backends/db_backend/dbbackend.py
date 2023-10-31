@@ -640,65 +640,6 @@ class DBBackend(PipestatBackend):
 
         return records_dict
 
-    def select_txt(
-        self,
-        columns: Optional[List[str]] = None,
-        filter_templ: Optional[str] = "",
-        filter_params: Optional[Dict[str, Any]] = {},
-        offset: Optional[int] = None,
-        limit: Optional[int] = None,
-    ) -> List[Any]:
-        """
-        Execute a query with a textual filter. Returns all results.
-
-        To retrieve all table contents, leave the filter arguments out.
-        Table name uses pipeline_type
-
-        :param List[str] columns: columns to include in the result
-        :param str filter_templ: filter template with value placeholders,
-             formatted as follows `id<:value and name=:name`
-        :param Dict[str, Any] filter_params: a mapping keys specified in the `filter_templ`
-            to parameters that are supposed to replace the placeholders
-        :param int offset: skip this number of rows
-        :param int limit: include this number of rows
-        :return List[Any]: a list of matched records
-        """
-
-        ORM = self.get_model(table_name=self.table_name)
-        with self.session as s:
-            if columns is not None:
-                q = (
-                    s.query(*[getattr(ORM, column) for column in columns])
-                    .filter(text(filter_templ))
-                    .params(**filter_params)
-                )
-            else:
-                q = s.query(ORM).filter(text(filter_templ)).params(**filter_params)
-            if isinstance(offset, int):
-                q = q.offset(offset)
-            if isinstance(limit, int):
-                q = q.limit(limit)
-            results = q.all()
-        return results
-
-    def select_distinct(
-        self,
-        columns,
-    ) -> List[Tuple]:
-        """
-        Perform a `SELECT DISTINCT` on given table and column
-
-        :param List[str] columns: columns to include in the result
-        :return List[Tuple]: returns distinct values.
-        """
-
-        ORM = self.get_model(table_name=self.table_name)
-        with self.session as s:
-            query = s.query(*[getattr(ORM, column) for column in columns])
-            query = query.distinct()
-            result = query.all()
-        return result
-
     def set_status(
         self,
         status_identifier: str,

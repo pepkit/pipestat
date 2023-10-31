@@ -274,30 +274,3 @@ class TestDatabaseOnly:
             result = psm.select_records(cursor=offset, limit=limit)
             print(result)
             assert len(result["records"]) == min(max((psm.record_count - offset), 0), limit)
-
-    @pytest.mark.parametrize(
-        "val",
-        [
-            {"name_of_something": "test_name"},
-            {"number_of_things": 1},
-            {"percentage_of_things": 10.1},
-        ],
-    )
-    def test_select_txt(
-        self,
-        val,
-        config_file_path,
-        schema_file_path,
-    ):
-        with ContextManagerDBTesting(DB_URL):
-            psm = SamplePipestatManager(
-                schema_path=schema_file_path,
-                record_identifier="constant_record_id",
-                database_only=True,
-                config_file=config_file_path,
-            )
-            psm.report(record_identifier="constant_record_id", values=val, force_overwrite=True)
-            val_name = list(val.keys())[0]
-            # assert psm.backend.select(filter_conditions=[(val_name, "eq", val[val_name])])[0]
-            assert val_name in str(psm.backend.select_txt())
-            assert val_name not in str(psm.backend.select_txt(offset=2))
