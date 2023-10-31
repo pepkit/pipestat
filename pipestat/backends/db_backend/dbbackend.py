@@ -11,7 +11,7 @@ from sqlmodel import Session, create_engine, select as sql_select
 #     pass
 
 if int(sys.version.split(".")[1]) < 9:
-    from typing import List, Dict, Any, Optional, Union
+    from typing import List, Dict, Any, Optional, Union, NoReturn
 else:
     from typing import *
 
