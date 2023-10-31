@@ -413,42 +413,6 @@ class PipestatManager(MutableMapping):
             else:
                 self[STATUS_SCHEMA_SOURCE_KEY] = schema_to_read
 
-    def validate_schema(self) -> None:
-        """
-        Check schema for any possible issues
-
-        :raises SchemaError: if any schema format issue is detected
-        """
-
-        def _recursively_replace_custom_types(s: dict) -> Dict:
-            """
-            Replace the custom types in pipestat schema with canonical types
-
-            :param dict s: schema to replace types in
-            :return dict: schema with types replaced
-            """
-            for k, v in s.items():
-                missing_req_keys = [
-                    req for req in [SCHEMA_TYPE_KEY, SCHEMA_DESC_KEY] if req not in v
-                ]
-                if missing_req_keys:
-                    raise SchemaError(
-                        f"Result '{k}' is missing required key(s): {', '.join(missing_req_keys)}"
-                    )
-                curr_type_name = v[SCHEMA_TYPE_KEY]
-                if curr_type_name == "object" and SCHEMA_PROP_KEY in s[k]:
-                    _recursively_replace_custom_types(s[k][SCHEMA_PROP_KEY])
-                try:
-                    curr_type_spec = CANONICAL_TYPES[curr_type_name]
-                except KeyError:
-                    continue
-                s.setdefault(k, {})
-                s[k].setdefault(SCHEMA_PROP_KEY, {})
-                s[k][SCHEMA_PROP_KEY].update(curr_type_spec[SCHEMA_PROP_KEY])
-                s[k].setdefault("required", []).extend(curr_type_spec["required"])
-                s[k][SCHEMA_TYPE_KEY] = curr_type_spec[SCHEMA_TYPE_KEY]
-            return s
-
     @require_backend
     def remove(
         self,
