@@ -459,6 +459,20 @@ class FileBackend(PipestatBackend):
 
             return None
 
+        def get_nested_column(value, key_list, retrieved_operator):
+
+            if len(key_list) == 1:
+                if value.get(key_list, None):
+                    if retrieved_operator(key_list, value.get(key_list, None)):
+                        return value.get(key_list, None)
+                    else:
+                        return None
+                else:
+                    return None
+            else:
+                return get_nested_column(value[key_list[0]], key_list[1:])
+
+
         record_list = []
 
         result_identifier = columns
@@ -477,7 +491,7 @@ class FileBackend(PipestatBackend):
                 )
 
             retrieved_operator = get_operator(filter_condition["operator"])
-
+            records_list =[]
             #Check each sample's dict
             for k in list(self._data.data[self.pipeline_name][self.pipeline_type].keys())[0: limit]:
                 retrieved_record = {}
@@ -485,22 +499,20 @@ class FileBackend(PipestatBackend):
                 for key, value in self._data.data[self.pipeline_name][self.pipeline_type][
                     k
                 ].items():
-                    if k not in retrieved_results: # Just check and see if its already been retrieved
+                    if k not in records_list: # Just check and see if its already been retrieved
                         #value is a dict
                         # filter conditions [{"key": ["id"], "operator": "eq", "value": 1)]
-                        if key in result_identifier:
-
+                        results = get_nested_column(value, filter_condition["key"], retrieved_operator)
+                        if results is not None:
                             retrieved_results.update({key: value})
-
                 if retrieved_results != {}:
-                    retrieved_record.update({k: retrieved_results})
                     record_list.append(retrieved_record)
 
         records_dict = {
             "total_size": total_count,
             "page_size": limit,
             "next_page_token": next_cursor,
-            "records": results,
+            "records": records_list,
         }
 
         return records_dict
