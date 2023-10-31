@@ -457,7 +457,6 @@ class DBBackend(PipestatBackend):
             }
         raise RecordNotFoundError(f"Record '{record_identifier}' not found")
 
-
     def select_records(
         self,
         columns: Optional[List[str]] = None,

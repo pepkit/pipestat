@@ -152,7 +152,6 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
-
     def report(
         self,
         values: Dict[str, Any],
@@ -174,7 +173,6 @@ class PipestatBackend(ABC):
     ) -> Union[Any, Dict[str, Any]]:
         _LOGGER.warning("Not implemented yet for this backend")
         pass
-
 
     def remove(
         self,
