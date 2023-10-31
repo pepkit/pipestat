@@ -1,9 +1,6 @@
 import sys
 import datetime
-
-
 from logging import getLogger
-
 from contextlib import contextmanager
 
 # try:
@@ -13,14 +10,15 @@ from sqlmodel import Session, create_engine, select as sql_select
 # except:
 #     pass
 
-from pipestat.helpers import *
-from pipestat.backends.db_backend.db_helpers import *
-from pipestat.backends.abstract import PipestatBackend
-
 if int(sys.version.split(".")[1]) < 9:
     from typing import List, Dict, Any, Optional, Union
 else:
     from typing import *
+
+from pipestat.helpers import *
+from pipestat.backends.db_backend.db_helpers import *
+from pipestat.backends.abstract import PipestatBackend
+
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -43,7 +41,6 @@ class DBBackend(PipestatBackend):
         :param str record_identifier: record identifier to report for. This
             creates a weak bound to the record, which can be overridden in
             this object method calls
-        :param project_name: project name associated with the record
         :param str pipeline_name: name of pipeline associated with result
         :param str show_db_logs: Defaults to False, toggles showing database logs
         :param str pipeline_type: "sample" or "project"
@@ -53,6 +50,8 @@ class DBBackend(PipestatBackend):
         :param dict status_schema_source: filepath of status schema
         :param str result_formatter: function for formatting result
         """
+
+        super().__init__(pipeline_type)
         _LOGGER.warning(f"Initializing DBBackend for pipeline '{pipeline_name}'")
         self.pipeline_name = pipeline_name
         self.pipeline_type = pipeline_type or "sample"
@@ -143,17 +142,18 @@ class DBBackend(PipestatBackend):
         limit: Optional[int] = 1000,
         offset: Optional[int] = 0,
     ) -> Optional[dict]:
-        """Returns list of records
+        """
+        Returns list of records
 
         :param int limit: limit number of records to this amount
         :param int offset: offset records by this amount
         :return dict records_dict: dictionary of records
-        {
-          "count": x,
-          "limit": l,
-          "offset": o,
-          "records": [...]
-        }
+            {
+              "count": x,
+              "limit": l,
+              "offset": o,
+              "records": [...]
+            }
         """
 
         mod = self.get_model(table_name=self.table_name)
@@ -201,7 +201,8 @@ class DBBackend(PipestatBackend):
         type: Optional[str] = None,
     ) -> Optional[dict]:
         """Lists recent results based on start and end time filter
-        :param int  limit: limit number of results returned
+
+        :param int limit: limit number of results returned
         :param datetime.datetime start: most recent result to filter on, defaults to now, e.g. 2023-10-16 13:03:04.680400
         :param datetime.datetime end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
         :param str type: created or modified
@@ -293,7 +294,6 @@ class DBBackend(PipestatBackend):
         """
 
         record_identifier = record_identifier or self.record_identifier
-
         rm_record = True if result_identifier is None else False
 
         if not self.check_record_exists(
@@ -348,13 +348,14 @@ class DBBackend(PipestatBackend):
         self,
         record_identifier: Optional[str] = None,
         rm_record: Optional[bool] = False,
-    ) -> bool:
+    ) -> NoReturn:
         """
         Remove a record, requires rm_record to be True
 
         :param str record_identifier: unique identifier of the record
         :param bool rm_record: bool for removing record.
         :return bool: whether the result has been removed
+        :raises RecordNotFoundError: if record not found
         """
 
         record_identifier = record_identifier or self.record_identifier
@@ -515,21 +516,21 @@ class DBBackend(PipestatBackend):
         offset: Optional[int] = 0,
     ) -> Union[Any, Dict[str, Any]]:
         """
+        Retrieve a result for multiple records
+
         :param List[str] record_identifier: list of record identifiers
         :param List[str] result_identifier: list of result identifiers to be retrieved
         :param int limit: limit number of records to this amount
         :param int offset: offset records by this amount
-        :return Dict[str, any]: a mapping with filtered results reported for the record
+        :return Dict[str, any]: a dictionary with filtered results reported for the record
         """
 
         record_list = []
 
-        if result_identifier == []:
+        if not result_identifier:
             result_identifier = None
-        if record_identifier == []:
+        if not record_identifier:
             record_identifier = None
-
-        ORM = self.get_model(table_name=self.table_name)
 
         if record_identifier is not None:
             for r_id in record_identifier:

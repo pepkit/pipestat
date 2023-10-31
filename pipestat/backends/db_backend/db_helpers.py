@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import quote_plus
 
 try:
-    import sqlalchemy.orm
+    from sqlmodel import MetaData
     import sqlmodel.sql.expression
     from sqlmodel.main import SQLModel
     from sqlmodel.sql.expression import SelectOfScalar
@@ -41,8 +41,8 @@ def dynamic_filter(
     """
     Return filtered query based on condition.
 
-    :param sqlalchemy.orm.DeclarativeMeta ORM:
-    :param sqlalchemy.orm.Query query: takes query
+    :param sqlalchemy.orm.DeclarativeMeta ORM: sqlalchemy ORM object
+    :param sqlalchemy.orm.Query statement: sqlalchemy select statement (e.g. select([ORM])
     :param [(key,operator,value)] filter_conditions: e.g. [("id", "eq", 1)] operator list
         - eq for ==
         - lt for <
@@ -100,9 +100,9 @@ def selection_filter(
     """
     Return filtered query based on condition.
 
-    :param sqlalchemy.orm.DeclarativeMeta ORM:
-    :param sqlalchemy.orm.Query statement: sql.alchemy query
-    :param list filter_conditions
+    :param sqlalchemy.orm.DeclarativeMeta ORM: sqlalchemy ORM object
+    :param sqlalchemy.orm.Query statement: sqlalchemy select statement (e.g. select([ORM])
+    :param list filter_conditions:
             [{key: key,
             operator: operator,
             value: value}]
@@ -174,6 +174,8 @@ def selection_filter(
 
 def get_nested_column(ORM_column, key_list):
     """
+    Create statement for nested column in the database, column with json content inside
+
     :param sqlalchemy.orm.DeclarativeMeta ORM_column: column attribute on the current ORM
     :param key_list: list of keys, e.g. if the column contains a complex object
     :return sqlalchemy.orm.DeclarativeMeta ORM: column attribute of ORM.
@@ -184,8 +186,13 @@ def get_nested_column(ORM_column, key_list):
         return get_nested_column(ORM_column[key_list[0]], key_list[1:])
 
 
-def define_sqlalchemy_type(value: Any):
-    """Determines the data type of input value"""
+def define_sqlalchemy_type(value: Any) -> Any:
+    """
+    Determine the type of the column (record) and return the corresponding sqlalchemy type.
+
+    :param value: value of the column
+    :return: sqlalchemy type
+    """
     if isinstance(value, (list, tuple)):
         value = value[0]
     if isinstance(value, int):
