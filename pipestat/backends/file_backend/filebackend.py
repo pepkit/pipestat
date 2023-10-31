@@ -211,54 +211,6 @@ class FileBackend(PipestatBackend):
             self.status_file_dir, f"{self.pipeline_name}_{r_id}_{status_identifier}.flag"
         )
 
-    def list_recent_results(
-        self,
-        limit: Optional[int] = None,
-        start: Optional[datetime.datetime] = None,
-        end: Optional[datetime.datetime] = None,
-        type: Optional[str] = None,
-    ) -> Optional[dict]:
-        """Lists recent results based on time filter
-        :param int  limit: limit number of results returned
-        :param datetime.datetime start: most recent result to filter on, defaults to now, e.g. 2023-10-16 13:03:04.680400
-        :param datetime.datetime end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
-        :param str type: created or modified
-        :return dict results: a dict containing start, end, num of records, and list of retrieved records
-        """
-
-        def key_function(tuple):
-            return tuple[1]
-
-        # first collect records that exist  between the start and end times
-        date_format = "%Y-%m-%d %H:%M:%S"
-        record_list = []
-        if type == "modified":
-            time_attribute = MODIFIED_TIME
-        else:
-            time_attribute = CREATED_TIME
-
-        for k in list(self._data.data[self.pipeline_name][self.pipeline_type].keys()):
-            time_stamp = datetime.datetime.strptime(
-                self._data.data[self.pipeline_name][self.pipeline_type][k][time_attribute],
-                date_format,
-            )
-            if time_stamp >= end and time_stamp <= start:
-                record_list.append((k, time_stamp))
-
-        # sort by tuple[1]
-        record_list.sort(key=key_function, reverse=True)
-        # limit
-        record_list = record_list[:limit]
-
-        records_dict = {
-            "count": len(record_list),
-            "start": start,
-            "end": end,
-            "type": type,
-            "records": record_list,
-        }
-
-        return records_dict
 
     def list_results(
         self,
@@ -455,57 +407,6 @@ class FileBackend(PipestatBackend):
 
         return results_formatted
 
-    def retrieve_multiple(
-        self,
-        record_identifier: Optional[List[str]] = None,
-        result_identifier: Optional[List[str]] = None,
-        limit: Optional[int] = 1000,
-        offset: Optional[int] = 0,
-    ) -> Union[Any, Dict[str, Any]]:
-        """
-        :param List[str] record_identifier: list of record identifiers
-        :param List[str] result_identifier: list of result identifiers to be retrieved
-        :param int limit: limit number of records to this amount
-        :param int offset: offset records by this amount
-        :return Dict[str, any]: a mapping with filtered results reported for the record
-        """
-
-        record_list = []
-
-        if result_identifier == [] or result_identifier is None:
-            result_identifier = (
-                list(self.parsed_schema.results_data.keys()) + [CREATED_TIME] + [MODIFIED_TIME]
-            )
-        if record_identifier == [] or record_identifier is None:
-            record_identifier = list(
-                self._data.data[self.pipeline_name][self.pipeline_type].keys()
-            )
-
-        for k in list(self._data.data[self.pipeline_name][self.pipeline_type].keys())[
-            offset : offset + limit
-        ]:
-            if k in record_identifier:
-                retrieved_record = {}
-                retrieved_results = {}
-                for key, value in self._data.data[self.pipeline_name][self.pipeline_type][
-                    k
-                ].items():
-                    if key in result_identifier:
-                        retrieved_results.update({key: value})
-
-                if retrieved_results != {}:
-                    retrieved_record.update({k: retrieved_results})
-                    record_list.append(retrieved_record)
-
-        records_dict = {
-            "count": len(record_list),
-            "limit": limit,
-            "offset": offset,
-            "record_identifiers": record_identifier,
-            "result_identifiers": result_identifier,
-            "records": record_list,
-        }
-        return records_dict
 
     def retrieve(
         self,

@@ -152,15 +152,6 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
-    def list_recent_results(
-        self,
-        limit: Optional[int] = None,
-        start: Optional[datetime.datetime] = None,
-        end: Optional[datetime.datetime] = None,
-        type: Optional[str] = None,
-    ) -> List[str]:
-        _LOGGER.warning("Not implemented yet for this backend")
-        pass
 
     def report(
         self,
@@ -184,23 +175,6 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
-    def retrieve_multiple(
-        self,
-        record_identifier: Optional[List[str]] = None,
-        result_identifier: Optional[List[str]] = None,
-        limit: Optional[int] = 1000,
-        offset: Optional[int] = 0,
-    ) -> Union[Any, Dict[str, Any]]:
-        """
-        :param List[str] record_identifier: list of record identifiers
-        :param List[str] result_identifier: list of result identifiers to be retrieved
-        :param int limit: limit number of records to this amount
-        :param int offset: offset records by this amount
-        :return Dict[str, any]: a mapping with filtered results reported for the record
-        """
-
-        _LOGGER.warning("Not implemented yet for this backend")
-        pass
 
     def remove(
         self,

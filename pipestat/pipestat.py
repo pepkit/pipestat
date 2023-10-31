@@ -625,10 +625,8 @@ class PipestatManager(MutableMapping):
     @require_backend
     def retrieve(
         self,
-        record_identifier: Optional[Union[str, List[str]]] = None,
-        result_identifier: Optional[Union[str, List[str]]] = None,
-        limit: Optional[int] = 1000,
-        offset: Optional[int] = 0,
+        record_identifier: str = None,
+        result_identifier: str = None,
     ) -> Union[Any, Dict[str, Any]]:
         """
         Retrieve a result for a record.
@@ -643,21 +641,6 @@ class PipestatManager(MutableMapping):
         :return any | Dict[str, any]: a single result or a mapping with filtered
             results reported for the record
         """
-        if record_identifier is None and result_identifier is None:
-            # This will retrieve all records and columns.
-            return self.backend.retrieve_multiple(
-                record_identifier, result_identifier, limit, offset
-            )
-
-        if type(record_identifier) is list or type(result_identifier) is list:
-            if len(record_identifier) == 1 and len(result_identifier) == 1:
-                # If user gives single values, just use retrieve.
-                return self.backend.retrieve(record_identifier[0], result_identifier[0])
-            else:
-                # If user gives lists, retrieve_multiple
-                return self.backend.retrieve_multiple(
-                    record_identifier, result_identifier, limit, offset
-                )
 
         r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
 
