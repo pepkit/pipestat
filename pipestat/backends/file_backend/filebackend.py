@@ -406,6 +406,7 @@ class FileBackend(PipestatBackend):
             locked_data.write()
 
         return results_formatted
+
     def select_distinct(
         self,
         columns,
@@ -422,6 +423,7 @@ class FileBackend(PipestatBackend):
         #     query = s.query(*[getattr(ORM, column) for column in columns])
         #     query = query.distinct()
         #     result = query.all()
+        result = None
         return result
 
     def select_records(
@@ -449,7 +451,6 @@ class FileBackend(PipestatBackend):
         """
 
         def get_operator(op):
-
             if op == "eq":
                 return operator.__eq__
             if op == "lt":
@@ -460,7 +461,6 @@ class FileBackend(PipestatBackend):
             return None
 
         def get_nested_column(value, key_list, retrieved_operator):
-
             if len(key_list) == 1 or isinstance(key_list, str):
                 if value.get(key_list, None):
                     if retrieved_operator(key_list, value.get(key_list)):
@@ -472,12 +472,11 @@ class FileBackend(PipestatBackend):
             else:
                 return get_nested_column(value[key_list[0]], key_list[1:])
 
-
-        records_list =[]
+        records_list = []
 
         result_identifier = columns
 
-        total_count = len( self._data.data[self.pipeline_name][self.pipeline_type].keys())
+        total_count = len(self._data.data[self.pipeline_name][self.pipeline_type].keys())
 
         if result_identifier == [] or result_identifier is None:
             result_identifier = (
@@ -492,36 +491,52 @@ class FileBackend(PipestatBackend):
                 )
 
             retrieved_operator = get_operator(filter_condition["operator"])
-            retrieved_results = {}
-            #Check each sample's dict
-            for k in list(self._data.data[self.pipeline_name][self.pipeline_type].keys())[0: limit]:
+            retrieved_results = []
+            retrieved_records_list = []
+            # Check each sample's dict
+            for k in list(self._data.data[self.pipeline_name][self.pipeline_type].keys())[0:limit]:
                 result = False
-                retrieved_results = {}
-                for key, value in self._data.data[self.pipeline_name][self.pipeline_type][k].items():
+                for key, value in self._data.data[self.pipeline_name][self.pipeline_type][
+                    k
+                ].items():
+                    result = False
                     if isinstance(value, Dict):
-                        result = get_nested_column(value, filter_condition["key"], retrieved_operator)
+                        result = get_nested_column(
+                            value, filter_condition["key"], retrieved_operator
+                        )
                     else:
                         if filter_condition["key"] == key:
                             result = retrieved_operator(value, filter_condition["value"])
                     if result is not False:
-                        retrieved_results.update(self._data.data[self.pipeline_name][self.pipeline_type][k])
-                if retrieved_results != {}:
-                    filtered_records_list.append(retrieved_results)
+                        retrieved_results.append(k)
+            if retrieved_results != []:
+                filtered_records_list.append(retrieved_results)
 
         # Now we have a list of dicts for each filtered condition.
         # Depending on Union or Intersection we want to pare down the list.
-        if bool_operator == 'AND' and filtered_records_list !=[]:
+        if bool_operator == "AND" and filtered_records_list != []:
             shared_keys = set()
-            shared_keys.update(filtered_records_list[0].keys())
-            for dict in filtered_records_list[1:]:
-                shared_keys.intersection_update(dict.keys())
+            shared_keys.update(filtered_records_list[0])
+            for list_of_samples in filtered_records_list[1:]:
+                shared_keys.intersection_update(list_of_samples)
             if len(shared_keys) != 0:
-                records_list = [{key: i[key] for key in shared_keys} for i in filtered_records_list if all(key in i for key in shared_keys)]
-            else:
-                records_list =[]
+                for k in sorted(shared_keys):
+                    record = self._data.data[self.pipeline_name][self.pipeline_type][k]
+                    record.update({"record_identifier": k})
+                    records_list.append(record)
 
-        if bool_operator == "OR":
-            records_list = filtered_records_list
+            else:
+                records_list = []
+
+        if bool_operator == "OR" and filtered_records_list != []:
+            unique_keys = []
+            for list_of_samples in filtered_records_list:
+                unique_keys += list_of_samples
+            unique_keys = set(unique_keys)
+            for k in sorted(unique_keys):
+                record = self._data.data[self.pipeline_name][self.pipeline_type][k]
+                record.update({"record_identifier": k})
+                records_list.append(record)
 
         records_dict = {
             "total_size": total_count,

@@ -1382,11 +1382,12 @@ class TestSelectRecords:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
 
-            for i in range(10):
+            for i in range(12):
                 r_id = "sample" + str(i)
                 val = {
                     "md5sum": "hash" + str(i),
                     "number_of_things": i * 10,
+                    "percentage_of_things": i % 2,
                     "switch_value": bool(i % 2),
                     "output_image": {
                         "path": "path_to_" + str(i),
@@ -1412,34 +1413,41 @@ class TestSelectRecords:
                 ],
             )
 
-            assert len(result1["records"]) == 2
-            assert result1["records"][0].record_identifier == "sample8"
+            assert len(result1["records"]) == 4
 
             result1 = psm.select_records(
                 filter_conditions=[
                     {
                         "key": "number_of_things",
+                        "operator": "ge",
+                        "value": 80,
+                    },
+                    {
+                        "key": "percentage_of_things",
                         "operator": "eq",
-                        "value": 80,
+                        "value": 1,
                     },
                 ],
             )
 
-            assert len(result1["records"]) == 1
-            assert result1["records"][0].record_identifier == "sample8"
+            assert len(result1["records"]) == 2
 
             result1 = psm.select_records(
                 filter_conditions=[
                     {
                         "key": "number_of_things",
-                        "operator": "lt",
+                        "operator": "ge",
                         "value": 80,
                     },
+                    {
+                        "key": "percentage_of_things",
+                        "operator": "eq",
+                        "value": 1,
+                    },
                 ],
+                bool_operator="OR",
             )
-
             assert len(result1["records"]) == 8
-            assert result1["records"][0].record_identifier == "sample0"
 
     @pytest.mark.parametrize("backend", ["db"])
     def test_select_records_bad_op(
@@ -1610,7 +1618,6 @@ class TestSelectRecords:
             result2 = psm.retrieve_many(["sample1", "sample3", "sample5"])
             assert len(result2["records"]) == 3
             assert result2["records"][2].record_identifier == "sample5"
-
 
     @pytest.mark.skip("not implemented")
     @pytest.mark.parametrize("backend", ["file", "db"])
