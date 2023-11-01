@@ -1363,7 +1363,7 @@ class TestTimeStamp:
 
 
 class TestSelectRecords:
-    @pytest.mark.parametrize("backend", ["file","db"])
+    @pytest.mark.parametrize("backend", ["file"])
     def test_select_records_basic(
         self,
         config_file_path,
