@@ -472,6 +472,8 @@ class FileBackend(PipestatBackend):
             else:
                 return get_nested_column(value[key_list[0]], key_list[1:])
 
+        date_format = "%Y-%m-%d %H:%M:%S"
+
         records_list = []
 
         result_identifier = columns
@@ -506,7 +508,17 @@ class FileBackend(PipestatBackend):
                         )
                     else:
                         if filter_condition["key"] == key:
-                            result = retrieved_operator(value, filter_condition["value"])
+                            if key in CREATED_TIME or key in MODIFIED_TIME:
+                                try:
+                                    time_stamp = datetime.datetime.strptime(
+                                        self._data.data[self.pipeline_name][self.pipeline_type][k][key],
+                                        date_format,
+                                    )
+                                    result = retrieved_operator(time_stamp, filter_condition["value"])
+                                except TypeError:
+                                    result = False
+                            else:
+                                result = retrieved_operator(value, filter_condition["value"])
                     if result is not False:
                         retrieved_results.append(k)
             if retrieved_results != []:
