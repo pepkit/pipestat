@@ -537,6 +537,9 @@ class FileBackend(PipestatBackend):
                 shared_keys.intersection_update(list_of_samples)
             if len(shared_keys) != 0:
                 for k in sorted(shared_keys):
+                    # for key in self._data.data[self.pipeline_name][self.pipeline_type][k].keys():
+                    #     if key not in result_identifier:
+                    #         del(self._data.data[self.pipeline_name][self.pipeline_type][k][key])
                     record = self._data.data[self.pipeline_name][self.pipeline_type][k]
                     record.update({"record_identifier": k})
                     records_list.append(record)
