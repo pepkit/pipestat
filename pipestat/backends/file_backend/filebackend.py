@@ -511,10 +511,14 @@ class FileBackend(PipestatBackend):
                             if key in CREATED_TIME or key in MODIFIED_TIME:
                                 try:
                                     time_stamp = datetime.datetime.strptime(
-                                        self._data.data[self.pipeline_name][self.pipeline_type][k][key],
+                                        self._data.data[self.pipeline_name][self.pipeline_type][k][
+                                            key
+                                        ],
                                         date_format,
                                     )
-                                    result = retrieved_operator(time_stamp, filter_condition["value"])
+                                    result = retrieved_operator(
+                                        time_stamp, filter_condition["value"]
+                                    )
                                 except TypeError:
                                     result = False
                             else:
