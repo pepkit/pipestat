@@ -198,3 +198,9 @@ def select_records(
     bool_operator: Optional[str] = "AND",
 ) -> Dict[str, Any]:
     _LOGGER.warning("Not implemented yet for this backend")
+
+def select_distinct(
+    self,
+    columns,
+) -> List[Tuple]:
+    _LOGGER.warning("Not implemented yet for this backend")

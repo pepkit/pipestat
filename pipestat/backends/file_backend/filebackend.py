@@ -412,19 +412,38 @@ class FileBackend(PipestatBackend):
         columns,
     ) -> List[Tuple]:
         """
-        Perform a `SELECT DISTINCT` on given table and column
+        Retrieve distinct results given a list of columns
 
         :param List[str] columns: columns to include in the result
         :return List[Tuple]: returns distinct values.
         """
 
-        # ORM = self.get_model(table_name=self.table_name)
-        # with self.session as s:
-        #     query = s.query(*[getattr(ORM, column) for column in columns])
-        #     query = query.distinct()
-        #     result = query.all()
-        result = None
-        return result
+        if columns:
+            if not isinstance(columns, list):
+                raise ValueError(
+                    "Columns must be a list of strings, e.g. ['record_identifier', 'number_of_things']"
+                )
+
+            final_values_list = []
+            for r_id in self._data.data[self.pipeline_name][self.pipeline_type].keys():
+                record_value_list = []
+                for c in columns:
+                    if c in list(
+                        self._data.data[self.pipeline_name][self.pipeline_type][r_id].keys()
+                    ):
+                        value = self._data.data[self.pipeline_name][self.pipeline_type][r_id][c]
+                        record_value_list.append(value)
+                    else:
+                        _LOGGER.warning(msg=f"Column {c} not reported, skipping....")
+                final_values_list.append(record_value_list)
+
+        print(final_values_list)
+        unique_lists = []
+        for list_of_samples in final_values_list:
+            if tuple(list_of_samples) not in unique_lists:
+                unique_lists.append(tuple(list_of_samples)) # Convert to tuple to match DB backend output
+
+        return unique_lists
 
     def select_records(
         self,

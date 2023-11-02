@@ -1779,7 +1779,7 @@ class TestSelectRecords:
             assert len(result2["records"]) == 3
             assert result2["records"][2].record_identifier == "sample5"
 
-    @pytest.mark.skip("not implemented")
+    #@pytest.mark.skip("not implemented")
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_select_distinct(
         self,
@@ -1799,7 +1799,7 @@ class TestSelectRecords:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
 
-            for i in range(6):
+            for i in range(10):
                 r_id = "sample" + str(i)
                 val = {
                     "md5sum": "hash" + str(i),
@@ -1819,8 +1819,24 @@ class TestSelectRecords:
 
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
+            for i in range(0,10,2):
+                r_id = "sample" + str(i)
+                val = {
+                    "md5sum": "hash0",
+                    "number_of_things": 500,
+                }
+                #Overwrite a couple of results such that they are not all unique
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            val = {
+                "number_of_things": 900,
+            }
+            psm.report(record_identifier="sample2", values=val, force_overwrite=True)
             # Gets one or many records
-            result1 = psm.select_distinct(columns=["md5sum"])
+            result1 = psm.select_distinct(columns=["md5sum", "number_of_things", "record_identifier"])
+            result2 = psm.select_distinct(columns=["md5sum", "number_of_things"])
+            result3 = psm.select_distinct(columns=["md5sum"])
+            print(result1)
 
             # assert len(result1["records"]) == 1
             # assert result1["records"][0].record_identifier == "sample1"
