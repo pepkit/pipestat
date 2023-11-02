@@ -1,5 +1,6 @@
 import os.path
 import datetime
+import time
 from collections.abc import Mapping
 
 import pytest
@@ -1279,7 +1280,7 @@ class TestTimeStamp:
             ("sample1", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["db"])
+    @pytest.mark.parametrize("backend", ["file", "db"])
     def test_basic_time_stamp(
         self,
         rec_id,
@@ -1309,6 +1310,9 @@ class TestTimeStamp:
             assert created == modified
             # Report new
             val = {"number_of_things": 1}
+            time.sleep(
+                1
+            )  # The filebackend is so fast that the updated time will equal the created time
             psm.report(record_identifier="sample1", values=val, force_overwrite=True)
             # CHECK MODIFY TIME DIFFERS FROM CREATED TIME
             created = psm.retrieve(record_identifier=rec_id, result_identifier=CREATED_TIME)

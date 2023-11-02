@@ -386,8 +386,11 @@ class FileBackend(PipestatBackend):
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
             values.update({MODIFIED_TIME: current_time})
         if not existing:
-            values.update({CREATED_TIME: current_time})
-            values.update({MODIFIED_TIME: current_time})
+            if record_identifier in self._data[self.pipeline_name][self.pipeline_type].keys():
+                values.update({MODIFIED_TIME: current_time})
+            else:
+                values.update({CREATED_TIME: current_time})
+                values.update({MODIFIED_TIME: current_time})
 
         self._data[self.pipeline_name][self.pipeline_type].setdefault(record_identifier, {})
 
