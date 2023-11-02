@@ -491,9 +491,11 @@ class FileBackend(PipestatBackend):
                 return operator.__lt__
             if op == "ge":
                 return operator.__ge__
+            if op == "gt":
+                return operator.__gt__
             if op == "in":
                 return in_func
-            return None
+            raise ValueError(f"Invalid filter operator: {op}")
 
         def get_nested_column(value, key_list, retrieved_operator):
             """
@@ -542,34 +544,42 @@ class FileBackend(PipestatBackend):
                     0:limit
                 ]:
                     result = False
-                    for key, value in self._data.data[self.pipeline_name][self.pipeline_type][
-                        k
-                    ].items():
-                        result = False
-                        if isinstance(value, Dict):
-                            if key == filter_condition["key"][0]:
-                                result = get_nested_column(
-                                    value, filter_condition["key"][1:], retrieved_operator
-                                )
-                        else:
-                            if filter_condition["key"] == key:
-                                if key in CREATED_TIME or key in MODIFIED_TIME:
-                                    try:
-                                        time_stamp = datetime.datetime.strptime(
-                                            self._data.data[self.pipeline_name][
-                                                self.pipeline_type
-                                            ][k][key],
-                                            date_format,
-                                        )
+                    if filter_condition["key"] != "record_identifier":
+                        for key, value in self._data.data[self.pipeline_name][self.pipeline_type][
+                            k
+                        ].items():
+                            result = False
+                            if isinstance(value, Dict):
+                                if key == filter_condition["key"][0]:
+                                    result = get_nested_column(
+                                        value, filter_condition["key"][1:], retrieved_operator
+                                    )
+                            else:
+                                if filter_condition["key"] == key:
+                                    if key in CREATED_TIME or key in MODIFIED_TIME:
+                                        try:
+                                            time_stamp = datetime.datetime.strptime(
+                                                self._data.data[self.pipeline_name][
+                                                    self.pipeline_type
+                                                ][k][key],
+                                                date_format,
+                                            )
+                                            result = retrieved_operator(
+                                                time_stamp, filter_condition["value"]
+                                            )
+                                        except TypeError:
+                                            result = False
+                                    else:
                                         result = retrieved_operator(
-                                            time_stamp, filter_condition["value"]
+                                            value, filter_condition["value"]
                                         )
-                                    except TypeError:
-                                        result = False
-                                else:
-                                    result = retrieved_operator(value, filter_condition["value"])
-                        if result is not False:
+                            if result is not False:
+                                retrieved_results.append(k)
+                    else:
+                        # If user wants record_identifier
+                        if k in filter_condition["value"]:
                             retrieved_results.append(k)
+
                 if retrieved_results != []:
                     filtered_records_list.append(retrieved_results)
         else:

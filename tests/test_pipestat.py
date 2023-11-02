@@ -1548,7 +1548,7 @@ class TestSelectRecords:
             print(result1)
             assert len(result1["records"]) == 2
 
-    @pytest.mark.parametrize("backend", ["db"])
+    @pytest.mark.parametrize("backend", ["file", "db"])
     def test_select_records_bad_op(
         self,
         config_file_path,
@@ -1655,19 +1655,20 @@ class TestSelectRecords:
 
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
-            with pytest.raises(ValueError):
-                # Column doesn't exist raises error
-                result20 = psm.select_records(
-                    filter_conditions=[
-                        {
-                            "key": "not_number_of_things",
-                            "operator": "eq",
-                            "value": 0,
-                        },
-                    ],
-                    limit=50,
-                    bool_operator="or",
-                )
+            if backend == "db":
+                with pytest.raises(ValueError):
+                    # Column doesn't exist raises error
+                    result20 = psm.select_records(
+                        filter_conditions=[
+                            {
+                                "key": "not_number_of_things",
+                                "operator": "eq",
+                                "value": 0,
+                            },
+                        ],
+                        limit=50,
+                        bool_operator="or",
+                    )
 
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_select_records_complex_result(
@@ -1730,7 +1731,7 @@ class TestSelectRecords:
 
             print(result)
 
-    @pytest.mark.parametrize("backend", ["db"])
+    @pytest.mark.parametrize("backend", ["file", "db"])
     def test_select_records_retrieve_one_many(
         self,
         config_file_path,
@@ -1773,11 +1774,17 @@ class TestSelectRecords:
             result1 = psm.retrieve_one(record_identifier="sample1")
 
             assert len(result1["records"]) == 1
-            assert result1["records"][0].record_identifier == "sample1"
+            if backend != "db":
+                assert result1["records"][0]["record_identifier"] == "sample1"
+            else:
+                result1["records"][0].record_identifier == "sample1"
 
             result2 = psm.retrieve_many(["sample1", "sample3", "sample5"])
             assert len(result2["records"]) == 3
-            assert result2["records"][2].record_identifier == "sample5"
+            if backend != "db":
+                assert result2["records"][2]["record_identifier"] == "sample5"
+            else:
+                assert result2["records"][2].record_identifier == "sample5"
 
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_select_distinct(
