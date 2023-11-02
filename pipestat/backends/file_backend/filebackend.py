@@ -434,14 +434,19 @@ class FileBackend(PipestatBackend):
                         value = self._data.data[self.pipeline_name][self.pipeline_type][r_id][c]
                         record_value_list.append(value)
                     else:
-                        _LOGGER.warning(msg=f"Column {c} not reported, skipping....")
+                        if c != "record_identifier":
+                            _LOGGER.warning(msg=f"Column {c} not reported, skipping....")
+                if "record_identifier" in c:
+                    # record_identifier is not a column in the file backend but the user may want it
+                    record_value_list.append(r_id)
                 final_values_list.append(record_value_list)
 
-        print(final_values_list)
         unique_lists = []
         for list_of_samples in final_values_list:
             if tuple(list_of_samples) not in unique_lists:
-                unique_lists.append(tuple(list_of_samples)) # Convert to tuple to match DB backend output
+                unique_lists.append(
+                    tuple(list_of_samples)
+                )  # Convert to tuple to match DB backend output
 
         return unique_lists
 

@@ -199,6 +199,7 @@ def select_records(
 ) -> Dict[str, Any]:
     _LOGGER.warning("Not implemented yet for this backend")
 
+
 def select_distinct(
     self,
     columns,
