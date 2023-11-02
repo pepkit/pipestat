@@ -274,7 +274,7 @@ def replace_JSON_refs(s: Dict[str, Any], data: Dict[str, Any]) -> Dict[str, Any]
     """
 
     for k, v in list(s.items()):
-        if type(v) == dict:
+        if isinstance(v, dict):
             replace_JSON_refs(s[k], data)
         if "$ref" == k:
             split_value = v.split("/")
