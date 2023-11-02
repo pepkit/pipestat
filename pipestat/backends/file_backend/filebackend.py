@@ -435,7 +435,7 @@ class FileBackend(PipestatBackend):
         bool_operator: Optional[str] = "AND",
     ) -> Dict[str, Any]:
         """
-        Perform a `SELECT` on the table
+        Select records from the FileBackend
 
         :param list[str] columns: columns to include in the result
         :param list[dict]  filter_conditions: e.g. [{"key": ["id"], "operator": "eq", "value": 1)], operator list:
@@ -443,7 +443,6 @@ class FileBackend(PipestatBackend):
             - lt for <
             - ge for >=
             - in for in_
-            - like for like
         :param int limit: maximum number of results to retrieve per page
         :param int cursor: cursor position to begin retrieving records
         :param bool bool_operator: Perform filtering with AND or OR Logic.
@@ -451,6 +450,11 @@ class FileBackend(PipestatBackend):
         """
 
         def get_operator(op):
+            """
+            :param str op: desired operator, "eq", "lt"
+            :return: operator function
+            """
+
             def in_func(x, y):
                 if x in y:
                     return True
@@ -468,16 +472,23 @@ class FileBackend(PipestatBackend):
             return None
 
         def get_nested_column(value, key_list, retrieved_operator):
-            if len(key_list) == 1 or isinstance(key_list, str):
-                if value.get(key_list, None):
-                    if retrieved_operator(key_list, value.get(key_list)):
+            """
+            Recursive function that evaluates a nested list of keys vs a value dict
+
+            :param dict value: nested dictionary
+            :param key_list: list of keys, e.g. keys that may be in the nested dictionary
+            :return bool:
+            """
+            if len(key_list) == 1:
+                if value.get(key_list[0], None):
+                    if retrieved_operator(key_list, value.get(key_list[0])):
                         return True
                     else:
                         return False
                 else:
                     return False
             else:
-                return get_nested_column(value[key_list[0]], key_list[1:])
+                return get_nested_column(value[key_list[0]], key_list[1:], retrieved_operator)
 
         date_format = "%Y-%m-%d %H:%M:%S"
 
@@ -512,9 +523,10 @@ class FileBackend(PipestatBackend):
                     ].items():
                         result = False
                         if isinstance(value, Dict):
-                            result = get_nested_column(
-                                value, filter_condition["key"], retrieved_operator
-                            )
+                            if key == filter_condition["key"][0]:
+                                result = get_nested_column(
+                                    value, filter_condition["key"][1:], retrieved_operator
+                                )
                         else:
                             if filter_condition["key"] == key:
                                 if key in CREATED_TIME or key in MODIFIED_TIME:
@@ -542,7 +554,7 @@ class FileBackend(PipestatBackend):
                 list(self._data.data[self.pipeline_name][self.pipeline_type].keys())
             ]
 
-        # Now we have a list of dicts for each filtered condition.
+        # There is now a list of dicts for each filtered condition.
         # Depending on Union or Intersection we want to pare down the list.
         if bool_operator == "AND" and filtered_records_list != []:
             shared_keys = set()
