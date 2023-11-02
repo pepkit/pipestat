@@ -451,13 +451,20 @@ class FileBackend(PipestatBackend):
         """
 
         def get_operator(op):
+            def in_func(x, y):
+                if x in y:
+                    return True
+                else:
+                    return False
+
             if op == "eq":
                 return operator.__eq__
             if op == "lt":
                 return operator.__lt__
             if op == "ge":
                 return operator.__ge__
-
+            if op == "in":
+                return in_func
             return None
 
         def get_nested_column(value, key_list, retrieved_operator):
@@ -476,57 +483,64 @@ class FileBackend(PipestatBackend):
 
         records_list = []
 
-        result_identifier = columns
+        if columns:
+            if not isinstance(columns, list):
+                raise ValueError(
+                    "Columns must be a list of strings, e.g. ['record_identifier', 'number_of_things']"
+                )
 
         total_count = len(self._data.data[self.pipeline_name][self.pipeline_type].keys())
 
-        if result_identifier == [] or result_identifier is None:
-            result_identifier = (
-                list(self.parsed_schema.results_data.keys()) + [CREATED_TIME] + [MODIFIED_TIME]
-            )
-
         filtered_records_list = []
-        for filter_condition in filter_conditions:
-            if list(filter_condition.keys()) != ["key", "operator", "value"]:
-                raise ValueError(
-                    "Filter conditions must be a dictionary with keys 'key', 'operator', and 'value'"
-                )
+        if filter_conditions:
+            for filter_condition in filter_conditions:
+                if list(filter_condition.keys()) != ["key", "operator", "value"]:
+                    raise ValueError(
+                        "Filter conditions must be a dictionary with keys 'key', 'operator', and 'value'"
+                    )
 
-            retrieved_operator = get_operator(filter_condition["operator"])
-            retrieved_results = []
-            retrieved_records_list = []
-            # Check each sample's dict
-            for k in list(self._data.data[self.pipeline_name][self.pipeline_type].keys())[0:limit]:
-                result = False
-                for key, value in self._data.data[self.pipeline_name][self.pipeline_type][
-                    k
-                ].items():
+                retrieved_operator = get_operator(filter_condition["operator"])
+                retrieved_results = []
+                retrieved_records_list = []
+                # Check each sample's dict
+                for k in list(self._data.data[self.pipeline_name][self.pipeline_type].keys())[
+                    0:limit
+                ]:
                     result = False
-                    if isinstance(value, Dict):
-                        result = get_nested_column(
-                            value, filter_condition["key"], retrieved_operator
-                        )
-                    else:
-                        if filter_condition["key"] == key:
-                            if key in CREATED_TIME or key in MODIFIED_TIME:
-                                try:
-                                    time_stamp = datetime.datetime.strptime(
-                                        self._data.data[self.pipeline_name][self.pipeline_type][k][
-                                            key
-                                        ],
-                                        date_format,
-                                    )
-                                    result = retrieved_operator(
-                                        time_stamp, filter_condition["value"]
-                                    )
-                                except TypeError:
-                                    result = False
-                            else:
-                                result = retrieved_operator(value, filter_condition["value"])
-                    if result is not False:
-                        retrieved_results.append(k)
-            if retrieved_results != []:
-                filtered_records_list.append(retrieved_results)
+                    for key, value in self._data.data[self.pipeline_name][self.pipeline_type][
+                        k
+                    ].items():
+                        result = False
+                        if isinstance(value, Dict):
+                            result = get_nested_column(
+                                value, filter_condition["key"], retrieved_operator
+                            )
+                        else:
+                            if filter_condition["key"] == key:
+                                if key in CREATED_TIME or key in MODIFIED_TIME:
+                                    try:
+                                        time_stamp = datetime.datetime.strptime(
+                                            self._data.data[self.pipeline_name][
+                                                self.pipeline_type
+                                            ][k][key],
+                                            date_format,
+                                        )
+                                        result = retrieved_operator(
+                                            time_stamp, filter_condition["value"]
+                                        )
+                                    except TypeError:
+                                        result = False
+                                else:
+                                    result = retrieved_operator(value, filter_condition["value"])
+                        if result is not False:
+                            retrieved_results.append(k)
+                if retrieved_results != []:
+                    filtered_records_list.append(retrieved_results)
+        else:
+            # Assume user wants all the records if no filter was given.
+            filtered_records_list = [
+                list(self._data.data[self.pipeline_name][self.pipeline_type].keys())
+            ]
 
         # Now we have a list of dicts for each filtered condition.
         # Depending on Union or Intersection we want to pare down the list.
@@ -537,9 +551,12 @@ class FileBackend(PipestatBackend):
                 shared_keys.intersection_update(list_of_samples)
             if len(shared_keys) != 0:
                 for k in sorted(shared_keys):
-                    # for key in self._data.data[self.pipeline_name][self.pipeline_type][k].keys():
-                    #     if key not in result_identifier:
-                    #         del(self._data.data[self.pipeline_name][self.pipeline_type][k][key])
+                    if columns:  # Did the user specify a list of columns as well?
+                        for key in list(
+                            self._data.data[self.pipeline_name][self.pipeline_type][k].keys()
+                        ):
+                            if key not in columns:
+                                self._data.data[self.pipeline_name][self.pipeline_type][k].pop(key)
                     record = self._data.data[self.pipeline_name][self.pipeline_type][k]
                     record.update({"record_identifier": k})
                     records_list.append(record)
@@ -553,6 +570,12 @@ class FileBackend(PipestatBackend):
                 unique_keys += list_of_samples
             unique_keys = set(unique_keys)
             for k in sorted(unique_keys):
+                if columns:  # Did the user specify a list of columns as well?
+                    for key in list(
+                        self._data.data[self.pipeline_name][self.pipeline_type][k].keys()
+                    ):
+                        if key not in columns:
+                            self._data.data[self.pipeline_name][self.pipeline_type][k].pop(key)
                 record = self._data.data[self.pipeline_name][self.pipeline_type][k]
                 record.update({"record_identifier": k})
                 records_list.append(record)
