@@ -555,7 +555,7 @@ class PipestatManager(MutableMapping):
     @require_backend
     def select_distinct(
         self,
-        columns: Optional[List[str]] = None,
+        columns: Optional[Union[str, List[str]]] = None,
     ) -> List[Any]:
         """
         Retrieves unique results for a list of attributes.
@@ -563,6 +563,10 @@ class PipestatManager(MutableMapping):
         :param List[str] columns: columns to include in the result
         :return list[any] result: this is a list of distinct results
         """
+        if not isinstance(columns, list) and not isinstance(columns, str):
+            raise ValueError(
+                "Columns must be a list of strings or string, e.g. ['record_identifier', 'number_of_things']"
+            )
 
         result = self.backend.select_distinct(columns=columns)
         return result

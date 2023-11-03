@@ -1,7 +1,9 @@
 import datetime
 import os.path
 import operator
-import sys
+from functools import reduce
+from itertools import chain
+
 
 from glob import glob
 from logging import getLogger
@@ -10,11 +12,10 @@ from ubiquerg import create_lock, remove_lock
 
 from pipestat.helpers import *
 from pipestat.backends.abstract import PipestatBackend
+from pipestat.const import DATE_FORMAT
 
-if int(sys.version.split(".")[1]) < 9:
-    from typing import List, Dict, Any, Optional, Union
-else:
-    from typing import *
+from typing import List, Dict, Any, Optional, Union, Literal, Callable
+
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -48,6 +49,7 @@ class FileBackend(PipestatBackend):
         :param bool multi_pipelines: allows for running multiple pipelines for one file backend
 
         """
+        super().__init__(pipeline_type)
         _LOGGER.warning("Initialize FileBackend")
 
         self.results_file_path = results_file_path
@@ -410,47 +412,35 @@ class FileBackend(PipestatBackend):
 
         return results_formatted
 
-    def select_distinct(
-        self,
-        columns,
-    ) -> List[Tuple]:
+    def select_distinct(self, columns: Union[str, List[str]]) -> List[Tuple]:
         """
         Retrieve distinct results given a list of columns
 
-        :param List[str] columns: columns to include in the result
+        :param str | List[str] columns: column columns to include in the result
         :return List[Tuple]: returns distinct values.
         """
+        if isinstance(columns, str):
+            columns = [columns]
 
-        if columns:
-            if not isinstance(columns, list):
-                raise ValueError(
-                    "Columns must be a list of strings, e.g. ['record_identifier', 'number_of_things']"
-                )
+        record_data = self._data.data[self.pipeline_name][self.pipeline_type]
 
-            final_values_list = []
-            for r_id in self._data.data[self.pipeline_name][self.pipeline_type].keys():
-                record_value_list = []
-                for c in columns:
-                    if c in list(
-                        self._data.data[self.pipeline_name][self.pipeline_type][r_id].keys()
-                    ):
-                        value = self._data.data[self.pipeline_name][self.pipeline_type][r_id][c]
-                        record_value_list.append(value)
-                    else:
-                        if c != "record_identifier":
-                            _LOGGER.warning(msg=f"Column {c} not reported, skipping....")
-                if "record_identifier" in c:
-                    # record_identifier is not a column in the file backend but the user may want it
-                    record_value_list.append(r_id)
-                final_values_list.append(record_value_list)
+        final_values_list = []
+        for record_id in record_data.keys():
+            record_value_list = []
+            for column in columns:
+                if column in list(record_data[record_id].keys()):
+                    record_value_list.append(record_data[record_id][column])
+                else:
+                    if column != "record_identifier":
+                        _LOGGER.warning(msg=f"Column {column} not reported, skipping....")
 
-        unique_lists = []
-        for list_of_samples in final_values_list:
-            if tuple(list_of_samples) not in unique_lists:
-                unique_lists.append(
-                    tuple(list_of_samples)
-                )  # Convert to tuple to match DB backend output
+            if "record_identifier" in columns:
+                # record_identifier is not a column in the file backend but the user may want it
+                record_value_list.append(record_id)
+            final_values_list.append(tuple(record_value_list))
 
+        # make sure that the order is correct
+        unique_lists = list(set(final_values_list))
         return unique_lists
 
     def select_records(
@@ -475,18 +465,16 @@ class FileBackend(PipestatBackend):
         :param bool bool_operator: Perform filtering with AND or OR Logic.
         :return Dict[str, Any]
         """
+        if cursor:
+            _LOGGER.warning("Cursor not supported for FileBackend, ignoring cursor")
 
-        def get_operator(op):
+        def get_operator(op: Literal["eq", "lt", "ge", "gt", "in"]) -> Any:
             """
+            Get python operator for a given string
+
             :param str op: desired operator, "eq", "lt"
             :return: operator function
             """
-
-            def in_func(x, y):
-                if x in y:
-                    return True
-                else:
-                    return False
 
             if op == "eq":
                 return operator.__eq__
@@ -497,29 +485,27 @@ class FileBackend(PipestatBackend):
             if op == "gt":
                 return operator.__gt__
             if op == "in":
-                return in_func
+                return operator.contains
             raise ValueError(f"Invalid filter operator: {op}")
 
-        def get_nested_column(value, key_list, retrieved_operator):
+        def get_nested_column(result_value: dict, key_list: list, retrieved_operator: Callable):
             """
             Recursive function that evaluates a nested list of keys vs a value dict
 
-            :param dict value: nested dictionary
-            :param key_list: list of keys, e.g. keys that may be in the nested dictionary
+            :param dict result_value: nested dictionary
+            :param key_list: list of keys, e.g. keys that may be in the nested dictionary e.g. ['id', 'name']
+            :param retrieved_operator: operator function (ge, gt...)
             :return bool:
             """
             if len(key_list) == 1:
-                if value.get(key_list[0], None):
-                    if retrieved_operator(key_list, value.get(key_list[0])):
+                if result_value.get(key_list[0], None):
+                    if retrieved_operator(key_list, result_value.get(key_list[0])):
                         return True
-                    else:
-                        return False
-                else:
-                    return False
+                return False
             else:
-                return get_nested_column(value[key_list[0]], key_list[1:], retrieved_operator)
-
-        date_format = "%Y-%m-%d %H:%M:%S"
+                return get_nested_column(
+                    result_value[key_list[0]], key_list[1:], retrieved_operator
+                )
 
         records_list = []
 
@@ -541,31 +527,31 @@ class FileBackend(PipestatBackend):
 
                 retrieved_operator = get_operator(filter_condition["operator"])
                 retrieved_results = []
-                retrieved_records_list = []
+
                 # Check each sample's dict
-                for k in list(self._data.data[self.pipeline_name][self.pipeline_type].keys())[
-                    0:limit
-                ]:
-                    result = False
+                for record_identifier in list(
+                    self._data.data[self.pipeline_name][self.pipeline_type].keys()
+                )[0:limit]:
                     if filter_condition["key"] != "record_identifier":
                         for key, value in self._data.data[self.pipeline_name][self.pipeline_type][
-                            k
+                            record_identifier
                         ].items():
                             result = False
-                            if isinstance(value, Dict):
+                            if isinstance(value, dict):
                                 if key == filter_condition["key"][0]:
                                     result = get_nested_column(
                                         value, filter_condition["key"][1:], retrieved_operator
                                     )
                             else:
                                 if filter_condition["key"] == key:
+                                    # Filter datetime objects
                                     if key in CREATED_TIME or key in MODIFIED_TIME:
                                         try:
                                             time_stamp = datetime.datetime.strptime(
                                                 self._data.data[self.pipeline_name][
                                                     self.pipeline_type
-                                                ][k][key],
-                                                date_format,
+                                                ][record_identifier][key],
+                                                DATE_FORMAT,
                                             )
                                             result = retrieved_operator(
                                                 time_stamp, filter_condition["value"]
@@ -576,14 +562,15 @@ class FileBackend(PipestatBackend):
                                         result = retrieved_operator(
                                             value, filter_condition["value"]
                                         )
-                            if result is not False:
-                                retrieved_results.append(k)
+
+                            if result:
+                                retrieved_results.append(record_identifier)
                     else:
                         # If user wants record_identifier
-                        if k in filter_condition["value"]:
-                            retrieved_results.append(k)
+                        if record_identifier in filter_condition["value"]:
+                            retrieved_results.append(record_identifier)
 
-                if retrieved_results != []:
+                if retrieved_results:
                     filtered_records_list.append(retrieved_results)
         else:
             # Assume user wants all the records if no filter was given.
@@ -593,40 +580,29 @@ class FileBackend(PipestatBackend):
 
         # There is now a list of dicts for each filtered condition.
         # Depending on Union or Intersection we want to pare down the list.
-        if bool_operator == "AND" and filtered_records_list != []:
-            shared_keys = set()
-            shared_keys.update(filtered_records_list[0])
-            for list_of_samples in filtered_records_list[1:]:
-                shared_keys.intersection_update(list_of_samples)
-            if len(shared_keys) != 0:
-                for k in sorted(shared_keys):
-                    if columns:  # Did the user specify a list of columns as well?
-                        for key in list(
-                            self._data.data[self.pipeline_name][self.pipeline_type][k].keys()
-                        ):
-                            if key not in columns:
-                                self._data.data[self.pipeline_name][self.pipeline_type][k].pop(key)
-                    record = self._data.data[self.pipeline_name][self.pipeline_type][k]
-                    record.update({"record_identifier": k})
-                    records_list.append(record)
+        shared_keys = []
 
-            else:
-                records_list = []
+        if bool_operator.lower() == "and" and filtered_records_list:
+            shared_keys = list(reduce(lambda i, j: i & j, (set(x) for x in filtered_records_list)))
 
-        if bool_operator == "OR" and filtered_records_list != []:
-            unique_keys = []
-            for list_of_samples in filtered_records_list:
-                unique_keys += list_of_samples
-            unique_keys = set(unique_keys)
-            for k in sorted(unique_keys):
+        if bool_operator.lower() == "or" and filtered_records_list:
+            shared_keys = list(set(chain(*filtered_records_list)))
+
+        if shared_keys:
+            for record_identifier in sorted(shared_keys):
                 if columns:  # Did the user specify a list of columns as well?
                     for key in list(
-                        self._data.data[self.pipeline_name][self.pipeline_type][k].keys()
+                        self._data.data[self.pipeline_name][self.pipeline_type][
+                            record_identifier
+                        ].keys()
                     ):
                         if key not in columns:
-                            self._data.data[self.pipeline_name][self.pipeline_type][k].pop(key)
-                record = self._data.data[self.pipeline_name][self.pipeline_type][k]
-                record.update({"record_identifier": k})
+                            self._data.data[self.pipeline_name][self.pipeline_type][
+                                record_identifier
+                            ].pop(key)
+
+                record = self._data.data[self.pipeline_name][self.pipeline_type][record_identifier]
+                record.update({"record_identifier": record_identifier})
                 records_list.append(record)
 
         records_dict = {

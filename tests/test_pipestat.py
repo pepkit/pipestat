@@ -1851,3 +1851,59 @@ class TestSelectRecords:
             assert len(result2) == 7
             result3 = psm.select_distinct(columns=["md5sum"])
             assert len(result3) == 6
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_select_distinct_string(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range(10):
+                r_id = "sample" + str(i)
+                val = {
+                    "md5sum": "hash" + str(i),
+                    "number_of_things": i * 10,
+                    "switch_value": bool(i % 2),
+                    "output_image": {
+                        "path": "path_to_" + str(i),
+                        "thumbnail_path": "thumbnail_path" + str(i),
+                        "title": "title_string" + str(i),
+                    },
+                    "output_file_in_object_nested": {
+                        "prop1": {
+                            "prop2": i,
+                        },
+                    },
+                }
+
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            for i in range(0, 10, 2):
+                r_id = "sample" + str(i)
+                val = {
+                    "md5sum": "hash0",
+                    "number_of_things": 500,
+                }
+                # Overwrite a couple of results such that they are not all unique
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            val = {
+                "number_of_things": 900,
+            }
+            psm.report(record_identifier="sample2", values=val, force_overwrite=True)
+            # Gets one or many records
+            result3 = psm.select_distinct(columns="md5sum")
+            assert len(result3) == 6
