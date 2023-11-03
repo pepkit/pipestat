@@ -1,26 +1,57 @@
-import csv
 import datetime
-import time
 from logging import getLogger
 from copy import deepcopy
 from typing import List
+from .exceptions import PipestatDependencyError
 
 from abc import ABC
 from collections.abc import MutableMapping
 
-from pipestat.backends.filebackend import FileBackend
-from pipestat.backends.dbbackend import DBBackend
+from pipestat.backends.file_backend.filebackend import FileBackend
+
+try:
+    from pipestat.backends.db_backend.dbbackend import DBBackend
+    from pipestat.backends.db_backend.db_helpers import *
+except ImportError:
+    # We let this pass, but if the user attempts to create DBBackend, check_dependencies raises exception.
+    pass
+
+try:
+    from pipestat.backends.db_backend.db_parsed_schema import ParsedSchemaDB as ParsedSchema
+except ImportError:
+    from .parsed_schema import ParsedSchema
+
 
 from jsonschema import validate
 
 from yacman import YAMLConfigManager, select_config
 
 from .helpers import *
-from .parsed_schema import ParsedSchema
 
-from .reports import HTMLReportBuilder, get_file_for_table, _create_stats_objs_summaries
+
+from .reports import HTMLReportBuilder, _create_stats_objs_summaries
 
 _LOGGER = getLogger(PKG_NAME)
+
+
+def check_dependencies(dependency_list: list = None, msg: str = None):
+    """Decorator to check that the dependency list has successfully been imported."""
+
+    def wrapper(func):
+        def inner(*args, **kwargs):
+            dependencies_satisfied = True
+            if dependency_list is not None:
+                for i in dependency_list:
+                    if i not in globals():
+                        _LOGGER.warning(msg=f"Missing dependency: {i}")
+                        dependencies_satisfied = False
+            if dependencies_satisfied is False:
+                raise PipestatDependencyError(msg=msg)
+            return func(*args, **kwargs)
+
+        return inner
+
+    return wrapper
 
 
 def require_backend(func):
@@ -136,59 +167,13 @@ class PipestatManager(MutableMapping):
 
         self[OUTPUT_DIR] = self[CONFIG_KEY].priority_get("output_dir", override=output_dir)
 
-        if self[FILE_KEY]:  # file backend
-            _LOGGER.debug(f"Determined file as backend: {results_file_path}")
-            if self[DB_ONLY_KEY]:
-                _LOGGER.debug(
-                    "Running in database only mode does not make sense with a YAML file as a backend. "
-                    "Changing back to using memory."
-                )
-                self[DB_ONLY_KEY] = False
+        if self[FILE_KEY]:
+            # file backend
+            self.initialize_filebackend(record_identifier, results_file_path, flag_file_dir)
 
-            flag_file_dir = self[CONFIG_KEY].priority_get(
-                "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.file)
-            )
-            self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path or self.file)
-            self.backend = FileBackend(
-                self[FILE_KEY],
-                record_identifier,
-                self[PIPELINE_NAME],
-                self[PIPELINE_TYPE],
-                self[SCHEMA_KEY],
-                self[STATUS_SCHEMA_KEY],
-                self[STATUS_FILE_DIR],
-                self[RESULT_FORMATTER],
-                self[MULTI_PIPELINE],
-            )
-
-        else:  # database backend
-            _LOGGER.debug("Determined database as backend")
-            if self[SCHEMA_KEY] is None:
-                raise SchemaNotFoundError("Output schema must be supplied for DB backends.")
-            if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
-                raise NoBackendSpecifiedError()
-            try:
-                dbconf = self[CONFIG_KEY].exp[
-                    CFG_DATABASE_KEY
-                ]  # the .exp expands the paths before url construction
-                self[DB_URL] = construct_db_url(dbconf)
-            except KeyError:
-                raise PipestatDatabaseError(
-                    f"No database section ('{CFG_DATABASE_KEY}') in config"
-                )
-            self._show_db_logs = show_db_logs
-
-            self.backend = DBBackend(
-                record_identifier,
-                self[PIPELINE_NAME],
-                show_db_logs,
-                self[PIPELINE_TYPE],
-                self[SCHEMA_KEY],
-                self[STATUS_SCHEMA_KEY],
-                self[DB_URL],
-                self[STATUS_SCHEMA_SOURCE_KEY],
-                self[RESULT_FORMATTER],
-            )
+        else:
+            # database backend
+            self.initialize_dbbackend(record_identifier, show_db_logs)
 
     def __str__(self):
         """
@@ -249,6 +234,65 @@ class PipestatManager(MutableMapping):
     def _keytransform(self, key):
         return key
 
+    def initialize_filebackend(self, record_identifier, results_file_path, flag_file_dir):
+        _LOGGER.debug(f"Determined file as backend: {results_file_path}")
+        if self[DB_ONLY_KEY]:
+            _LOGGER.debug(
+                "Running in database only mode does not make sense with a YAML file as a backend. "
+                "Changing back to using memory."
+            )
+            self[DB_ONLY_KEY] = False
+
+        flag_file_dir = self[CONFIG_KEY].priority_get(
+            "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.file)
+        )
+        self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path or self.file)
+
+        self.backend = FileBackend(
+            self[FILE_KEY],
+            record_identifier,
+            self[PIPELINE_NAME],
+            self[PIPELINE_TYPE],
+            self[SCHEMA_KEY],
+            self[STATUS_SCHEMA_KEY],
+            self[STATUS_FILE_DIR],
+            self[RESULT_FORMATTER],
+            self[MULTI_PIPELINE],
+        )
+
+        return
+
+    @check_dependencies(
+        dependency_list=["DBBackend"],
+        msg="Missing required dependencies for this usage, e.g. try pip install pipestat['db-backend']",
+    )
+    def initialize_dbbackend(self, record_identifier, show_db_logs):
+        _LOGGER.debug("Determined database as backend")
+        if self[SCHEMA_KEY] is None:
+            raise SchemaNotFoundError("Output schema must be supplied for DB backends.")
+        if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
+            raise NoBackendSpecifiedError()
+        try:
+            dbconf = self[CONFIG_KEY].exp[
+                CFG_DATABASE_KEY
+            ]  # the .exp expands the paths before url construction
+            self[DB_URL] = construct_db_url(dbconf)
+        except KeyError:
+            raise PipestatDatabaseError(f"No database section ('{CFG_DATABASE_KEY}') in config")
+        self._show_db_logs = show_db_logs
+
+        self.backend = DBBackend(
+            record_identifier,
+            self[PIPELINE_NAME],
+            show_db_logs,
+            self[PIPELINE_TYPE],
+            self[SCHEMA_KEY],
+            self[STATUS_SCHEMA_KEY],
+            self[DB_URL],
+            self[STATUS_SCHEMA_SOURCE_KEY],
+            self[RESULT_FORMATTER],
+        )
+
     @require_backend
     def clear_status(
         self,
@@ -308,25 +352,37 @@ class PipestatManager(MutableMapping):
     def list_recent_results(
         self,
         limit: Optional[int] = 1000,
-        start: Optional[datetime.datetime] = datetime.datetime.now(),
+        start: Optional[datetime.datetime] = None,
         end: Optional[datetime.datetime] = None,
         type: Optional[str] = "modified",
-    ) -> List[str]:
+    ) -> dict:
         """
         :param int  limit: limit number of results returned
-        :param datetime.datetime start: most recent result  to filter on, e.g. 2023-10-16 13:03:04.680400
+        :param datetime.datetime start: most recent result to filter on, defaults to now, e.g. 2023-10-16 13:03:04.680400
         :param datetime.datetime end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
-        :param type: created or modified
-        :return list[str]: status identifier, e.g. 'running'
+        :param str type: created or modified
+        :return dict results: a dict containing start, end, num of records, and list of retrieved records
         """
-        # date_format = '%Y-%m-%d %H:%M:%S'
-        # # start = time.strptime(start, date_format)
-        # # if end is None:
-        # #     end = time.strptime("1900-01-01 00:00:00", date_format)
-        #
-        # results = self.backend.list_recent_results(limit=limit, start=start,end=end, type=type)
+        date_format = "%Y-%m-%d %H:%M:%S"
+        if start is None:
+            start = datetime.datetime.now()
+        else:
+            try:
+                start = datetime.datetime.strptime(start, date_format)
+            except ValueError:
+                raise InvalidTimeFormatError(msg=f"Incorrect time format, requires:{date_format}")
 
-        pass
+        if end is None:
+            end = datetime.datetime.strptime("1900-01-01 00:00:00", date_format)
+        else:
+            try:
+                end = datetime.datetime.strptime(end, date_format)
+            except ValueError:
+                raise InvalidTimeFormatError(msg=f"Incorrect time format, requires: {date_format}")
+
+        results = self.backend.list_recent_results(limit=limit, start=start, end=end, type=type)
+
+        return results
 
     def process_schema(self, schema_path):
         # Load pipestat schema in two parts: 1) main and 2) status
@@ -484,8 +540,10 @@ class PipestatManager(MutableMapping):
     @require_backend
     def retrieve(
         self,
-        record_identifier: Optional[str] = None,
-        result_identifier: Optional[str] = None,
+        record_identifier: Optional[Union[str, List[str]]] = None,
+        result_identifier: Optional[Union[str, List[str]]] = None,
+        limit: Optional[int] = 1000,
+        offset: Optional[int] = 0,
     ) -> Union[Any, Dict[str, Any]]:
         """
         Retrieve a result for a record.
@@ -493,13 +551,31 @@ class PipestatManager(MutableMapping):
         If no result ID specified, results for the entire record will
         be returned.
 
-        :param str record_identifier: name of the sample_level record
-        :param str result_identifier: name of the result to be retrieved
-        :return any | Dict[str, any]: a single result or a mapping with all the
+        :param str | List[str] record_identifier: name of the sample_level record
+        :param str | List[str] result_identifier: name of the result to be retrieved
+        :param int limit: limit number of records to this amount
+        :param int offset: offset records by this amount
+        :return any | Dict[str, any]: a single result or a mapping with filtered
             results reported for the record
         """
+        if record_identifier is None and result_identifier is None:
+            # This will retrieve all records and columns.
+            return self.backend.retrieve_multiple(
+                record_identifier, result_identifier, limit, offset
+            )
+
+        if type(record_identifier) is list or type(result_identifier) is list:
+            if len(record_identifier) == 1 and len(result_identifier) == 1:
+                # If user gives single values, just use retrieve.
+                return self.backend.retrieve(record_identifier[0], result_identifier[0])
+            else:
+                # If user gives lists, retrieve_multiple
+                return self.backend.retrieve_multiple(
+                    record_identifier, result_identifier, limit, offset
+                )
 
         r_id = record_identifier or self.record_identifier
+
         return self.backend.retrieve(r_id, result_identifier)
 
     @require_backend

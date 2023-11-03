@@ -6,11 +6,16 @@ from logging import getLogger
 
 from contextlib import contextmanager
 
+# try:
 from sqlalchemy import text
 from sqlmodel import Session, create_engine, select as sql_select
 
+# except:
+#     pass
+
 from pipestat.helpers import *
-from .abstract import PipestatBackend
+from pipestat.backends.db_backend.db_helpers import *
+from pipestat.backends.abstract import PipestatBackend
 
 if int(sys.version.split(".")[1]) < 9:
     from typing import List, Dict, Any, Optional, Union
@@ -48,7 +53,7 @@ class DBBackend(PipestatBackend):
         :param dict status_schema_source: filepath of status schema
         :param str result_formatter: function for formatting result
         """
-        _LOGGER.warning("Initialize DBBackend")
+        _LOGGER.warning(f"Initializing DBBackend for pipeline '{pieline_name}'")
         self.pipeline_name = pipeline_name
         self.pipeline_type = pipeline_type or "sample"
         self.record_identifier = record_identifier
@@ -154,6 +159,7 @@ class DBBackend(PipestatBackend):
         mod = self.get_model(table_name=self.table_name)
 
         with self.session as s:
+            total_count = len(s.exec(sql_select(mod)).all())
             sample_list = []
             stmt = sql_select(mod).offset(offset).limit(limit)
             records = s.exec(stmt).all()
@@ -161,7 +167,7 @@ class DBBackend(PipestatBackend):
                 sample_list.append(i.record_identifier)
 
         records_dict = {
-            "count": len(records),
+            "count": total_count,
             "limit": limit,
             "offset": offset,
             "records": sample_list,
@@ -193,23 +199,49 @@ class DBBackend(PipestatBackend):
         start: Optional[datetime.datetime] = None,
         end: Optional[datetime.datetime] = None,
         type: Optional[str] = None,
-    ) -> List[str]:
-        """Lists recent results based on time filter
-        limit number of results
-        range  = list -> [start, end]
-        return - > just list of record identifers
+    ) -> Optional[dict]:
+        """Lists recent results based on start and end time filter
+        :param int  limit: limit number of results returned
+        :param datetime.datetime start: most recent result to filter on, defaults to now, e.g. 2023-10-16 13:03:04.680400
+        :param datetime.datetime end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
+        :param str type: created or modified
+        :return dict results: a dict containing start, end, num of records, and list of retrieved records
         """
         mod = self.get_model(table_name=self.table_name)
 
         with self.session as s:
-            stmt = sql_select(mod).where(mod.pipestat_modified_time < start)
-            record = s.exec(stmt).first()
+            records_list = []
+            if type == "modified":
+                stmt = (
+                    sql_select(mod)
+                    .where(mod.pipestat_modified_time <= start)
+                    .where(mod.pipestat_modified_time >= end)
+                    .limit(limit)
+                )
+            else:
+                stmt = (
+                    sql_select(mod)
+                    .where(mod.pipestat_created_time <= start)
+                    .where(mod.pipestat_created_time >= end)
+                    .limit(limit)
+                )
+            records = s.exec(stmt).all()
+            if records:
+                for i in reversed(records):
+                    if type == "modified":
+                        records_list.append((i.record_identifier, i.pipestat_modified_time))
+                    else:
+                        records_list.append((i.record_identifier, i.pipestat_created_time))
 
-            if record:
-                return record
+        records_dict = {
+            "count": len(records),
+            "start": start,
+            "end": end,
+            "type": type,
+            "records": records_list,
+        }
 
-        # results = ["demo results"]
-        return record
+        return records_dict
 
     def list_results(
         self,
@@ -474,6 +506,72 @@ class DBBackend(PipestatBackend):
                 if getattr(record, column, None) is not None
             }
         raise RecordNotFoundError(f"Record '{record_identifier}' not found")
+
+    def retrieve_multiple(
+        self,
+        record_identifier: Optional[List[str]] = None,
+        result_identifier: Optional[List[str]] = None,
+        limit: Optional[int] = 1000,
+        offset: Optional[int] = 0,
+    ) -> Union[Any, Dict[str, Any]]:
+        """
+        :param List[str] record_identifier: list of record identifiers
+        :param List[str] result_identifier: list of result identifiers to be retrieved
+        :param int limit: limit number of records to this amount
+        :param int offset: offset records by this amount
+        :return Dict[str, any]: a mapping with filtered results reported for the record
+        """
+
+        record_list = []
+
+        if result_identifier == []:
+            result_identifier = None
+        if record_identifier == []:
+            record_identifier = None
+
+        ORM = self.get_model(table_name=self.table_name)
+
+        if record_identifier is not None:
+            for r_id in record_identifier:
+                filter = [("record_identifier", "eq", r_id)]
+                result = self.select(
+                    columns=result_identifier, filter_conditions=filter, limit=limit, offset=offset
+                )
+                retrieved_record = {}
+                result_dict = dict(result[0])
+                for k, v in list(result_dict.items()):
+                    if k not in self.parsed_schema.results_data.keys():
+                        result_dict.pop(k)
+                retrieved_record.update({r_id: result_dict})
+                record_list.append(retrieved_record)
+        if record_identifier is None:
+            if result_identifier is not None:
+                result_identifier = ["record_identifier"] + result_identifier
+            record_list = []
+            records = self.select(
+                columns=result_identifier, filter_conditions=None, limit=limit, offset=offset
+            )
+            for record in records:
+                retrieved_record = {}
+                r_id = record.record_identifier
+                record_dict = dict(record)
+                for k, v in list(record_dict.items()):
+                    if k not in self.parsed_schema.results_data.keys():
+                        record_dict.pop(k)
+                retrieved_record.update({r_id: record_dict})
+                record_list.append(retrieved_record)
+
+        records_dict = {
+            "count": len(record_list),
+            "limit": limit,
+            "offset": offset,
+            "record_identifiers": record_identifier,
+            "result_identifiers": result_identifier
+            or list(self.parsed_schema.results_data.keys()) + [CREATED_TIME] + [MODIFIED_TIME],
+            "records": record_list,
+        }
+
+        return records_dict
 
     def select(
         self,

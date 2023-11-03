@@ -6,8 +6,9 @@ sudo docker run --rm -it -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=pipestat
 ```
 
 To run with reload on:
+`cd pipestat/pipestatreader`
 `export PIPESTAT_CONFIG="path/to/pipestatconfigfile.yaml"`
 `uvicorn reader:app --reload --port 8000`
 
 To run via pipestat cli:
-`pipestat --config "path/to/pipestatconfigfile.yaml" --host "0.0.0.0" --port 8000`
+`pipestat serve --config "path/to/pipestatconfigfile.yaml" --host "0.0.0.0" --port 8000`
