@@ -72,18 +72,25 @@ class DBBackend(PipestatBackend):
     def check_record_exists(
         self,
         record_identifier: str,
-        table_name: str,
     ) -> bool:
         """
         Check if the specified record exists in the table
 
         :param str record_identifier: record to check for
-        :param str table_name: table name to check
         :return bool: whether the record exists in the table
         """
 
-        query_hit = self.get_one_record(rid=record_identifier, table_name=table_name)
-        return query_hit is not None
+        query_hit = self.select_records(
+            filter_conditions=[
+                {
+                    "key": "record_identifier",
+                    "operator": "eq",
+                    "value": record_identifier,
+                }
+            ]
+        )
+
+        return bool(query_hit["records"])
 
     def count_records(self):
         """
@@ -115,30 +122,6 @@ class DBBackend(PipestatBackend):
             )
         return mod
 
-    def get_one_record(
-        self,
-        table_name: str,
-        rid: Optional[str] = None,
-    ):
-        """
-        Retrieve single record from SQL table
-
-        :param str table_name: table name to check
-        :param str rid: record to check for
-        :return Any: Record object
-        """
-
-        models = (
-            [self.get_model(table_name=table_name)] if table_name else list(self.orms.values())
-        )
-        with self.session as s:
-            for mod in models:
-                stmt = sql_select(mod).where(mod.record_identifier == rid)
-                record = s.exec(stmt).first()
-
-                if record:
-                    return record
-
     def get_status(self, record_identifier: str) -> Optional[str]:
         """
         Get pipeline status
@@ -150,8 +133,18 @@ class DBBackend(PipestatBackend):
 
         try:
             result = self.retrieve(
-                result_identifier=STATUS,
                 record_identifier=record_identifier,
+                result_identifier=STATUS,
+            )
+            result = self.select_records(
+                columns=[STATUS],
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": record_identifier,
+                    }
+                ],
             )
         except RecordNotFoundError:
             return None
@@ -172,18 +165,19 @@ class DBBackend(PipestatBackend):
         """
 
         rid = record_identifier
-        #record = self.get_one_record(rid=rid, table_name=self.table_name)
-        record = self.select_records(filter_conditions=[
-                    {
-                        "key": "record_identifier",
-                        "operator": "eq",
-                        "value": rid,
-                    }])
+        record = self.select_records(
+            filter_conditions=[
+                {
+                    "key": "record_identifier",
+                    "operator": "eq",
+                    "value": rid,
+                }
+            ]
+        )
         try:
             record = record["records"][0]
         except IndexError:
             return []
-
 
         if restrict_to is None:
             return (
@@ -196,9 +190,7 @@ class DBBackend(PipestatBackend):
                 else []
             )
         else:
-            return (
-                [r for r in restrict_to if getattr(record, r, None) is not None] if record else []
-            )
+            return [r for r in restrict_to if record.get(r, None) is not None] if record else []
 
     def remove(
         self,
@@ -220,10 +212,7 @@ class DBBackend(PipestatBackend):
         record_identifier = record_identifier or self.record_identifier
         rm_record = True if result_identifier is None else False
 
-        if not self.check_record_exists(
-            record_identifier=record_identifier,
-            table_name=self.table_name,
-        ):
+        if not self.check_record_exists(record_identifier=record_identifier):
             _LOGGER.error(f"Record '{record_identifier}' not found")
             return False
 
@@ -238,7 +227,6 @@ class DBBackend(PipestatBackend):
             ORMClass = self.get_model(table_name=self.table_name)
             if self.check_record_exists(
                 record_identifier=record_identifier,
-                table_name=self.table_name,
             ):
                 with self.session as s:
                     records = s.query(ORMClass).filter(
@@ -288,7 +276,6 @@ class DBBackend(PipestatBackend):
                 ORMClass = self.get_model(table_name=self.table_name)
                 if self.check_record_exists(
                     record_identifier=record_identifier,
-                    table_name=self.table_name,
                 ):
                     with self.session as s:
                         records = s.query(ORMClass).filter(
@@ -351,7 +338,6 @@ class DBBackend(PipestatBackend):
 
             if not self.check_record_exists(
                 record_identifier=record_identifier,
-                table_name=self.table_name,
             ):
                 current_time = datetime.datetime.now()
                 values.update({CREATED_TIME: current_time})
