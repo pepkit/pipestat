@@ -172,7 +172,18 @@ class DBBackend(PipestatBackend):
         """
 
         rid = record_identifier
-        record = self.get_one_record(rid=rid, table_name=self.table_name)
+        #record = self.get_one_record(rid=rid, table_name=self.table_name)
+        record = self.select_records(filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": rid,
+                    }])
+        try:
+            record = record["records"][0]
+        except IndexError:
+            return []
+
 
         if restrict_to is None:
             return (
