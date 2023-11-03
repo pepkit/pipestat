@@ -119,8 +119,8 @@ class HTMLReportBuilder(object):
             os.makedirs(self.pipeline_reports)
         pages = []
         labels = []
-        for sample in self.prj.backend.get_records()["records"]:
-            sample_name = sample
+        for sample in self.prj.backend.select_records()["records"]:
+            sample_name = sample["record_identifier"]
             sample_dir = self.pipeline_reports
 
             # Confirm sample directory exists, then build page
@@ -259,8 +259,8 @@ class HTMLReportBuilder(object):
             links = []
             html_page_path = os.path.join(self.pipeline_reports, f"{file_result}.html".lower())
 
-            for sample in self.prj.backend.get_records()["records"]:
-                sample_name = sample
+            for sample in self.prj.backend.select_records()["records"]:
+                sample_name = sample["record_identifier"]
                 sample_result = fetch_pipeline_results(
                     project=self.prj,
                     pipeline_name=self.pipeline_name,
@@ -303,8 +303,8 @@ class HTMLReportBuilder(object):
             html_page_path = os.path.join(self.pipeline_reports, f"{image_result}.html".lower())
             figures = []
 
-            for sample in self.prj.backend.get_records()["records"]:
-                sample_name = sample
+            for sample in self.prj.backend.select_records()["records"]:
+                sample_name = sample["record_identifier"]
                 sample_result = fetch_pipeline_results(
                     project=self.prj,
                     pipeline_name=self.pipeline_name,
@@ -510,8 +510,8 @@ class HTMLReportBuilder(object):
         # Produce table rows
         table_row_data = []
         _LOGGER.info(" * Creating sample pages")
-        for sample in self.prj.backend.get_records()["records"]:
-            sample_name = sample
+        for sample in self.prj.backend.select_records()["records"]:
+            sample_name = sample["record_identifier"]
             sample_stat_results = fetch_pipeline_results(
                 project=self.prj,
                 pipeline_name=self.pipeline_name,
@@ -614,8 +614,8 @@ class HTMLReportBuilder(object):
 
     def _stats_to_json_str(self):
         results = {}
-        for sample in self.prj.backend.get_records()["records"]:
-            sample_name = sample
+        for sample in self.prj.backend.select_records()["records"]:
+            sample_name = sample["record_identifier"]
             results[sample_name] = fetch_pipeline_results(
                 project=self.prj,
                 sample_name=sample_name,
@@ -641,8 +641,8 @@ class HTMLReportBuilder(object):
     def _get_navbar_dropdown_data_samples(self, wd, context):
         relpaths = []
         sample_names = []
-        for sample in self.prj.backend.get_records()["records"]:
-            sample_name = sample
+        for sample in self.prj.backend.select_records()["records"]:
+            sample_name = sample["record_identifier"]
             page_name = os.path.join(
                 self.pipeline_reports,
                 f"{sample_name}.html".replace(" ", "_").lower(),
@@ -862,8 +862,8 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
     times = []
     mems = []
     status_descs = []
-    for sample in project.backend.get_records()["records"]:
-        sample_name = sample
+    for sample in project.backend.select_records()["records"]:
+        sample_name = sample["record_identifier"]
         psm = project
         sample_names.append(sample_name)
         # status and status style
@@ -1045,11 +1045,11 @@ def _create_stats_objs_summaries(prj, pipeline_name) -> List[str]:
     else:
         columns = ["Sample Index", "Project Name", "Sample Name", "Results"]
 
-    records = prj.backend.get_records()["records"]
+    records = prj.backend.select_records()["records"]
     record_index = 0
     for record in records:
         record_index += 1
-        record_name = record
+        record_name = record["record_identifier"]
 
         if prj.cfg[PIPELINE_TYPE] == "sample":
             reported_stats = [record_index, record_name]

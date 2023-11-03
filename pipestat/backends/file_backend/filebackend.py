@@ -145,37 +145,6 @@ class FileBackend(PipestatBackend):
             return None
         pass
 
-    def get_records(
-        self,
-        limit: Optional[int] = 1000,
-        offset: Optional[int] = 0,
-    ) -> Optional[dict]:
-        """Returns list of records
-        :param int limit: limit number of records to this amount
-        :param int offset: offset records by this amount
-        :return dict records_dict: dictionary of records
-        {
-          "count": x,
-          "limit": l,
-          "offset": o,
-          "records": [...]
-        }
-        """
-        record_list = []
-        all_records = list(self._data.data[self.pipeline_name][self.pipeline_type].keys())
-        total_count = len(all_records)
-        for record in all_records[offset : offset + limit]:
-            record_list.append(record)
-
-        records_dict = {
-            "count": total_count,
-            "limit": limit,
-            "offset": offset,
-            "records": record_list,
-        }
-
-        return records_dict
-
     def get_status(self, record_identifier: str) -> Optional[str]:
         """
         Get the current pipeline status
@@ -575,7 +544,7 @@ class FileBackend(PipestatBackend):
         else:
             # Assume user wants all the records if no filter was given.
             filtered_records_list = [
-                list(self._data.data[self.pipeline_name][self.pipeline_type].keys())
+                list(self._data.data[self.pipeline_name][self.pipeline_type].keys())[0:limit]
             ]
 
         # There is now a list of dicts for each filtered condition.

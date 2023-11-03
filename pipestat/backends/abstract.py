@@ -78,14 +78,6 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
-    def get_records(
-        self,
-        limit: Optional[int] = 1000,
-        offset: Optional[int] = 0,
-    ) -> Optional[dict]:
-        _LOGGER.warning("Not implemented yet for this backend")
-        pass
-
     def get_status(self, record_identifier: str) -> Optional[str]:
         _LOGGER.warning("Not implemented yet for this backend")
 
@@ -110,10 +102,10 @@ class PipestatBackend(ABC):
 
         unique_result_identifiers = []
 
-        all_records = self.get_records()
+        all_records = self.select_records()
 
         for record in all_records["records"]:
-            result_identifiers = self.retrieve(record_identifier=record)
+            result_identifiers = self.retrieve(record_identifier=record["record_identifier"])
             for k, v in result_identifiers.items():
                 if type(v) == dict:
                     all_paths = get_all_paths(k, v)
@@ -129,7 +121,9 @@ class PipestatBackend(ABC):
                         for subdir in unique_result_identifiers:
                             if k == subdir[0]:
                                 target_dir = subdir[1]
-                        linkname = os.path.join(target_dir, record + "_" + path[0] + "_" + file)
+                        linkname = os.path.join(
+                            target_dir, record["record_identifier"] + "_" + path[0] + "_" + file
+                        )
                         src = os.path.abspath(path[1])
                         src_rel = os.path.relpath(src, os.path.dirname(linkname))
                         force_symlink(src_rel, linkname)

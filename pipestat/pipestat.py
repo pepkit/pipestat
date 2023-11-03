@@ -334,21 +334,6 @@ class PipestatManager(MutableMapping):
         return self.backend.count_records()
 
     @require_backend
-    def get_records(
-        self,
-        limit: Optional[int] = 1000,
-        offset: Optional[int] = 0,
-    ) -> Optional[dict]:
-        """
-        Returns list of records
-        :param int limit: limit number of records to this amount
-        :param int offset: offset records by this amount
-        :return dict: dictionary of records
-        """
-
-        return self.backend.get_records(limit=limit, offset=offset)
-
-    @require_backend
     def get_status(
         self,
         record_identifier: str = None,

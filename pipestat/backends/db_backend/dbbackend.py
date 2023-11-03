@@ -5,7 +5,9 @@ from contextlib import contextmanager
 
 # try:
 from sqlalchemy import text
+from sqlalchemy.engine.row import Row
 from sqlmodel import Session, create_engine, select as sql_select
+from sqlmodel.main import SQLModelMetaclass
 
 # except:
 #     pass
@@ -136,44 +138,6 @@ class DBBackend(PipestatBackend):
 
                 if record:
                     return record
-
-    def get_records(
-        self,
-        limit: Optional[int] = 1000,
-        offset: Optional[int] = 0,
-    ) -> Optional[dict]:
-        """
-        Returns list of records
-
-        :param int limit: limit number of records to this amount
-        :param int offset: offset records by this amount
-        :return dict records_dict: dictionary of records
-            {
-              "count": x,
-              "limit": l,
-              "offset": o,
-              "records": [...]
-            }
-        """
-
-        mod = self.get_model(table_name=self.table_name)
-
-        with self.session as s:
-            total_count = len(s.exec(sql_select(mod)).all())
-            sample_list = []
-            stmt = sql_select(mod).offset(offset).limit(limit)
-            records = s.exec(stmt).all()
-            for i in records:
-                sample_list.append(i.record_identifier)
-
-        records_dict = {
-            "count": total_count,
-            "limit": limit,
-            "offset": offset,
-            "records": sample_list,
-        }
-
-        return records_dict
 
     def get_status(self, record_identifier: str) -> Optional[str]:
         """
@@ -487,7 +451,7 @@ class DBBackend(PipestatBackend):
             total_count = len(s.exec(sql_select(ORM)).all())
 
             if columns is not None:
-                columns = ["id"] + columns  # Must add id, need it for cursor
+                columns = ["id", "record_identifier"] + columns  # Must add id, need it for cursor
                 statement = sqlmodel.select(
                     *[getattr(ORM, column) for column in columns]
                 ).order_by(ORM.id)
@@ -514,11 +478,23 @@ class DBBackend(PipestatBackend):
         else:
             next_cursor = None
 
+        end_results = []
+
+        # SQL model returns either a SQLModelMetaCLass OR a sqlalchemy Row.
+        # We must create a dictionary containing the record before returning
+        if not columns:
+            end_results = [r.dict() for r in results]
+        else:
+            for record in results:
+                record_dict = dict(record._mapping)
+                del record_dict["id"]
+                end_results.append(record_dict)
+
         records_dict = {
             "total_size": total_count,
             "page_size": limit,
             "next_page_token": next_cursor,
-            "records": results,
+            "records": end_results,
         }
 
         return records_dict

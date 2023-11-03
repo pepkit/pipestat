@@ -473,8 +473,8 @@ class TestRetrieval:
                 list(val.values())[0]
             )
 
-    @pytest.mark.parametrize("backend", ["db"])
-    def test_get_records(
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_select_records_no_filter(
         self,
         config_file_path,
         results_file_path,
@@ -498,12 +498,12 @@ class TestRetrieval:
             for k, v in val_dict.items():
                 psm.report(record_identifier=k, values=v, force_overwrite=True)
 
-            results = psm.get_records()
-            assert results["records"][0] == list(val_dict.keys())[0]
-            assert results["count"] == len(list(val_dict.keys()))
-            results = psm.get_records(limit=1, offset=1)
-            assert results["records"][0] == list(val_dict.keys())[1]
-            assert results["count"] == 2
+            results = psm.select_records()
+
+            assert results["records"][0]["record_identifier"] == list(val_dict.keys())[0]
+            assert results["total_size"] == len(list(val_dict.keys()))
+            results = psm.select_records(limit=1)
+            assert len(results["records"]) == 1
 
     @pytest.mark.parametrize(
         ["rec_id", "res_id"],
@@ -1778,17 +1778,13 @@ class TestSelectRecords:
             result1 = psm.retrieve_one(record_identifier="sample1")
 
             assert len(result1["records"]) == 1
-            if backend != "db":
-                assert result1["records"][0]["record_identifier"] == "sample1"
-            else:
-                result1["records"][0].record_identifier == "sample1"
+
+            assert result1["records"][0]["record_identifier"] == "sample1"
 
             result2 = psm.retrieve_many(["sample1", "sample3", "sample5"])
             assert len(result2["records"]) == 3
-            if backend != "db":
-                assert result2["records"][2]["record_identifier"] == "sample5"
-            else:
-                assert result2["records"][2].record_identifier == "sample5"
+
+            assert result2["records"][2]["record_identifier"] == "sample5"
 
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_select_distinct(
