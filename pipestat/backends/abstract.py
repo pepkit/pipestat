@@ -105,8 +105,8 @@ class PipestatBackend(ABC):
         all_records = self.select_records()
 
         for record in all_records["records"]:
-            result_identifiers = self.retrieve(record_identifier=record["record_identifier"])
-            for k, v in result_identifiers.items():
+            # result_identifiers = record.keys() #self.select_records(record_identifier=record["record_identifier"])
+            for k, v in record.items():
                 if type(v) == dict:
                     all_paths = get_all_paths(k, v)
                     for path in all_paths:

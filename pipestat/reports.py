@@ -817,7 +817,7 @@ def fetch_pipeline_results(
     casting_fun = casting_fun or pass_all_fun
     psm = project
     # exclude object-like results from the stats results mapping
-    rep_data = psm.retrieve(record_identifier=sample_name)
+    rep_data = psm.retrieve_one(record_identifier=sample_name)
     results = {
         k: casting_fun(v)
         for k, v in rep_data.items()
@@ -881,7 +881,7 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
         sample_paths.append(f"{sample_name}.html".replace(" ", "_").lower())
         # log file path
         try:
-            log = psm.retrieve(result_identifier="log")["path"]
+            log = psm.retrieve_one(result_identifier="log")["path"]
             assert os.path.exists(log), FileNotFoundError(f"Not found: {log}")
             log_link_names.append(os.path.basename(log))
             log_paths.append(os.path.relpath(log, pipeline_reports_dir))
@@ -891,7 +891,7 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
             log_paths.append("")
         # runtime and peak mem
         try:
-            profile = psm.retrieve(result_identifier="profile")["path"]
+            profile = psm.retrieve_one(result_identifier="profile")["path"]
             assert os.path.exists(profile), FileNotFoundError(f"Not found: {profile}")
             df = _pd.read_csv(profile, sep="\t", comment="#", names=PROFILE_COLNAMES)
             df["runtime"] = _pd.to_timedelta(df["runtime"])
@@ -1053,9 +1053,9 @@ def _create_stats_objs_summaries(prj, pipeline_name) -> List[str]:
 
         if prj.cfg[PIPELINE_TYPE] == "sample":
             reported_stats = [record_index, record_name]
-            rep_data = prj.retrieve(record_identifier=record_name)
+            rep_data = prj.retrieve_one(record_identifier=record_name)
         else:
-            rep_data = prj.retrieve(record_identifier=record_name)
+            rep_data = prj.retrieve_one(record_identifier=record_name)
             reported_stats = [
                 record_index,
                 prj.cfg[PROJECT_NAME] or "No Project Name Supplied",
