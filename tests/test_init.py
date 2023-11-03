@@ -49,11 +49,15 @@ class TestPipestatManagerInstantiation:
         )
         assert (
             "path"
-            in psm.result_schemas["output_file_in_object"]["properties"]["prop1"]["properties"]
+            in psm.result_schemas["output_file_in_object"]["properties"]["prop1"]["file"][
+                "properties"
+            ]
         )
         assert (
             "thumbnail_path"
-            in psm.result_schemas["output_file_in_object"]["properties"]["prop2"]["properties"]
+            in psm.result_schemas["output_file_in_object"]["properties"]["prop2"]["image"][
+                "properties"
+            ]
         )
 
     def test_missing_cfg_data(self, schema_file_path):
@@ -93,10 +97,10 @@ class TestPipestatManagerInstantiation:
         assert os.path.exists(tmp_res_file)
         with open(schema_file_path, "r") as init_schema_file:
             init_schema = oyaml.safe_load(init_schema_file)
-        assert psm1.schema.pipeline_name == init_schema[SCHEMA_PIPELINE_NAME_KEY]
+        assert psm1.schema.pipeline_name == init_schema["properties"][SCHEMA_PIPELINE_NAME_KEY]
         ns2 = "namespace2"
         temp_schema_path = str(tmp_path / "schema.yaml")
-        init_schema[SCHEMA_PIPELINE_NAME_KEY] = ns2
+        init_schema["properties"][SCHEMA_PIPELINE_NAME_KEY] = ns2
         with open(temp_schema_path, "w") as temp_schema_file:
             dump(init_schema, temp_schema_file)
         with pytest.raises(PipestatError) as exc_ctx:

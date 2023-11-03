@@ -1,26 +1,58 @@
-pipeline_name: default_pipeline_name
-samples:
-  collection_of_images:
-    description: "This store collection of values or objects"
-    type: array
-    items:
-      properties:
-          prop1:
-            description: "This is an example file"
-            type: file
-  output_file_in_object:
+title: An example Pipestat output schema
+description: A pipeline that uses pipestat to report sample and project level results.
+type: object
+properties:
+  pipeline_name: "default_pipeline_name"
+  samples:
     type: object
     properties:
-      prop1:
-        description: "This is an example file"
-        type: file
-      prop2:
-        description: "This is an example image"
-        type: image
-    description: "Object output"
-  output_file:
-    type: file
-    description: "This a path to the output file"
-  output_image:
-    type: image
-    description: "This a path to the output image"
+      collection_of_images:
+        description: "This store collection of values or objects"
+        type: array
+        items:
+          properties:
+              prop1:
+                description: "This is an example file"
+                $ref: "#/$defs/file"
+      output_file_in_object:
+        type: object
+        properties:
+          prop1:
+            description: "This is an example file"
+            $ref: "#/$defs/file"
+          prop2:
+            description: "This is an example image"
+            $ref: "#/$defs/image"
+        description: "Object output"
+      output_file:
+        $ref: "#/$defs/file"
+        description: "This a path to the output file"
+      output_image:
+        $ref: "#/$defs/image"
+        description: "This a path to the output image"
+$defs:
+  image:
+    type: object
+    object_type: image
+    properties:
+      path:
+        type: string
+      thumbnail_path:
+        type: string
+      title:
+        type: string
+    required:
+      - path
+      - thumbnail_path
+      - title
+  file:
+    type: object
+    object_type: file
+    properties:
+      path:
+        type: string
+      title:
+        type: string
+    required:
+      - path
+      - title
