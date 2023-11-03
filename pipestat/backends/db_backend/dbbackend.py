@@ -51,6 +51,7 @@ class DBBackend(PipestatBackend):
         :param str result_formatter: function for formatting result
         """
 
+
         super().__init__(pipeline_type)
         _LOGGER.warning(f"Initializing DBBackend for pipeline '{pipeline_name}'")
         self.pipeline_name = pipeline_name

@@ -1199,7 +1199,7 @@ class TestFileTypeLinking:
             },
             {
                 "sample2": {
-                    "output_file_in_object": {
+                    "nested_object": {
                         "example_property_1": {
                             "path": path_file_1,
                             "thumbnail_path": "path_string",
