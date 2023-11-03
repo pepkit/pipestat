@@ -132,10 +132,6 @@ class DBBackend(PipestatBackend):
         """
 
         try:
-            result = self.retrieve(
-                record_identifier=record_identifier,
-                result_identifier=STATUS,
-            )
             result = self.select_records(
                 columns=[STATUS],
                 filter_conditions=[
@@ -148,7 +144,12 @@ class DBBackend(PipestatBackend):
             )
         except RecordNotFoundError:
             return None
-        return result
+        try:
+            status = result["records"][0]["status"]
+        except IndexError:
+            status = None
+
+        return status
 
     def list_results(
         self,
