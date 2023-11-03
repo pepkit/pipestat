@@ -98,8 +98,11 @@ class TestPipestatManagerInstantiation:
         with open(schema_file_path, "r") as init_schema_file:
             init_schema = oyaml.safe_load(init_schema_file)
 
-        assert psm1.cfg[SCHEMA_KEY].pipeline_name == init_schema["properties"][SCHEMA_PIPELINE_NAME_KEY]
-        
+        assert (
+            psm1.cfg[SCHEMA_KEY].pipeline_name
+            == init_schema["properties"][SCHEMA_PIPELINE_NAME_KEY]
+        )
+
         ns2 = "namespace2"
         temp_schema_path = str(tmp_path / "schema.yaml")
         init_schema["properties"][SCHEMA_PIPELINE_NAME_KEY] = ns2
