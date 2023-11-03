@@ -78,7 +78,9 @@ class TestSplitClasses:
             psm.set_status(status_identifier="running", record_identifier=rec_id)
             status = psm.get_status(record_identifier=rec_id)
             assert status == "running"
-            assert psm.retrieve_one(record_identifier=rec_id)['records'][0][val_name] == val[val_name]
+            assert (
+                psm.retrieve_one(record_identifier=rec_id)["records"][0][val_name] == val[val_name]
+            )
             psm.remove(record_identifier=rec_id, result_identifier=val_name)
             if backend == "file":
                 psm.clear_status(record_identifier=rec_id)
@@ -126,13 +128,18 @@ class TestSplitClasses:
             psm.set_status(status_identifier="running", record_identifier=rec_id)
             status = psm.get_status(record_identifier=rec_id)
             assert status == "running"
-            assert psm.retrieve_one(record_identifier=rec_id)['records'][0][val_name] == val[val_name]
+            assert (
+                psm.retrieve_one(record_identifier=rec_id)["records"][0][val_name] == val[val_name]
+            )
             psm.remove(record_identifier=rec_id, result_identifier=val_name)
             if backend == "file":
                 psm.clear_status(record_identifier=rec_id)
                 status = psm.get_status(record_identifier=rec_id)
                 assert status is None
-                assert psm.retrieve_one(record_identifier=rec_id)['records'][0].get(val_name,None) == None
+                assert (
+                    psm.retrieve_one(record_identifier=rec_id)["records"][0].get(val_name, None)
+                    == None
+                )
                 # with pytest.raises(RecordNotFoundError):
                 #     psm.retrieve_one(record_identifier=rec_id)
             if backend == "db":
@@ -311,7 +318,10 @@ class TestReporting:
                 if backend == "file":
                     assert_is_in_files(results_file_path, str(list(val.values())[0]))
             if backend == "db":
-                assert psm.retrieve_one(record_identifier=rec_id)['records'][0][list(val.keys())[0]] == val[list(val.keys())[0]]
+                assert (
+                    psm.retrieve_one(record_identifier=rec_id)["records"][0][list(val.keys())[0]]
+                    == val[list(val.keys())[0]]
+                )
 
     @pytest.mark.parametrize(
         ["rec_id", "val", "success"],
@@ -435,14 +445,15 @@ class TestRetrieval:
             # retrieved_val = psm.retrieve(
             #     record_identifier=rec_id, result_identifier=list(val.keys())[0]
             # )
-            retrieved_val = psm.select_records(filter_conditions=[
-                        {
-                            "key": "record_identifier",
-                            "operator": "eq",
-                            "value": rec_id,
-                        },
-                    ],
-                columns=[list(val.keys())[0]]
+            retrieved_val = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": rec_id,
+                    },
+                ],
+                columns=[list(val.keys())[0]],
             )["records"][0]
             # Test Retrieve Basic
             assert str(list(val.keys())[0]) in list(retrieved_val.keys())
@@ -790,14 +801,15 @@ class TestNoRecordID:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
             psm.report(record_identifier="constant_record_id", values=val, force_overwrite=True)
-            retrieved_val = psm.select_records(filter_conditions=[
-                        {
-                            "key": "record_identifier",
-                            "operator": "eq",
-                            "value": "constant_record_id",
-                        },
-                    ],
-                columns=[list(val.keys())[0]]
+            retrieved_val = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": "constant_record_id",
+                    },
+                ],
+                columns=[list(val.keys())[0]],
             )["records"][0]
             assert str(list(val.keys())[0]) in list(retrieved_val.keys())
 
