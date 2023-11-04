@@ -570,7 +570,11 @@ class PipestatManager(MutableMapping):
                 "value": record_identifier,
             },
         ]
-        return self.select_records(filter_conditions=filter_conditions)
+        result = self.select_records(filter_conditions=filter_conditions)
+        if len(result["records"]) == 0:
+            raise RecordNotFoundError(f"Record '{record_identifier}' not found")
+        else:
+            return result
 
     def retrieve_many(
         self,
@@ -588,7 +592,12 @@ class PipestatManager(MutableMapping):
             "value": record_identifiers,
         }
 
-        return self.select_records(filter_conditions=[filter])
+        result = self.select_records(filter_conditions=[filter])
+
+        if len(result["records"]) == 0:
+            RecordNotFoundError(f"Records, '{record_identifiers}',  not found")
+        else:
+            return result
 
     @require_backend
     def set_status(

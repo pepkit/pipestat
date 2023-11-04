@@ -87,14 +87,14 @@ class TestSplitClasses:
                 status = psm.get_status(record_identifier=rec_id)
                 assert status is None
                 # with pytest.raises(RecordNotFoundError):
-                #     psm.retrieve(record_identifier=rec_id)
+                #     psm.retrieve_one(record_identifier=rec_id)
             if backend == "db":
                 assert (
                     psm.retrieve_one(record_identifier=rec_id)["records"][0].get(val_name) is None
                 )
                 psm.remove(record_identifier=rec_id)
                 # with pytest.raises(RecordNotFoundError):
-                #     psm.retrieve(record_identifier=rec_id)
+                #     psm.retrieve_one(record_identifier=rec_id)
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -719,9 +719,9 @@ class TestRemoval:
                 record_identifier=rec_id, values={res_id: "something"}, force_overwrite=True
             )
             assert psm.remove(record_identifier=rec_id, result_identifier=res_id)
-            # if backend == "file":
-            #     with pytest.raises(RecordNotFoundError):
-            #         psm.retrieve(record_identifier=rec_id)
+            if backend == "file":
+                with pytest.raises(RecordNotFoundError):
+                    psm.retrieve_one(record_identifier=rec_id)
 
 
 class TestNoRecordID:
