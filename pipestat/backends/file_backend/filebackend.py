@@ -556,21 +556,21 @@ class FileBackend(PipestatBackend):
 
         if bool_operator.lower() == "or" and filtered_records_list:
             shared_keys = list(set(chain(*filtered_records_list)))
-
+        record = {}
         if shared_keys:
             for record_identifier in sorted(shared_keys):
                 if columns:  # Did the user specify a list of columns as well?
-                    for key in list(
+                    for key, value in list(
                         self._data.data[self.pipeline_name][self.pipeline_type][
                             record_identifier
-                        ].keys()
+                        ].items()
                     ):
-                        if key not in columns:
-                            self._data.data[self.pipeline_name][self.pipeline_type][
-                                record_identifier
-                            ].pop(key)
-
-                record = self._data.data[self.pipeline_name][self.pipeline_type][record_identifier]
+                        if key in columns:
+                            record.update({key: value})
+                else:
+                    record = self._data.data[self.pipeline_name][self.pipeline_type][
+                        record_identifier
+                    ]
                 record.update({"record_identifier": record_identifier})
                 records_list.append(record)
 

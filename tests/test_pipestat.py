@@ -89,7 +89,9 @@ class TestSplitClasses:
                 # with pytest.raises(RecordNotFoundError):
                 #     psm.retrieve(record_identifier=rec_id)
             if backend == "db":
-                assert getattr(psm.retrieve(record_identifier=rec_id), val_name, None) is None
+                assert (
+                    psm.retrieve_one(record_identifier=rec_id)["records"][0].get(val_name) is None
+                )
                 psm.remove(record_identifier=rec_id)
                 # with pytest.raises(RecordNotFoundError):
                 #     psm.retrieve(record_identifier=rec_id)
@@ -442,9 +444,6 @@ class TestRetrieval:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
-            # retrieved_val = psm.retrieve(
-            #     record_identifier=rec_id, result_identifier=list(val.keys())[0]
-            # )
             retrieved_val = psm.select_records(
                 filter_conditions=[
                     {
@@ -1333,29 +1332,28 @@ class TestTimeStamp:
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
 
             # CHECK CREATION AND MODIFY TIME EXIST
-            created = psm.retrieve(record_identifier=rec_id, result_identifier=CREATED_TIME)
-            #
-            # created = psm.select_records(filter_conditions=[
-            #             {
-            #                 "key": "record_identifier",
-            #                 "operator": "eq",
-            #                 "value": rec_id,
-            #             },
-            #         ],
-            #     columns=[CREATED_TIME]
-            # )["records"][0][CREATED_TIME]
 
-            modified = psm.retrieve(record_identifier=rec_id, result_identifier=MODIFIED_TIME)
+            created = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": rec_id,
+                    },
+                ],
+                columns=[CREATED_TIME],
+            )["records"][0][CREATED_TIME]
 
-            # modified = psm.select_records(filter_conditions=[
-            #             {
-            #                 "key": "record_identifier",
-            #                 "operator": "eq",
-            #                 "value": rec_id,
-            #             },
-            #         ],
-            #     columns=[MODIFIED_TIME]
-            # )["records"][0][MODIFIED_TIME]
+            modified = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": rec_id,
+                    },
+                ],
+                columns=[MODIFIED_TIME],
+            )["records"][0][MODIFIED_TIME]
 
             assert created is not None
             assert modified is not None
@@ -1367,8 +1365,28 @@ class TestTimeStamp:
             )  # The filebackend is so fast that the updated time will equal the created time
             psm.report(record_identifier="sample1", values=val, force_overwrite=True)
             # CHECK MODIFY TIME DIFFERS FROM CREATED TIME
-            created = psm.retrieve(record_identifier=rec_id, result_identifier=CREATED_TIME)
-            modified = psm.retrieve(record_identifier=rec_id, result_identifier=MODIFIED_TIME)
+            created = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": rec_id,
+                    },
+                ],
+                columns=[CREATED_TIME],
+            )["records"][0][CREATED_TIME]
+
+            modified = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": rec_id,
+                    },
+                ],
+                columns=[MODIFIED_TIME],
+            )["records"][0][MODIFIED_TIME]
+
             assert created != modified
 
     @pytest.mark.parametrize("backend", ["db", "file"])
