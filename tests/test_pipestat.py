@@ -487,11 +487,12 @@ class TestRetrieval:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
-            retrieved_val = psm[rec_id]
-            # Test Retrieve Basic
-            assert str(retrieved_val[str(list(retrieved_val.keys())[0])]) == str(
-                list(val.values())[0]
-            )
+
+            val_name = list(val.keys())[0]
+            retrieved_val = psm[rec_id]["records"][0][val_name]
+            value = list(val.values())[0]
+
+            assert retrieved_val == value
 
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_select_records_no_filter(

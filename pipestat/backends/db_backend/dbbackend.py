@@ -373,52 +373,6 @@ class DBBackend(PipestatBackend):
             _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")
             raise
 
-    def retrieve(
-        self,
-        record_identifier: Optional[str] = None,
-        result_identifier: Optional[str] = None,
-    ) -> Union[Any, Dict[str, Any]]:
-        """
-        Retrieve a result for a record.
-
-        If no result ID specified, results for the entire record will
-        be returned.
-
-        :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to be retrieved
-        :return any | Dict[str, any]: a single result or a mapping with all the
-            results reported for the record
-        """
-
-        record_identifier = record_identifier or self.record_identifier
-
-        if result_identifier is not None:
-            existing = self.list_results(
-                record_identifier=record_identifier,
-                restrict_to=[result_identifier],
-            )
-            if not existing:
-                raise RecordNotFoundError(
-                    f"Result '{result_identifier}' not found for record " f"'{record_identifier}'"
-                )
-
-        with self.session as s:
-            record = (
-                s.query(self.get_model(table_name=self.table_name))
-                .filter_by(record_identifier=record_identifier)
-                .first()
-            )
-
-        if record is not None:
-            if result_identifier is not None:
-                return getattr(record, result_identifier)
-            return {
-                column: getattr(record, column)
-                for column in [c.name for c in record.__table__.columns]
-                if getattr(record, column, None) is not None
-            }
-        raise RecordNotFoundError(f"Record '{record_identifier}' not found")
-
     def select_records(
         self,
         columns: Optional[List[str]] = None,

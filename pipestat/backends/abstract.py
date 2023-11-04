@@ -162,12 +162,6 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
-    def retrieve(
-        self, record_identifier: Optional[str] = None, result_identifier: Optional[str] = None
-    ) -> Union[Any, Dict[str, Any]]:
-        _LOGGER.warning("Not implemented yet for this backend")
-        pass
-
     def remove(
         self,
         record_identifier: Optional[str] = None,

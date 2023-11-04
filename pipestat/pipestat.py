@@ -224,7 +224,7 @@ class PipestatManager(MutableMapping):
 
     def __getitem__(self, key):
         # This is a wrapper for the retrieve function:
-        result = self.retrieve(record_identifier=key)
+        result = self.retrieve_one(record_identifier=key)
         return result
 
     def __setitem__(self, key, value):
@@ -589,30 +589,6 @@ class PipestatManager(MutableMapping):
         }
 
         return self.select_records(filter_conditions=[filter])
-
-    @require_backend
-    def retrieve(
-        self,
-        record_identifier: str = None,
-        result_identifier: str = None,
-    ) -> Union[Any, Dict[str, Any]]:
-        """
-        Retrieve a result for a record.
-
-        If no result ID specified, results for the entire record will
-        be returned.
-
-        :param str | List[str] record_identifier: name of the sample_level record
-        :param str | List[str] result_identifier: name of the result to be retrieved
-        :param int limit: limit number of records to this amount
-        :param int offset: offset records by this amount
-        :return any | Dict[str, any]: a single result or a mapping with filtered
-            results reported for the record
-        """
-
-        r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
-
-        return self.backend.retrieve(r_id, result_identifier)
 
     @require_backend
     def set_status(

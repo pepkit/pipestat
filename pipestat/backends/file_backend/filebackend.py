@@ -583,40 +583,6 @@ class FileBackend(PipestatBackend):
 
         return records_dict
 
-    def retrieve(
-        self,
-        record_identifier: Optional[str] = None,
-        result_identifier: Optional[str] = None,
-    ) -> Union[Any, Dict[str, Any]]:
-        """
-        Retrieve a result for a record.
-
-        If no result ID specified, results for the entire record will
-        be returned.
-
-        :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to be retrieved
-        :return any | Dict[str, any]: a single result or a mapping with all the
-            results reported for the record
-        """
-
-        record_identifier = record_identifier or self.record_identifier
-
-        if record_identifier not in self._data[self.pipeline_name][self.pipeline_type]:
-            raise RecordNotFoundError(f"Record '{record_identifier}' not found")
-        if result_identifier is None:
-            return self._data.exp[self.pipeline_name][self.pipeline_type][record_identifier]
-        if (
-            result_identifier
-            not in self._data[self.pipeline_name][self.pipeline_type][record_identifier]
-        ):
-            raise RecordNotFoundError(
-                f"Result '{result_identifier}' not found for record '{record_identifier}'"
-            )
-        return self._data[self.pipeline_name][self.pipeline_type][record_identifier][
-            result_identifier
-        ]
-
     def set_status(
         self,
         status_identifier: str,
