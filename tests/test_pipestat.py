@@ -1885,6 +1885,50 @@ class TestSelectRecords:
             assert result2["records"][2]["record_identifier"] == "sample5"
 
     @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_select_records_retrieve_result(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range(2):
+                r_id = "sample" + str(i)
+                val = {
+                    "md5sum": "hash" + str(i),
+                    "number_of_things": i * 10,
+                    "switch_value": bool(i % 2),
+                    "output_image": {
+                        "path": "path_to_" + str(i),
+                        "thumbnail_path": "thumbnail_path" + str(i),
+                        "title": "title_string" + str(i),
+                    },
+                    "output_file_in_object_nested": {
+                        "prop1": {
+                            "prop2": i,
+                        },
+                    },
+                }
+
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            # Gets one or many records
+            result1 = psm.retrieve_one(record_identifier="sample1", result_identifier="md5sum")
+
+            assert len(result1["records"]) == 1
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
     def test_select_distinct(
         self,
         config_file_path,
