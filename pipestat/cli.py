@@ -78,9 +78,7 @@ def main(test_args=None):
         )
         results_path = args.config or args.results_file
         html_report_path = psm.summarize()
-        _LOGGER.info(
-            f"\nGenerating HTML Report from {results_path} at: {html_report_path}\n"
-        )
+        _LOGGER.info(f"\nGenerating HTML Report from {results_path} at: {html_report_path}\n")
 
         sys.exit(0)
 
@@ -145,8 +143,7 @@ def main(test_args=None):
         )
     if args.command == RETRIEVE_CMD:
         print(
-            psm.retrieve(
-                result_identifier=args.result_identifier,
+            psm.retrieve_one(
                 record_identifier=args.record_identifier,
             )
         )

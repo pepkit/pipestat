@@ -205,9 +205,7 @@ SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME = [
         for data in SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME
     ],
 )
-def test_insufficient_schema__raises_expected_error_and_message(
-    schema_data, expected_message
-):
+def test_insufficient_schema__raises_expected_error_and_message(schema_data, expected_message):
     with pytest.raises(SchemaError) as err_ctx:
         ParsedSchema(schema_data)
     observed_message = str(err_ctx.value)
@@ -215,9 +213,7 @@ def test_insufficient_schema__raises_expected_error_and_message(
 
 
 SIMPLE_ID_SECTION = [(SCHEMA_PIPELINE_NAME_KEY, "test_pipe")]
-SIMPLE_SAMPLES_DATA = [
-    ("count", {"type": "integer", "description": "number of things"})
-]
+SIMPLE_SAMPLES_DATA = [("count", {"type": "integer", "description": "number of things"})]
 SIMPLE_PROJECT_DATA = [("pct", {"type": "number", "description": "percentage"})]
 
 

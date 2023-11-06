@@ -48,9 +48,7 @@ def _env_txt(arg_name):
     """
     arg_val = os.environ.get(ENV_VARS[arg_name])
     txt = f"If not provided '{ENV_VARS[arg_name]}' env var will be used. "
-    return txt + (
-        "Currently not set" if arg_val is None else f"Currently set to: {arg_val}"
-    )
+    return txt + ("Currently not set" if arg_val is None else f"Currently set to: {arg_val}")
 
 
 def build_argparser(desc):
@@ -224,7 +222,7 @@ def build_argparser(desc):
         )
 
     # remove and report
-    for cmd in [REMOVE_CMD, REPORT_CMD, RETRIEVE_CMD]:
+    for cmd in [REMOVE_CMD, REPORT_CMD]:
         sps[cmd].add_argument(
             "-i",
             "--result-identifier",
@@ -241,6 +239,14 @@ def build_argparser(desc):
             help=f"ID of the record to report the result for. {_env_txt('record_identifier')}",
         )
 
+    sps[RETRIEVE_CMD].add_argument(
+        "-r",
+        "--record-identifier",
+        type=str,
+        metavar="R",
+        help=f"ID of the record to report the result for. {_env_txt('record_identifier')}",
+    )
+
     # report
     sps[REPORT_CMD].add_argument(
         "-v",
@@ -254,8 +260,7 @@ def build_argparser(desc):
         "-o",
         "--overwrite",
         action="store_true",
-        help="Whether the result should override existing ones in "
-        "case of name clashes",
+        help="Whether the result should override existing ones in " "case of name clashes",
     )
 
     sps[REPORT_CMD].add_argument(

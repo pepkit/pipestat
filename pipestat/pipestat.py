@@ -210,14 +210,10 @@ class PipestatManager(MutableMapping):
 
         self.cfg[MULTI_PIPELINE] = multi_pipelines
 
-        self.cfg[OUTPUT_DIR] = self.cfg[CONFIG_KEY].priority_get(
-            "output_dir", override=output_dir
-        )
+        self.cfg[OUTPUT_DIR] = self.cfg[CONFIG_KEY].priority_get("output_dir", override=output_dir)
 
         if self.cfg[FILE_KEY]:
-            self.initialize_filebackend(
-                record_identifier, results_file_path, flag_file_dir
-            )
+            self.initialize_filebackend(record_identifier, results_file_path, flag_file_dir)
 
         else:
             self.initialize_dbbackend(record_identifier, show_db_logs)
@@ -284,9 +280,7 @@ class PipestatManager(MutableMapping):
     def __len__(self):
         return len(self.cfg)
 
-    def initialize_filebackend(
-        self, record_identifier, results_file_path, flag_file_dir
-    ):
+    def initialize_filebackend(self, record_identifier, results_file_path, flag_file_dir):
         _LOGGER.debug(f"Determined file as backend: {results_file_path}")
         if self.cfg[DB_ONLY_KEY]:
             _LOGGER.debug(
@@ -334,9 +328,7 @@ class PipestatManager(MutableMapping):
             ]  # the .exp expands the paths before url construction
             self.cfg[DB_URL] = construct_db_url(dbconf)
         except KeyError:
-            raise PipestatDatabaseError(
-                f"No database section ('{CFG_DATABASE_KEY}') in config"
-            )
+            raise PipestatDatabaseError(f"No database section ('{CFG_DATABASE_KEY}') in config")
         self._show_db_logs = show_db_logs
 
         self.backend = DBBackend(
@@ -413,9 +405,7 @@ class PipestatManager(MutableMapping):
             try:
                 start = datetime.datetime.strptime(start, date_format)
             except ValueError:
-                raise InvalidTimeFormatError(
-                    msg=f"Incorrect time format, requires:{date_format}"
-                )
+                raise InvalidTimeFormatError(msg=f"Incorrect time format, requires:{date_format}")
 
         if end is None:
             end = datetime.datetime.strptime("1900-01-01 00:00:00", date_format)
@@ -423,9 +413,7 @@ class PipestatManager(MutableMapping):
             try:
                 end = datetime.datetime.strptime(end, date_format)
             except ValueError:
-                raise InvalidTimeFormatError(
-                    msg=f"Incorrect time format, requires: {date_format}"
-                )
+                raise InvalidTimeFormatError(msg=f"Incorrect time format, requires: {date_format}")
 
         if time_column == "created":
             col_name = CREATED_TIME
@@ -531,9 +519,7 @@ class PipestatManager(MutableMapping):
         values = deepcopy(values)
         r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
         if r_id is None:
-            raise NotImplementedError(
-                "You must supply a record identifier to report results"
-            )
+            raise NotImplementedError("You must supply a record identifier to report results")
 
         result_identifiers = list(values.keys())
         if self.cfg[SCHEMA_KEY] is not None:
@@ -934,9 +920,7 @@ class PipestatBoss(ABC):
             elif i == "project":
                 self.projectmanager = ProjectPipestatManager(**kwargs)
             else:
-                _LOGGER.warning(
-                    f"This pipeline type is not supported. Pipeline supplied: {i}"
-                )
+                _LOGGER.warning(f"This pipeline type is not supported. Pipeline supplied: {i}")
 
     def __getitem__(self, key):
         return getattr(self, key)

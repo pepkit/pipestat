@@ -187,11 +187,7 @@ class DBBackend(PipestatBackend):
                 else []
             )
         else:
-            return (
-                [r for r in restrict_to if record.get(r, None) is not None]
-                if record
-                else []
-            )
+            return [r for r in restrict_to if record.get(r, None) is not None] if record else []
 
     def remove(
         self,
@@ -222,9 +218,7 @@ class DBBackend(PipestatBackend):
             result_identifier=result_identifier,
             record_identifier=record_identifier,
         ):
-            _LOGGER.error(
-                f"'{result_identifier}' has not been reported for '{record_identifier}'"
-            )
+            _LOGGER.error(f"'{result_identifier}' has not been reported for '{record_identifier}'")
             return False
 
         try:
@@ -255,9 +249,7 @@ class DBBackend(PipestatBackend):
             else:
                 raise RecordNotFoundError(f"Record '{record_identifier}' not found")
         except Exception as e:
-            _LOGGER.error(
-                f"Could not remove the result from the database. Exception: {e}"
-            )
+            _LOGGER.error(f"Could not remove the result from the database. Exception: {e}")
             raise
 
         return True
@@ -292,14 +284,10 @@ class DBBackend(PipestatBackend):
                 else:
                     raise RecordNotFoundError(f"Record '{record_identifier}' not found")
             except Exception as e:
-                _LOGGER.error(
-                    f"Could not remove the result from the database. Exception: {e}"
-                )
+                _LOGGER.error(f"Could not remove the result from the database. Exception: {e}")
                 raise
         else:
-            _LOGGER.info(
-                f" rm_record flag False, aborting Removing '{record_identifier}' record"
-            )
+            _LOGGER.info(f" rm_record flag False, aborting Removing '{record_identifier}' record")
 
     def report(
         self,
@@ -329,9 +317,7 @@ class DBBackend(PipestatBackend):
         result_identifiers = list(values.keys())
         if self.parsed_schema is None:
             raise SchemaNotFoundError("DB Backend report results requires schema")
-        self.assert_results_defined(
-            results=result_identifiers, pipeline_type=self.pipeline_type
-        )
+        self.assert_results_defined(results=result_identifiers, pipeline_type=self.pipeline_type)
 
         existing = self.list_results(
             record_identifier=record_identifier,
@@ -339,9 +325,7 @@ class DBBackend(PipestatBackend):
         )
         if existing:
             existing_str = ", ".join(existing)
-            _LOGGER.warning(
-                f"These results exist for '{record_identifier}': {existing_str}"
-            )
+            _LOGGER.warning(f"These results exist for '{record_identifier}': {existing_str}")
             if not force_overwrite:
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
@@ -364,9 +348,7 @@ class DBBackend(PipestatBackend):
                 with self.session as s:
                     record_to_update = (
                         s.query(ORMClass)
-                        .filter(
-                            getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
-                        )
+                        .filter(getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier)
                         .first()
                     )
                     values.update({MODIFIED_TIME: datetime.datetime.now()})
@@ -385,9 +367,7 @@ class DBBackend(PipestatBackend):
                 )
             return results_formatted
         except Exception as e:
-            _LOGGER.error(
-                f"Could not insert the result into the database. Exception: {e}"
-            )
+            _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")
             raise
 
     def select_records(
@@ -425,9 +405,9 @@ class DBBackend(PipestatBackend):
                     "record_identifier",
                 ] + columns  # Must add id, need it for cursor
                 try:
-                    statement = sql_select(
-                        *[getattr(ORM, column) for column in columns]
-                    ).order_by(ORM.id)
+                    statement = sql_select(*[getattr(ORM, column) for column in columns]).order_by(
+                        ORM.id
+                    )
                 except AttributeError:
                     raise ColumnNotFoundError(
                         msg=f"One of the supplied column does not exists in current table: {columns}"
@@ -533,15 +513,11 @@ class DBBackend(PipestatBackend):
             )
             raise
         if prev_status:
-            _LOGGER.debug(
-                f"Changed status from '{prev_status}' to '{status_identifier}'"
-            )
+            _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
 
     def _create_orms(self, pipeline_type):
         """Create ORMs."""
-        _LOGGER.debug(
-            f"Creating models for '{self.pipeline_name}' table in '{PKG_NAME}' database"
-        )
+        _LOGGER.debug(f"Creating models for '{self.pipeline_name}' table in '{PKG_NAME}' database")
         model = self.parsed_schema.build_model(pipeline_type=pipeline_type)
         table_name = self.parsed_schema._table_name(pipeline_type)
         # TODO reconsider line below. Why do we need to return a dict?

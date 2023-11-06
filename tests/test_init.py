@@ -49,15 +49,15 @@ class TestPipestatManagerInstantiation:
         )
         assert (
             "path"
-            in psm.result_schemas["output_file_in_object"]["properties"]["prop1"][
-                "file"
-            ]["properties"]
+            in psm.result_schemas["output_file_in_object"]["properties"]["prop1"]["file"][
+                "properties"
+            ]
         )
         assert (
             "thumbnail_path"
-            in psm.result_schemas["output_file_in_object"]["properties"]["prop2"][
-                "image"
-            ]["properties"]
+            in psm.result_schemas["output_file_in_object"]["properties"]["prop2"]["image"][
+                "properties"
+            ]
         )
 
     def test_missing_cfg_data(self, schema_file_path):
@@ -159,10 +159,7 @@ class TestPipestatManagerInstantiation:
             }
             for k, v in val_dict.items():
                 psm.report(record_identifier=k, values=v, force_overwrite=True)
-            assert (
-                f"Records count: {len(psm.backend._data[STANDARD_TEST_PIPE_ID])}"
-                in str(psm)
-            )
+            assert f"Records count: {len(psm.backend._data[STANDARD_TEST_PIPE_ID])}" in str(psm)
 
     def test_init_config(self, capfd):
         """Tests initializing generic configuration file"""

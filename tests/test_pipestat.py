@@ -79,8 +79,7 @@ class TestSplitClasses:
             status = psm.get_status(record_identifier=rec_id)
             assert status == "running"
             assert (
-                psm.retrieve_one(record_identifier=rec_id)["records"][0][val_name]
-                == val[val_name]
+                psm.retrieve_one(record_identifier=rec_id)["records"][0][val_name] == val[val_name]
             )
             psm.remove(record_identifier=rec_id, result_identifier=val_name)
             if backend == "file":
@@ -91,10 +90,7 @@ class TestSplitClasses:
                     psm.retrieve_one(record_identifier=rec_id)
             if backend == "db":
                 assert (
-                    psm.retrieve_one(record_identifier=rec_id)["records"][0].get(
-                        val_name
-                    )
-                    is None
+                    psm.retrieve_one(record_identifier=rec_id)["records"][0].get(val_name) is None
                 )
                 psm.remove(record_identifier=rec_id)
                 with pytest.raises(RecordNotFoundError):
@@ -135,8 +131,7 @@ class TestSplitClasses:
             status = psm.get_status(record_identifier=rec_id)
             assert status == "running"
             assert (
-                psm.retrieve_one(record_identifier=rec_id)["records"][0][val_name]
-                == val[val_name]
+                psm.retrieve_one(record_identifier=rec_id)["records"][0][val_name] == val[val_name]
             )
             psm.remove(record_identifier=rec_id, result_identifier=val_name)
             if backend == "file":
@@ -192,16 +187,11 @@ class TestReporting:
                     " is in ",
                     psm.backend._data[STANDARD_TEST_PIPE_ID],
                 )
-                assert (
-                    rec_id
-                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
-                )
+                assert rec_id in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
                 print("Test if", list(val.keys())[0], " is in ", rec_id)
                 assert (
                     list(val.keys())[0]
-                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][
-                        rec_id
-                    ]
+                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
                 )
                 if backend == "file":
                     assert_is_in_files(results_file_path, str(list(val.values())[0]))
@@ -246,16 +236,11 @@ class TestReporting:
                     " is in ",
                     psm.backend._data[STANDARD_TEST_PIPE_ID],
                 )
-                assert (
-                    rec_id
-                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
-                )
+                assert rec_id in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
                 print("Test if", list(val.keys())[0], " is in ", rec_id)
                 assert (
                     list(val.keys())[0]
-                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][
-                        rec_id
-                    ]
+                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
                 )
                 if backend == "file":
                     assert_is_in_files(results_file_path, str(list(val.values())[0]))
@@ -325,23 +310,16 @@ class TestReporting:
             psm = SamplePipestatManager(**args)
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
             if backend == "file":
-                assert (
-                    rec_id
-                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
-                )
+                assert rec_id in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
                 assert (
                     list(val.keys())[0]
-                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][
-                        rec_id
-                    ]
+                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
                 )
                 if backend == "file":
                     assert_is_in_files(results_file_path, str(list(val.values())[0]))
             if backend == "db":
                 assert (
-                    psm.retrieve_one(record_identifier=rec_id)["records"][0][
-                        list(val.keys())[0]
-                    ]
+                    psm.retrieve_one(record_identifier=rec_id)["records"][0][list(val.keys())[0]]
                     == val[list(val.keys())[0]]
                 )
 
@@ -541,9 +519,7 @@ class TestRetrieval:
 
             results = psm.select_records()
 
-            assert (
-                results["records"][0]["record_identifier"] == list(val_dict.keys())[0]
-            )
+            assert results["records"][0]["record_identifier"] == list(val_dict.keys())[0]
             assert results["total_size"] == len(list(val_dict.keys()))
             results = psm.select_records(limit=1)
             assert len(results["records"]) == 1
@@ -614,9 +590,7 @@ class TestRetrieval:
 
 
 class TestRemoval:
-    @pytest.mark.parametrize(
-        ["rec_id", "res_id", "val"], [("sample2", "number_of_things", 1)]
-    )
+    @pytest.mark.parametrize(["rec_id", "res_id", "val"], [("sample2", "number_of_things", 1)])
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_remove_basic(
         self,
@@ -649,9 +623,7 @@ class TestRemoval:
                 assert (
                     # res_id not in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
                     res_id
-                    not in psm.backend._data[STANDARD_TEST_PIPE_ID][
-                        PROJECT_SAMPLE_LEVEL
-                    ][rec_id]
+                    not in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
                 )
             else:
                 col_name = list(vals[0].keys())[0]
@@ -817,14 +789,11 @@ class TestNoRecordID:
             if backend == "file":
                 assert_is_in_files(results_file_path, str(list(val.values())[0]))
                 assert (
-                    CONST_REC_ID
-                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
+                    CONST_REC_ID in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
                 )
                 assert (
                     list(val.keys())[0]
-                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][
-                        CONST_REC_ID
-                    ]
+                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][CONST_REC_ID]
                 )
             if backend == "db":
                 val_name = list(val.keys())[0]
@@ -847,9 +816,7 @@ class TestNoRecordID:
         ],
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_retrieve(
-        self, val, config_file_path, schema_file_path, results_file_path, backend
-    ):
+    def test_retrieve(self, val, config_file_path, schema_file_path, results_file_path, backend):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path, record_identifier=CONST_REC_ID)
@@ -860,9 +827,7 @@ class TestNoRecordID:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            psm.report(
-                record_identifier="constant_record_id", values=val, force_overwrite=True
-            )
+            psm.report(record_identifier="constant_record_id", values=val, force_overwrite=True)
             retrieved_val = psm.select_records(
                 filter_conditions=[
                     {
@@ -884,9 +849,7 @@ class TestNoRecordID:
         ],
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_remove(
-        self, val, config_file_path, schema_file_path, results_file_path, backend
-    ):
+    def test_remove(self, val, config_file_path, schema_file_path, results_file_path, backend):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path, record_identifier=CONST_REC_ID)
@@ -897,9 +860,7 @@ class TestNoRecordID:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            psm.report(
-                record_identifier="constant_record_id", values=val, force_overwrite=True
-            )
+            psm.report(record_identifier="constant_record_id", values=val, force_overwrite=True)
             assert psm.remove(result_identifier=list(val.keys())[0])
 
 
@@ -937,9 +898,7 @@ class TestEnvVars:
             pytest.fail(f"Error during pipestat manager creation: {e}")
 
     # @pytest.mark.skip(reason="known failure for now with config file")
-    def test_config__psm_is_built_from_config_file_env_var(
-        self, monkeypatch, config_file_path
-    ):
+    def test_config__psm_is_built_from_config_file_env_var(self, monkeypatch, config_file_path):
         """PSM can be created from config parsed from env var value."""
         monkeypatch.setenv(ENV_VARS["config"], config_file_path)
         try:
@@ -997,9 +956,7 @@ def absolutize_file(f: str) -> str:
         ]
     ],
 )
-@pytest.mark.parametrize(
-    "backend_data", [BACKEND_KEY_FILE, BACKEND_KEY_DB], indirect=True
-)
+@pytest.mark.parametrize("backend_data", [BACKEND_KEY_FILE, BACKEND_KEY_DB], indirect=True)
 def test_manager_has_correct_status_schema_and_status_schema_source(
     schema_file_path, exp_status_schema, exp_status_schema_path, backend_data
 ):
@@ -1025,11 +982,7 @@ class TestPipestatBoss:
 
         values_sample = [
             {"sample4": {"smooth_bw": "smooth_bw string"}},
-            {
-                "sample5": {
-                    "output_file": {"path": "path_string", "title": "title_string"}
-                }
-            },
+            {"sample5": {"output_file": {"path": "path_string", "title": "title_string"}}},
         ]
 
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
@@ -1046,20 +999,12 @@ class TestPipestatBoss:
 
             for i in values_sample:
                 for r, v in i.items():
-                    psb.samplemanager.report(
-                        record_identifier=r, values=v, force_overwrite=True
-                    )
-                    psb.samplemanager.set_status(
-                        record_identifier=r, status_identifier="running"
-                    )
+                    psb.samplemanager.report(record_identifier=r, values=v, force_overwrite=True)
+                    psb.samplemanager.set_status(record_identifier=r, status_identifier="running")
             for i in values_project:
                 for r, v in i.items():
-                    psb.projectmanager.report(
-                        record_identifier=r, values=v, force_overwrite=True
-                    )
-                    psb.projectmanager.set_status(
-                        record_identifier=r, status_identifier="running"
-                    )
+                    psb.projectmanager.report(record_identifier=r, values=v, force_overwrite=True)
+                    psb.projectmanager.set_status(record_identifier=r, status_identifier="running")
 
 
 class TestHTMLReport:
@@ -1085,17 +1030,9 @@ class TestHTMLReport:
         ]
         values_sample = [
             {"sample4": {"smooth_bw": "smooth_bw string"}},
-            {
-                "sample5": {
-                    "output_file": {"path": "path_string", "title": "title_string"}
-                }
-            },
+            {"sample5": {"output_file": {"path": "path_string", "title": "title_string"}}},
             {"sample4": {"aligned_bam": "aligned_bam string"}},
-            {
-                "sample6": {
-                    "output_file": {"path": "path_string", "title": "title_string"}
-                }
-            },
+            {"sample6": {"output_file": {"path": "path_string", "title": "title_string"}}},
             {
                 "sample7": {
                     "output_image": {
@@ -1289,32 +1226,16 @@ class TestFileTypeLinking:
         backend,
     ):
         # paths to images and files
-        path_file_1 = get_data_file_path(
-            "test_file_links/results/project_dir_example_1/ex1.txt"
-        )
-        path_file_2 = get_data_file_path(
-            "test_file_links/results/project_dir_example_1/ex2.txt"
-        )
-        path_image_1 = get_data_file_path(
-            "test_file_links/results/project_dir_example_1/ex3.png"
-        )
-        path_image_2 = get_data_file_path(
-            "test_file_links/results/project_dir_example_1/ex4.png"
-        )
+        path_file_1 = get_data_file_path("test_file_links/results/project_dir_example_1/ex1.txt")
+        path_file_2 = get_data_file_path("test_file_links/results/project_dir_example_1/ex2.txt")
+        path_image_1 = get_data_file_path("test_file_links/results/project_dir_example_1/ex3.png")
+        path_image_2 = get_data_file_path("test_file_links/results/project_dir_example_1/ex4.png")
 
         values_sample = [
             {"sample1": {"number_of_things": 100}},
             {"sample2": {"number_of_things": 200}},
-            {
-                "sample1": {
-                    "output_file": {"path": path_file_1, "title": "title_string"}
-                }
-            },
-            {
-                "sample2": {
-                    "output_file": {"path": path_file_2, "title": "title_string"}
-                }
-            },
+            {"sample1": {"output_file": {"path": path_file_1, "title": "title_string"}}},
+            {"sample2": {"output_file": {"path": path_file_2, "title": "title_string"}}},
             {
                 "sample1": {
                     "output_image": {
@@ -1371,9 +1292,7 @@ class TestFileTypeLinking:
             },
         ]
 
-        with NamedTemporaryFile() as f, TemporaryDirectory() as d, ContextManagerDBTesting(
-            DB_URL
-        ):
+        with NamedTemporaryFile() as f, TemporaryDirectory() as d, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             temp_dir = d
             args = dict(schema_path=output_schema_as_JSON_schema, database_only=False)
@@ -1403,14 +1322,10 @@ class TestFileTypeLinking:
             for root, dirs, files in os.walk(os.path.join(linkdir, "output_file")):
                 assert "sample1_output_file_ex1.txt" in files
             # Test complex types
-            for root, dirs, files in os.walk(
-                os.path.join(linkdir, "output_file_in_object")
-            ):
+            for root, dirs, files in os.walk(os.path.join(linkdir, "output_file_in_object")):
                 assert "sample2_example_property_1_ex1.txt" in files
 
-            for root, dirs, files in os.walk(
-                os.path.join(linkdir, "output_file_nested_object")
-            ):
+            for root, dirs, files in os.walk(os.path.join(linkdir, "output_file_nested_object")):
                 # TODO This example will have collision if the file names and property names are the same
                 print(files)
 
@@ -1545,9 +1460,7 @@ class TestTimeStamp:
                 psm.list_recent_results(start="2100-01-01dsfds", end="1970-01-01")
 
             # Test large window
-            results = psm.list_recent_results(
-                start="2100-01-01 0:0:0", end="1970-01-01 0:0:0"
-            )
+            results = psm.list_recent_results(start="2100-01-01 0:0:0", end="1970-01-01 0:0:0")
             assert len(results["records"]) == 10
 
 

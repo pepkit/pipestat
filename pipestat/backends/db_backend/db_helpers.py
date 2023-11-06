@@ -23,13 +23,9 @@ def construct_db_url(dbconf):
             driver=dbconf["driver"],
         )  # driver = sqlite, mysql, postgresql, oracle, or mssql
     except KeyError as e:
-        raise MissingConfigDataError(
-            f"Could not determine database URL. Caught error: {str(e)}"
-        )
+        raise MissingConfigDataError(f"Could not determine database URL. Caught error: {str(e)}")
     parsed_creds = {k: quote_plus(str(v)) for k, v in creds.items()}
-    return "{dialect}+{driver}://{user}:{passwd}@{host}:{port}/{name}".format(
-        **parsed_creds
-    )
+    return "{dialect}+{driver}://{user}:{passwd}@{host}:{port}/{name}".format(**parsed_creds)
 
 
 def selection_filter(
@@ -86,9 +82,7 @@ def selection_filter(
                 column = getattr(ORM, filter_condition["key"], None)
 
             else:
-                raise ValueError(
-                    "Filter condition key must be a string or list of strings"
-                )
+                raise ValueError("Filter condition key must be a string or list of strings")
 
             op = filter_condition["operator"]
             value = filter_condition["value"]
@@ -98,9 +92,7 @@ def selection_filter(
                     f"Selected filter column does not exist: {filter_condition['key']}"
                 )
             if op == "in":
-                filt = column.in_(
-                    value if isinstance(value, list) else value.split(",")
-                )
+                filt = column.in_(value if isinstance(value, list) else value.split(","))
             else:
                 attr = next(
                     filter(lambda a: hasattr(column, a), [op, op + "_", f"__{op}__"]),

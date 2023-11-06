@@ -154,18 +154,13 @@ class ParsedSchemaDB(ParsedSchema):
                 typename = subdata[SCHEMA_TYPE_KEY]
             except KeyError:
                 if require_type:
-                    _LOGGER.error(
-                        f"'{SCHEMA_TYPE_KEY}' is required for each schema element"
-                    )
+                    _LOGGER.error(f"'{SCHEMA_TYPE_KEY}' is required for each schema element")
                     raise
                 else:
                     data_type = str
             else:
                 data_type = self._get_data_type(typename)
-            if (
-                data_type == CLASSES_BY_TYPE["object"]
-                or data_type == CLASSES_BY_TYPE["array"]
-            ):
+            if data_type == CLASSES_BY_TYPE["object"] or data_type == CLASSES_BY_TYPE["array"]:
                 defs[name] = (
                     data_type,
                     Field(sa_column=Column(JSONB), default=null()),
@@ -329,9 +324,7 @@ def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:
     :return dict: schema with types replaced
     """
     for k, v in s.items():
-        missing_req_keys = [
-            req for req in [SCHEMA_TYPE_KEY, SCHEMA_DESC_KEY] if req not in v
-        ]
+        missing_req_keys = [req for req in [SCHEMA_TYPE_KEY, SCHEMA_DESC_KEY] if req not in v]
         if missing_req_keys:
             raise SchemaError(
                 f"Result '{k}' is missing required key(s): {', '.join(missing_req_keys)}"

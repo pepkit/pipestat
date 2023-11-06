@@ -135,9 +135,7 @@ class ParsedSchema(object):
 
         # Sample- and/or project-level data must be declared.
         if not self._sample_level_data and not self._project_level_data:
-            raise SchemaError(
-                "Neither sample-level nor project-level data items are declared."
-            )
+            raise SchemaError("Neither sample-level nor project-level data items are declared.")
 
         # Check that no reserved keywords were used as data items.
         resv_kwds = {"id", RECORD_IDENTIFIER}
@@ -150,9 +148,7 @@ class ParsedSchema(object):
             )
 
         # Check that no data item name overlap exists between project- and sample-level data.
-        project_sample_overlap = set(self.project_level_data) & set(
-            self.sample_level_data
-        )
+        project_sample_overlap = set(self.project_level_data) & set(self.sample_level_data)
         if project_sample_overlap:
             raise SchemaError(
                 f"Overlap between project- and sample-level keys: {', '.join(project_sample_overlap)}"
@@ -248,9 +244,7 @@ def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:
     :return dict: schema with types replaced
     """
     for k, v in s.items():
-        missing_req_keys = [
-            req for req in [SCHEMA_TYPE_KEY, SCHEMA_DESC_KEY] if req not in v
-        ]
+        missing_req_keys = [req for req in [SCHEMA_TYPE_KEY, SCHEMA_DESC_KEY] if req not in v]
         if missing_req_keys:
             raise SchemaError(
                 f"Result '{k}' is missing required key(s): {', '.join(missing_req_keys)}"
