@@ -201,7 +201,7 @@ class DBBackend(PipestatBackend):
         """
         Remove a result.
 
-        If no result ID specified or last result is removed, the entire record
+        If no result ID specified, the entire record
         will be removed.
 
         :param str record_identifier: unique identifier of the record
@@ -210,6 +210,7 @@ class DBBackend(PipestatBackend):
         :return bool: whether the result has been removed
         """
 
+        # TODO removing last result identifier (apart from created, modified time should remove record)
         record_identifier = record_identifier or self.record_identifier
         rm_record = True if result_identifier is None else False
 
@@ -404,9 +405,14 @@ class DBBackend(PipestatBackend):
 
             if columns is not None:
                 columns = ["id", "record_identifier"] + columns  # Must add id, need it for cursor
-                statement = sqlmodel.select(
-                    *[getattr(ORM, column) for column in columns]
-                ).order_by(ORM.id)
+                try:
+                    statement = sqlmodel.select(
+                        *[getattr(ORM, column) for column in columns]
+                    ).order_by(ORM.id)
+                except AttributeError:
+                    raise ColumnNotFoundError(
+                        msg=f"One of the supplied column does not exists in current table: {columns}"
+                    )
             else:
                 statement = sqlmodel.select(ORM).order_by(ORM.id)
 

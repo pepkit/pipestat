@@ -1,6 +1,7 @@
 import datetime
 import os.path
 import operator
+from copy import deepcopy
 from functools import reduce
 from itertools import chain
 
@@ -478,13 +479,15 @@ class FileBackend(PipestatBackend):
 
         records_list = []
 
+        data = deepcopy(self._data.data[self.pipeline_name][self.pipeline_type])
+
         if columns:
             if not isinstance(columns, list):
                 raise ValueError(
                     "Columns must be a list of strings, e.g. ['record_identifier', 'number_of_things']"
                 )
 
-        total_count = len(self._data.data[self.pipeline_name][self.pipeline_type].keys())
+        total_count = len(data.keys())
 
         filtered_records_list = []
         if filter_conditions:
@@ -498,13 +501,9 @@ class FileBackend(PipestatBackend):
                 retrieved_results = []
 
                 # Check each sample's dict
-                for record_identifier in list(
-                    self._data.data[self.pipeline_name][self.pipeline_type].keys()
-                )[0:limit]:
+                for record_identifier in list(data.keys())[0:limit]:
                     if filter_condition["key"] != "record_identifier":
-                        for key, value in self._data.data[self.pipeline_name][self.pipeline_type][
-                            record_identifier
-                        ].items():
+                        for key, value in data[record_identifier].items():
                             result = False
                             if isinstance(value, dict):
                                 if key == filter_condition["key"][0]:
@@ -517,9 +516,7 @@ class FileBackend(PipestatBackend):
                                     if key in CREATED_TIME or key in MODIFIED_TIME:
                                         try:
                                             time_stamp = datetime.datetime.strptime(
-                                                self._data.data[self.pipeline_name][
-                                                    self.pipeline_type
-                                                ][record_identifier][key],
+                                                data[record_identifier][key],
                                                 DATE_FORMAT,
                                             )
                                             result = retrieved_operator(
@@ -543,9 +540,7 @@ class FileBackend(PipestatBackend):
                     filtered_records_list.append(retrieved_results)
         else:
             # Assume user wants all the records if no filter was given.
-            filtered_records_list = [
-                list(self._data.data[self.pipeline_name][self.pipeline_type].keys())[0:limit]
-            ]
+            filtered_records_list = [list(data.keys())[0:limit]]
 
         # There is now a list of dicts for each filtered condition.
         # Depending on Union or Intersection we want to pare down the list.
@@ -556,23 +551,19 @@ class FileBackend(PipestatBackend):
 
         if bool_operator.lower() == "or" and filtered_records_list:
             shared_keys = list(set(chain(*filtered_records_list)))
-        record = {}
+
         if shared_keys:
             for record_identifier in sorted(shared_keys):
+                record = {}
                 if columns:  # Did the user specify a list of columns as well?
-                    for key, value in list(
-                        self._data.data[self.pipeline_name][self.pipeline_type][
-                            record_identifier
-                        ].items()
-                    ):
+                    for key, value in list(data[record_identifier].items()):
                         if key in columns:
                             record.update({key: value})
                 else:
-                    record = self._data.data[self.pipeline_name][self.pipeline_type][
-                        record_identifier
-                    ]
-                record.update({"record_identifier": record_identifier})
-                records_list.append(record)
+                    record = data[record_identifier]
+                if record != {}:
+                    record.update({"record_identifier": record_identifier})
+                    records_list.append(record)
 
         records_dict = {
             "total_size": total_count,
