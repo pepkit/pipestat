@@ -11,7 +11,7 @@ from pipestat.parsed_schema import SCHEMA_PIPELINE_NAME_KEY
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 from .conftest import STANDARD_TEST_PIPE_ID
 from pipestat.helpers import init_generic_config
-from pipestat.const import PIPESTAT_GENERIC_CONFIG
+from pipestat.const import PIPESTAT_GENERIC_CONFIG, SCHEMA_KEY
 
 
 class TestPipestatManagerInstantiation:
@@ -97,7 +97,12 @@ class TestPipestatManagerInstantiation:
         assert os.path.exists(tmp_res_file)
         with open(schema_file_path, "r") as init_schema_file:
             init_schema = oyaml.safe_load(init_schema_file)
-        assert psm1.schema.pipeline_name == init_schema["properties"][SCHEMA_PIPELINE_NAME_KEY]
+
+        assert (
+            psm1.cfg[SCHEMA_KEY].pipeline_name
+            == init_schema["properties"][SCHEMA_PIPELINE_NAME_KEY]
+        )
+
         ns2 = "namespace2"
         temp_schema_path = str(tmp_path / "schema.yaml")
         init_schema["properties"][SCHEMA_PIPELINE_NAME_KEY] = ns2
@@ -109,7 +114,7 @@ class TestPipestatManagerInstantiation:
                 schema_path=temp_schema_path,
             )
         # exp_msg = f"'{tmp_res_file}' is already used to report results for a different (not {ns2}) namespace: {psm1.schema.pipeline_name}"
-        exp_msg = f"'{tmp_res_file}' is already in use for 1 namespaces: {psm1.schema.pipeline_name} and multi_pipelines = False."
+        exp_msg = f"'{tmp_res_file}' is already in use for 1 namespaces: {psm1.cfg[SCHEMA_KEY].pipeline_name} and multi_pipelines = False."
         obs_msg = str(exc_ctx.value)
         assert obs_msg == exp_msg
 

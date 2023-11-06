@@ -18,12 +18,18 @@ __all__ = [
     "PipelineTypeNotSuppliedError",
     "InvalidTimeFormatError",
     "PipestatDependencyError",
+    "ColumnNotFoundError",
 ]
 
 
 class RecordNotFoundError(LookupError):
     def __init__(self, msg):
         super(RecordNotFoundError, self).__init__(msg)
+
+
+class ColumnNotFoundError(LookupError):
+    def __init__(self, msg):
+        super(ColumnNotFoundError, self).__init__(msg)
 
 
 class PipelineTypeNotSuppliedError(LookupError):

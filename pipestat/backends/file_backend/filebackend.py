@@ -1,6 +1,10 @@
 import datetime
 import os.path
-import sys
+import operator
+from copy import deepcopy
+from functools import reduce
+from itertools import chain
+
 
 from glob import glob
 from logging import getLogger
@@ -9,11 +13,10 @@ from ubiquerg import create_lock, remove_lock
 
 from pipestat.helpers import *
 from pipestat.backends.abstract import PipestatBackend
+from pipestat.const import DATE_FORMAT
 
-if int(sys.version.split(".")[1]) < 9:
-    from typing import List, Dict, Any, Optional, Union
-else:
-    from typing import *
+from typing import List, Dict, Any, Optional, Union, Literal, Callable
+
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -47,6 +50,7 @@ class FileBackend(PipestatBackend):
         :param bool multi_pipelines: allows for running multiple pipelines for one file backend
 
         """
+        super().__init__(pipeline_type)
         _LOGGER.warning("Initialize FileBackend")
 
         self.results_file_path = results_file_path
@@ -142,37 +146,6 @@ class FileBackend(PipestatBackend):
             return None
         pass
 
-    def get_records(
-        self,
-        limit: Optional[int] = 1000,
-        offset: Optional[int] = 0,
-    ) -> Optional[dict]:
-        """Returns list of records
-        :param int limit: limit number of records to this amount
-        :param int offset: offset records by this amount
-        :return dict records_dict: dictionary of records
-        {
-          "count": x,
-          "limit": l,
-          "offset": o,
-          "records": [...]
-        }
-        """
-        record_list = []
-        all_records = list(self._data.data[self.pipeline_name][self.pipeline_type].keys())
-        total_count = len(all_records)
-        for record in all_records[offset : offset + limit]:
-            record_list.append(record)
-
-        records_dict = {
-            "count": total_count,
-            "limit": limit,
-            "offset": offset,
-            "records": record_list,
-        }
-
-        return records_dict
-
     def get_status(self, record_identifier: str) -> Optional[str]:
         """
         Get the current pipeline status
@@ -210,55 +183,6 @@ class FileBackend(PipestatBackend):
         return os.path.join(
             self.status_file_dir, f"{self.pipeline_name}_{r_id}_{status_identifier}.flag"
         )
-
-    def list_recent_results(
-        self,
-        limit: Optional[int] = None,
-        start: Optional[datetime.datetime] = None,
-        end: Optional[datetime.datetime] = None,
-        type: Optional[str] = None,
-    ) -> Optional[dict]:
-        """Lists recent results based on time filter
-        :param int  limit: limit number of results returned
-        :param datetime.datetime start: most recent result to filter on, defaults to now, e.g. 2023-10-16 13:03:04.680400
-        :param datetime.datetime end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
-        :param str type: created or modified
-        :return dict results: a dict containing start, end, num of records, and list of retrieved records
-        """
-
-        def key_function(tuple):
-            return tuple[1]
-
-        # first collect records that exist  between the start and end times
-        date_format = "%Y-%m-%d %H:%M:%S"
-        record_list = []
-        if type == "modified":
-            time_attribute = MODIFIED_TIME
-        else:
-            time_attribute = CREATED_TIME
-
-        for k in list(self._data.data[self.pipeline_name][self.pipeline_type].keys()):
-            time_stamp = datetime.datetime.strptime(
-                self._data.data[self.pipeline_name][self.pipeline_type][k][time_attribute],
-                date_format,
-            )
-            if time_stamp >= end and time_stamp <= start:
-                record_list.append((k, time_stamp))
-
-        # sort by tuple[1]
-        record_list.sort(key=key_function, reverse=True)
-        # limit
-        record_list = record_list[:limit]
-
-        records_dict = {
-            "count": len(record_list),
-            "start": start,
-            "end": end,
-            "type": type,
-            "records": record_list,
-        }
-
-        return records_dict
 
     def list_results(
         self,
@@ -434,8 +358,11 @@ class FileBackend(PipestatBackend):
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
             values.update({MODIFIED_TIME: current_time})
         if not existing:
-            values.update({CREATED_TIME: current_time})
-            values.update({MODIFIED_TIME: current_time})
+            if record_identifier in self._data[self.pipeline_name][self.pipeline_type].keys():
+                values.update({MODIFIED_TIME: current_time})
+            else:
+                values.update({CREATED_TIME: current_time})
+                values.update({MODIFIED_TIME: current_time})
 
         self._data[self.pipeline_name][self.pipeline_type].setdefault(record_identifier, {})
 
@@ -455,91 +382,197 @@ class FileBackend(PipestatBackend):
 
         return results_formatted
 
-    def retrieve_multiple(
+    def select_distinct(self, columns: Union[str, List[str]]) -> List[Tuple]:
+        """
+        Retrieve distinct results given a list of columns
+
+        :param str | List[str] columns: column columns to include in the result
+        :return List[Tuple]: returns distinct values.
+        """
+        if isinstance(columns, str):
+            columns = [columns]
+
+        record_data = self._data.data[self.pipeline_name][self.pipeline_type]
+
+        final_values_list = []
+        for record_id in record_data.keys():
+            record_value_list = []
+            for column in columns:
+                if column in list(record_data[record_id].keys()):
+                    record_value_list.append(record_data[record_id][column])
+                else:
+                    if column != "record_identifier":
+                        _LOGGER.warning(msg=f"Column {column} not reported, skipping....")
+
+            if "record_identifier" in columns:
+                # record_identifier is not a column in the file backend but the user may want it
+                record_value_list.append(record_id)
+            final_values_list.append(tuple(record_value_list))
+
+        # make sure that the order is correct
+        unique_lists = list(set(final_values_list))
+        return unique_lists
+
+    def select_records(
         self,
-        record_identifier: Optional[List[str]] = None,
-        result_identifier: Optional[List[str]] = None,
+        columns: Optional[List[str]] = None,
+        filter_conditions: Optional[List[Dict[str, Any]]] = None,
         limit: Optional[int] = 1000,
-        offset: Optional[int] = 0,
-    ) -> Union[Any, Dict[str, Any]]:
+        cursor: Optional[int] = None,
+        bool_operator: Optional[str] = "AND",
+    ) -> Dict[str, Any]:
         """
-        :param List[str] record_identifier: list of record identifiers
-        :param List[str] result_identifier: list of result identifiers to be retrieved
-        :param int limit: limit number of records to this amount
-        :param int offset: offset records by this amount
-        :return Dict[str, any]: a mapping with filtered results reported for the record
+        Select records from the FileBackend
+
+        :param list[str] columns: columns to include in the result
+        :param list[dict]  filter_conditions: e.g. [{"key": ["id"], "operator": "eq", "value": 1)], operator list:
+            - eq for ==
+            - lt for <
+            - ge for >=
+            - in for in_
+        :param int limit: maximum number of results to retrieve per page
+        :param int cursor: cursor position to begin retrieving records
+        :param bool bool_operator: Perform filtering with AND or OR Logic.
+        :return Dict[str, Any]
         """
+        if cursor:
+            _LOGGER.warning("Cursor not supported for FileBackend, ignoring cursor")
 
-        record_list = []
+        def get_operator(op: Literal["eq", "lt", "ge", "gt", "in"]) -> Any:
+            """
+            Get python operator for a given string
 
-        if result_identifier == [] or result_identifier is None:
-            result_identifier = (
-                list(self.parsed_schema.results_data.keys()) + [CREATED_TIME] + [MODIFIED_TIME]
-            )
-        if record_identifier == [] or record_identifier is None:
-            record_identifier = list(
-                self._data.data[self.pipeline_name][self.pipeline_type].keys()
-            )
+            :param str op: desired operator, "eq", "lt"
+            :return: operator function
+            """
 
-        for k in list(self._data.data[self.pipeline_name][self.pipeline_type].keys())[
-            offset : offset + limit
-        ]:
-            if k in record_identifier:
-                retrieved_record = {}
-                retrieved_results = {}
-                for key, value in self._data.data[self.pipeline_name][self.pipeline_type][
-                    k
-                ].items():
-                    if key in result_identifier:
-                        retrieved_results.update({key: value})
+            if op == "eq":
+                return operator.__eq__
+            if op == "lt":
+                return operator.__lt__
+            if op == "ge":
+                return operator.__ge__
+            if op == "gt":
+                return operator.__gt__
+            if op == "in":
+                return operator.contains
+            raise ValueError(f"Invalid filter operator: {op}")
 
-                if retrieved_results != {}:
-                    retrieved_record.update({k: retrieved_results})
-                    record_list.append(retrieved_record)
+        def get_nested_column(result_value: dict, key_list: list, retrieved_operator: Callable):
+            """
+            Recursive function that evaluates a nested list of keys vs a value dict
+
+            :param dict result_value: nested dictionary
+            :param key_list: list of keys, e.g. keys that may be in the nested dictionary e.g. ['id', 'name']
+            :param retrieved_operator: operator function (ge, gt...)
+            :return bool:
+            """
+            if len(key_list) == 1:
+                if result_value.get(key_list[0], None):
+                    if retrieved_operator(key_list, result_value.get(key_list[0])):
+                        return True
+                return False
+            else:
+                return get_nested_column(
+                    result_value[key_list[0]], key_list[1:], retrieved_operator
+                )
+
+        records_list = []
+
+        data = deepcopy(self._data.data[self.pipeline_name][self.pipeline_type])
+
+        if columns:
+            if not isinstance(columns, list):
+                raise ValueError(
+                    "Columns must be a list of strings, e.g. ['record_identifier', 'number_of_things']"
+                )
+
+        total_count = len(data.keys())
+
+        filtered_records_list = []
+        if filter_conditions:
+            for filter_condition in filter_conditions:
+                if list(filter_condition.keys()) != ["key", "operator", "value"]:
+                    raise ValueError(
+                        "Filter conditions must be a dictionary with keys 'key', 'operator', and 'value'"
+                    )
+
+                retrieved_operator = get_operator(filter_condition["operator"])
+                retrieved_results = []
+
+                # Check each sample's dict
+                for record_identifier in list(data.keys())[0:limit]:
+                    if filter_condition["key"] != "record_identifier":
+                        for key, value in data[record_identifier].items():
+                            result = False
+                            if isinstance(value, dict):
+                                if key == filter_condition["key"][0]:
+                                    result = get_nested_column(
+                                        value, filter_condition["key"][1:], retrieved_operator
+                                    )
+                            else:
+                                if filter_condition["key"] == key:
+                                    # Filter datetime objects
+                                    if key in CREATED_TIME or key in MODIFIED_TIME:
+                                        try:
+                                            time_stamp = datetime.datetime.strptime(
+                                                data[record_identifier][key],
+                                                DATE_FORMAT,
+                                            )
+                                            result = retrieved_operator(
+                                                time_stamp, filter_condition["value"]
+                                            )
+                                        except TypeError:
+                                            result = False
+                                    else:
+                                        result = retrieved_operator(
+                                            value, filter_condition["value"]
+                                        )
+
+                            if result:
+                                retrieved_results.append(record_identifier)
+                    else:
+                        # If user wants record_identifier
+                        if record_identifier in filter_condition["value"]:
+                            retrieved_results.append(record_identifier)
+
+                if retrieved_results:
+                    filtered_records_list.append(retrieved_results)
+        else:
+            # Assume user wants all the records if no filter was given.
+            filtered_records_list = [list(data.keys())[0:limit]]
+
+        # There is now a list of dicts for each filtered condition.
+        # Depending on Union or Intersection we want to pare down the list.
+        shared_keys = []
+
+        if bool_operator.lower() == "and" and filtered_records_list:
+            shared_keys = list(reduce(lambda i, j: i & j, (set(x) for x in filtered_records_list)))
+
+        if bool_operator.lower() == "or" and filtered_records_list:
+            shared_keys = list(set(chain(*filtered_records_list)))
+
+        if shared_keys:
+            for record_identifier in sorted(shared_keys):
+                record = {}
+                if columns:  # Did the user specify a list of columns as well?
+                    for key, value in list(data[record_identifier].items()):
+                        if key in columns:
+                            record.update({key: value})
+                else:
+                    record = data[record_identifier]
+                if record != {}:
+                    record.update({"record_identifier": record_identifier})
+                    records_list.append(record)
 
         records_dict = {
-            "count": len(record_list),
-            "limit": limit,
-            "offset": offset,
-            "record_identifiers": record_identifier,
-            "result_identifiers": result_identifier,
-            "records": record_list,
+            "total_size": total_count,
+            "page_size": limit,
+            "next_page_token": 0,
+            "records": records_list,
         }
+
         return records_dict
-
-    def retrieve(
-        self,
-        record_identifier: Optional[str] = None,
-        result_identifier: Optional[str] = None,
-    ) -> Union[Any, Dict[str, Any]]:
-        """
-        Retrieve a result for a record.
-
-        If no result ID specified, results for the entire record will
-        be returned.
-
-        :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to be retrieved
-        :return any | Dict[str, any]: a single result or a mapping with all the
-            results reported for the record
-        """
-
-        record_identifier = record_identifier or self.record_identifier
-
-        if record_identifier not in self._data[self.pipeline_name][self.pipeline_type]:
-            raise RecordNotFoundError(f"Record '{record_identifier}' not found")
-        if result_identifier is None:
-            return self._data.exp[self.pipeline_name][self.pipeline_type][record_identifier]
-        if (
-            result_identifier
-            not in self._data[self.pipeline_name][self.pipeline_type][record_identifier]
-        ):
-            raise RecordNotFoundError(
-                f"Result '{result_identifier}' not found for record '{record_identifier}'"
-            )
-        return self._data[self.pipeline_name][self.pipeline_type][record_identifier][
-            result_identifier
-        ]
 
     def set_status(
         self,

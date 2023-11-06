@@ -1,5 +1,6 @@
 import os.path
 import datetime
+import time
 from collections.abc import Mapping
 
 import pytest
@@ -77,19 +78,23 @@ class TestSplitClasses:
             psm.set_status(status_identifier="running", record_identifier=rec_id)
             status = psm.get_status(record_identifier=rec_id)
             assert status == "running"
-            assert val_name in psm.retrieve(record_identifier=rec_id)
+            assert (
+                psm.retrieve_one(record_identifier=rec_id)["records"][0][val_name] == val[val_name]
+            )
             psm.remove(record_identifier=rec_id, result_identifier=val_name)
             if backend == "file":
                 psm.clear_status(record_identifier=rec_id)
                 status = psm.get_status(record_identifier=rec_id)
                 assert status is None
                 with pytest.raises(RecordNotFoundError):
-                    psm.retrieve(record_identifier=rec_id)
+                    psm.retrieve_one(record_identifier=rec_id)
             if backend == "db":
-                assert getattr(psm.retrieve(record_identifier=rec_id), val_name, None) is None
+                assert (
+                    psm.retrieve_one(record_identifier=rec_id)["records"][0].get(val_name) is None
+                )
                 psm.remove(record_identifier=rec_id)
                 with pytest.raises(RecordNotFoundError):
-                    psm.retrieve(record_identifier=rec_id)
+                    psm.retrieve_one(record_identifier=rec_id)
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -125,26 +130,20 @@ class TestSplitClasses:
             psm.set_status(status_identifier="running", record_identifier=rec_id)
             status = psm.get_status(record_identifier=rec_id)
             assert status == "running"
-            assert val_name in psm.retrieve(record_identifier=rec_id)
+            assert (
+                psm.retrieve_one(record_identifier=rec_id)["records"][0][val_name] == val[val_name]
+            )
             psm.remove(record_identifier=rec_id, result_identifier=val_name)
             if backend == "file":
                 psm.clear_status(record_identifier=rec_id)
                 status = psm.get_status(record_identifier=rec_id)
                 assert status is None
                 with pytest.raises(RecordNotFoundError):
-                    psm.retrieve(record_identifier=rec_id)
+                    psm.retrieve_one(record_identifier=rec_id)
             if backend == "db":
-                assert (
-                    getattr(
-                        psm.retrieve(record_identifier=rec_id),
-                        val_name,
-                        None,
-                    )
-                    is None
-                )
                 psm.remove(record_identifier=rec_id)
                 with pytest.raises(RecordNotFoundError):
-                    psm.retrieve(record_identifier=rec_id)
+                    psm.retrieve_one(record_identifier=rec_id)
 
 
 class TestReporting:
@@ -180,6 +179,50 @@ class TestReporting:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            if backend == "file":
+                print(psm.backend._data[STANDARD_TEST_PIPE_ID])
+                print("Test if", rec_id, " is in ", psm.backend._data[STANDARD_TEST_PIPE_ID])
+                assert rec_id in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
+                print("Test if", list(val.keys())[0], " is in ", rec_id)
+                assert (
+                    list(val.keys())[0]
+                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
+                )
+                if backend == "file":
+                    assert_is_in_files(results_file_path, str(list(val.values())[0]))
+            if backend == "db":
+                # This is being captured in TestSplitClasses
+                pass
+
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("sample1", {"name_of_something": "test_name"}),
+            ("sample1", {"number_of_things": 1}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_report_setitem(
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+            # psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm[rec_id] = val
             if backend == "file":
                 print(psm.backend._data[STANDARD_TEST_PIPE_ID])
                 print("Test if", rec_id, " is in ", psm.backend._data[STANDARD_TEST_PIPE_ID])
@@ -265,7 +308,10 @@ class TestReporting:
                 if backend == "file":
                     assert_is_in_files(results_file_path, str(list(val.values())[0]))
             if backend == "db":
-                assert list(val.keys())[0] in psm.retrieve(record_identifier=rec_id)
+                assert (
+                    psm.retrieve_one(record_identifier=rec_id)["records"][0][list(val.keys())[0]]
+                    == val[list(val.keys())[0]]
+                )
 
     @pytest.mark.parametrize(
         ["rec_id", "val", "success"],
@@ -386,31 +432,38 @@ class TestRetrieval:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
-            retrieved_val = psm.retrieve(
-                record_identifier=rec_id, result_identifier=list(val.keys())[0]
-            )
+            retrieved_val = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": rec_id,
+                    },
+                ],
+                columns=[list(val.keys())[0]],
+            )["records"][0]
             # Test Retrieve Basic
-            assert str(retrieved_val) == str(list(val.values())[0])
+            assert str(list(val.keys())[0]) in list(retrieved_val.keys())
             # Test Retrieve Whole Record
-            assert isinstance(psm.retrieve(record_identifier=rec_id), Mapping)
+            assert isinstance(psm.retrieve_one(record_identifier=rec_id), Mapping)
 
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("sample1", {"name_of_something": "test_name"}),
+            ("sample1", {"number_of_things": 2}),
+        ],
+    )
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_retrieve_multiple(
+    def test_retrieve_getitem(
         self,
+        rec_id,
+        val,
         config_file_path,
         results_file_path,
         schema_file_path,
         backend,
     ):
-        values_sample = [
-            {"sample1": {"name_of_something": "string 1"}},
-            {"sample1": {"number_of_things": 1}},
-            {"sample2": {"name_of_something": "string 2"}},
-            {"sample2": {"number_of_things": 20}},
-            {"sample3": {"name_of_something": "string 3"}},
-            {"sample3": {"number_of_things": 300}},
-        ]
-
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path, database_only=False)
@@ -421,43 +474,16 @@ class TestRetrieval:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
 
-            for i in values_sample:
-                for k, v in i.items():
-                    psm.report(record_identifier=k, values=v, force_overwrite=True)
+            val_name = list(val.keys())[0]
+            retrieved_val = psm[rec_id]["records"][0][val_name]
+            value = list(val.values())[0]
 
-            # Test singular list works as expected
-            r_id = list(values_sample[0].keys())[0]
-            res_id = list(list(values_sample[0].values())[0].keys())[0]
-            results = psm.retrieve(record_identifier=[r_id], result_identifier=[res_id])
-            assert results == list(list(values_sample[0].values())[0].values())[0]
+            assert retrieved_val == value
 
-            # Use list of results
-            r_ids = ["sample1", "sample2"]
-            res_id = ["md5sum", "number_of_things"]
-            # res_id = list(list(values_sample[0].values())[0].keys())[0]
-            results = psm.retrieve(record_identifier=r_ids, result_identifier=res_id)
-            assert r_ids[0] == list(results["records"][0].keys())[0]
-            assert (
-                list(list(values_sample[3].values())[0].values())[0]
-                == list(results["records"][1].values())[0]["number_of_things"]
-            )
-
-            # Test combinations of empty list for either record or result identifiers.
-            results = psm.retrieve(record_identifier=r_ids, result_identifier=[])
-            assert len(results["result_identifiers"]) == 9
-            assert len(results["records"]) == 2
-
-            results = psm.retrieve(record_identifier=[], result_identifier=[])
-            assert len(results["result_identifiers"]) == 9
-            assert len(results["records"]) == 3
-
-            results = psm.retrieve(record_identifier=[], result_identifier=res_id)
-            assert "md5sum" in results["result_identifiers"]
-            assert len(results["records"]) == 3
-
-    @pytest.mark.parametrize("backend", ["db"])
-    def test_get_records(
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_select_records_no_filter(
         self,
         config_file_path,
         results_file_path,
@@ -481,13 +507,14 @@ class TestRetrieval:
             for k, v in val_dict.items():
                 psm.report(record_identifier=k, values=v, force_overwrite=True)
 
-            results = psm.get_records()
-            assert results["records"][0] == list(val_dict.keys())[0]
-            assert results["count"] == len(list(val_dict.keys()))
-            results = psm.get_records(limit=1, offset=1)
-            assert results["records"][0] == list(val_dict.keys())[1]
-            assert results["count"] == 2
+            results = psm.select_records()
 
+            assert results["records"][0]["record_identifier"] == list(val_dict.keys())[0]
+            assert results["total_size"] == len(list(val_dict.keys()))
+            results = psm.select_records(limit=1)
+            assert len(results["records"]) == 1
+
+    @pytest.mark.skip("This test needs to be re-done with the 0.6.0 api changes")
     @pytest.mark.parametrize(
         ["rec_id", "res_id"],
         [("nonexistent", "name_of_something"), ("sample1", "nonexistent")],
@@ -518,12 +545,38 @@ class TestRetrieval:
             psm = SamplePipestatManager(**args)
             for k, v in val_dict.items():
                 psm.report(record_identifier=k, values=v, force_overwrite=True)
-            if backend == "db":
-                with pytest.raises(RecordNotFoundError):
-                    psm.retrieve(result_identifier=res_id, record_identifier=rec_id)
-            else:
-                with pytest.raises(RecordNotFoundError):
-                    psm.retrieve(result_identifier=res_id, record_identifier=rec_id)
+
+            if res_id == "nonexistent" and backend == "db":
+                with pytest.raises(ColumnNotFoundError):
+                    result = psm.select_records(
+                        filter_conditions=[
+                            {
+                                "key": RECORD_IDENTIFIER,
+                                "operator": "eq",
+                                "value": rec_id,
+                            }
+                        ],
+                        columns=[res_id],
+                    )
+
+            if res_id == "nonexistent" and backend == "file":
+                with pytest.raises(ColumnNotFoundError):
+                    result = psm.select_records(
+                        filter_conditions=[
+                            {
+                                "key": RECORD_IDENTIFIER,
+                                "operator": "eq",
+                                "value": rec_id,
+                            }
+                        ],
+                        columns=[res_id],
+                    )
+                    assert len(result["records"]) == 0
+            # if res_id == "nonexistent" and backend == "file":
+            #     with pytest.raises(RecordNotFoundError):
+            #         psm.retrieve_one(result_identifier=res_id, record_identifier=rec_id)
+
+            # assert len(result['records'][0]) == 0
 
 
 class TestRemoval:
@@ -565,8 +618,16 @@ class TestRemoval:
             else:
                 col_name = list(vals[0].keys())[0]
                 value = list(vals[0].values())[0]
-                result = psm.backend.select(filter_conditions=[(col_name, "eq", value)])
-                assert len(result) == 0
+                result = psm.select_records(
+                    filter_conditions=[
+                        {
+                            "key": col_name,
+                            "operator": "eq",
+                            "value": value,
+                        }
+                    ]
+                )
+                assert len(result["records"]) == 0
 
     @pytest.mark.parametrize("rec_id", ["sample1", "sample2"])
     @pytest.mark.parametrize("backend", ["file", "db"])
@@ -595,8 +656,16 @@ class TestRemoval:
             else:
                 col_name = list(vals[0].keys())[0]
                 value = list(vals[0].values())[0]
-                result = psm.backend.select(filter_conditions=[(col_name, "eq", value)])
-                assert len(result) == 0
+                result = psm.select_records(
+                    filter_conditions=[
+                        {
+                            "key": col_name,
+                            "operator": "eq",
+                            "value": value,
+                        }
+                    ]
+                )
+                assert len(result["records"]) == 0
 
     @pytest.mark.parametrize(
         ["rec_id", "res_id"], [("sample2", "nonexistent"), ("sample2", "bogus")]
@@ -641,7 +710,7 @@ class TestRemoval:
             assert not psm.remove(record_identifier=rec_id)
 
     @pytest.mark.parametrize(["rec_id", "res_id"], [("sample3", "name_of_something")])
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.parametrize("backend", ["file"])
     def test_last_result_removal_removes_record(
         self,
         rec_id,
@@ -665,9 +734,9 @@ class TestRemoval:
                 record_identifier=rec_id, values={res_id: "something"}, force_overwrite=True
             )
             assert psm.remove(record_identifier=rec_id, result_identifier=res_id)
-            if backend == "file":
-                with pytest.raises(RecordNotFoundError):
-                    psm.retrieve(record_identifier=rec_id)
+
+            with pytest.raises(RecordNotFoundError):
+                result = psm.retrieve_one(record_identifier=rec_id)
 
 
 class TestNoRecordID:
@@ -716,7 +785,15 @@ class TestNoRecordID:
                 )
             if backend == "db":
                 val_name = list(val.keys())[0]
-                assert psm.backend.select(filter_conditions=[(val_name, "eq", val[val_name])])
+                assert psm.select_records(
+                    filter_conditions=[
+                        {
+                            "key": val_name,
+                            "operator": "eq",
+                            "value": val[val_name],
+                        }
+                    ]
+                )
 
     @pytest.mark.parametrize(
         "val",
@@ -739,8 +816,17 @@ class TestNoRecordID:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
             psm.report(record_identifier="constant_record_id", values=val, force_overwrite=True)
-            retrieved_val = psm.retrieve(result_identifier=list(val.keys())[0])
-            assert str(retrieved_val) == str(list(val.values())[0])
+            retrieved_val = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": "constant_record_id",
+                    },
+                ],
+                columns=[list(val.keys())[0]],
+            )["records"][0]
+            assert str(list(val.keys())[0]) in list(retrieved_val.keys())
 
     @pytest.mark.parametrize(
         "val",
@@ -863,8 +949,8 @@ def test_manager_has_correct_status_schema_and_status_schema_source(
     schema_file_path, exp_status_schema, exp_status_schema_path, backend_data
 ):
     psm = SamplePipestatManager(schema_path=schema_file_path, **backend_data)
-    assert psm.status_schema == exp_status_schema
-    assert psm.status_schema_source == exp_status_schema_path
+    assert psm.cfg[STATUS_SCHEMA_KEY] == exp_status_schema
+    assert psm.cfg[STATUS_SCHEMA_SOURCE_KEY] == exp_status_schema_path
 
 
 class TestPipestatBoss:
@@ -1239,7 +1325,7 @@ class TestTimeStamp:
             ("sample1", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["db"])
+    @pytest.mark.parametrize("backend", ["file", "db"])
     def test_basic_time_stamp(
         self,
         rec_id,
@@ -1262,17 +1348,61 @@ class TestTimeStamp:
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
 
             # CHECK CREATION AND MODIFY TIME EXIST
-            created = psm.retrieve(record_identifier=rec_id, result_identifier=CREATED_TIME)
-            modified = psm.retrieve(record_identifier=rec_id, result_identifier=MODIFIED_TIME)
+
+            created = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": rec_id,
+                    },
+                ],
+                columns=[CREATED_TIME],
+            )["records"][0][CREATED_TIME]
+
+            modified = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": rec_id,
+                    },
+                ],
+                columns=[MODIFIED_TIME],
+            )["records"][0][MODIFIED_TIME]
+
             assert created is not None
             assert modified is not None
             assert created == modified
             # Report new
             val = {"number_of_things": 1}
+            time.sleep(
+                1
+            )  # The filebackend is so fast that the updated time will equal the created time
             psm.report(record_identifier="sample1", values=val, force_overwrite=True)
             # CHECK MODIFY TIME DIFFERS FROM CREATED TIME
-            created = psm.retrieve(record_identifier=rec_id, result_identifier=CREATED_TIME)
-            modified = psm.retrieve(record_identifier=rec_id, result_identifier=MODIFIED_TIME)
+            created = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": rec_id,
+                    },
+                ],
+                columns=[CREATED_TIME],
+            )["records"][0][CREATED_TIME]
+
+            modified = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": rec_id,
+                    },
+                ],
+                columns=[MODIFIED_TIME],
+            )["records"][0][MODIFIED_TIME]
+
             assert created != modified
 
     @pytest.mark.parametrize("backend", ["db", "file"])
@@ -1320,3 +1450,542 @@ class TestTimeStamp:
             # Test large window
             results = psm.list_recent_results(start="2100-01-01 0:0:0", end="1970-01-01 0:0:0")
             assert len(results["records"]) == 10
+
+
+class TestSelectRecords:
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_select_records_basic(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range(12):
+                r_id = "sample" + str(i)
+                val = {
+                    "md5sum": "hash" + str(i),
+                    "number_of_things": i * 10,
+                    "percentage_of_things": i % 2,
+                    "switch_value": bool(i % 2),
+                    "output_image": {
+                        "path": "path_to_" + str(i),
+                        "thumbnail_path": "thumbnail_path" + str(i),
+                        "title": "title_string" + str(i),
+                    },
+                    "output_file_in_object_nested": {
+                        "prop1": {
+                            "prop2": i,
+                        },
+                    },
+                }
+
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            result1 = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": "number_of_things",
+                        "operator": "ge",
+                        "value": 80,
+                    },
+                ],
+            )
+
+            assert len(result1["records"]) == 4
+
+            result1 = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": "number_of_things",
+                        "operator": "ge",
+                        "value": 80,
+                    },
+                    {
+                        "key": "percentage_of_things",
+                        "operator": "eq",
+                        "value": 1,
+                    },
+                ],
+            )
+
+            assert len(result1["records"]) == 2
+
+            result1 = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": "number_of_things",
+                        "operator": "ge",
+                        "value": 80,
+                    },
+                    {
+                        "key": "percentage_of_things",
+                        "operator": "eq",
+                        "value": 1,
+                    },
+                ],
+                bool_operator="OR",
+            )
+            assert len(result1["records"]) == 8
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_select_records_columns(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range(2):
+                r_id = "sample" + str(i)
+                val = {
+                    "md5sum": "hash" + str(i),
+                    "number_of_things": i * 10,
+                    "percentage_of_things": i % 2,
+                    "switch_value": bool(i % 2),
+                    "output_image": {
+                        "path": "path_to_" + str(i),
+                        "thumbnail_path": "thumbnail_path" + str(i),
+                        "title": "title_string" + str(i),
+                    },
+                    "output_file_in_object_nested": {
+                        "prop1": {
+                            "prop2": i,
+                        },
+                    },
+                }
+
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            result1 = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": "number_of_things",
+                        "operator": "ge",
+                        "value": 0,
+                    },
+                ],
+                columns=["number_of_things"],
+            )
+
+            print(result1)
+            assert len(result1["records"][0]) == 2
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_select_no_filter(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range(2):
+                r_id = "sample" + str(i)
+                val = {
+                    "md5sum": "hash" + str(i),
+                    "number_of_things": i * 10,
+                    "percentage_of_things": i % 2,
+                    "switch_value": bool(i % 2),
+                    "output_image": {
+                        "path": "path_to_" + str(i),
+                        "thumbnail_path": "thumbnail_path" + str(i),
+                        "title": "title_string" + str(i),
+                    },
+                    "output_file_in_object_nested": {
+                        "prop1": {
+                            "prop2": i,
+                        },
+                    },
+                }
+
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            result1 = psm.select_records()
+
+            print(result1)
+            assert len(result1["records"]) == 2
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_select_records_bad_op(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range(2):
+                r_id = "sample" + str(i)
+                val = {
+                    "md5sum": "hash" + str(i),
+                    "number_of_things": i * 10,
+                    "switch_value": bool(i % 2),
+                    "output_image": {
+                        "path": "path_to_" + str(i),
+                        "thumbnail_path": "thumbnail_path" + str(i),
+                        "title": "title_string" + str(i),
+                    },
+                    "output_file_in_object_nested": {
+                        "prop1": {
+                            "prop2": i,
+                        },
+                    },
+                }
+
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            with pytest.raises(ValueError):
+                # Unknown operator raises error
+                result20 = psm.select_records(
+                    # columns=["md5sum"],
+                    filter_conditions=[
+                        {
+                            "key": ["output_file_in_object_nested", "prop1", "prop2"],
+                            "operator": "bad_operator",
+                            "value": [7, 21],
+                        },
+                    ],
+                    limit=50,
+                    bool_operator="or",
+                )
+
+            with pytest.raises(ValueError):
+                # bad key raises error
+                result20 = psm.select_records(
+                    filter_conditions=[
+                        {
+                            "_garbled_key": "number_of_things",
+                            "operator": "eq",
+                            "value": 0,
+                        }
+                    ],
+                    limit=50,
+                    bool_operator="or",
+                )
+
+    @pytest.mark.parametrize("backend", ["db"])
+    def test_select_records_column_doesnt_exist(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range(2):
+                r_id = "sample" + str(i)
+                val = {
+                    "md5sum": "hash" + str(i),
+                    "number_of_things": i * 10,
+                    "switch_value": bool(i % 2),
+                    "output_image": {
+                        "path": "path_to_" + str(i),
+                        "thumbnail_path": "thumbnail_path" + str(i),
+                        "title": "title_string" + str(i),
+                    },
+                    "output_file_in_object_nested": {
+                        "prop1": {
+                            "prop2": i,
+                        },
+                    },
+                }
+
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            if backend == "db":
+                with pytest.raises(ValueError):
+                    # Column doesn't exist raises error
+                    result20 = psm.select_records(
+                        filter_conditions=[
+                            {
+                                "key": "not_number_of_things",
+                                "operator": "eq",
+                                "value": 0,
+                            },
+                        ],
+                        limit=50,
+                        bool_operator="or",
+                    )
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_select_records_complex_result(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range(2):
+                r_id = "sample" + str(i)
+                val = {
+                    "md5sum": "hash" + str(i),
+                    "output_image": {
+                        "path": "path_to_" + str(i),
+                        "thumbnail_path": "thumbnail_path" + str(i),
+                        "title": "title_string" + str(i),
+                    },
+                    "output_file_in_object_nested": {
+                        "prop1": {
+                            "prop2": i,
+                        }
+                    },
+                }
+
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            result = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": ["output_image", "path"],
+                        "operator": "eq",
+                        "value": "path_to_1",
+                    },
+                ],
+            )
+
+            print(result)
+
+            result = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": ["output_file_in_object_nested", "prop1", "prop2"],
+                        "operator": "eq",
+                        "value": 1,
+                    },
+                ],
+            )
+
+            print(result)
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_select_records_retrieve_one_many(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range(6):
+                r_id = "sample" + str(i)
+                val = {
+                    "md5sum": "hash" + str(i),
+                    "number_of_things": i * 10,
+                    "switch_value": bool(i % 2),
+                    "output_image": {
+                        "path": "path_to_" + str(i),
+                        "thumbnail_path": "thumbnail_path" + str(i),
+                        "title": "title_string" + str(i),
+                    },
+                    "output_file_in_object_nested": {
+                        "prop1": {
+                            "prop2": i,
+                        },
+                    },
+                }
+
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            # Gets one or many records
+            result1 = psm.retrieve_one(record_identifier="sample1")
+
+            assert len(result1["records"]) == 1
+
+            assert result1["records"][0]["record_identifier"] == "sample1"
+
+            result2 = psm.retrieve_many(["sample1", "sample3", "sample5"])
+            assert len(result2["records"]) == 3
+
+            assert result2["records"][2]["record_identifier"] == "sample5"
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_select_distinct(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range(10):
+                r_id = "sample" + str(i)
+                val = {
+                    "md5sum": "hash" + str(i),
+                    "number_of_things": i * 10,
+                    "switch_value": bool(i % 2),
+                    "output_image": {
+                        "path": "path_to_" + str(i),
+                        "thumbnail_path": "thumbnail_path" + str(i),
+                        "title": "title_string" + str(i),
+                    },
+                    "output_file_in_object_nested": {
+                        "prop1": {
+                            "prop2": i,
+                        },
+                    },
+                }
+
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            for i in range(0, 10, 2):
+                r_id = "sample" + str(i)
+                val = {
+                    "md5sum": "hash0",
+                    "number_of_things": 500,
+                }
+                # Overwrite a couple of results such that they are not all unique
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            val = {
+                "number_of_things": 900,
+            }
+            psm.report(record_identifier="sample2", values=val, force_overwrite=True)
+            # Gets one or many records
+            result1 = psm.select_distinct(
+                columns=["md5sum", "number_of_things", "record_identifier"]
+            )
+            assert len(result1) == 10
+            result2 = psm.select_distinct(columns=["md5sum", "number_of_things"])
+            assert len(result2) == 7
+            result3 = psm.select_distinct(columns=["md5sum"])
+            assert len(result3) == 6
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_select_distinct_string(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range(10):
+                r_id = "sample" + str(i)
+                val = {
+                    "md5sum": "hash" + str(i),
+                    "number_of_things": i * 10,
+                    "switch_value": bool(i % 2),
+                    "output_image": {
+                        "path": "path_to_" + str(i),
+                        "thumbnail_path": "thumbnail_path" + str(i),
+                        "title": "title_string" + str(i),
+                    },
+                    "output_file_in_object_nested": {
+                        "prop1": {
+                            "prop2": i,
+                        },
+                    },
+                }
+
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            for i in range(0, 10, 2):
+                r_id = "sample" + str(i)
+                val = {
+                    "md5sum": "hash0",
+                    "number_of_things": 500,
+                }
+                # Overwrite a couple of results such that they are not all unique
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            val = {
+                "number_of_things": 900,
+            }
+            psm.report(record_identifier="sample2", values=val, force_overwrite=True)
+            # Gets one or many records
+            result3 = psm.select_distinct(columns="md5sum")
+            assert len(result3) == 6

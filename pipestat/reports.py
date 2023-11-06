@@ -33,8 +33,8 @@ class HTMLReportBuilder(object):
         self.prj = prj
         self.jinja_env = get_jinja_env()
         results_file_path = getattr(self.prj.backend, "results_file_path", None)
-        config_path = getattr(self.prj, "config_path", None)
-        output_dir = getattr(self.prj, "output_dir", None)
+        config_path = self.prj.cfg.get("config_path", None)
+        output_dir = getattr(self.prj.cfg[OUTPUT_DIR], "output_dir", None)
         self.output_dir = output_dir or results_file_path or config_path
         self.output_dir = os.path.dirname(self.output_dir)
         self.reports_dir = os.path.join(self.output_dir, "reports")
@@ -119,8 +119,8 @@ class HTMLReportBuilder(object):
             os.makedirs(self.pipeline_reports)
         pages = []
         labels = []
-        for sample in self.prj.backend.get_records()["records"]:
-            sample_name = sample
+        for sample in self.prj.backend.select_records()["records"]:
+            sample_name = sample["record_identifier"]
             sample_dir = self.pipeline_reports
 
             # Confirm sample directory exists, then build page
@@ -259,8 +259,8 @@ class HTMLReportBuilder(object):
             links = []
             html_page_path = os.path.join(self.pipeline_reports, f"{file_result}.html".lower())
 
-            for sample in self.prj.backend.get_records()["records"]:
-                sample_name = sample
+            for sample in self.prj.backend.select_records()["records"]:
+                sample_name = sample["record_identifier"]
                 sample_result = fetch_pipeline_results(
                     project=self.prj,
                     pipeline_name=self.pipeline_name,
@@ -303,8 +303,8 @@ class HTMLReportBuilder(object):
             html_page_path = os.path.join(self.pipeline_reports, f"{image_result}.html".lower())
             figures = []
 
-            for sample in self.prj.backend.get_records()["records"]:
-                sample_name = sample
+            for sample in self.prj.backend.select_records()["records"]:
+                sample_name = sample["record_identifier"]
                 sample_result = fetch_pipeline_results(
                     project=self.prj,
                     pipeline_name=self.pipeline_name,
@@ -384,7 +384,7 @@ class HTMLReportBuilder(object):
                 flag = flag_dict["flag"]
         highlighted_results = fetch_pipeline_results(
             project=self.prj,
-            pipeline_name=self.prj.pipeline_name,
+            pipeline_name=self.prj.cfg[PIPELINE_NAME],
             sample_name=sample_name,
             inclusion_fun=lambda x: x == "file",
             highlighted=True,
@@ -482,7 +482,7 @@ class HTMLReportBuilder(object):
         # Add stats_summary.tsv button link
         stats_file_path = get_file_for_project(
             prj=self.prj,
-            pipeline_name=self.prj.pipeline_name,
+            pipeline_name=self.prj.cfg[PIPELINE_NAME],
             appendix="stats_summary.tsv",
             reportdir=self.reports_dir,
         )
@@ -495,7 +495,7 @@ class HTMLReportBuilder(object):
         # Add objects_summary.yaml button link
         objs_file_path = get_file_for_project(
             prj=self.prj,
-            pipeline_name=self.prj.pipeline_name,
+            pipeline_name=self.prj.cfg[PIPELINE_NAME],
             appendix="objs_summary.yaml",
             reportdir=self.reports_dir,
         )
@@ -510,8 +510,8 @@ class HTMLReportBuilder(object):
         # Produce table rows
         table_row_data = []
         _LOGGER.info(" * Creating sample pages")
-        for sample in self.prj.backend.get_records()["records"]:
-            sample_name = sample
+        for sample in self.prj.backend.select_records()["records"]:
+            sample_name = sample["record_identifier"]
             sample_stat_results = fetch_pipeline_results(
                 project=self.prj,
                 pipeline_name=self.pipeline_name,
@@ -548,7 +548,7 @@ class HTMLReportBuilder(object):
         )
         # Create status page with each sample's status listed
         status_tab = create_status_table(
-            pipeline_name=self.prj.pipeline_name,
+            pipeline_name=self.prj.cfg[PIPELINE_NAME],
             project=self.prj,
             pipeline_reports_dir=self.pipeline_reports,
         )
@@ -571,8 +571,8 @@ class HTMLReportBuilder(object):
             columns=columns,
             columns_json=dumps(columns),
             table_row_data=table_row_data,
-            project_name=self.prj.project_name,
-            pipeline_name=self.prj.pipeline_name,
+            project_name=self.prj.cfg[PROJECT_NAME],
+            pipeline_name=self.prj.cfg[PIPELINE_NAME],
             stats_json=self._stats_to_json_str(),
             footer=footer,
             amendments="",
@@ -614,12 +614,12 @@ class HTMLReportBuilder(object):
 
     def _stats_to_json_str(self):
         results = {}
-        for sample in self.prj.backend.get_records()["records"]:
-            sample_name = sample
+        for sample in self.prj.backend.select_records()["records"]:
+            sample_name = sample["record_identifier"]
             results[sample_name] = fetch_pipeline_results(
                 project=self.prj,
                 sample_name=sample_name,
-                pipeline_name=self.prj.pipeline_name,
+                pipeline_name=self.prj.cfg[PIPELINE_NAME],
                 inclusion_fun=lambda x: x not in OBJECT_TYPES,
                 casting_fun=str,
             )
@@ -641,8 +641,8 @@ class HTMLReportBuilder(object):
     def _get_navbar_dropdown_data_samples(self, wd, context):
         relpaths = []
         sample_names = []
-        for sample in self.prj.backend.get_records()["records"]:
-            sample_name = sample
+        for sample in self.prj.backend.select_records()["records"]:
+            sample_name = sample["record_identifier"]
             page_name = os.path.join(
                 self.pipeline_reports,
                 f"{sample_name}.html".replace(" ", "_").lower(),
@@ -817,7 +817,7 @@ def fetch_pipeline_results(
     casting_fun = casting_fun or pass_all_fun
     psm = project
     # exclude object-like results from the stats results mapping
-    rep_data = psm.retrieve(record_identifier=sample_name)
+    rep_data = psm.retrieve_one(record_identifier=sample_name)
     results = {
         k: casting_fun(v)
         for k, v in rep_data.items()
@@ -862,8 +862,8 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
     times = []
     mems = []
     status_descs = []
-    for sample in project.backend.get_records()["records"]:
-        sample_name = sample
+    for sample in project.backend.select_records()["records"]:
+        sample_name = sample["record_identifier"]
         psm = project
         sample_names.append(sample_name)
         # status and status style
@@ -881,7 +881,7 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
         sample_paths.append(f"{sample_name}.html".replace(" ", "_").lower())
         # log file path
         try:
-            log = psm.retrieve(result_identifier="log")["path"]
+            log = psm.retrieve_one(result_identifier="log")["path"]
             assert os.path.exists(log), FileNotFoundError(f"Not found: {log}")
             log_link_names.append(os.path.basename(log))
             log_paths.append(os.path.relpath(log, pipeline_reports_dir))
@@ -891,7 +891,7 @@ def create_status_table(project, pipeline_name, pipeline_reports_dir):
             log_paths.append("")
         # runtime and peak mem
         try:
-            profile = psm.retrieve(result_identifier="profile")["path"]
+            profile = psm.retrieve_one(result_identifier="profile")["path"]
             assert os.path.exists(profile), FileNotFoundError(f"Not found: {profile}")
             df = _pd.read_csv(profile, sep="\t", comment="#", names=PROFILE_COLNAMES)
             df["runtime"] = _pd.to_timedelta(df["runtime"])
@@ -983,10 +983,10 @@ def get_file_for_project(prj, pipeline_name, appendix=None, directory=None, repo
         output_dir = output_dir or results_file_path or config_path
         output_dir = os.path.dirname(output_dir)
         reportdir = os.path.join(output_dir, "reports")
-    if prj["project_name"] is None:
+    if prj.cfg["project_name"] is None:
         fp = os.path.join(reportdir, directory or "", f"NO_PROJECT_NAME_{pipeline_name}")
     else:
-        fp = os.path.join(reportdir, directory or "", f"{prj['project_name']}_{pipeline_name}")
+        fp = os.path.join(reportdir, directory or "", f"{prj.cfg['project_name']}_{pipeline_name}")
 
     if hasattr(prj, "amendments") and getattr(prj, "amendments"):
         fp += f"_{'_'.join(prj.amendments)}"
@@ -1011,12 +1011,12 @@ def get_file_for_table(prj, pipeline_name, appendix=None, directory=None):
     """
     # TODO make determining the output_dir its own small function since we use the same code in HTML report building.
     results_file_path = getattr(prj.backend, "results_file_path", None)
-    config_path = getattr(prj, "config_path", None)
-    output_dir = getattr(prj, "output_dir", None)
+    config_path = prj.cfg.get("config_path", None)
+    output_dir = prj.cfg.get("output_dir", None)
     table_dir = output_dir or results_file_path or config_path
     if not os.path.isdir(table_dir):
         table_dir = os.path.dirname(table_dir)
-    fp = os.path.join(table_dir, directory or "", f"{prj[PROJECT_NAME]}_{pipeline_name}")
+    fp = os.path.join(table_dir, directory or "", f"{prj.cfg[PROJECT_NAME]}_{pipeline_name}")
     if hasattr(prj, "amendments") and getattr(prj, "amendments"):
         fp += f"_{'_'.join(prj.amendments)}"
     fp += f"_{appendix}"
@@ -1040,25 +1040,25 @@ def _create_stats_objs_summaries(prj, pipeline_name) -> List[str]:
     reported_stats = []
     stats = []
 
-    if prj.pipeline_type == "sample":
+    if prj.cfg[PIPELINE_TYPE] == "sample":
         columns = ["Sample Index", "Sample Name", "Results"]
     else:
         columns = ["Sample Index", "Project Name", "Sample Name", "Results"]
 
-    records = prj.backend.get_records()["records"]
+    records = prj.backend.select_records()["records"]
     record_index = 0
     for record in records:
         record_index += 1
-        record_name = record
+        record_name = record["record_identifier"]
 
-        if prj.pipeline_type == "sample":
+        if prj.cfg[PIPELINE_TYPE] == "sample":
             reported_stats = [record_index, record_name]
-            rep_data = prj.retrieve(record_identifier=record_name)
+            rep_data = prj.retrieve_one(record_identifier=record_name)
         else:
-            rep_data = prj.retrieve(record_identifier=record_name)
+            rep_data = prj.retrieve_one(record_identifier=record_name)
             reported_stats = [
                 record_index,
-                prj.project_name or "No Project Name Supplied",
+                prj.cfg[PROJECT_NAME] or "No Project Name Supplied",
                 record_name,
             ]
 
