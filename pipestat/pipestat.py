@@ -1,35 +1,69 @@
+import os
 import datetime
 from logging import getLogger
 from copy import deepcopy
-from typing import List
-from .exceptions import PipestatDependencyError
 
 from abc import ABC
 from collections.abc import MutableMapping
 
+from jsonschema import validate
+from yacman import YAMLConfigManager, select_config
+from typing import Optional, Union, Dict, Any, List
+
+from .exceptions import (
+    PipestatDependencyError,
+    NoBackendSpecifiedError,
+    SchemaNotFoundError,
+    InvalidTimeFormatError,
+    PipestatDatabaseError,
+    RecordNotFoundError,
+)
 from pipestat.backends.file_backend.filebackend import FileBackend
+from .reports import HTMLReportBuilder, _create_stats_objs_summaries
+from .helpers import validate_type, mk_abs_via_cfg, read_yaml_data, default_formatter
+from .const import (
+    PKG_NAME,
+    DEFAULT_PIPELINE_NAME,
+    ENV_VARS,
+    CFG_DATABASE_KEY,
+    SCHEMA_PATH,
+    STATUS_SCHEMA,
+    STATUS_SCHEMA_SOURCE_KEY,
+    STATUS_SCHEMA_KEY,
+    STATUS_FILE_DIR,
+    FILE_KEY,
+    DB_ONLY_KEY,
+    DB_URL,
+    PIPELINE_NAME,
+    PIPELINE_TYPE,
+    PROJECT_NAME,
+    RECORD_IDENTIFIER,
+    RESULT_FORMATTER,
+    MULTI_PIPELINE,
+    OUTPUT_DIR,
+    CREATED_TIME,
+    MODIFIED_TIME,
+    CFG_SCHEMA,
+    CONFIG_KEY,
+    SCHEMA_KEY,
+    SAMPLE_NAME_ID_KEY,
+    DATA_KEY,
+)
+
+try:
+    from pipestat.backends.db_backend.db_parsed_schema import (
+        ParsedSchemaDB as ParsedSchema,
+    )
+except ImportError:
+    from .parsed_schema import ParsedSchema
 
 try:
     from pipestat.backends.db_backend.dbbackend import DBBackend
-    from pipestat.backends.db_backend.db_helpers import *
+    from pipestat.backends.db_backend.db_helpers import construct_db_url
 except ImportError:
     # We let this pass, but if the user attempts to create DBBackend, check_dependencies raises exception.
     pass
 
-try:
-    from pipestat.backends.db_backend.db_parsed_schema import ParsedSchemaDB as ParsedSchema
-except ImportError:
-    from .parsed_schema import ParsedSchema
-
-
-from jsonschema import validate
-
-from yacman import YAMLConfigManager, select_config
-
-from .helpers import *
-
-
-from .reports import HTMLReportBuilder, _create_stats_objs_summaries
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -78,7 +112,6 @@ class PipestatManager(MutableMapping):
 
     def __init__(
         self,
-        sample_name: Optional[str] = None,
         project_name: Optional[str] = None,
         record_identifier: Optional[str] = None,
         schema_path: Optional[str] = None,
@@ -153,7 +186,9 @@ class PipestatManager(MutableMapping):
         )
 
         self.cfg[SAMPLE_NAME_ID_KEY] = self.cfg[CONFIG_KEY].priority_get(
-            "record_identifier", env_var=ENV_VARS["sample_name"], override=record_identifier
+            "record_identifier",
+            env_var=ENV_VARS["sample_name"],
+            override=record_identifier,
         )
 
         self.cfg[DB_ONLY_KEY] = database_only
@@ -164,7 +199,9 @@ class PipestatManager(MutableMapping):
 
         self.cfg[FILE_KEY] = mk_abs_via_cfg(
             self.cfg[CONFIG_KEY].priority_get(
-                "results_file_path", env_var=ENV_VARS["results_file"], override=results_file_path
+                "results_file_path",
+                env_var=ENV_VARS["results_file"],
+                override=results_file_path,
             ),
             self.cfg["config_path"],
         )
@@ -173,10 +210,14 @@ class PipestatManager(MutableMapping):
 
         self.cfg[MULTI_PIPELINE] = multi_pipelines
 
-        self.cfg[OUTPUT_DIR] = self.cfg[CONFIG_KEY].priority_get("output_dir", override=output_dir)
+        self.cfg[OUTPUT_DIR] = self.cfg[CONFIG_KEY].priority_get(
+            "output_dir", override=output_dir
+        )
 
         if self.cfg[FILE_KEY]:
-            self.initialize_filebackend(record_identifier, results_file_path, flag_file_dir)
+            self.initialize_filebackend(
+                record_identifier, results_file_path, flag_file_dir
+            )
 
         else:
             self.initialize_dbbackend(record_identifier, show_db_logs)
@@ -203,10 +244,10 @@ class PipestatManager(MutableMapping):
         res += f"\nPipeline name: {self.cfg[PIPELINE_NAME]}"
         res += f"\nPipeline type: {self.cfg[PIPELINE_TYPE]}"
         if self.cfg[SCHEMA_PATH] is not None:
-            res += f"\nProject Level Data:"
+            res += "\nProject Level Data:"
             for k, v in self.cfg[SCHEMA_KEY].project_level_data.items():
                 res += f"\n {k} : {v}"
-            res += f"\nSample Level Data:"
+            res += "\nSample Level Data:"
             for k, v in self.cfg[SCHEMA_KEY].sample_level_data.items():
                 res += f"\n {k} : {v}"
         res += f"\nStatus Schema key: {self.cfg[STATUS_SCHEMA_KEY]}"
@@ -243,10 +284,9 @@ class PipestatManager(MutableMapping):
     def __len__(self):
         return len(self.cfg)
 
-    def _keytransform(self, key):
-        return key
-
-    def initialize_filebackend(self, record_identifier, results_file_path, flag_file_dir):
+    def initialize_filebackend(
+        self, record_identifier, results_file_path, flag_file_dir
+    ):
         _LOGGER.debug(f"Determined file as backend: {results_file_path}")
         if self.cfg[DB_ONLY_KEY]:
             _LOGGER.debug(
@@ -256,7 +296,9 @@ class PipestatManager(MutableMapping):
             self.cfg[DB_ONLY_KEY] = False
 
         flag_file_dir = self.cfg[CONFIG_KEY].priority_get(
-            "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.cfg[FILE_KEY])
+            "flag_file_dir",
+            override=flag_file_dir,
+            default=os.path.dirname(self.cfg[FILE_KEY]),
         )
         self.cfg[STATUS_FILE_DIR] = mk_abs_via_cfg(
             flag_file_dir, self.config_path or self.cfg[FILE_KEY]
@@ -292,7 +334,9 @@ class PipestatManager(MutableMapping):
             ]  # the .exp expands the paths before url construction
             self.cfg[DB_URL] = construct_db_url(dbconf)
         except KeyError:
-            raise PipestatDatabaseError(f"No database section ('{CFG_DATABASE_KEY}') in config")
+            raise PipestatDatabaseError(
+                f"No database section ('{CFG_DATABASE_KEY}') in config"
+            )
         self._show_db_logs = show_db_logs
 
         self.backend = DBBackend(
@@ -351,15 +395,15 @@ class PipestatManager(MutableMapping):
     def list_recent_results(
         self,
         limit: Optional[int] = 1000,
-        start: Optional[datetime.datetime] = None,
-        end: Optional[datetime.datetime] = None,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
         time_column: Optional[str] = "modified",
     ) -> dict:
         """
         :param int  limit: limit number of results returned
-        :param datetime.datetime start: most recent result to filter on, defaults to now, e.g. 2023-10-16 13:03:04.680400
-        :param datetime.datetime end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
-        :param str type: created or modified column/attribute to filter on
+        :param str start: most recent result to filter on, defaults to now, e.g. 2023-10-16 13:03:04.680400
+        :param str end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
+        :param str time_column: created or modified column/attribute to filter on
         :return dict results: a dict containing start, end, num of records, and list of retrieved records
         """
         date_format = "%Y-%m-%d %H:%M:%S"
@@ -369,7 +413,9 @@ class PipestatManager(MutableMapping):
             try:
                 start = datetime.datetime.strptime(start, date_format)
             except ValueError:
-                raise InvalidTimeFormatError(msg=f"Incorrect time format, requires:{date_format}")
+                raise InvalidTimeFormatError(
+                    msg=f"Incorrect time format, requires:{date_format}"
+                )
 
         if end is None:
             end = datetime.datetime.strptime("1900-01-01 00:00:00", date_format)
@@ -377,7 +423,9 @@ class PipestatManager(MutableMapping):
             try:
                 end = datetime.datetime.strptime(end, date_format)
             except ValueError:
-                raise InvalidTimeFormatError(msg=f"Incorrect time format, requires: {date_format}")
+                raise InvalidTimeFormatError(
+                    msg=f"Incorrect time format, requires: {date_format}"
+                )
 
         if time_column == "created":
             col_name = CREATED_TIME
@@ -483,13 +531,17 @@ class PipestatManager(MutableMapping):
         values = deepcopy(values)
         r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
         if r_id is None:
-            raise NotImplementedError("You must supply a record identifier to report results")
+            raise NotImplementedError(
+                "You must supply a record identifier to report results"
+            )
 
         result_identifiers = list(values.keys())
         if self.cfg[SCHEMA_KEY] is not None:
             for r in result_identifiers:
                 validate_type(
-                    value=values[r], schema=self.result_schemas[r], strict_type=strict_type
+                    value=values[r],
+                    schema=self.result_schemas[r],
+                    strict_type=strict_type,
                 )
 
         reported_results = self.backend.report(
@@ -558,7 +610,7 @@ class PipestatManager(MutableMapping):
     ) -> Union[Any, Dict[str, Any]]:
         """
         Retrieve a single record
-        :param str record_identifiers: single record_identifier
+        :param str record_identifier: single record_identifier
         :return: Dict[str, any]: a mapping with filtered
             results reported for the record
         """
@@ -882,7 +934,9 @@ class PipestatBoss(ABC):
             elif i == "project":
                 self.projectmanager = ProjectPipestatManager(**kwargs)
             else:
-                _LOGGER.warning(f"This pipeline type is not supported. Pipeline supplied: {i}")
+                _LOGGER.warning(
+                    f"This pipeline type is not supported. Pipeline supplied: {i}"
+                )
 
     def __getitem__(self, key):
         return getattr(self, key)

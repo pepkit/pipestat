@@ -11,11 +11,11 @@ from logging import getLogger
 from yacman import YAMLConfigManager
 from ubiquerg import create_lock, remove_lock
 
-from pipestat.helpers import *
-from pipestat.backends.abstract import PipestatBackend
-from pipestat.const import DATE_FORMAT
+from typing import List, Dict, Any, Optional, Union, Literal, Callable, Tuple
 
-from typing import List, Dict, Any, Optional, Union, Literal, Callable
+from ...exceptions import UnrecognizedStatusError, PipestatError
+from ...backends.abstract import PipestatBackend
+from ...const import DATE_FORMAT, PKG_NAME, CREATED_TIME, MODIFIED_TIME
 
 
 _LOGGER = getLogger(PKG_NAME)
@@ -125,7 +125,9 @@ class FileBackend(PipestatBackend):
 
         return len(self._data[self.pipeline_name])
 
-    def get_flag_file(self, record_identifier: str = None) -> Union[str, List[str], None]:
+    def get_flag_file(
+        self, record_identifier: str = None
+    ) -> Union[str, List[str], None]:
         """
         Get path to the status flag file for the specified record
 
@@ -134,7 +136,9 @@ class FileBackend(PipestatBackend):
         """
 
         r_id = record_identifier
-        regex = os.path.join(self.status_file_dir, f"{self.pipeline_name}_{r_id}_*.flag")
+        regex = os.path.join(
+            self.status_file_dir, f"{self.pipeline_name}_{r_id}_*.flag"
+        )
         file_list = glob(regex)
         if len(file_list) > 1:
             _LOGGER.warning("Multiple flag files found")
@@ -169,7 +173,9 @@ class FileBackend(PipestatBackend):
         )
         return None
 
-    def get_status_flag_path(self, status_identifier: str, record_identifier=None) -> str:
+    def get_status_flag_path(
+        self, status_identifier: str, record_identifier=None
+    ) -> str:
         """
         Get the path to the status file flag
 
@@ -181,7 +187,8 @@ class FileBackend(PipestatBackend):
 
         r_id = record_identifier
         return os.path.join(
-            self.status_file_dir, f"{self.pipeline_name}_{r_id}_{status_identifier}.flag"
+            self.status_file_dir,
+            f"{self.pipeline_name}_{r_id}_{status_identifier}.flag",
         )
 
     def list_results(
@@ -200,7 +207,9 @@ class FileBackend(PipestatBackend):
 
         try:
             results = list(
-                self._data[self.pipeline_name][self.pipeline_type][record_identifier].keys()
+                self._data[self.pipeline_name][self.pipeline_type][
+                    record_identifier
+                ].keys()
             )
         except KeyError:
             return []
@@ -238,7 +247,9 @@ class FileBackend(PipestatBackend):
         if result_identifier and not self.check_result_exists(
             result_identifier, record_identifier
         ):
-            _LOGGER.error(f"'{result_identifier}' has not been reported for '{record_identifier}'")
+            _LOGGER.error(
+                f"'{result_identifier}' has not been reported for '{record_identifier}'"
+            )
             return False
 
         if rm_record:
@@ -247,9 +258,6 @@ class FileBackend(PipestatBackend):
                 rm_record=rm_record,
             )
         else:
-            val_backup = self._data[self.pipeline_name][self.pipeline_type][record_identifier][
-                result_identifier
-            ]
             del self._data[self.pipeline_name][self.pipeline_type][record_identifier][
                 result_identifier
             ]
@@ -257,9 +265,12 @@ class FileBackend(PipestatBackend):
                 f"Removed result '{result_identifier}' for record "
                 f"'{record_identifier}' from '{self.pipeline_name}' namespace"
             )
-            if not self._data[self.pipeline_name][self.pipeline_type][record_identifier]:
+            if not self._data[self.pipeline_name][self.pipeline_type][
+                record_identifier
+            ]:
                 _LOGGER.info(
-                    f"Last result removed for '{record_identifier}'. " f"Removing the record"
+                    f"Last result removed for '{record_identifier}'. "
+                    f"Removing the record"
                 )
                 rm_record = True
                 self.remove_record(
@@ -268,7 +279,9 @@ class FileBackend(PipestatBackend):
                 )
             # Check if the last remaining attributes are the timestamps
             remaining_attributes = list(
-                self._data[self.pipeline_name][self.pipeline_type][record_identifier].keys()
+                self._data[self.pipeline_name][self.pipeline_type][
+                    record_identifier
+                ].keys()
             )
             if (
                 len(remaining_attributes) == 2
@@ -276,7 +289,8 @@ class FileBackend(PipestatBackend):
                 and MODIFIED_TIME in remaining_attributes
             ):
                 _LOGGER.info(
-                    f"Last result removed for '{record_identifier}'. " f"Removing the record"
+                    f"Last result removed for '{record_identifier}'. "
+                    f"Removing the record"
                 )
                 rm_record = True
                 self.remove_record(
@@ -302,7 +316,9 @@ class FileBackend(PipestatBackend):
         if rm_record:
             try:
                 _LOGGER.info(f"Removing '{record_identifier}' record")
-                del self._data[self.pipeline_name][self.pipeline_type][record_identifier]
+                del self._data[self.pipeline_name][self.pipeline_type][
+                    record_identifier
+                ]
                 with self._data as locked_data:
                     locked_data.write()
                 return True
@@ -312,7 +328,9 @@ class FileBackend(PipestatBackend):
                 )
                 return False
         else:
-            _LOGGER.info(f" rm_record flag False, aborting Removing '{record_identifier}' record")
+            _LOGGER.info(
+                f" rm_record flag False, aborting Removing '{record_identifier}' record"
+            )
 
     def report(
         self,
@@ -352,22 +370,31 @@ class FileBackend(PipestatBackend):
         )
         if existing:
             existing_str = ", ".join(existing)
-            _LOGGER.warning(f"These results exist for '{record_identifier}': {existing_str}")
+            _LOGGER.warning(
+                f"These results exist for '{record_identifier}': {existing_str}"
+            )
             if not force_overwrite:
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
             values.update({MODIFIED_TIME: current_time})
         if not existing:
-            if record_identifier in self._data[self.pipeline_name][self.pipeline_type].keys():
+            if (
+                record_identifier
+                in self._data[self.pipeline_name][self.pipeline_type].keys()
+            ):
                 values.update({MODIFIED_TIME: current_time})
             else:
                 values.update({CREATED_TIME: current_time})
                 values.update({MODIFIED_TIME: current_time})
 
-        self._data[self.pipeline_name][self.pipeline_type].setdefault(record_identifier, {})
+        self._data[self.pipeline_name][self.pipeline_type].setdefault(
+            record_identifier, {}
+        )
 
         for res_id, val in values.items():
-            self._data[self.pipeline_name][self.pipeline_type][record_identifier][res_id] = val
+            self._data[self.pipeline_name][self.pipeline_type][record_identifier][
+                res_id
+            ] = val
             results_formatted.append(
                 result_formatter(
                     pipeline_name=self.pipeline_name,
@@ -402,7 +429,9 @@ class FileBackend(PipestatBackend):
                     record_value_list.append(record_data[record_id][column])
                 else:
                     if column != "record_identifier":
-                        _LOGGER.warning(msg=f"Column {column} not reported, skipping....")
+                        _LOGGER.warning(
+                            msg=f"Column {column} not reported, skipping...."
+                        )
 
             if "record_identifier" in columns:
                 # record_identifier is not a column in the file backend but the user may want it
@@ -458,7 +487,9 @@ class FileBackend(PipestatBackend):
                 return operator.contains
             raise ValueError(f"Invalid filter operator: {op}")
 
-        def get_nested_column(result_value: dict, key_list: list, retrieved_operator: Callable):
+        def get_nested_column(
+            result_value: dict, key_list: list, retrieved_operator: Callable
+        ):
             """
             Recursive function that evaluates a nested list of keys vs a value dict
 
@@ -508,7 +539,9 @@ class FileBackend(PipestatBackend):
                             if isinstance(value, dict):
                                 if key == filter_condition["key"][0]:
                                     result = get_nested_column(
-                                        value, filter_condition["key"][1:], retrieved_operator
+                                        value,
+                                        filter_condition["key"][1:],
+                                        retrieved_operator,
                                     )
                             else:
                                 if filter_condition["key"] == key:
@@ -547,7 +580,9 @@ class FileBackend(PipestatBackend):
         shared_keys = []
 
         if bool_operator.lower() == "and" and filtered_records_list:
-            shared_keys = list(reduce(lambda i, j: i & j, (set(x) for x in filtered_records_list)))
+            shared_keys = list(
+                reduce(lambda i, j: i & j, (set(x) for x in filtered_records_list))
+            )
 
         if bool_operator.lower() == "or" and filtered_records_list:
             shared_keys = list(set(chain(*filtered_records_list)))
@@ -611,7 +646,9 @@ class FileBackend(PipestatBackend):
         remove_lock(flag_path)
 
         if prev_status:
-            _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
+            _LOGGER.debug(
+                f"Changed status from '{prev_status}' to '{status_identifier}'"
+            )
 
     def _htmlreportbuilder(self):
         """
@@ -631,7 +668,9 @@ class FileBackend(PipestatBackend):
         """
         _LOGGER.info(f"Initializing results file '{self.results_file_path}'")
         self._data = YAMLConfigManager(
-            entries={self.pipeline_name: {}}, filepath=self.results_file_path, create_file=True
+            entries={self.pipeline_name: {}},
+            filepath=self.results_file_path,
+            create_file=True,
         )
         self._data.setdefault(self.pipeline_name, {})
         self._data[self.pipeline_name].setdefault("project", {})
@@ -656,7 +695,10 @@ class FileBackend(PipestatBackend):
         elif num_namespaces > 0:
             if self.pipeline_name in namespaces_reported:
                 self._data = data
-            elif self.pipeline_name not in namespaces_reported and self.multi_pipelines is True:
+            elif (
+                self.pipeline_name not in namespaces_reported
+                and self.multi_pipelines is True
+            ):
                 self._data = data
                 self._data.setdefault(self.pipeline_name, {})
                 self._data[self.pipeline_name].setdefault("project", {})

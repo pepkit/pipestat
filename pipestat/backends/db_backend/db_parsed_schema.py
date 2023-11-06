@@ -4,22 +4,32 @@ import copy
 import datetime
 import logging
 from pathlib import Path
-from typing import *
+from typing import Any, Dict, List, Mapping, Optional
 from pydantic import create_model
 
-# from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy import Column, null
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
-from pipestat.const import *
-from pipestat.exceptions import SchemaError
-from pipestat.helpers import read_yaml_data
+from pipestat.const import (
+    CANONICAL_TYPES,
+    CLASSES_BY_TYPE,
+    CREATED_TIME,
+    ID_KEY,
+    MODIFIED_TIME,
+    PIPELINE_NAME,
+    PROJECT_NAME,
+    RECORD_IDENTIFIER,
+    SAMPLE_NAME,
+    STATUS,
+    SCHEMA_DESC_KEY,
+    SCHEMA_ITEMS_KEY,
+    SCHEMA_PROP_KEY,
+    SCHEMA_TYPE_KEY,
+)
+from pipestat.exceptions import SchemaError, PipestatError
 from pipestat.parsed_schema import ParsedSchema
 
-
 _LOGGER = logging.getLogger(__name__)
-
-__all__ = ["ParsedSchema", "SCHEMA_PIPELINE_NAME_KEY"]
 
 
 NULL_MAPPING_VALUE = {}
@@ -53,7 +63,10 @@ def get_base_model():
 
 
 def _safe_pop_one_mapping(
-    mappingkey: str, data: Dict[str, Any], info_name: str, subkeys: Optional[List[str]] = None
+    mappingkey: str,
+    data: Dict[str, Any],
+    info_name: str,
+    subkeys: Optional[List[str]] = None,
 ) -> Any:
     """
     mapping key: the dict key where the sample, project or status values are stored, e.g. data["mappingkey"]
@@ -141,13 +154,18 @@ class ParsedSchemaDB(ParsedSchema):
                 typename = subdata[SCHEMA_TYPE_KEY]
             except KeyError:
                 if require_type:
-                    _LOGGER.error(f"'{SCHEMA_TYPE_KEY}' is required for each schema element")
+                    _LOGGER.error(
+                        f"'{SCHEMA_TYPE_KEY}' is required for each schema element"
+                    )
                     raise
                 else:
                     data_type = str
             else:
                 data_type = self._get_data_type(typename)
-            if data_type == CLASSES_BY_TYPE["object"] or data_type == CLASSES_BY_TYPE["array"]:
+            if (
+                data_type == CLASSES_BY_TYPE["object"]
+                or data_type == CLASSES_BY_TYPE["array"]
+            ):
                 defs[name] = (
                     data_type,
                     Field(sa_column=Column(JSONB), default=null()),
@@ -180,9 +198,13 @@ class ParsedSchemaDB(ParsedSchema):
             # we must ensure there are distinct table names in the same database.
             table_name = self.project_table_name
 
-        if pipeline_type == "sample":
+        elif pipeline_type == "sample":
             data = self.sample_level_data
             table_name = self.sample_table_name
+        else:
+            raise PipestatError(
+                f"Building model requires pipeline type. Provided type: '{pipeline_type}' "
+            )
 
         if not self.sample_level_data and not self.project_level_data:
             return None
@@ -307,7 +329,9 @@ def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:
     :return dict: schema with types replaced
     """
     for k, v in s.items():
-        missing_req_keys = [req for req in [SCHEMA_TYPE_KEY, SCHEMA_DESC_KEY] if req not in v]
+        missing_req_keys = [
+            req for req in [SCHEMA_TYPE_KEY, SCHEMA_DESC_KEY] if req not in v
+        ]
         if missing_req_keys:
             raise SchemaError(
                 f"Result '{k}' is missing required key(s): {', '.join(missing_req_keys)}"

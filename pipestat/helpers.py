@@ -5,18 +5,19 @@ import os
 import errno
 import yaml
 import jsonschema
-from json import dumps, loads
+from json import dumps
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
-
+from typing import Any, Dict, Optional, Tuple, Union
 
 from oyaml import safe_load
-
 from ubiquerg import expandpath
 
-
-from .const import *
-from .exceptions import *
+from .const import (
+    PIPESTAT_GENERIC_CONFIG,
+    SCHEMA_PROP_KEY,
+    SCHEMA_TYPE_KEY,
+    CLASSES_BY_TYPE,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,10 +49,13 @@ def validate_type(value, schema, strict_type=False):
                     cls_fun = CLASSES_BY_TYPE[prop_dict[SCHEMA_TYPE_KEY]]
                     value[prop] = cls_fun(value[prop])
                 except Exception as e:
-                    _LOGGER.error(f"Could not cast the result into " f"required type: {str(e)}")
+                    _LOGGER.error(
+                        f"Could not cast the result into " f"required type: {str(e)}"
+                    )
                 else:
                     _LOGGER.debug(
-                        f"Casted the reported result into required " f"type: {str(cls_fun)}"
+                        f"Casted the reported result into required "
+                        f"type: {str(cls_fun)}"
                     )
         jsonschema.validate(value, schema)
     else:
@@ -72,7 +76,9 @@ def read_yaml_data(path: Union[str, Path], what: str) -> Tuple[str, Dict[str, An
         path = expandpath(path)
         test = os.path.isfile
     else:
-        raise TypeError(f"Alleged path to YAML file to read is neither path nor string: {path}")
+        raise TypeError(
+            f"Alleged path to YAML file to read is neither path nor string: {path}"
+        )
     assert test(path), FileNotFoundError(f"File not found: {path}")
     _LOGGER.debug(f"Reading {what} from '{path}'")
     with open(path, "r") as f:
@@ -114,7 +120,9 @@ def mk_abs_via_cfg(
         return path
     if cfg_path is None:
         rel_to_cwd = os.path.join(os.getcwd(), path)
-        if os.path.exists(rel_to_cwd) or os.access(os.path.dirname(rel_to_cwd), os.W_OK):
+        if os.path.exists(rel_to_cwd) or os.access(
+            os.path.dirname(rel_to_cwd), os.W_OK
+        ):
             return rel_to_cwd
         else:
             raise OSError(f"File not found: {path}")
@@ -157,7 +165,9 @@ def init_generic_config():
             yaml.dump(generic_config_dict, file)
         print(f"Generic configuration file successfully created at: {dest_file}")
     else:
-        print(f"Generic configuration file already exists `{dest_file}`. Skipping creation..")
+        print(
+            f"Generic configuration file already exists `{dest_file}`. Skipping creation.."
+        )
 
     return True
 
@@ -166,7 +176,7 @@ def markdown_formatter(pipeline_name, record_identifier, res_id, value) -> str:
     """
     Returns Markdown formatted value as string
     """
-    if type(value) is not dict:
+    if not isinstance(value, dict):
         nl = "\n"
         rep_strs = [f"`{res_id}`: ```{value}```"]
         formatted_result = (

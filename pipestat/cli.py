@@ -19,8 +19,17 @@ from .argparser import (
     SERVE_CMD,
     LINK_CMD,
 )
-from .const import *
-from .exceptions import SchemaNotFoundError, PipestatStartupError, PipestatDependencyError
+from .const import (
+    SCHEMA_KEY,
+    SCHEMA_TYPE_KEY,
+    CANONICAL_TYPES,
+    PKG_NAME,
+)
+from .exceptions import (
+    SchemaNotFoundError,
+    PipestatStartupError,
+    PipestatDependencyError,
+)
 from .pipestat import PipestatManager
 from .helpers import init_generic_config
 
@@ -69,7 +78,9 @@ def main(test_args=None):
         )
         results_path = args.config or args.results_file
         html_report_path = psm.summarize()
-        _LOGGER.info(f"\nGenerating HTML Report from {results_path} at: {html_report_path}\n")
+        _LOGGER.info(
+            f"\nGenerating HTML Report from {results_path} at: {html_report_path}\n"
+        )
 
         sys.exit(0)
 

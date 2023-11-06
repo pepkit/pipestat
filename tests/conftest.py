@@ -24,7 +24,9 @@ _, COMMON_CUSTOM_STATUS_DATA = read_yaml_data(
 )
 
 # Data corresponding to default status schema, at pipestat/schema/status_schema.yaml
-_, DEFAULT_STATUS_DATA = read_yaml_data(path=STATUS_SCHEMA, what="default status schema")
+_, DEFAULT_STATUS_DATA = read_yaml_data(
+    path=STATUS_SCHEMA, what="default status schema"
+)
 
 
 @pytest.fixture
@@ -33,7 +35,9 @@ def backend_data(request, config_file_path, results_file_path):
         return {"config_file": config_file_path}
     elif request.param == BACKEND_KEY_FILE:
         return {"results_file_path": results_file_path}
-    raise Exception(f"Unrecognized initial parametrization for backend data: {request.param}")
+    raise Exception(
+        f"Unrecognized initial parametrization for backend data: {request.param}"
+    )
 
 
 @pytest.fixture

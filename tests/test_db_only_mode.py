@@ -1,10 +1,10 @@
 import pytest
 
-from pipestat import SamplePipestatManager, SamplePipestatManager, ProjectPipestatManager
+from pipestat import SamplePipestatManager
 from pipestat.const import *
 from .conftest import DB_URL
 
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import SQLModel, create_engine
 from sqlmodel.main import default_registry
 
 
@@ -30,7 +30,9 @@ class ContextManagerDBTesting:
 
 class TestDatabaseOnly:
     # TODO: parameterize this against different schemas.
-    def test_manager_can_be_built_without_exception(self, config_file_path, schema_file_path):
+    def test_manager_can_be_built_without_exception(
+        self, config_file_path, schema_file_path
+    ):
         with ContextManagerDBTesting(DB_URL):
             try:
                 SamplePipestatManager(
@@ -64,7 +66,9 @@ class TestDatabaseOnly:
                 database_only=True,
                 config_file=config_file_path,
             )
-            psm.report(record_identifier="constant_record_id", values=val, force_overwrite=True)
+            psm.report(
+                record_identifier="constant_record_id", values=val, force_overwrite=True
+            )
             val_name = list(val.keys())[0]
 
             assert psm.select_records(
@@ -109,7 +113,9 @@ class TestDatabaseOnly:
                         strict_type=False,
                         # pipeline_type=pipeline_type,
                     )
-                    assert psm.backend.select(filter_conditions=[(val_name, "eq", val[val_name])])
+                    assert psm.backend.select(
+                        filter_conditions=[(val_name, "eq", val[val_name])]
+                    )
                 else:
                     pass
                     # assert that this would fail to report otherwise.
@@ -122,7 +128,9 @@ class TestDatabaseOnly:
                         # pipeline_type=pipeline_type,
                     )
                     val_name = list(val.keys())[0]
-                    assert psm.backend.select(filter_conditions=[(val_name, "eq", val[val_name])])
+                    assert psm.backend.select(
+                        filter_conditions=[(val_name, "eq", val[val_name])]
+                    )
                 else:
                     pass
                     # assert that this would fail to report otherwise.
@@ -157,7 +165,9 @@ class TestDatabaseOnly:
             {
                 "output_file_in_object": {
                     "properties": {
-                        "prop1": {"properties": {"path": "pathstring", "title": "titlestring"}}
+                        "prop1": {
+                            "properties": {"path": "pathstring", "title": "titlestring"}
+                        }
                     }
                 }
             },
@@ -273,4 +283,6 @@ class TestDatabaseOnly:
             psm = SamplePipestatManager(**args)
             result = psm.select_records(cursor=offset, limit=limit)
             print(result)
-            assert len(result["records"]) == min(max((psm.record_count - offset), 0), limit)
+            assert len(result["records"]) == min(
+                max((psm.record_count - offset), 0), limit
+            )

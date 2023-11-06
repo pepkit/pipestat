@@ -1,14 +1,12 @@
-import sys
-import datetime
+import os
 from abc import ABC
 from logging import getLogger
+from typing import List, Dict, Any, Optional, Union, Tuple
 
-from pipestat.helpers import *
+from ..const import PKG_NAME, STATUS
+from ..helpers import force_symlink
+from ..exceptions import SchemaError
 
-if int(sys.version.split(".")[1]) < 9:
-    from typing import List, Dict, Any, Optional, Union
-else:
-    from typing import *
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -107,7 +105,7 @@ class PipestatBackend(ABC):
         for record in all_records["records"]:
             # result_identifiers = record.keys() #self.select_records(record_identifier=record["record_identifier"])
             for k, v in record.items():
-                if type(v) == dict:
+                if isinstance(v, dict):
                     all_paths = get_all_paths(k, v)
                     for path in all_paths:
                         file = os.path.basename(path[1])
@@ -122,7 +120,8 @@ class PipestatBackend(ABC):
                             if k == subdir[0]:
                                 target_dir = subdir[1]
                         linkname = os.path.join(
-                            target_dir, record["record_identifier"] + "_" + path[0] + "_" + file
+                            target_dir,
+                            record["record_identifier"] + "_" + path[0] + "_" + file,
                         )
                         src = os.path.abspath(path[1])
                         src_rel = os.path.relpath(src, os.path.dirname(linkname))
@@ -144,7 +143,6 @@ class PipestatBackend(ABC):
 
     def list_results(self) -> List[str]:
         _LOGGER.warning("Not implemented yet for this backend")
-        pass
 
     def report(
         self,
@@ -160,7 +158,6 @@ class PipestatBackend(ABC):
         columns: Optional[List[str]] = None,
     ) -> List[Any]:
         _LOGGER.warning("Not implemented yet for this backend")
-        pass
 
     def remove(
         self,
