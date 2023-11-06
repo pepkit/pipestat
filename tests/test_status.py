@@ -10,7 +10,6 @@ from .test_db_only_mode import ContextManagerDBTesting
 from pipestat.exceptions import UnrecognizedStatusError
 
 
-
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
 class TestStatus:
     def test_status_file_default_location(self, schema_file_path, results_file_path):
