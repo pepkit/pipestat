@@ -624,9 +624,11 @@ class PipestatManager(MutableMapping):
     def retrieve_many(
         self,
         record_identifiers: List[str],
+        result_identifier: Optional[str] = None,
     ) -> Union[Any, Dict[str, Any]]:
         """
         :param record_identifiers: list of record identifiers
+        :param str result_identifier: single record_identifier
         :return: Dict[str, any]: a mapping with filtered
             results reported for the record
         """
@@ -636,8 +638,10 @@ class PipestatManager(MutableMapping):
             "operator": "in",
             "value": record_identifiers,
         }
-
-        result = self.select_records(filter_conditions=[filter])
+        if result_identifier:
+            result = self.select_records(filter_conditions=[filter], columns=[result_identifier])
+        else:
+            result = self.select_records(filter_conditions=[filter])
 
         if len(result["records"]) == 0:
             RecordNotFoundError(f"Records, '{record_identifiers}',  not found")
