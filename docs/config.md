@@ -19,7 +19,7 @@ database: # or DB login credentials
 
 If both `results_file_path` and DB login credentials are provided, the YAML results file is given priority.
 
-Any of the settings specified in the configuration file, apart from the database login credentials, can be overwritten with the respectively named arguments in the `PipestatManager` object constructor, which implies the fact that the configuration file is *required* only if the the intended pipestat back-end is a database.
+Any of the settings specified in the configuration file, apart from the database login credentials, can be overwritten with the respectively named arguments in the `PipestatManager` object constructor. Therefore, the configuration file is *required* only if the intended pipestat back-end is a database or if using pipestat in tandem with [Looper](https://looper.databio.org/en/dev/pipestat/).
 
 ## Example
 
