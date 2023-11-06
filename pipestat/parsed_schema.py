@@ -28,28 +28,6 @@ SCHEMA_PIPELINE_NAME_KEY = "pipeline_name"
 
 # The columns associated with the file and image types
 PATH_COL_SPEC = (Path, ...)
-# TITLE_COL_SPEC = (Optional[str], Field(default=None))
-# THUMBNAIL_COL_SPEC = (Optional[Path], Field(default=None))
-
-
-# def _custom_types_column_specifications():
-#     """Collection of the column specifications for the custom types"""
-#     return {
-#         "path": PATH_COL_SPEC,
-#         "title": TITLE_COL_SPEC,
-#         "thumbnail": THUMBNAIL_COL_SPEC,
-#     }
-
-
-# def get_base_model():
-#     class BaseModel(SQLModel):
-#         __table_args__ = {"extend_existing": True}
-#
-#         class Config:
-#             arbitrary_types_allowed = True
-#
-#     # return SQLModel
-#     return BaseModel
 
 
 def _safe_pop_one_mapping(
@@ -103,6 +81,7 @@ class ParsedSchema(object):
         # Currently supporting backwards compatibility with old output schema while now also supporting a JSON schema:
         if "properties" in list(data.keys()):
             # Assume top-level properties key implies proper JSON schema.
+
             self._pipeline_name = data["properties"].pop(SCHEMA_PIPELINE_NAME_KEY, None)
 
             sample_data = _safe_pop_one_mapping(
@@ -125,6 +104,10 @@ class ParsedSchema(object):
                 info_name="status",
                 mappingkey="properties",
             )
+            # TODO We should add the ability to look at an external source beyond the source schema (data)
+            sample_data = replace_JSON_refs(sample_data, data)
+
+            prj_data = replace_JSON_refs(prj_data, data)
 
         else:
             self._pipeline_name = data.pop(SCHEMA_PIPELINE_NAME_KEY, None)
@@ -225,38 +208,6 @@ class ParsedSchema(object):
         """Return the name of the database table for sample-level information."""
         return self._table_name("sample")
 
-    #
-    # def _make_field_definitions(self, data: Dict[str, Any], require_type: bool):
-    #     # TODO: default to string if no type key?
-    #     # TODO: parse "required" ?
-    #     defs = {}
-    #     for name, subdata in data.items():
-    #         try:
-    #             typename = subdata[SCHEMA_TYPE_KEY]
-    #         except KeyError:
-    #             if require_type:
-    #                 _LOGGER.error(f"'{SCHEMA_TYPE_KEY}' is required for each schema element")
-    #                 raise
-    #             else:
-    #                 data_type = str
-    #         else:
-    #             data_type = self._get_data_type(typename)
-    #         if data_type == CLASSES_BY_TYPE["object"] or data_type == CLASSES_BY_TYPE["array"]:
-    #             defs[name] = (
-    #                 data_type,
-    #                 Field(sa_column=Column(JSONB), default=null()),
-    #             )
-    #         else:
-    #             defs[name] = (
-    #                 # Optional[subdata[SCHEMA_TYPE_KEY]],
-    #                 # subdata[SCHEMA_TYPE_KEY],
-    #                 # Optional[str],
-    #                 # CLASSES_BY_TYPE[subdata[SCHEMA_TYPE_KEY]],
-    #                 data_type,
-    #                 Field(default=subdata.get("default")),
-    #             )
-    #     return defs
-
     @staticmethod
     def _get_data_type(type_name):
         t = CLASSES_BY_TYPE[type_name]
@@ -266,30 +217,6 @@ class ParsedSchema(object):
     @property
     def file_like_table_name(self):
         return self._table_name("files")
-
-    # def build_model(self, pipeline_type):
-    #     if pipeline_type == "project":
-    #         data = self.project_level_data
-    #         # if using the same output schema and thus, pipeline name for samples and project
-    #         # we must ensure there are distinct table names in the same database.
-    #         table_name = self.project_table_name
-    #
-    #     if pipeline_type == "sample":
-    #         data = self.sample_level_data
-    #         table_name = self.sample_table_name
-    #
-    #     if not self.sample_level_data and not self.project_level_data:
-    #         return None
-    #
-    #     field_defs = self._make_field_definitions(data, require_type=True)
-    #     field_defs = self._add_status_field(field_defs)
-    #     field_defs = self._add_record_identifier_field(field_defs)
-    #     field_defs = self._add_id_field(field_defs)
-    #     # field_defs = self._add_project_name_field(field_defs)
-    #     field_defs = self._add_pipeline_name_field(field_defs)
-    #     field_defs = self._add_created_time_field(field_defs)
-    #     field_defs = self._add_modified_time_field(field_defs)
-    #     return _create_model(table_name, **field_defs)
 
     def to_dict(self) -> Dict[str, Any]:
         """Create simple dictionary representation of this instance."""
@@ -303,97 +230,8 @@ class ParsedSchema(object):
                 data[key] = values
         return data
 
-    #
-    # @staticmethod
-    # def _add_project_name_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
-    #     if PROJECT_NAME in field_defs:
-    #         raise SchemaError(
-    #             f"'{PROJECT_NAME}' is reserved as identifier and can't be part of schema."
-    #         )
-    #     field_defs[PROJECT_NAME] = (str, Field(default=None))
-    #
-    #     return field_defs
-    #
-    # @staticmethod
-    # def _add_pipeline_name_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
-    #     if PIPELINE_NAME in field_defs:
-    #         raise SchemaError(
-    #             f"'{PIPELINE_NAME}' is reserved as identifier and can't be part of schema."
-    #         )
-    #     field_defs[PIPELINE_NAME] = (str, Field(default=None))
-    #
-    #     return field_defs
-    #
-    # @staticmethod
-    # def _add_id_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
-    #     if ID_KEY in field_defs:
-    #         raise SchemaError(
-    #             f"'{ID_KEY}' is reserved for primary key and can't be part of schema."
-    #         )
-    #     field_defs[ID_KEY] = (
-    #         Optional[int],
-    #         Field(default=None, primary_key=True),
-    #     )
-    #     return field_defs
-    #
-    # @staticmethod
-    # def _add_record_identifier_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
-    #     if RECORD_IDENTIFIER in field_defs:
-    #         raise SchemaError(
-    #             f"'{RECORD_IDENTIFIER}' is reserved as identifier and can't be part of schema."
-    #         )
-    #     field_defs[RECORD_IDENTIFIER] = (str, Field(default=None))
-    #     return field_defs
-    #
-    # @staticmethod
-    # def _add_sample_name_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
-    #     if SAMPLE_NAME in field_defs:
-    #         raise SchemaError(
-    #             f"'{SAMPLE_NAME}' is reserved as identifier and can't be part of schema."
-    #         )
-    #     field_defs[SAMPLE_NAME] = (str, Field(default=None))
-    #     return field_defs
-    #
-    # @staticmethod
-    # def _add_status_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
-    #     if STATUS in field_defs:
-    #         raise SchemaError(
-    #             f"'{STATUS}' is reserved for status reporting and can't be part of schema."
-    #         )
-    #     field_defs[STATUS] = (str, Field(default=None))
-    #     return field_defs
-    #
-    # @staticmethod
-    # def _add_created_time_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
-    #     if CREATED_TIME in field_defs:
-    #         raise SchemaError(
-    #             f"'{CREATED_TIME}' is reserved for time reporting and can't be part of schema."
-    #         )
-    #     field_defs[CREATED_TIME] = (datetime.datetime, Field(default=None))
-    #     return field_defs
-    #
-    # @staticmethod
-    # def _add_modified_time_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
-    #     if MODIFIED_TIME in field_defs:
-    #         raise SchemaError(
-    #             f"'{MODIFIED_TIME}' is reserved for time reporting and can't be part of schema."
-    #         )
-    #     field_defs[MODIFIED_TIME] = (datetime.datetime, Field(default=None))
-    #     return field_defs
-
     def _table_name(self, suffix: str) -> str:
         return f"{self.pipeline_name}__{suffix}"
-
-
-#
-# def _create_model(table_name: str, **kwargs):
-#     return create_model(
-#         table_name,
-#         __base__=get_base_model(),
-#         __cls_kwargs__={"table": True},
-#         **kwargs,
-#     )
-#
 
 
 def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:
@@ -422,4 +260,38 @@ def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:
         spec.setdefault(SCHEMA_PROP_KEY, {}).update(curr_type_spec[SCHEMA_PROP_KEY])
         spec.setdefault("required", []).extend(curr_type_spec["required"])
         spec[SCHEMA_TYPE_KEY] = curr_type_spec[SCHEMA_TYPE_KEY]
+    return s
+
+
+def replace_JSON_refs(s: Dict[str, Any], data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Recursively search and replace the $refs if they exist in schema, s, and if their corresponding $defs exist in
+    source schema, data
+
+    :param dict s: schema to replace types in
+    :param dict data: source schema
+    :return dict s: schema with types replaced
+    """
+
+    for k, v in list(s.items()):
+        if isinstance(v, dict):
+            replace_JSON_refs(s[k], data)
+        if "$ref" == k:
+            split_value = v.split("/")
+            if len(split_value) != 3:
+                raise SchemaError(
+                    msg=f"$ref exists in source schema but path,{v} ,not valid, e.g. '#/$defs/file' "
+                )
+            if split_value[1] in data and split_value[2] in data[split_value[1]]:
+                result = data[split_value[1]][split_value[2]]
+            else:
+                result = None
+            if result is not None:
+                s.update({split_value[2]: result})
+                s.update({"type": "object"})
+                del s["$ref"]
+            else:
+                raise SchemaError(
+                    msg=f"Could not find {split_value[1]} and {split_value[2]} in $def"
+                )
     return s

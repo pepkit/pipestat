@@ -78,14 +78,6 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
-    def get_records(
-        self,
-        limit: Optional[int] = 1000,
-        offset: Optional[int] = 0,
-    ) -> Optional[dict]:
-        _LOGGER.warning("Not implemented yet for this backend")
-        pass
-
     def get_status(self, record_identifier: str) -> Optional[str]:
         _LOGGER.warning("Not implemented yet for this backend")
 
@@ -110,11 +102,11 @@ class PipestatBackend(ABC):
 
         unique_result_identifiers = []
 
-        all_records = self.get_records()
+        all_records = self.select_records()
 
         for record in all_records["records"]:
-            result_identifiers = self.retrieve(record_identifier=record)
-            for k, v in result_identifiers.items():
+            # result_identifiers = record.keys() #self.select_records(record_identifier=record["record_identifier"])
+            for k, v in record.items():
                 if type(v) == dict:
                     all_paths = get_all_paths(k, v)
                     for path in all_paths:
@@ -129,7 +121,9 @@ class PipestatBackend(ABC):
                         for subdir in unique_result_identifiers:
                             if k == subdir[0]:
                                 target_dir = subdir[1]
-                        linkname = os.path.join(target_dir, record + "_" + path[0] + "_" + file)
+                        linkname = os.path.join(
+                            target_dir, record["record_identifier"] + "_" + path[0] + "_" + file
+                        )
                         src = os.path.abspath(path[1])
                         src_rel = os.path.relpath(src, os.path.dirname(linkname))
                         force_symlink(src_rel, linkname)
@@ -152,16 +146,6 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
-    def list_recent_results(
-        self,
-        limit: Optional[int] = None,
-        start: Optional[datetime.datetime] = None,
-        end: Optional[datetime.datetime] = None,
-        type: Optional[str] = None,
-    ) -> List[str]:
-        _LOGGER.warning("Not implemented yet for this backend")
-        pass
-
     def report(
         self,
         values: Dict[str, Any],
@@ -178,30 +162,6 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
-    def retrieve(
-        self, record_identifier: Optional[str] = None, result_identifier: Optional[str] = None
-    ) -> Union[Any, Dict[str, Any]]:
-        _LOGGER.warning("Not implemented yet for this backend")
-        pass
-
-    def retrieve_multiple(
-        self,
-        record_identifier: Optional[List[str]] = None,
-        result_identifier: Optional[List[str]] = None,
-        limit: Optional[int] = 1000,
-        offset: Optional[int] = 0,
-    ) -> Union[Any, Dict[str, Any]]:
-        """
-        :param List[str] record_identifier: list of record identifiers
-        :param List[str] result_identifier: list of result identifiers to be retrieved
-        :param int limit: limit number of records to this amount
-        :param int offset: offset records by this amount
-        :return Dict[str, any]: a mapping with filtered results reported for the record
-        """
-
-        _LOGGER.warning("Not implemented yet for this backend")
-        pass
-
     def remove(
         self,
         record_identifier: Optional[str] = None,
@@ -215,3 +175,21 @@ class PipestatBackend(ABC):
         rm_record: Optional[bool] = False,
     ) -> bool:
         _LOGGER.warning("Not implemented yet for this backend")
+
+
+def select_records(
+    self,
+    columns: Optional[List[str]] = None,
+    filter_conditions: Optional[List[Dict[str, Any]]] = None,
+    limit: Optional[int] = 1000,
+    cursor: Optional[int] = None,
+    bool_operator: Optional[str] = "AND",
+) -> Dict[str, Any]:
+    _LOGGER.warning("Not implemented yet for this backend")
+
+
+def select_distinct(
+    self,
+    columns,
+) -> List[Tuple]:
+    _LOGGER.warning("Not implemented yet for this backend")

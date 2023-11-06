@@ -2,12 +2,13 @@
 
 import os
 import pytest
-from pipestat import SamplePipestatManager, SamplePipestatManager, ProjectPipestatManager
-from pipestat.const import STATUS_FILE_DIR
+from pipestat import SamplePipestatManager, ProjectPipestatManager
+from pipestat.const import STATUS_FILE_DIR, FILE_KEY
 from .conftest import BACKEND_KEY_DB, BACKEND_KEY_FILE, DB_URL, SERVICE_UNAVAILABLE
 
 from .test_db_only_mode import ContextManagerDBTesting
 from pipestat.exceptions import UnrecognizedStatusError
+
 
 
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
@@ -19,7 +20,7 @@ class TestStatus:
             results_file_path=results_file_path,
             schema_path=schema_file_path,
         )
-        assert psm[STATUS_FILE_DIR] == os.path.dirname(psm.file)
+        assert psm.cfg[STATUS_FILE_DIR] == os.path.dirname(psm.cfg[FILE_KEY])
 
     @pytest.mark.parametrize("backend_data", ["file", "db"], indirect=True)
     @pytest.mark.parametrize("status_id", ["running", "failed", "completed"])

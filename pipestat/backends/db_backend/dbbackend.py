@@ -1,26 +1,26 @@
 import sys
 import datetime
-
-
 from logging import getLogger
-
 from contextlib import contextmanager
 
 # try:
 from sqlalchemy import text
+from sqlalchemy.engine.row import Row
 from sqlmodel import Session, create_engine, select as sql_select
+from sqlmodel.main import SQLModelMetaclass
 
 # except:
 #     pass
+
+if int(sys.version.split(".")[1]) < 9:
+    from typing import List, Dict, Any, Optional, Union, NoReturn
+else:
+    from typing import *
 
 from pipestat.helpers import *
 from pipestat.backends.db_backend.db_helpers import *
 from pipestat.backends.abstract import PipestatBackend
 
-if int(sys.version.split(".")[1]) < 9:
-    from typing import List, Dict, Any, Optional, Union
-else:
-    from typing import *
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -43,7 +43,6 @@ class DBBackend(PipestatBackend):
         :param str record_identifier: record identifier to report for. This
             creates a weak bound to the record, which can be overridden in
             this object method calls
-        :param project_name: project name associated with the record
         :param str pipeline_name: name of pipeline associated with result
         :param str show_db_logs: Defaults to False, toggles showing database logs
         :param str pipeline_type: "sample" or "project"
@@ -53,7 +52,9 @@ class DBBackend(PipestatBackend):
         :param dict status_schema_source: filepath of status schema
         :param str result_formatter: function for formatting result
         """
-        _LOGGER.warning(f"Initializing DBBackend for pipeline '{pieline_name}'")
+
+        super().__init__(pipeline_type)
+        _LOGGER.warning(f"Initializing DBBackend for pipeline '{pipeline_name}'")
         self.pipeline_name = pipeline_name
         self.pipeline_type = pipeline_type or "sample"
         self.record_identifier = record_identifier
@@ -71,18 +72,25 @@ class DBBackend(PipestatBackend):
     def check_record_exists(
         self,
         record_identifier: str,
-        table_name: str,
     ) -> bool:
         """
         Check if the specified record exists in the table
 
         :param str record_identifier: record to check for
-        :param str table_name: table name to check
         :return bool: whether the record exists in the table
         """
 
-        query_hit = self.get_one_record(rid=record_identifier, table_name=table_name)
-        return query_hit is not None
+        query_hit = self.select_records(
+            filter_conditions=[
+                {
+                    "key": "record_identifier",
+                    "operator": "eq",
+                    "value": record_identifier,
+                }
+            ]
+        )
+
+        return bool(query_hit["records"])
 
     def count_records(self):
         """
@@ -114,67 +122,6 @@ class DBBackend(PipestatBackend):
             )
         return mod
 
-    def get_one_record(
-        self,
-        table_name: str,
-        rid: Optional[str] = None,
-    ):
-        """
-        Retrieve single record from SQL table
-
-        :param str table_name: table name to check
-        :param str rid: record to check for
-        :return Any: Record object
-        """
-
-        models = (
-            [self.get_model(table_name=table_name)] if table_name else list(self.orms.values())
-        )
-        with self.session as s:
-            for mod in models:
-                stmt = sql_select(mod).where(mod.record_identifier == rid)
-                record = s.exec(stmt).first()
-
-                if record:
-                    return record
-
-    def get_records(
-        self,
-        limit: Optional[int] = 1000,
-        offset: Optional[int] = 0,
-    ) -> Optional[dict]:
-        """Returns list of records
-
-        :param int limit: limit number of records to this amount
-        :param int offset: offset records by this amount
-        :return dict records_dict: dictionary of records
-        {
-          "count": x,
-          "limit": l,
-          "offset": o,
-          "records": [...]
-        }
-        """
-
-        mod = self.get_model(table_name=self.table_name)
-
-        with self.session as s:
-            total_count = len(s.exec(sql_select(mod)).all())
-            sample_list = []
-            stmt = sql_select(mod).offset(offset).limit(limit)
-            records = s.exec(stmt).all()
-            for i in records:
-                sample_list.append(i.record_identifier)
-
-        records_dict = {
-            "count": total_count,
-            "limit": limit,
-            "offset": offset,
-            "records": sample_list,
-        }
-
-        return records_dict
-
     def get_status(self, record_identifier: str) -> Optional[str]:
         """
         Get pipeline status
@@ -185,63 +132,24 @@ class DBBackend(PipestatBackend):
         """
 
         try:
-            result = self.retrieve(
-                result_identifier=STATUS,
-                record_identifier=record_identifier,
+            result = self.select_records(
+                columns=[STATUS],
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": record_identifier,
+                    }
+                ],
             )
         except RecordNotFoundError:
             return None
-        return result
+        try:
+            status = result["records"][0]["status"]
+        except IndexError:
+            status = None
 
-    def list_recent_results(
-        self,
-        limit: Optional[int] = None,
-        start: Optional[datetime.datetime] = None,
-        end: Optional[datetime.datetime] = None,
-        type: Optional[str] = None,
-    ) -> Optional[dict]:
-        """Lists recent results based on start and end time filter
-        :param int  limit: limit number of results returned
-        :param datetime.datetime start: most recent result to filter on, defaults to now, e.g. 2023-10-16 13:03:04.680400
-        :param datetime.datetime end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
-        :param str type: created or modified
-        :return dict results: a dict containing start, end, num of records, and list of retrieved records
-        """
-        mod = self.get_model(table_name=self.table_name)
-
-        with self.session as s:
-            records_list = []
-            if type == "modified":
-                stmt = (
-                    sql_select(mod)
-                    .where(mod.pipestat_modified_time <= start)
-                    .where(mod.pipestat_modified_time >= end)
-                    .limit(limit)
-                )
-            else:
-                stmt = (
-                    sql_select(mod)
-                    .where(mod.pipestat_created_time <= start)
-                    .where(mod.pipestat_created_time >= end)
-                    .limit(limit)
-                )
-            records = s.exec(stmt).all()
-            if records:
-                for i in reversed(records):
-                    if type == "modified":
-                        records_list.append((i.record_identifier, i.pipestat_modified_time))
-                    else:
-                        records_list.append((i.record_identifier, i.pipestat_created_time))
-
-        records_dict = {
-            "count": len(records),
-            "start": start,
-            "end": end,
-            "type": type,
-            "records": records_list,
-        }
-
-        return records_dict
+        return status
 
     def list_results(
         self,
@@ -258,7 +166,19 @@ class DBBackend(PipestatBackend):
         """
 
         rid = record_identifier
-        record = self.get_one_record(rid=rid, table_name=self.table_name)
+        record = self.select_records(
+            filter_conditions=[
+                {
+                    "key": "record_identifier",
+                    "operator": "eq",
+                    "value": rid,
+                }
+            ]
+        )
+        try:
+            record = record["records"][0]
+        except IndexError:
+            return []
 
         if restrict_to is None:
             return (
@@ -271,9 +191,7 @@ class DBBackend(PipestatBackend):
                 else []
             )
         else:
-            return (
-                [r for r in restrict_to if getattr(record, r, None) is not None] if record else []
-            )
+            return [r for r in restrict_to if record.get(r, None) is not None] if record else []
 
     def remove(
         self,
@@ -283,7 +201,7 @@ class DBBackend(PipestatBackend):
         """
         Remove a result.
 
-        If no result ID specified or last result is removed, the entire record
+        If no result ID specified, the entire record
         will be removed.
 
         :param str record_identifier: unique identifier of the record
@@ -292,14 +210,11 @@ class DBBackend(PipestatBackend):
         :return bool: whether the result has been removed
         """
 
+        # TODO removing last result identifier (apart from created, modified time should remove record)
         record_identifier = record_identifier or self.record_identifier
-
         rm_record = True if result_identifier is None else False
 
-        if not self.check_record_exists(
-            record_identifier=record_identifier,
-            table_name=self.table_name,
-        ):
+        if not self.check_record_exists(record_identifier=record_identifier):
             _LOGGER.error(f"Record '{record_identifier}' not found")
             return False
 
@@ -314,7 +229,6 @@ class DBBackend(PipestatBackend):
             ORMClass = self.get_model(table_name=self.table_name)
             if self.check_record_exists(
                 record_identifier=record_identifier,
-                table_name=self.table_name,
             ):
                 with self.session as s:
                     records = s.query(ORMClass).filter(
@@ -348,13 +262,14 @@ class DBBackend(PipestatBackend):
         self,
         record_identifier: Optional[str] = None,
         rm_record: Optional[bool] = False,
-    ) -> bool:
+    ) -> NoReturn:
         """
         Remove a record, requires rm_record to be True
 
         :param str record_identifier: unique identifier of the record
         :param bool rm_record: bool for removing record.
         :return bool: whether the result has been removed
+        :raises RecordNotFoundError: if record not found
         """
 
         record_identifier = record_identifier or self.record_identifier
@@ -363,7 +278,6 @@ class DBBackend(PipestatBackend):
                 ORMClass = self.get_model(table_name=self.table_name)
                 if self.check_record_exists(
                     record_identifier=record_identifier,
-                    table_name=self.table_name,
                 ):
                     with self.session as s:
                         records = s.query(ORMClass).filter(
@@ -426,7 +340,6 @@ class DBBackend(PipestatBackend):
 
             if not self.check_record_exists(
                 record_identifier=record_identifier,
-                table_name=self.table_name,
             ):
                 current_time = datetime.datetime.now()
                 values.update({CREATED_TIME: current_time})
@@ -461,218 +374,101 @@ class DBBackend(PipestatBackend):
             _LOGGER.error(f"Could not insert the result into the database. Exception: {e}")
             raise
 
-    def retrieve(
-        self,
-        record_identifier: Optional[str] = None,
-        result_identifier: Optional[str] = None,
-    ) -> Union[Any, Dict[str, Any]]:
-        """
-        Retrieve a result for a record.
-
-        If no result ID specified, results for the entire record will
-        be returned.
-
-        :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to be retrieved
-        :return any | Dict[str, any]: a single result or a mapping with all the
-            results reported for the record
-        """
-
-        record_identifier = record_identifier or self.record_identifier
-
-        if result_identifier is not None:
-            existing = self.list_results(
-                record_identifier=record_identifier,
-                restrict_to=[result_identifier],
-            )
-            if not existing:
-                raise RecordNotFoundError(
-                    f"Result '{result_identifier}' not found for record " f"'{record_identifier}'"
-                )
-
-        with self.session as s:
-            record = (
-                s.query(self.get_model(table_name=self.table_name))
-                .filter_by(record_identifier=record_identifier)
-                .first()
-            )
-
-        if record is not None:
-            if result_identifier is not None:
-                return getattr(record, result_identifier)
-            return {
-                column: getattr(record, column)
-                for column in [c.name for c in record.__table__.columns]
-                if getattr(record, column, None) is not None
-            }
-        raise RecordNotFoundError(f"Record '{record_identifier}' not found")
-
-    def retrieve_multiple(
-        self,
-        record_identifier: Optional[List[str]] = None,
-        result_identifier: Optional[List[str]] = None,
-        limit: Optional[int] = 1000,
-        offset: Optional[int] = 0,
-    ) -> Union[Any, Dict[str, Any]]:
-        """
-        :param List[str] record_identifier: list of record identifiers
-        :param List[str] result_identifier: list of result identifiers to be retrieved
-        :param int limit: limit number of records to this amount
-        :param int offset: offset records by this amount
-        :return Dict[str, any]: a mapping with filtered results reported for the record
-        """
-
-        record_list = []
-
-        if result_identifier == []:
-            result_identifier = None
-        if record_identifier == []:
-            record_identifier = None
-
-        ORM = self.get_model(table_name=self.table_name)
-
-        if record_identifier is not None:
-            for r_id in record_identifier:
-                filter = [("record_identifier", "eq", r_id)]
-                result = self.select(
-                    columns=result_identifier, filter_conditions=filter, limit=limit, offset=offset
-                )
-                retrieved_record = {}
-                result_dict = dict(result[0])
-                for k, v in list(result_dict.items()):
-                    if k not in self.parsed_schema.results_data.keys():
-                        result_dict.pop(k)
-                retrieved_record.update({r_id: result_dict})
-                record_list.append(retrieved_record)
-        if record_identifier is None:
-            if result_identifier is not None:
-                result_identifier = ["record_identifier"] + result_identifier
-            record_list = []
-            records = self.select(
-                columns=result_identifier, filter_conditions=None, limit=limit, offset=offset
-            )
-            for record in records:
-                retrieved_record = {}
-                r_id = record.record_identifier
-                record_dict = dict(record)
-                for k, v in list(record_dict.items()):
-                    if k not in self.parsed_schema.results_data.keys():
-                        record_dict.pop(k)
-                retrieved_record.update({r_id: record_dict})
-                record_list.append(retrieved_record)
-
-        records_dict = {
-            "count": len(record_list),
-            "limit": limit,
-            "offset": offset,
-            "record_identifiers": record_identifier,
-            "result_identifiers": result_identifier
-            or list(self.parsed_schema.results_data.keys()) + [CREATED_TIME] + [MODIFIED_TIME],
-            "records": record_list,
-        }
-
-        return records_dict
-
-    def select(
+    def select_records(
         self,
         columns: Optional[List[str]] = None,
-        filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
-        json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
-        offset: Optional[int] = None,
-        limit: Optional[int] = None,
-    ) -> List[Any]:
+        filter_conditions: Optional[List[Dict[str, Any]]] = None,
+        limit: Optional[int] = 1000,
+        cursor: Optional[int] = None,
+        bool_operator: Optional[str] = "AND",
+    ) -> Dict[str, Any]:
         """
         Perform a `SELECT` on the table
 
-        :param List[str] columns: columns to include in the result
-        :param [(key,operator,value)] filter_conditions: e.g. [("id", "eq", 1)], operator list:
+        :param list[str] columns: columns to include in the result
+        :param list[dict]  filter_conditions: e.g. [{"key": ["id"], "operator": "eq", "value": 1)], operator list:
             - eq for ==
             - lt for <
             - ge for >=
             - in for in_
             - like for like
-        :param [(col,key,value)] json_filter_conditions: conditions for JSONB column to
-            query that include JSON column name, key withing the JSON object in that
-            column and the value to check the identity against. Therefore only '==' is
-            supported in non-nested checks, e.g. [("other", "genome", "hg38")]
-        :param int offset: skip this number of rows
-        :param int limit: include this number of rows
+        :param int limit: maximum number of results to retrieve per page
+        :param int cursor: cursor position to begin retrieving records
+        :param bool bool_operator: Perform filtering with AND or OR Logic.
+        :return Dict[str, Any]
         """
 
         ORM = self.get_model(table_name=self.table_name)
 
         with self.session as s:
-            if columns is not None:
-                statement = sqlmodel.select(*[getattr(ORM, column) for column in columns])
-            else:
-                statement = sqlmodel.select(ORM)
+            total_count = len(s.exec(sql_select(ORM)).all())
 
-            statement = dynamic_filter(
+            if columns is not None:
+                columns = ["id", "record_identifier"] + columns  # Must add id, need it for cursor
+                try:
+                    statement = sqlmodel.select(
+                        *[getattr(ORM, column) for column in columns]
+                    ).order_by(ORM.id)
+                except AttributeError:
+                    raise ColumnNotFoundError(
+                        msg=f"One of the supplied column does not exists in current table: {columns}"
+                    )
+            else:
+                statement = sqlmodel.select(ORM).order_by(ORM.id)
+
+            if cursor is not None:
+                statement = statement.where(ORM.id > cursor)
+
+            statement = selection_filter(
                 ORM=ORM,
                 statement=statement,
                 filter_conditions=filter_conditions,
-                json_filter_conditions=json_filter_conditions,
+                bool_operator=bool_operator,
             )
-            if isinstance(offset, int):
-                statement = statement.offset(offset)
+
             if isinstance(limit, int):
                 statement = statement.limit(limit)
-            results = s.exec(statement)
-            result = results.all()
 
-        return result
+            results = s.exec(statement).all()
 
-    def select_txt(
-        self,
-        columns: Optional[List[str]] = None,
-        filter_templ: Optional[str] = "",
-        filter_params: Optional[Dict[str, Any]] = {},
-        offset: Optional[int] = None,
-        limit: Optional[int] = None,
-    ) -> List[Any]:
-        """
-        Execute a query with a textual filter. Returns all results.
+        if results != []:
+            next_cursor = results[-1].id
+        else:
+            next_cursor = None
 
-        To retrieve all table contents, leave the filter arguments out.
-        Table name uses pipeline_type
+        end_results = []
 
-        :param List[str] columns: columns to include in the result
-        :param str filter_templ: filter template with value placeholders,
-             formatted as follows `id<:value and name=:name`
-        :param Dict[str, Any] filter_params: a mapping keys specified in the `filter_templ`
-            to parameters that are supposed to replace the placeholders
-        :param int offset: skip this number of rows
-        :param int limit: include this number of rows
-        :return List[Any]: a list of matched records
-        """
+        # SQL model returns either a SQLModelMetaCLass OR a sqlalchemy Row.
+        # We must create a dictionary containing the record before returning
+        if not columns:
+            end_results = [r.dict() for r in results]
+        else:
+            for record in results:
+                record_dict = dict(record._mapping)
+                del record_dict["id"]
+                end_results.append(record_dict)
 
-        ORM = self.get_model(table_name=self.table_name)
-        with self.session as s:
-            if columns is not None:
-                q = (
-                    s.query(*[getattr(ORM, column) for column in columns])
-                    .filter(text(filter_templ))
-                    .params(**filter_params)
-                )
-            else:
-                q = s.query(ORM).filter(text(filter_templ)).params(**filter_params)
-            if isinstance(offset, int):
-                q = q.offset(offset)
-            if isinstance(limit, int):
-                q = q.limit(limit)
-            results = q.all()
-        return results
+        records_dict = {
+            "total_size": total_count,
+            "page_size": limit,
+            "next_page_token": next_cursor,
+            "records": end_results,
+        }
+
+        return records_dict
 
     def select_distinct(
         self,
-        columns,
+        columns: Union[str, List[str]],
     ) -> List[Tuple]:
         """
         Perform a `SELECT DISTINCT` on given table and column
 
-        :param List[str] columns: columns to include in the result
+        :param str | List[str] columns: columns to include in the result
         :return List[Tuple]: returns distinct values.
         """
+        if isinstance(columns, str):
+            columns = [columns]
 
         ORM = self.get_model(table_name=self.table_name)
         with self.session as s:
@@ -761,6 +557,6 @@ class DBBackend(PipestatBackend):
             session.rollback()
             raise
         finally:
-            _LOGGER.info("session.close")
+            # _LOGGER.info("session.close")
             session.close()
         _LOGGER.debug("Ending session")

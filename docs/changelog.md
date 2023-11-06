@@ -4,7 +4,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [0.6.0] - 2023-10-XX
 ### Added
-
+- Add select_records, which allows for a single API for selecting attributes (result_identifiers)
+- Add retrieve_one, and retrieve_many which allows for selecting one or multiple records given record_identifier
 - Add pipestat reader submodule to read DB results via FastAPI endpoints: `pipestat serve --config "config.yaml"`
 - Add ability to create `SamplePipestatManager` and `ProjectSamplePipestatManager` which are sample/project specific PipestatManager objects.
 - Add PipestatBoss wrapper class which holds `SamplePipestatManager` and `ProjectSamplePipestatManager` classes.

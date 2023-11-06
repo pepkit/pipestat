@@ -12,6 +12,8 @@ if int(sys.version.split(".")[1]) < 9:
 else:
     list_of_dicts = list[dict]
 
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+
 
 __all__ = [
     "CANONICAL_TYPES",
