@@ -4,25 +4,26 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [0.6.0] - 2023-10-XX
 ### Added
-- Add select_records, which allows for a single API for selecting attributes (result_identifiers)
-- Add retrieve_one, and retrieve_many which allows for selecting one or multiple records given record_identifier
+- Add `select_records`, which allows for a single API for selecting attributes (result_identifiers) given filter_conditions and/or columns
+- Add `retrieve_one`, and `retrieve_many` which allows for selecting one or multiple records given record_identifier
 - Add pipestat reader submodule to read DB results via FastAPI endpoints: `pipestat serve --config "config.yaml"`
 - Add ability to create `SamplePipestatManager` and `ProjectSamplePipestatManager` which are sample/project specific PipestatManager objects.
 - Add PipestatBoss wrapper class which holds `SamplePipestatManager` and `ProjectSamplePipestatManager` classes.
 - Add `to_dict` methods to parsed schema object.
-- Add `retrieve_distinct` function which retrieves unique results for a list of attributes.
+- Add `select_distinct` function which retrieves unique results for a list of attributes.
 - Add `pipestat link` which creates a directory of symlinks for reported results
-- `list_reecent_results` which allows for retrieving record id filtered via a start and end time
+- Add `list_recent_results` which allows for retrieving records filtered via a start and end time
+- Add reporting and retrieving results via item access,e.g. `psm["sample1", "name_of_something"] = "name_of_something_string"` or `result = psm["sample1"]`
 
 ### Fixed
-- Added path expansion when creating database url
+- Added path expansion when creating database url.
 - added jinja2 requirement
 - `pipeline_name` column not populating in postgres db backend.
 
 ### Changed
-- modify `get_records` to return new structure
-- Remove `get_orm` and replace with `get_model`
-- Remove `get_table_name` function
+- Removed `retrieve`, `get_one_record`, `get_records function`
+- Removed `get_orm` and replace with `get_model`
+- Removed `get_table_name` function
 - Refactor:
   - `sample_name` -> `record_identifier`
   - `pipeline_type` has been removed from most functions
