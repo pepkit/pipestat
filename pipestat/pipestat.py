@@ -631,7 +631,7 @@ class PipestatManager(MutableMapping):
                 else:
                     raise RecordNotFoundError(f"Record '{record_identifier}' not found")
             except IndexError:
-                result = None
+                return None
 
     def retrieve_many(
         self,
@@ -865,7 +865,7 @@ class PipestatManager(MutableMapping):
 
         :return ParsedSchema: schema object that formalizes the results structure
         """
-        return self.get(SCHEMA_KEY)
+        return self.cfg["_schema"].to_dict()
 
     @property
     def schema_path(self) -> str:

@@ -81,7 +81,7 @@ class TestSplitClasses:
             status = psm.get_status(record_identifier=rec_id)
             assert status == "running"
             assert (
-                psm.retrieve_one(record_identifier=rec_id)["records"][0][val_name] == val[val_name]
+                psm.retrieve_one(record_identifier=rec_id)[val_name] == val[val_name]
             )
             psm.remove(record_identifier=rec_id, result_identifier=val_name)
             if backend == "file":
@@ -92,7 +92,7 @@ class TestSplitClasses:
                     psm.retrieve_one(record_identifier=rec_id)
             if backend == "db":
                 assert (
-                    psm.retrieve_one(record_identifier=rec_id)["records"][0].get(val_name) is None
+                    psm.retrieve_one(record_identifier=rec_id).get(val_name, None) is None
                 )
                 psm.remove(record_identifier=rec_id)
                 with pytest.raises(RecordNotFoundError):
@@ -344,7 +344,7 @@ class TestReporting:
             psm = SamplePipestatManager(**args)
             psm[rec_id] = val
             result = psm.retrieve_one(record_identifier=rec_id)
-            assert list(val.keys())[0] in result["records"][0]
+            assert list(val.keys())[0] in result
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -413,7 +413,7 @@ class TestReporting:
             # Now overwrite
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
             assert (
-                psm.retrieve_one(record_identifier=rec_id)["records"][0][list(val.keys())[0]]
+                list(psm.retrieve_one(record_identifier=rec_id).keys())[0]
                 == val[list(val.keys())[0]]
             )
 
