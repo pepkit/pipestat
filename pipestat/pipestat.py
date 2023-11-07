@@ -865,7 +865,7 @@ class PipestatManager(MutableMapping):
 
         :return ParsedSchema: schema object that formalizes the results structure
         """
-        return self.cfg["_schema"].to_dict()
+        return self.cfg["_schema"]
 
     @property
     def schema_path(self) -> str:
