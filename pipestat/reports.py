@@ -1078,12 +1078,13 @@ def _create_stats_objs_summaries(prj, pipeline_name: str) -> List[str]:
             ]
 
         for k, v in rep_data.items():
-            if k in prj.result_schemas and prj.result_schemas[k]["type"] in OBJECT_TYPES:
-                sample_reported_objects = {k: dict(v)}
-                reported_objects[record_name] = sample_reported_objects
-            if k in prj.result_schemas and prj.result_schemas[k]["type"] not in OBJECT_TYPES:
-                reported_stats.append(k)
-                reported_stats.append(v)
+            if v:
+                if k in prj.result_schemas and prj.result_schemas[k]["type"] in OBJECT_TYPES:
+                    sample_reported_objects = {k: dict(v)}
+                    reported_objects[record_name] = sample_reported_objects
+                if k in prj.result_schemas and prj.result_schemas[k]["type"] not in OBJECT_TYPES:
+                    reported_stats.append(k)
+                    reported_stats.append(v)
         stats.append(reported_stats)
 
     # Stats File
