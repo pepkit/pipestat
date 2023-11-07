@@ -8,6 +8,7 @@ from pipestat.const import STATUS_SCHEMA
 from pipestat.helpers import read_yaml_data
 from atexit import register
 
+REC_ID = "constant_record_id"
 BACKEND_KEY_DB = "db"
 BACKEND_KEY_FILE = "file"
 DB_URL = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"

@@ -1,12 +1,11 @@
 import os.path
-import datetime
 import time
 from collections.abc import Mapping
 
 import pytest
 from jsonschema import ValidationError
 
-from pipestat import SamplePipestatManager, ProjectPipestatManager, PipestatBoss
+from pipestat import SamplePipestatManager, ProjectPipestatManager, PipestatBoss, PipestatManager
 from pipestat.const import *
 from pipestat.exceptions import *
 from pipestat.parsed_schema import ParsedSchema
@@ -21,6 +20,7 @@ from .conftest import (
     STANDARD_TEST_PIPE_ID,
     SERVICE_UNAVAILABLE,
     DB_URL,
+    REC_ID,
 )
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
@@ -201,6 +201,120 @@ class TestReporting:
             if backend == "db":
                 # This is being captured in TestSplitClasses
                 pass
+
+    @pytest.mark.parametrize(
+        "val",
+        [
+            {"name_of_something": "test_name"},
+            {"number_of_things": 1},
+            {"percentage_of_things": 10.1},
+        ],
+    )
+    @pytest.mark.parametrize("pipeline_type", ["project", "sample"])
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_report_samples_and_project_with_pipestatmanager(
+        self,
+        val,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        backend,
+        pipeline_type,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(
+                schema_path=schema_file_path, pipeline_type=pipeline_type, database_only=False
+            )
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+
+            psm = PipestatManager(**args)
+            val_name = list(val.keys())[0]
+            if pipeline_type == "project":
+                if val_name in psm.cfg[SCHEMA_KEY].project_level_data:
+                    assert psm.report(
+                        record_identifier="constant_record_id",
+                        values=val,
+                        force_overwrite=True,
+                        strict_type=False,
+                    )
+
+            if pipeline_type == "sample":
+                if val_name in psm.cfg[SCHEMA_KEY].sample_level_data:
+                    assert psm.report(
+                        record_identifier="constant_record_id",
+                        values=val,
+                        force_overwrite=True,
+                        strict_type=False,
+                    )
+
+    @pytest.mark.parametrize(
+        "val",
+        [
+            {
+                "collection_of_images": [
+                    {
+                        "items": {
+                            "properties": {
+                                "prop1": {
+                                    "properties": {
+                                        "path": "pathstring",
+                                        "title": "titlestring",
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            {"output_file": {"path": "path_string", "title": "title_string"}},
+            {
+                "output_image": {
+                    "path": "path_string",
+                    "thumbnail_path": "thumbnail_path_string",
+                    "title": "title_string",
+                }
+            },
+            {
+                "output_file_in_object": {
+                    "properties": {
+                        "prop1": {"properties": {"path": "pathstring", "title": "titlestring"}}
+                    }
+                }
+            },
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_complex_object_report(
+        self, val, config_file_path, recursive_schema_file_path, results_file_path, backend
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+
+            psm = SamplePipestatManager(**args)
+            psm.report(record_identifier=REC_ID, values=val, force_overwrite=True)
+            val_name = list(val.keys())[0]
+            assert psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": val_name,
+                        "operator": "eq",
+                        "value": val[val_name],
+                    }
+                ]
+            )
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],
