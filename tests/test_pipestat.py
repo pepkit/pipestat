@@ -133,7 +133,7 @@ class TestSplitClasses:
             status = psm.get_status(record_identifier=rec_id)
             assert status == "running"
             assert (
-                psm.retrieve_one(record_identifier=rec_id)["records"][0][val_name] == val[val_name]
+                psm.retrieve_one(record_identifier=rec_id)[val_name] == val[val_name]
             )
             psm.remove(record_identifier=rec_id, result_identifier=val_name)
             if backend == "file":
@@ -413,7 +413,7 @@ class TestReporting:
             # Now overwrite
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
             assert (
-                psm.retrieve_one(record_identifier=rec_id)
+                psm.retrieve_one(record_identifier=rec_id)[list(val.keys())[0]]
                 == val[list(val.keys())[0]]
             )
 
@@ -579,7 +579,7 @@ class TestRetrieval:
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
 
             val_name = list(val.keys())[0]
-            retrieved_val = psm[rec_id]["records"][0][val_name]
+            retrieved_val = psm[rec_id][val_name]
             value = list(val.values())[0]
 
             assert retrieved_val == value
@@ -1842,9 +1842,7 @@ class TestSelectRecords:
             # Gets one or many records
             result1 = psm.retrieve_one(record_identifier="sample1")
 
-            assert len(result1["records"]) == 1
-
-            assert result1["records"][0]["record_identifier"] == "sample1"
+            assert result1["record_identifier"] == "sample1"
 
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_select_records_retrieve_many(
