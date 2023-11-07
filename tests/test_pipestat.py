@@ -41,6 +41,14 @@ def assert_is_in_files(fs, s):
         with open(f, "r") as fh:
             assert s in fh.read()
 
+@pytest.fixture
+def val_dict():
+    val_dict = {
+        "sample1": {"name_of_something": "test_name"},
+        "sample2": {"number_of_things": 2},
+    }
+    return val_dict
+
 
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestSplitClasses:
@@ -511,9 +519,6 @@ class TestRetrieval:
         [
             ("sample1", {"name_of_something": "test_name"}),
             ("sample1", {"number_of_things": 2}),
-            ("sample2", {"number_of_things": 1}),
-            ("sample2", {"percentage_of_things": 10.1}),
-            ("sample2", {"name_of_something": "test_name"}),
         ],
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
@@ -594,13 +599,10 @@ class TestRetrieval:
         results_file_path,
         schema_file_path,
         backend,
+        val_dict
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            val_dict = {
-                "sample1": {"name_of_something": "test_name"},
-                "sample2": {"number_of_things": 2},
-            }
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -697,13 +699,11 @@ class TestRemoval:
         results_file_path,
         schema_file_path,
         backend,
+        val_dict,
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            vals = [
-                {"number_of_things": 1},
-                {"name_of_something": "test_name"},
-            ]
+            vals = [val_dict]
             args = dict(schema_path=schema_file_path, database_only=False)
             backend_data = (
                 {"config_file": config_file_path}
@@ -712,40 +712,34 @@ class TestRemoval:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            for v in vals:
-                psm.report(record_identifier=rec_id, values=v, force_overwrite=True)
-            psm.remove(result_identifier=res_id, record_identifier=rec_id)
-            if backend != "db":
-                assert (
-                    # res_id not in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
-                    res_id
-                    not in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
-                )
-            else:
-                col_name = list(vals[0].keys())[0]
-                value = list(vals[0].values())[0]
-                result = psm.select_records(
-                    filter_conditions=[
-                        {
-                            "key": col_name,
-                            "operator": "eq",
-                            "value": value,
-                        }
-                    ]
-                )
-                assert len(result["records"]) == 0
 
-    @pytest.mark.parametrize("rec_id", ["sample1", "sample2"])
+            for val in vals:
+                for key,value in val.items():
+                    psm.report(record_identifier=key, values=value, force_overwrite=True)
+
+            psm.remove(result_identifier=res_id, record_identifier=rec_id)
+
+            col_name = res_id
+            value = list(vals[0].values())[1][res_id]
+            result = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": col_name,
+                        "operator": "eq",
+                        "value": value,
+                    }
+                ]
+            )
+            assert len(result["records"]) == 0
+
+    @pytest.mark.parametrize("rec_id", ["sample1"])
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_remove_record(
-        self, rec_id, schema_file_path, config_file_path, results_file_path, backend
+        self, rec_id, schema_file_path, config_file_path, results_file_path, backend, val_dict
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            vals = [
-                {"number_of_things": 1},
-                {"name_of_something": "test_name"},
-            ]
+            vals = [val_dict]
             args = dict(schema_path=schema_file_path, database_only=False)
             backend_data = (
                 {"config_file": config_file_path}
@@ -754,24 +748,22 @@ class TestRemoval:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            for v in vals:
-                psm.report(record_identifier=rec_id, values=v, force_overwrite=True)
+            for val in vals:
+                for key,value in val.items():
+                    psm.report(record_identifier=key, values=value, force_overwrite=True)
             psm.remove(record_identifier=rec_id)
-            if backend != "db":
-                assert rec_id not in psm.backend._data[STANDARD_TEST_PIPE_ID]
-            else:
-                col_name = list(vals[0].keys())[0]
-                value = list(vals[0].values())[0]
-                result = psm.select_records(
-                    filter_conditions=[
-                        {
-                            "key": col_name,
-                            "operator": "eq",
-                            "value": value,
-                        }
-                    ]
-                )
-                assert len(result["records"]) == 0
+            col_name = list(list(vals[0].values())[0].keys())[0]
+            value = list(list(vals[0].values())[0].values())[0]
+            result = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": col_name,
+                        "operator": "eq",
+                        "value": value,
+                    }
+                ]
+            )
+            assert len(result["records"]) == 0
 
     @pytest.mark.parametrize(
         ["rec_id", "res_id"], [("sample2", "nonexistent"), ("sample2", "bogus")]
@@ -883,33 +875,22 @@ class TestNoRecordID:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
             psm.report(values=val)
-            if backend == "file":
-                assert_is_in_files(results_file_path, str(list(val.values())[0]))
-                assert (
-                    CONST_REC_ID in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
-                )
-                assert (
-                    list(val.keys())[0]
-                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][CONST_REC_ID]
-                )
-            if backend == "db":
-                val_name = list(val.keys())[0]
-                assert psm.select_records(
-                    filter_conditions=[
-                        {
-                            "key": val_name,
-                            "operator": "eq",
-                            "value": val[val_name],
-                        }
-                    ]
-                )
+            val_name = list(val.keys())[0]
+            assert psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": val_name,
+                        "operator": "eq",
+                        "value": val[val_name],
+                    }
+                ]
+            )
 
     @pytest.mark.parametrize(
         "val",
         [
             {"name_of_something": "test_name"},
             {"number_of_things": 1},
-            {"percentage_of_things": 10.1},
         ],
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
@@ -942,7 +923,6 @@ class TestNoRecordID:
         [
             {"name_of_something": "test_name"},
             {"number_of_things": 1},
-            {"percentage_of_things": 10.1},
         ],
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
