@@ -174,7 +174,6 @@ class PipestatManager(MutableMapping):
 
         self.cfg[RECORD_IDENTIFIER] = record_identifier
 
-        print(self.cfg[SCHEMA_KEY])
         self.cfg[PIPELINE_NAME] = (
             self.cfg[SCHEMA_KEY].pipeline_name
             if self.cfg[SCHEMA_KEY] is not None
