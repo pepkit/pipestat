@@ -4,7 +4,9 @@ from pipestat import SamplePipestatManager
 from pipestat.const import *
 from .conftest import DB_URL
 
-from sqlmodel import SQLModel, create_engine
+from .conftest import SERVICE_UNAVAILABLE
+from sqlmodel import Session, SQLModel, create_engine
+
 from sqlmodel.main import default_registry
 
 
@@ -28,6 +30,7 @@ class ContextManagerDBTesting:
         self.connection.close()
 
 
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestDatabaseOnly:
     # TODO: parameterize this against different schemas.
     def test_manager_can_be_built_without_exception(self, config_file_path, schema_file_path):

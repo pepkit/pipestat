@@ -2,15 +2,33 @@
 
 import os
 import pytest
+import subprocess
+
 from pipestat.const import STATUS_SCHEMA
 from pipestat.helpers import read_yaml_data
-
+from atexit import register
 
 BACKEND_KEY_DB = "db"
 BACKEND_KEY_FILE = "file"
+DB_URL = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
+DB_CMD = """
+docker run --rm -it --name pipestat_test_db \
+    -e POSTGRES_USER=postgres \
+    -e POSTGRES_PASSWORD=pipestat-password \
+    -e POSTGRES_DB=pipestat-test \
+    -p 5432:5432 \
+    postgres
+"""
 STANDARD_TEST_PIPE_ID = "default_pipeline_name"
 
-DB_URL = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
+try:
+    subprocess.check_output(
+        "docker inspect pipestat_test_db --format '{{.State.Status}}'", shell=True
+    )
+    SERVICE_UNAVAILABLE = False
+except:
+    register(print, f"Some tests require a test database. To initiate it, run:\n{DB_CMD}")
+    SERVICE_UNAVAILABLE = True
 
 
 def get_data_file_path(filename: str) -> str:
