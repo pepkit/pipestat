@@ -23,7 +23,6 @@ class TestStatus:
         )
         assert psm.cfg[STATUS_FILE_DIR] == os.path.dirname(psm.cfg[FILE_KEY])
 
-
     @pytest.mark.parametrize("backend_data", ["file", "db"], indirect=True)
     @pytest.mark.parametrize("status_id", ["running", "failed", "completed"])
     def test_status_not_configured(
@@ -39,7 +38,6 @@ class TestStatus:
             psm = SamplePipestatManager(**args)
             psm.set_status(record_identifier="sample1", status_identifier=status_id)
             assert psm.get_status(record_identifier="sample1") == status_id
-
 
     @pytest.mark.parametrize("backend_data", [BACKEND_KEY_FILE, BACKEND_KEY_DB], indirect=True)
     @pytest.mark.parametrize("status_id", ["running_custom", "failed_custom", "completed_custom"])
