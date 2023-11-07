@@ -559,6 +559,8 @@ class FileBackend(PipestatBackend):
                     for key, value in list(data[record_identifier].items()):
                         if key in columns:
                             record.update({key: value})
+                    if "record_identifier" in columns:
+                        record.update({"record_identifier": record_identifier})
                 else:
                     record = data[record_identifier]
                 if record != {}:

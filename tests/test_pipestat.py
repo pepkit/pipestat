@@ -1585,6 +1585,36 @@ class TestSelectRecords:
             print(result1)
             assert len(result1["records"][0]) == 2
 
+    @pytest.mark.parametrize("backend", [BACKEND_KEY_FILE, BACKEND_KEY_DB])
+    def test_select_records_columns_record_identifier(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+        range_values,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range_values[:2]:
+                r_id = i[0]
+                val = i[1]
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            result1 = psm.select_records(
+                columns=["record_identifier"],
+            )
+            assert len(list(result1["records"][0].keys())) == 1
+
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_select_no_filter(
         self,

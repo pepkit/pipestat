@@ -400,10 +400,9 @@ class DBBackend(PipestatBackend):
             total_count = len(s.exec(sql_select(ORM)).all())
 
             if columns is not None:
-                columns = [
-                    "id",
-                    "record_identifier",
-                ] + columns  # Must add id, need it for cursor
+                for i in ["id", "record_identifier"]:  # Must add id, need it for cursor
+                    if i not in columns:
+                        columns = [i] + columns
                 try:
                     statement = sql_select(*[getattr(ORM, column) for column in columns]).order_by(
                         ORM.id
