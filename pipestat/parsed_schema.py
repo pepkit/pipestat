@@ -78,6 +78,7 @@ class ParsedSchema(object):
         if not isinstance(data, dict):
             _, data = read_yaml_data(data, "schema")
 
+        self.original_schema = copy.deepcopy(data)
         data = copy.deepcopy(data)
 
         # Currently supporting backwards compatibility with old output schema while now also supporting a JSON schema:
