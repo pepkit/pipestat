@@ -23,12 +23,13 @@ STANDARD_TEST_PIPE_ID = "default_pipeline_name"
 
 try:
     subprocess.check_output(
-        "docker inspect pipestat_test_db --format '{{.State.Status}}'",
-        shell=True)
+        "docker inspect pipestat_test_db --format '{{.State.Status}}'", shell=True
+    )
     SERVICE_UNAVAILABLE = False
 except:
     register(print, f"Some tests require a test database. To initiate it, run:\n{DB_CMD}")
     SERVICE_UNAVAILABLE = True
+
 
 def get_data_file_path(filename: str) -> str:
     data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")

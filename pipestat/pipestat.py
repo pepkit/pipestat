@@ -1,35 +1,69 @@
+import os
 import datetime
 from logging import getLogger
 from copy import deepcopy
-from typing import List
-from .exceptions import PipestatDependencyError
 
 from abc import ABC
 from collections.abc import MutableMapping
 
+from jsonschema import validate
+from yacman import YAMLConfigManager, select_config
+from typing import Optional, Union, Dict, Any, List
+
+from .exceptions import (
+    PipestatDependencyError,
+    NoBackendSpecifiedError,
+    SchemaNotFoundError,
+    InvalidTimeFormatError,
+    PipestatDatabaseError,
+    RecordNotFoundError,
+)
 from pipestat.backends.file_backend.filebackend import FileBackend
+from .reports import HTMLReportBuilder, _create_stats_objs_summaries
+from .helpers import validate_type, mk_abs_via_cfg, read_yaml_data, default_formatter
+from .const import (
+    PKG_NAME,
+    DEFAULT_PIPELINE_NAME,
+    ENV_VARS,
+    CFG_DATABASE_KEY,
+    SCHEMA_PATH,
+    STATUS_SCHEMA,
+    STATUS_SCHEMA_SOURCE_KEY,
+    STATUS_SCHEMA_KEY,
+    STATUS_FILE_DIR,
+    FILE_KEY,
+    DB_ONLY_KEY,
+    DB_URL,
+    PIPELINE_NAME,
+    PIPELINE_TYPE,
+    PROJECT_NAME,
+    RECORD_IDENTIFIER,
+    RESULT_FORMATTER,
+    MULTI_PIPELINE,
+    OUTPUT_DIR,
+    CREATED_TIME,
+    MODIFIED_TIME,
+    CFG_SCHEMA,
+    CONFIG_KEY,
+    SCHEMA_KEY,
+    SAMPLE_NAME_ID_KEY,
+    DATA_KEY,
+)
+
+try:
+    from pipestat.backends.db_backend.db_parsed_schema import (
+        ParsedSchemaDB as ParsedSchema,
+    )
+except ImportError:
+    from .parsed_schema import ParsedSchema
 
 try:
     from pipestat.backends.db_backend.dbbackend import DBBackend
-    from pipestat.backends.db_backend.db_helpers import *
+    from pipestat.backends.db_backend.db_helpers import construct_db_url
 except ImportError:
     # We let this pass, but if the user attempts to create DBBackend, check_dependencies raises exception.
     pass
 
-try:
-    from pipestat.backends.db_backend.db_parsed_schema import ParsedSchemaDB as ParsedSchema
-except ImportError:
-    from .parsed_schema import ParsedSchema
-
-
-from jsonschema import validate
-
-from yacman import YAMLConfigManager, select_config
-
-from .helpers import *
-
-
-from .reports import HTMLReportBuilder, _create_stats_objs_summaries
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -78,7 +112,6 @@ class PipestatManager(MutableMapping):
 
     def __init__(
         self,
-        sample_name: Optional[str] = None,
         project_name: Optional[str] = None,
         record_identifier: Optional[str] = None,
         schema_path: Optional[str] = None,
@@ -118,61 +151,71 @@ class PipestatManager(MutableMapping):
         """
 
         super(PipestatManager, self).__init__()
-        self.store = dict()
+
+        # Initialize the cfg dict as an attribute that holds all configuration data
+        self.cfg = {}
 
         # Load and validate database configuration
-        # If results_file_path is truthy, backend is a file
-        # Otherwise, backend is a database.
-        self._config_path = select_config(config_file, ENV_VARS["config"])
-        _LOGGER.info(f"Config: {self._config_path}.")
-        self[CONFIG_KEY] = YAMLConfigManager(entries=config_dict, filepath=self._config_path)
-        _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
-        validate(self[CONFIG_KEY].exp, cfg_schema)
+        # If results_file_path exists, backend is a file else backend is database.
 
-        self[SCHEMA_PATH] = self[CONFIG_KEY].priority_get(
-            "schema_path", env_var=ENV_VARS["schema"], override=schema_path
-        )  # schema_path if schema_path is not None else None
-        self.process_schema(schema_path)
+        self.cfg["config_path"] = select_config(config_file, ENV_VARS["config"])
 
-        self[RECORD_IDENTIFIER] = record_identifier
-
-        self[PIPELINE_NAME] = (
-            self.schema.pipeline_name if self.schema is not None else pipeline_name
+        self.cfg[CONFIG_KEY] = YAMLConfigManager(
+            entries=config_dict, filepath=self.cfg["config_path"]
         )
 
-        self[PROJECT_NAME] = self[CONFIG_KEY].priority_get(
+        _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
+        validate(self.cfg[CONFIG_KEY].exp, cfg_schema)
+
+        self.cfg[SCHEMA_PATH] = self.cfg[CONFIG_KEY].priority_get(
+            "schema_path", env_var=ENV_VARS["schema"], override=schema_path
+        )
+        self.process_schema(schema_path)
+
+        self.cfg[RECORD_IDENTIFIER] = record_identifier
+
+        print(self.cfg[SCHEMA_KEY])
+        self.cfg[PIPELINE_NAME] = (
+            self.cfg[SCHEMA_KEY].pipeline_name
+            if self.cfg[SCHEMA_KEY] is not None
+            else pipeline_name
+        )
+
+        self.cfg[PROJECT_NAME] = self.cfg[CONFIG_KEY].priority_get(
             "project_name", env_var=ENV_VARS["project_name"], override=project_name
         )
 
-        self[SAMPLE_NAME_ID_KEY] = self[CONFIG_KEY].priority_get(
-            "record_identifier", env_var=ENV_VARS["sample_name"], override=record_identifier
+        self.cfg[SAMPLE_NAME_ID_KEY] = self.cfg[CONFIG_KEY].priority_get(
+            "record_identifier",
+            env_var=ENV_VARS["sample_name"],
+            override=record_identifier,
         )
 
-        self[DB_ONLY_KEY] = database_only
+        self.cfg[DB_ONLY_KEY] = database_only
 
-        self[PIPELINE_TYPE] = self[CONFIG_KEY].priority_get(
+        self.cfg[PIPELINE_TYPE] = self.cfg[CONFIG_KEY].priority_get(
             "pipeline_type", default="sample", override=pipeline_type
         )
 
-        self[FILE_KEY] = mk_abs_via_cfg(
-            self[CONFIG_KEY].priority_get(
-                "results_file_path", env_var=ENV_VARS["results_file"], override=results_file_path
+        self.cfg[FILE_KEY] = mk_abs_via_cfg(
+            self.cfg[CONFIG_KEY].priority_get(
+                "results_file_path",
+                env_var=ENV_VARS["results_file"],
+                override=results_file_path,
             ),
-            self._config_path,
+            self.cfg["config_path"],
         )
 
-        self[RESULT_FORMATTER] = result_formatter
+        self.cfg[RESULT_FORMATTER] = result_formatter
 
-        self[MULTI_PIPELINE] = multi_pipelines
+        self.cfg[MULTI_PIPELINE] = multi_pipelines
 
-        self[OUTPUT_DIR] = self[CONFIG_KEY].priority_get("output_dir", override=output_dir)
+        self.cfg[OUTPUT_DIR] = self.cfg[CONFIG_KEY].priority_get("output_dir", override=output_dir)
 
-        if self[FILE_KEY]:
-            # file backend
+        if self.cfg[FILE_KEY]:
             self.initialize_filebackend(record_identifier, results_file_path, flag_file_dir)
 
         else:
-            # database backend
             self.initialize_dbbackend(record_identifier, show_db_logs)
 
     def __str__(self):
@@ -181,34 +224,34 @@ class PipestatManager(MutableMapping):
 
         :return str: string representation of the object
         """
-        res = f"{self.__class__.__name__} ({self[PIPELINE_NAME]})"
+        res = f"{self.__class__.__name__} ({self.cfg[PIPELINE_NAME]})"
         res += "\nBackend: {}".format(
-            f"File\n - results: {self.file}\n - status: {self[STATUS_FILE_DIR]}"
-            if self.file
+            f"File\n - results: {self.cfg[FILE_KEY]}\n - status: {self.cfg[STATUS_FILE_DIR]}"
+            if self.cfg[FILE_KEY]
             else f"Database (dialect: {self.backend.db_engine_key})"
         )
-        if self.file:
-            res += f"\nMultiple Pipelines Allowed: {self[MULTI_PIPELINE]}"
+        if self.cfg[FILE_KEY]:
+            res += f"\nMultiple Pipelines Allowed: {self.cfg[MULTI_PIPELINE]}"
         else:
-            res += f"\nProject Name: {self[PROJECT_NAME]}"
-            res += f"\nDatabase URL: {self[DB_URL]}"
+            res += f"\nProject Name: {self.cfg[PROJECT_NAME]}"
+            res += f"\nDatabase URL: {self.cfg[DB_URL]}"
             res += f"\nConfig File: {self.config_path}"
 
-        res += f"\nPipeline name: {self[PIPELINE_NAME]}"
-        res += f"\nPipeline type: {self[PIPELINE_TYPE]}"
-        if self[SCHEMA_PATH] is not None:
-            res += f"\nProject Level Data:"
-            for k, v in self[SCHEMA_KEY].project_level_data.items():
+        res += f"\nPipeline name: {self.cfg[PIPELINE_NAME]}"
+        res += f"\nPipeline type: {self.cfg[PIPELINE_TYPE]}"
+        if self.cfg[SCHEMA_PATH] is not None:
+            res += "\nProject Level Data:"
+            for k, v in self.cfg[SCHEMA_KEY].project_level_data.items():
                 res += f"\n {k} : {v}"
-            res += f"\nSample Level Data:"
-            for k, v in self[SCHEMA_KEY].sample_level_data.items():
+            res += "\nSample Level Data:"
+            for k, v in self.cfg[SCHEMA_KEY].sample_level_data.items():
                 res += f"\n {k} : {v}"
-        res += f"\nStatus Schema key: {self[STATUS_SCHEMA_KEY]}"
-        res += f"\nResults formatter: {str(self[RESULT_FORMATTER].__name__)}"
-        res += f"\nResults schema source: {self[SCHEMA_PATH]}"
-        res += f"\nStatus schema source: {self.status_schema_source}"
+        res += f"\nStatus Schema key: {self.cfg[STATUS_SCHEMA_KEY]}"
+        res += f"\nResults formatter: {str(self.cfg[RESULT_FORMATTER].__name__)}"
+        res += f"\nResults schema source: {self.cfg[SCHEMA_PATH]}"
+        res += f"\nStatus schema source: {self.cfg[STATUS_SCHEMA_SOURCE_KEY]}"
         res += f"\nRecords count: {self.record_count}"
-        if self[SCHEMA_PATH] is not None:
+        if self.cfg[SCHEMA_PATH] is not None:
             high_res = self.highlighted_results
         else:
             high_res = None
@@ -217,47 +260,54 @@ class PipestatManager(MutableMapping):
         return res
 
     def __getitem__(self, key):
-        return self.store[self._keytransform(key)]
+        # This is a wrapper for the retrieve function:
+        result = self.retrieve_one(record_identifier=key)
+        return result
 
     def __setitem__(self, key, value):
-        self.store[self._keytransform(key)] = value
+        # This is a wrapper for the report function:
+        result = self.report(record_identifier=key, values=value)
+        return result
 
     def __delitem__(self, key):
-        del self.store[self._keytransform(key)]
+        # This is a wrapper for the remove function; it removes the entire record:
+        result = self.remove(record_identifier=key)
+        return result
 
     def __iter__(self):
-        return iter(self.store)
+        return iter(self.cfg)
 
     def __len__(self):
-        return len(self.store)
-
-    def _keytransform(self, key):
-        return key
+        return len(self.cfg)
 
     def initialize_filebackend(self, record_identifier, results_file_path, flag_file_dir):
         _LOGGER.debug(f"Determined file as backend: {results_file_path}")
-        if self[DB_ONLY_KEY]:
+        if self.cfg[DB_ONLY_KEY]:
             _LOGGER.debug(
                 "Running in database only mode does not make sense with a YAML file as a backend. "
                 "Changing back to using memory."
             )
-            self[DB_ONLY_KEY] = False
+            self.cfg[DB_ONLY_KEY] = False
 
-        flag_file_dir = self[CONFIG_KEY].priority_get(
-            "flag_file_dir", override=flag_file_dir, default=os.path.dirname(self.file)
+        flag_file_dir = self.cfg[CONFIG_KEY].priority_get(
+            "flag_file_dir",
+            override=flag_file_dir,
+            default=os.path.dirname(self.cfg[FILE_KEY]),
         )
-        self[STATUS_FILE_DIR] = mk_abs_via_cfg(flag_file_dir, self.config_path or self.file)
+        self.cfg[STATUS_FILE_DIR] = mk_abs_via_cfg(
+            flag_file_dir, self.config_path or self.cfg[FILE_KEY]
+        )
 
         self.backend = FileBackend(
-            self[FILE_KEY],
+            self.cfg[FILE_KEY],
             record_identifier,
-            self[PIPELINE_NAME],
-            self[PIPELINE_TYPE],
-            self[SCHEMA_KEY],
-            self[STATUS_SCHEMA_KEY],
-            self[STATUS_FILE_DIR],
-            self[RESULT_FORMATTER],
-            self[MULTI_PIPELINE],
+            self.cfg[PIPELINE_NAME],
+            self.cfg[PIPELINE_TYPE],
+            self.cfg[SCHEMA_KEY],
+            self.cfg[STATUS_SCHEMA_KEY],
+            self.cfg[STATUS_FILE_DIR],
+            self.cfg[RESULT_FORMATTER],
+            self.cfg[MULTI_PIPELINE],
         )
 
         return
@@ -268,29 +318,29 @@ class PipestatManager(MutableMapping):
     )
     def initialize_dbbackend(self, record_identifier, show_db_logs):
         _LOGGER.debug("Determined database as backend")
-        if self[SCHEMA_KEY] is None:
+        if self.cfg[SCHEMA_KEY] is None:
             raise SchemaNotFoundError("Output schema must be supplied for DB backends.")
-        if CFG_DATABASE_KEY not in self[CONFIG_KEY]:
+        if CFG_DATABASE_KEY not in self.cfg[CONFIG_KEY]:
             raise NoBackendSpecifiedError()
         try:
-            dbconf = self[CONFIG_KEY].exp[
+            dbconf = self.cfg[CONFIG_KEY].exp[
                 CFG_DATABASE_KEY
             ]  # the .exp expands the paths before url construction
-            self[DB_URL] = construct_db_url(dbconf)
+            self.cfg[DB_URL] = construct_db_url(dbconf)
         except KeyError:
             raise PipestatDatabaseError(f"No database section ('{CFG_DATABASE_KEY}') in config")
         self._show_db_logs = show_db_logs
 
         self.backend = DBBackend(
             record_identifier,
-            self[PIPELINE_NAME],
+            self.cfg[PIPELINE_NAME],
             show_db_logs,
-            self[PIPELINE_TYPE],
-            self[SCHEMA_KEY],
-            self[STATUS_SCHEMA_KEY],
-            self[DB_URL],
-            self[STATUS_SCHEMA_SOURCE_KEY],
-            self[RESULT_FORMATTER],
+            self.cfg[PIPELINE_TYPE],
+            self.cfg[SCHEMA_KEY],
+            self.cfg[STATUS_SCHEMA_KEY],
+            self.cfg[DB_URL],
+            self.cfg[STATUS_SCHEMA_SOURCE_KEY],
+            self.cfg[RESULT_FORMATTER],
         )
 
     @require_backend
@@ -320,21 +370,6 @@ class PipestatManager(MutableMapping):
         return self.backend.count_records()
 
     @require_backend
-    def get_records(
-        self,
-        limit: Optional[int] = 1000,
-        offset: Optional[int] = 0,
-    ) -> Optional[dict]:
-        """
-        Returns list of records
-        :param int limit: limit number of records to this amount
-        :param int offset: offset records by this amount
-        :return dict: dictionary of records
-        """
-
-        return self.backend.get_records(limit=limit, offset=offset)
-
-    @require_backend
     def get_status(
         self,
         record_identifier: str = None,
@@ -352,15 +387,15 @@ class PipestatManager(MutableMapping):
     def list_recent_results(
         self,
         limit: Optional[int] = 1000,
-        start: Optional[datetime.datetime] = None,
-        end: Optional[datetime.datetime] = None,
-        type: Optional[str] = "modified",
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+        time_column: Optional[str] = "modified",
     ) -> dict:
         """
         :param int  limit: limit number of results returned
-        :param datetime.datetime start: most recent result to filter on, defaults to now, e.g. 2023-10-16 13:03:04.680400
-        :param datetime.datetime end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
-        :param str type: created or modified
+        :param str start: most recent result to filter on, defaults to now, e.g. 2023-10-16 13:03:04.680400
+        :param str end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
+        :param str time_column: created or modified column/attribute to filter on
         :return dict results: a dict containing start, end, num of records, and list of retrieved records
         """
         date_format = "%Y-%m-%d %H:%M:%S"
@@ -380,74 +415,57 @@ class PipestatManager(MutableMapping):
             except ValueError:
                 raise InvalidTimeFormatError(msg=f"Incorrect time format, requires: {date_format}")
 
-        results = self.backend.list_recent_results(limit=limit, start=start, end=end, type=type)
+        if time_column == "created":
+            col_name = CREATED_TIME
+        else:
+            col_name = MODIFIED_TIME
+        results = self.select_records(
+            limit=limit,
+            filter_conditions=[
+                {
+                    "key": col_name,
+                    "operator": "lt",
+                    "value": start,
+                },
+                {
+                    "key": col_name,
+                    "operator": "gt",
+                    "value": end,
+                },
+            ],
+        )
 
         return results
 
     def process_schema(self, schema_path):
         # Load pipestat schema in two parts: 1) main and 2) status
-        self._schema_path = self[CONFIG_KEY].priority_get(
+        self._schema_path = self.cfg[CONFIG_KEY].priority_get(
             "schema_path", env_var=ENV_VARS["schema"], override=schema_path
         )
 
         if self._schema_path is None:
             _LOGGER.warning("No schema supplied.")
-            self[SCHEMA_KEY] = None
-            self[STATUS_SCHEMA_KEY] = None
-            self[STATUS_SCHEMA_SOURCE_KEY] = None
+            self.cfg[SCHEMA_KEY] = None
+            self.cfg[STATUS_SCHEMA_KEY] = None
+            self.cfg[STATUS_SCHEMA_SOURCE_KEY] = None
             # return None
             # raise SchemaNotFoundError("PipestatManager creation failed; no schema")
         else:
             # Main schema
-            schema_to_read = mk_abs_via_cfg(self._schema_path, self.config_path)
+            schema_to_read = mk_abs_via_cfg(self._schema_path, self.cfg["config_path"])
             self._schema_path = schema_to_read
             parsed_schema = ParsedSchema(schema_to_read)
-            self[SCHEMA_KEY] = parsed_schema
+            self.cfg[SCHEMA_KEY] = parsed_schema
 
             # Status schema
-            self[STATUS_SCHEMA_KEY] = parsed_schema.status_data
-            if not self[STATUS_SCHEMA_KEY]:
-                self[STATUS_SCHEMA_SOURCE_KEY], self[STATUS_SCHEMA_KEY] = read_yaml_data(
-                    path=STATUS_SCHEMA, what="default status schema"
-                )
+            self.cfg[STATUS_SCHEMA_KEY] = parsed_schema.status_data
+            if not self.cfg[STATUS_SCHEMA_KEY]:
+                (
+                    self.cfg[STATUS_SCHEMA_SOURCE_KEY],
+                    self.cfg[STATUS_SCHEMA_KEY],
+                ) = read_yaml_data(path=STATUS_SCHEMA, what="default status schema")
             else:
-                self[STATUS_SCHEMA_SOURCE_KEY] = schema_to_read
-
-    def validate_schema(self) -> None:
-        """
-        Check schema for any possible issues
-
-        :raises SchemaError: if any schema format issue is detected
-        """
-
-        def _recursively_replace_custom_types(s: dict) -> Dict:
-            """
-            Replace the custom types in pipestat schema with canonical types
-
-            :param dict s: schema to replace types in
-            :return dict: schema with types replaced
-            """
-            for k, v in s.items():
-                missing_req_keys = [
-                    req for req in [SCHEMA_TYPE_KEY, SCHEMA_DESC_KEY] if req not in v
-                ]
-                if missing_req_keys:
-                    raise SchemaError(
-                        f"Result '{k}' is missing required key(s): {', '.join(missing_req_keys)}"
-                    )
-                curr_type_name = v[SCHEMA_TYPE_KEY]
-                if curr_type_name == "object" and SCHEMA_PROP_KEY in s[k]:
-                    _recursively_replace_custom_types(s[k][SCHEMA_PROP_KEY])
-                try:
-                    curr_type_spec = CANONICAL_TYPES[curr_type_name]
-                except KeyError:
-                    continue
-                s.setdefault(k, {})
-                s[k].setdefault(SCHEMA_PROP_KEY, {})
-                s[k][SCHEMA_PROP_KEY].update(curr_type_spec[SCHEMA_PROP_KEY])
-                s[k].setdefault("required", []).extend(curr_type_spec["required"])
-                s[k][SCHEMA_TYPE_KEY] = curr_type_spec[SCHEMA_TYPE_KEY]
-            return s
+                self.cfg[STATUS_SCHEMA_SOURCE_KEY] = schema_to_read
 
     @require_backend
     def remove(
@@ -467,7 +485,7 @@ class PipestatManager(MutableMapping):
         :return bool: whether the result has been removed
         """
 
-        r_id = record_identifier or self.record_identifier
+        r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
         return self.backend.remove(
             record_identifier=r_id,
             result_identifier=result_identifier,
@@ -497,17 +515,19 @@ class PipestatManager(MutableMapping):
         :return str reported_results: return list of formatted string
         """
 
-        result_formatter = result_formatter or self[RESULT_FORMATTER]
+        result_formatter = result_formatter or self.cfg[RESULT_FORMATTER]
         values = deepcopy(values)
-        r_id = record_identifier or self.record_identifier
+        r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
         if r_id is None:
             raise NotImplementedError("You must supply a record identifier to report results")
 
         result_identifiers = list(values.keys())
-        if self.schema is not None:
+        if self.cfg[SCHEMA_KEY] is not None:
             for r in result_identifiers:
                 validate_type(
-                    value=values[r], schema=self.result_schemas[r], strict_type=strict_type
+                    value=values[r],
+                    schema=self.result_schemas[r],
+                    strict_type=strict_type,
                 )
 
         reported_results = self.backend.report(
@@ -520,9 +540,9 @@ class PipestatManager(MutableMapping):
         return reported_results
 
     @require_backend
-    def retrieve_distinct(
+    def select_distinct(
         self,
-        columns: Optional[List[str]] = None,
+        columns: Optional[Union[str, List[str]]] = None,
     ) -> List[Any]:
         """
         Retrieves unique results for a list of attributes.
@@ -530,53 +550,103 @@ class PipestatManager(MutableMapping):
         :param List[str] columns: columns to include in the result
         :return list[any] result: this is a list of distinct results
         """
-        if self.file:
-            # Not implemented yet
-            result = self.backend.retrieve_distinct()
-        else:
-            result = self.backend.select_distinct(columns=columns)
+        if not isinstance(columns, list) and not isinstance(columns, str):
+            raise ValueError(
+                "Columns must be a list of strings or string, e.g. ['record_identifier', 'number_of_things']"
+            )
+
+        result = self.backend.select_distinct(columns=columns)
         return result
 
     @require_backend
-    def retrieve(
+    def select_records(
         self,
-        record_identifier: Optional[Union[str, List[str]]] = None,
-        result_identifier: Optional[Union[str, List[str]]] = None,
+        columns: Optional[List[str]] = None,
+        filter_conditions: Optional[List[Dict[str, Any]]] = None,
         limit: Optional[int] = 1000,
-        offset: Optional[int] = 0,
+        cursor: Optional[int] = None,
+        bool_operator: Optional[str] = "AND",
+    ) -> Dict[str, Any]:
+        """
+        :param list[str] columns: columns to include in the result
+        :param list[dict]  filter_conditions: e.g. [{"key": ["id"], "operator": "eq", "value": 1)], operator list:
+            - eq for ==
+            - lt for <
+            - ge for >=
+            - in for in_
+            - like for like
+        :param int limit: maximum number of results to retrieve per page
+        :param int cursor: cursor position to begin retrieving records
+        :param bool bool_operator: Perform filtering with AND or OR Logic.
+        :return Dict[str, Any]
+        """
+
+        return self.backend.select_records(
+            columns=columns,
+            filter_conditions=filter_conditions,
+            limit=limit,
+            cursor=cursor,
+            bool_operator=bool_operator,
+        )
+
+    @require_backend
+    def retrieve_one(
+        self,
+        record_identifier: str,
+        result_identifier: Optional[str] = None,
     ) -> Union[Any, Dict[str, Any]]:
         """
-        Retrieve a result for a record.
-
-        If no result ID specified, results for the entire record will
-        be returned.
-
-        :param str | List[str] record_identifier: name of the sample_level record
-        :param str | List[str] result_identifier: name of the result to be retrieved
-        :param int limit: limit number of records to this amount
-        :param int offset: offset records by this amount
-        :return any | Dict[str, any]: a single result or a mapping with filtered
+        Retrieve a single record
+        :param str record_identifier: single record_identifier
+        :param str result_identifier: single record_identifier
+        :return: Dict[str, any]: a mapping with filtered
             results reported for the record
         """
-        if record_identifier is None and result_identifier is None:
-            # This will retrieve all records and columns.
-            return self.backend.retrieve_multiple(
-                record_identifier, result_identifier, limit, offset
+
+        filter_conditions = [
+            {
+                "key": "record_identifier",
+                "operator": "eq",
+                "value": record_identifier,
+            },
+        ]
+        if result_identifier:
+            result = self.select_records(
+                filter_conditions=filter_conditions, columns=[result_identifier]
             )
+        else:
+            result = self.select_records(filter_conditions=filter_conditions)
+        if len(result["records"]) == 0:
+            raise RecordNotFoundError(f"Record '{record_identifier}' not found")
+        else:
+            return result
 
-        if type(record_identifier) is list or type(result_identifier) is list:
-            if len(record_identifier) == 1 and len(result_identifier) == 1:
-                # If user gives single values, just use retrieve.
-                return self.backend.retrieve(record_identifier[0], result_identifier[0])
-            else:
-                # If user gives lists, retrieve_multiple
-                return self.backend.retrieve_multiple(
-                    record_identifier, result_identifier, limit, offset
-                )
+    def retrieve_many(
+        self,
+        record_identifiers: List[str],
+        result_identifier: Optional[str] = None,
+    ) -> Union[Any, Dict[str, Any]]:
+        """
+        :param record_identifiers: list of record identifiers
+        :param str result_identifier: single record_identifier
+        :return: Dict[str, any]: a mapping with filtered
+            results reported for the record
+        """
 
-        r_id = record_identifier or self.record_identifier
+        filter = {
+            "key": "record_identifier",
+            "operator": "in",
+            "value": record_identifiers,
+        }
+        if result_identifier:
+            result = self.select_records(filter_conditions=[filter], columns=[result_identifier])
+        else:
+            result = self.select_records(filter_conditions=[filter])
 
-        return self.backend.retrieve(r_id, result_identifier)
+        if len(result["records"]) == 0:
+            RecordNotFoundError(f"Records, '{record_identifiers}',  not found")
+        else:
+            return result
 
     @require_backend
     def set_status(
@@ -624,7 +694,9 @@ class PipestatManager(MutableMapping):
         """
 
         html_report_builder = HTMLReportBuilder(prj=self)
-        report_path = html_report_builder(pipeline_name=self.pipeline_name, amendment=amendment)
+        report_path = html_report_builder(
+            pipeline_name=self.cfg[PIPELINE_NAME], amendment=amendment
+        )
         return report_path
 
     @require_backend
@@ -637,7 +709,7 @@ class PipestatManager(MutableMapping):
 
         """
 
-        pipeline_name = self.pipeline_name
+        pipeline_name = self.cfg[PIPELINE_NAME]
         table_path_list = _create_stats_objs_summaries(self, pipeline_name)
 
         return table_path_list
@@ -769,7 +841,10 @@ class PipestatManager(MutableMapping):
         :return dict: schemas that formalize the structure of each result
             in a canonical jsonschema way
         """
-        return {**self.schema.project_level_data, **self.schema.sample_level_data}
+        return {
+            **self.cfg[SCHEMA_KEY].project_level_data,
+            **self.cfg[SCHEMA_KEY].sample_level_data,
+        }
 
     @property
     def schema(self) -> ParsedSchema:

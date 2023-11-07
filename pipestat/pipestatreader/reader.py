@@ -4,7 +4,8 @@ import logging
 import uvicorn
 from typing import Optional, List, Union, Tuple
 
-from pipestat import RecordNotFoundError, SamplePipestatManager
+from pipestat import SamplePipestatManager
+from pipestat.exceptions import RecordNotFoundError
 from pipestat.reports import fetch_pipeline_results
 from pydantic import BaseModel
 
@@ -106,7 +107,6 @@ async def retrieve_filetype(file_type: str):
     for sample in all_records:
         file_result = fetch_pipeline_results(
             project=psm,
-            pipeline_name=psm.pipeline_name,
             sample_name=sample,
             inclusion_fun=lambda x: x == file_type,
         )
@@ -129,7 +129,8 @@ async def retrieve_filtered_table_contents(query_filter: Optional[FilterQuery] =
     """
     try:
         results = psm.backend.select(
-            columns=query_filter.column_names, filter_conditions=query_filter.filter_conditions
+            columns=query_filter.column_names,
+            filter_conditions=query_filter.filter_conditions,
         )
     except AttributeError:
         return {"response": f"Attribute error for query: {query_filter.column_names}"}
@@ -153,7 +154,11 @@ if __name__ != "__main__":
         _LOGGER.error("Configure by setting PIPESTAT_CONFIG env var")
 
 
-def main(configfile: Optional[str] = None, host: Optional[str] = None, port: Optional[int] = None):
+def main(
+    configfile: Optional[str] = None,
+    host: Optional[str] = None,
+    port: Optional[int] = None,
+):
     """
     passes relevant info to create a global pipestat manager and then utilizes uvicorn to run at the host address and
     port. These parameters are passed during `pipestat serve` cli usage.

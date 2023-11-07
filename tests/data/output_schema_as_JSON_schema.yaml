@@ -9,24 +9,12 @@ properties:
         number_of_things:
           type: integer
           description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
-        smooth_bw:
-          type: string
-          description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce nec cursus nulla."
-          path: "aligned_{genome}/{sample_name}_smooth.bw"
         output_image:
-          type: image
+          $ref: "#/$defs/image"
           description: "This an output image"
-          properties:
-            path: "path string"
-            thumbnail_path: "path string to thumbnail"
-            title: "image title"
         output_file:
-          type: file
+          $ref: "#/$defs/file"
           description: "This a path to the output image"
-          properties:
-            path:
-              type: string
-              description: "path to string"
         collection_of_images:
           type: array
           description: A collection of images.
@@ -34,17 +22,17 @@ properties:
             type: object
             properties:
               prop1:
-                type: file
+                $ref: "#/$defs/file"
                 description: An example file.
-        output_file_in_object:
+        nested_object:
           type: object
-          description: An object containing output files.
+          description: An object containing output file and image.
           properties:
             example_property_1:
-              type: file
+              $ref: "#/$defs/file"
               description: An example file.
             example_property_2:
-              type: image
+              $ref: "#/$defs/image"
               description: An example image.
         output_file_nested_object:
           type: object
@@ -55,21 +43,38 @@ properties:
               description: Second Level
               properties:
                 third_level_property_1:
-                  type: file
+                  $ref: "#/$defs/file"
                   description: Third Level
             example_property_2:
               type: object
               description: Second Level
               properties:
                 third_level_property_1:
-                  type: file
+                  $ref: "#/$defs/file"
                   description: Third Level
-  project:
+$defs:
+  image:
     type: object
+    object_type: image
     properties:
-      project_output_file:
-        type: file
-        description: The path to the output file.
-      protocol:
+      path:
         type: string
-        description: example protocol description
+      thumbnail_path:
+        type: string
+      title:
+        type: string
+    required:
+      - path
+      - thumbnail_path
+      - title
+  file:
+    type: object
+    object_type: file
+    properties:
+      path:
+        type: string
+      title:
+        type: string
+    required:
+      - path
+      - title
