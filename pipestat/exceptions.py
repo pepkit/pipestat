@@ -115,8 +115,9 @@ class InvalidTypeError(PipestatError):
 
     def __init__(self, type):
         super(InvalidTypeError, self).__init__(
-            "'{}' is an invalid type. Only the following types are "
-            "supported: {}".format(type, list(CLASSES_BY_TYPE.keys()))
+            "'{}' is an invalid type. Only the following types are " "supported: {}".format(
+                type, list(CLASSES_BY_TYPE.keys())
+            )
         )
 
 
