@@ -620,7 +620,8 @@ class PipestatManager(MutableMapping):
                 except IndexError:
                     return None
             else:
-                raise RecordNotFoundError(f"Record '{record_identifier}' not found")
+                # raise RecordNotFoundError(f"Record '{record_identifier}' not found")
+                return None
         else:
             try:
                 result = self.select_records(filter_conditions=filter_conditions)["records"]
@@ -630,7 +631,8 @@ class PipestatManager(MutableMapping):
                     except IndexError:
                         return None
                 else:
-                    raise RecordNotFoundError(f"Record '{record_identifier}' not found")
+                    # raise RecordNotFoundError(f"Record '{record_identifier}' not found")
+                    return None
             except IndexError:
                 return None
 
