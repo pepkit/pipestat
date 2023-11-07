@@ -413,7 +413,7 @@ class TestReporting:
             # Now overwrite
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
             assert (
-                list(psm.retrieve_one(record_identifier=rec_id).keys())[0]
+                psm.retrieve_one(record_identifier=rec_id)
                 == val[list(val.keys())[0]]
             )
 

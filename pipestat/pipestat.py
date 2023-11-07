@@ -601,6 +601,7 @@ class PipestatManager(MutableMapping):
         :return: Dict[str, any]: a mapping with filtered
             results reported for the record
         """
+        r_id = record_identifier or self.record_identifier
 
         filter_conditions = [
             {
