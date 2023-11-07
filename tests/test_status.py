@@ -2,7 +2,9 @@
 
 import os
 import pytest
-from pipestat import SamplePipestatManager, ProjectPipestatManager
+
+from pipestat import SamplePipestatManager
+
 from pipestat.const import STATUS_FILE_DIR, FILE_KEY
 from .conftest import BACKEND_KEY_DB, BACKEND_KEY_FILE, DB_URL, SERVICE_UNAVAILABLE
 
@@ -21,6 +23,7 @@ class TestStatus:
         )
         assert psm.cfg[STATUS_FILE_DIR] == os.path.dirname(psm.cfg[FILE_KEY])
 
+
     @pytest.mark.parametrize("backend_data", ["file", "db"], indirect=True)
     @pytest.mark.parametrize("status_id", ["running", "failed", "completed"])
     def test_status_not_configured(
@@ -37,6 +40,7 @@ class TestStatus:
             psm.set_status(record_identifier="sample1", status_identifier=status_id)
             assert psm.get_status(record_identifier="sample1") == status_id
 
+
     @pytest.mark.parametrize("backend_data", [BACKEND_KEY_FILE, BACKEND_KEY_DB], indirect=True)
     @pytest.mark.parametrize("status_id", ["running_custom", "failed_custom", "completed_custom"])
     def test_custom_status_schema(
@@ -52,6 +56,7 @@ class TestStatus:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
+
             psm.set_status(record_identifier="sample1", status_identifier=status_id)
             assert psm.get_status(record_identifier="sample1") == status_id
 

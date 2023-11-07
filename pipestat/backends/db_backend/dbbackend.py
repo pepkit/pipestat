@@ -1,25 +1,21 @@
-import sys
 import datetime
 from logging import getLogger
 from contextlib import contextmanager
+from typing import List, Dict, Any, Optional, Union, NoReturn, Tuple
 
-# try:
-from sqlalchemy import text
-from sqlalchemy.engine.row import Row
-from sqlmodel import Session, create_engine, select as sql_select
-from sqlmodel.main import SQLModelMetaclass
+from sqlmodel import SQLModel, Session, create_engine, select as sql_select
 
-# except:
-#     pass
-
-if int(sys.version.split(".")[1]) < 9:
-    from typing import List, Dict, Any, Optional, Union, NoReturn
-else:
-    from typing import *
-
-from pipestat.helpers import *
-from pipestat.backends.db_backend.db_helpers import *
+from pipestat.backends.db_backend.db_helpers import selection_filter
 from pipestat.backends.abstract import PipestatBackend
+from ...exceptions import (
+    PipestatDatabaseError,
+    RecordNotFoundError,
+    SchemaError,
+    ColumnNotFoundError,
+    UnrecognizedStatusError,
+    SchemaNotFoundError,
+)
+from ...const import PKG_NAME, STATUS, RECORD_IDENTIFIER, CREATED_TIME, MODIFIED_TIME
 
 
 _LOGGER = getLogger(PKG_NAME)
@@ -404,17 +400,20 @@ class DBBackend(PipestatBackend):
             total_count = len(s.exec(sql_select(ORM)).all())
 
             if columns is not None:
-                columns = ["id", "record_identifier"] + columns  # Must add id, need it for cursor
+                columns = [
+                    "id",
+                    "record_identifier",
+                ] + columns  # Must add id, need it for cursor
                 try:
-                    statement = sqlmodel.select(
-                        *[getattr(ORM, column) for column in columns]
-                    ).order_by(ORM.id)
+                    statement = sql_select(*[getattr(ORM, column) for column in columns]).order_by(
+                        ORM.id
+                    )
                 except AttributeError:
                     raise ColumnNotFoundError(
                         msg=f"One of the supplied column does not exists in current table: {columns}"
                     )
             else:
-                statement = sqlmodel.select(ORM).order_by(ORM.id)
+                statement = sql_select(ORM).order_by(ORM.id)
 
             if cursor is not None:
                 statement = statement.where(ORM.id > cursor)

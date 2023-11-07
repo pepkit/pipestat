@@ -1,7 +1,7 @@
 """ Package exception types """
 
-from typing import *
-from .const import *
+from typing import Iterable, Optional
+from .const import CLASSES_BY_TYPE, ENV_VARS
 
 __all__ = [
     "InvalidTypeError",
@@ -58,7 +58,7 @@ class SchemaNotFoundError(SchemaError):
     def __init__(self, msg, cli=False):
         txt = f"Results schema not found. The schema is required to {msg}. "
         txt += (
-            f"It needs to be supplied as an CLI argument"
+            "It needs to be supplied as an CLI argument"
             if cli
             else "It needs to be supplied to the object constructor"
         )

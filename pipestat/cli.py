@@ -19,8 +19,17 @@ from .argparser import (
     SERVE_CMD,
     LINK_CMD,
 )
-from .const import *
-from .exceptions import SchemaNotFoundError, PipestatStartupError, PipestatDependencyError
+from .const import (
+    SCHEMA_KEY,
+    SCHEMA_TYPE_KEY,
+    CANONICAL_TYPES,
+    PKG_NAME,
+)
+from .exceptions import (
+    SchemaNotFoundError,
+    PipestatStartupError,
+    PipestatDependencyError,
+)
 from .pipestat import PipestatManager
 from .helpers import init_generic_config
 
@@ -134,8 +143,7 @@ def main(test_args=None):
         )
     if args.command == RETRIEVE_CMD:
         print(
-            psm.retrieve(
-                result_identifier=args.result_identifier,
+            psm.retrieve_one(
                 record_identifier=args.record_identifier,
             )
         )

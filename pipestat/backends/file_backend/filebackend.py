@@ -11,11 +11,11 @@ from logging import getLogger
 from yacman import YAMLConfigManager
 from ubiquerg import create_lock, remove_lock
 
-from pipestat.helpers import *
-from pipestat.backends.abstract import PipestatBackend
-from pipestat.const import DATE_FORMAT
+from typing import List, Dict, Any, Optional, Union, Literal, Callable, Tuple
 
-from typing import List, Dict, Any, Optional, Union, Literal, Callable
+from ...exceptions import UnrecognizedStatusError, PipestatError
+from ...backends.abstract import PipestatBackend
+from ...const import DATE_FORMAT, PKG_NAME, CREATED_TIME, MODIFIED_TIME
 
 
 _LOGGER = getLogger(PKG_NAME)
@@ -181,7 +181,8 @@ class FileBackend(PipestatBackend):
 
         r_id = record_identifier
         return os.path.join(
-            self.status_file_dir, f"{self.pipeline_name}_{r_id}_{status_identifier}.flag"
+            self.status_file_dir,
+            f"{self.pipeline_name}_{r_id}_{status_identifier}.flag",
         )
 
     def list_results(
@@ -247,9 +248,6 @@ class FileBackend(PipestatBackend):
                 rm_record=rm_record,
             )
         else:
-            val_backup = self._data[self.pipeline_name][self.pipeline_type][record_identifier][
-                result_identifier
-            ]
             del self._data[self.pipeline_name][self.pipeline_type][record_identifier][
                 result_identifier
             ]
@@ -508,7 +506,9 @@ class FileBackend(PipestatBackend):
                             if isinstance(value, dict):
                                 if key == filter_condition["key"][0]:
                                     result = get_nested_column(
-                                        value, filter_condition["key"][1:], retrieved_operator
+                                        value,
+                                        filter_condition["key"][1:],
+                                        retrieved_operator,
                                     )
                             else:
                                 if filter_condition["key"] == key:
@@ -631,7 +631,9 @@ class FileBackend(PipestatBackend):
         """
         _LOGGER.info(f"Initializing results file '{self.results_file_path}'")
         self._data = YAMLConfigManager(
-            entries={self.pipeline_name: {}}, filepath=self.results_file_path, create_file=True
+            entries={self.pipeline_name: {}},
+            filepath=self.results_file_path,
+            create_file=True,
         )
         self._data.setdefault(self.pipeline_name, {})
         self._data[self.pipeline_name].setdefault("project", {})

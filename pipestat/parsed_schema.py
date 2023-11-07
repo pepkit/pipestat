@@ -1,25 +1,24 @@
 """Abstraction of a parse of a schema definition"""
 
 import copy
-import datetime
 import logging
 from pathlib import Path
-from typing import *
+from typing import Any, Dict, List, Mapping, Optional, Union
 
-# from pydantic import create_model
-#
-# # from sqlalchemy.dialects.postgresql import ARRAY
-# from sqlalchemy import Column, null
-# from sqlalchemy.dialects.postgresql import JSONB
-# from sqlmodel import Field, SQLModel
-from .const import *
+from .const import (
+    CANONICAL_TYPES,
+    CLASSES_BY_TYPE,
+    RECORD_IDENTIFIER,
+    SCHEMA_DESC_KEY,
+    SCHEMA_ITEMS_KEY,
+    SCHEMA_PROP_KEY,
+    SCHEMA_TYPE_KEY,
+)
 from .exceptions import SchemaError
 from .helpers import read_yaml_data
 
 
 _LOGGER = logging.getLogger(__name__)
-
-__all__ = ["ParsedSchema", "SCHEMA_PIPELINE_NAME_KEY"]
 
 
 NULL_MAPPING_VALUE = {}
@@ -31,7 +30,10 @@ PATH_COL_SPEC = (Path, ...)
 
 
 def _safe_pop_one_mapping(
-    mappingkey: str, data: Dict[str, Any], info_name: str, subkeys: Optional[List[str]] = None
+    mappingkey: str,
+    data: Dict[str, Any],
+    info_name: str,
+    subkeys: Optional[List[str]] = None,
 ) -> Any:
     """
     mapping key: the dict key where the sample, project or status values are stored, e.g. data["mappingkey"]
@@ -160,15 +162,15 @@ class ParsedSchema(object):
         """
         res = f"{self.__class__.__name__} ({self._pipeline_name})"
         if self._project_level_data is not None:
-            res += f"\n Project Level Data:"
+            res += "\n Project Level Data:"
             for k, v in self._project_level_data.items():
                 res += f"\n -  {k} : {v}"
         if self._sample_level_data is not None:
-            res += f"\n Sample Level Data:"
+            res += "\n Sample Level Data:"
             for k, v in self._sample_level_data.items():
                 res += f"\n -  {k} : {v}"
         if self._status_data is not None:
-            res += f"\n Status Data:"
+            res += "\n Status Data:"
             for k, v in self._status_data.items():
                 res += f"\n -  {k} : {v}"
         return res

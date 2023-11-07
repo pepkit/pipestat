@@ -1,10 +1,12 @@
 import pytest
 
-from pipestat import SamplePipestatManager, SamplePipestatManager, ProjectPipestatManager
+from pipestat import SamplePipestatManager
 from pipestat.const import *
 from .conftest import DB_URL
+
 from .conftest import SERVICE_UNAVAILABLE
 from sqlmodel import Session, SQLModel, create_engine
+
 from sqlmodel.main import default_registry
 
 

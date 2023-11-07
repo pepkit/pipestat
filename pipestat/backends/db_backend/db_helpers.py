@@ -3,10 +3,6 @@ from typing import Any, Dict, List, Optional, Union
 from urllib.parse import quote_plus
 
 try:
-    from sqlmodel import MetaData
-    import sqlmodel.sql.expression
-    from sqlmodel.main import SQLModel
-    from sqlmodel.sql.expression import SelectOfScalar
     from sqlmodel import and_, or_, Integer, Float, String, Boolean
 except:
     pass
@@ -78,7 +74,8 @@ def selection_filter(
                     column = getattr(ORM, filter_condition["key"][0], None)
                 else:
                     column = get_nested_column(
-                        getattr(ORM, filter_condition["key"][0], None), filter_condition["key"][1:]
+                        getattr(ORM, filter_condition["key"][0], None),
+                        filter_condition["key"][1:],
                     ).astext.cast(define_sqlalchemy_type(filter_condition["value"]))
 
             elif isinstance(filter_condition["key"], str):

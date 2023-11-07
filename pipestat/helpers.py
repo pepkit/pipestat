@@ -5,18 +5,19 @@ import os
 import errno
 import yaml
 import jsonschema
-from json import dumps, loads
+from json import dumps
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
-
+from typing import Any, Dict, Optional, Tuple, Union
 
 from oyaml import safe_load
-
 from ubiquerg import expandpath
 
-
-from .const import *
-from .exceptions import *
+from .const import (
+    PIPESTAT_GENERIC_CONFIG,
+    SCHEMA_PROP_KEY,
+    SCHEMA_TYPE_KEY,
+    CLASSES_BY_TYPE,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -166,7 +167,7 @@ def markdown_formatter(pipeline_name, record_identifier, res_id, value) -> str:
     """
     Returns Markdown formatted value as string
     """
-    if type(value) is not dict:
+    if not isinstance(value, dict):
         nl = "\n"
         rep_strs = [f"`{res_id}`: ```{value}```"]
         formatted_result = (
