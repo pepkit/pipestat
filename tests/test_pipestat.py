@@ -1,12 +1,11 @@
 import os.path
-import datetime
 import time
 from collections.abc import Mapping
 
 import pytest
 from jsonschema import ValidationError
 
-from pipestat import SamplePipestatManager, ProjectPipestatManager, PipestatBoss
+from pipestat import SamplePipestatManager, ProjectPipestatManager, PipestatBoss, PipestatManager
 from pipestat.const import *
 from pipestat.exceptions import *
 from pipestat.parsed_schema import ParsedSchema
@@ -21,6 +20,7 @@ from .conftest import (
     STANDARD_TEST_PIPE_ID,
     SERVICE_UNAVAILABLE,
     DB_URL,
+    REC_ID,
 )
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
@@ -203,10 +203,123 @@ class TestReporting:
                 pass
 
     @pytest.mark.parametrize(
+        "val",
+        [
+            {"name_of_something": "test_name"},
+            {"number_of_things": 1},
+            {"percentage_of_things": 10.1},
+        ],
+    )
+    @pytest.mark.parametrize("pipeline_type", ["project", "sample"])
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_report_samples_and_project_with_pipestatmanager(
+        self,
+        val,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        backend,
+        pipeline_type,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(
+                schema_path=schema_file_path, pipeline_type=pipeline_type, database_only=False
+            )
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+
+            psm = PipestatManager(**args)
+            val_name = list(val.keys())[0]
+            if pipeline_type == "project":
+                if val_name in psm.cfg[SCHEMA_KEY].project_level_data:
+                    assert psm.report(
+                        record_identifier="constant_record_id",
+                        values=val,
+                        force_overwrite=True,
+                        strict_type=False,
+                    )
+
+            if pipeline_type == "sample":
+                if val_name in psm.cfg[SCHEMA_KEY].sample_level_data:
+                    assert psm.report(
+                        record_identifier="constant_record_id",
+                        values=val,
+                        force_overwrite=True,
+                        strict_type=False,
+                    )
+
+    @pytest.mark.parametrize(
+        "val",
+        [
+            {
+                "collection_of_images": [
+                    {
+                        "items": {
+                            "properties": {
+                                "prop1": {
+                                    "properties": {
+                                        "path": "pathstring",
+                                        "title": "titlestring",
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            {"output_file": {"path": "path_string", "title": "title_string"}},
+            {
+                "output_image": {
+                    "path": "path_string",
+                    "thumbnail_path": "thumbnail_path_string",
+                    "title": "title_string",
+                }
+            },
+            {
+                "output_file_in_object": {
+                    "properties": {
+                        "prop1": {"properties": {"path": "pathstring", "title": "titlestring"}}
+                    }
+                }
+            },
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_complex_object_report(
+        self, val, config_file_path, recursive_schema_file_path, results_file_path, backend
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+
+            psm = SamplePipestatManager(**args)
+            psm.report(record_identifier=REC_ID, values=val, force_overwrite=True)
+            val_name = list(val.keys())[0]
+            assert psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": val_name,
+                        "operator": "eq",
+                        "value": val[val_name],
+                    }
+                ]
+            )
+
+    @pytest.mark.parametrize(
         ["rec_id", "val"],
         [
             ("sample1", {"name_of_something": "test_name"}),
-            ("sample1", {"number_of_things": 1}),
         ],
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
@@ -229,27 +342,9 @@ class TestReporting:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            # psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
             psm[rec_id] = val
-            if backend == "file":
-                print(psm.backend._data[STANDARD_TEST_PIPE_ID])
-                print(
-                    "Test if",
-                    rec_id,
-                    " is in ",
-                    psm.backend._data[STANDARD_TEST_PIPE_ID],
-                )
-                assert rec_id in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
-                print("Test if", list(val.keys())[0], " is in ", rec_id)
-                assert (
-                    list(val.keys())[0]
-                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
-                )
-                if backend == "file":
-                    assert_is_in_files(results_file_path, str(list(val.values())[0]))
-            if backend == "db":
-                # This is being captured in TestSplitClasses
-                pass
+            result = psm.retrieve_one(record_identifier=rec_id)
+            assert list(val.keys())[0] in result["records"][0]
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -311,20 +406,16 @@ class TestReporting:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
+            # Report some other value to be overwritten
+            psm.report(
+                record_identifier=rec_id, values={list(val.keys())[0]: 1000}, force_overwrite=True
+            )
+            # Now overwrite
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
-            if backend == "file":
-                assert rec_id in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
-                assert (
-                    list(val.keys())[0]
-                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
-                )
-                if backend == "file":
-                    assert_is_in_files(results_file_path, str(list(val.values())[0]))
-            if backend == "db":
-                assert (
-                    psm.retrieve_one(record_identifier=rec_id)["records"][0][list(val.keys())[0]]
-                    == val[list(val.keys())[0]]
-                )
+            assert (
+                psm.retrieve_one(record_identifier=rec_id)["records"][0][list(val.keys())[0]]
+                == val[list(val.keys())[0]]
+            )
 
     @pytest.mark.parametrize(
         ["rec_id", "val", "success"],
@@ -420,9 +511,6 @@ class TestRetrieval:
         [
             ("sample1", {"name_of_something": "test_name"}),
             ("sample1", {"number_of_things": 2}),
-            ("sample2", {"number_of_things": 1}),
-            ("sample2", {"percentage_of_things": 10.1}),
-            ("sample2", {"name_of_something": "test_name"}),
         ],
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
@@ -498,18 +586,10 @@ class TestRetrieval:
 
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_select_records_no_filter(
-        self,
-        config_file_path,
-        results_file_path,
-        schema_file_path,
-        backend,
+        self, config_file_path, results_file_path, schema_file_path, backend, val_dict
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            val_dict = {
-                "sample1": {"name_of_something": "test_name"},
-                "sample2": {"number_of_things": 2},
-            }
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -606,13 +686,11 @@ class TestRemoval:
         results_file_path,
         schema_file_path,
         backend,
+        val_dict,
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            vals = [
-                {"number_of_things": 1},
-                {"name_of_something": "test_name"},
-            ]
+            vals = [val_dict]
             args = dict(schema_path=schema_file_path, database_only=False)
             backend_data = (
                 {"config_file": config_file_path}
@@ -621,40 +699,34 @@ class TestRemoval:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            for v in vals:
-                psm.report(record_identifier=rec_id, values=v, force_overwrite=True)
-            psm.remove(result_identifier=res_id, record_identifier=rec_id)
-            if backend != "db":
-                assert (
-                    # res_id not in psm.data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
-                    res_id
-                    not in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
-                )
-            else:
-                col_name = list(vals[0].keys())[0]
-                value = list(vals[0].values())[0]
-                result = psm.select_records(
-                    filter_conditions=[
-                        {
-                            "key": col_name,
-                            "operator": "eq",
-                            "value": value,
-                        }
-                    ]
-                )
-                assert len(result["records"]) == 0
 
-    @pytest.mark.parametrize("rec_id", ["sample1", "sample2"])
+            for val in vals:
+                for key, value in val.items():
+                    psm.report(record_identifier=key, values=value, force_overwrite=True)
+
+            psm.remove(result_identifier=res_id, record_identifier=rec_id)
+
+            col_name = res_id
+            value = list(vals[0].values())[1][res_id]
+            result = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": col_name,
+                        "operator": "eq",
+                        "value": value,
+                    }
+                ]
+            )
+            assert len(result["records"]) == 0
+
+    @pytest.mark.parametrize("rec_id", ["sample1"])
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_remove_record(
-        self, rec_id, schema_file_path, config_file_path, results_file_path, backend
+        self, rec_id, schema_file_path, config_file_path, results_file_path, backend, val_dict
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            vals = [
-                {"number_of_things": 1},
-                {"name_of_something": "test_name"},
-            ]
+            vals = [val_dict]
             args = dict(schema_path=schema_file_path, database_only=False)
             backend_data = (
                 {"config_file": config_file_path}
@@ -663,24 +735,22 @@ class TestRemoval:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            for v in vals:
-                psm.report(record_identifier=rec_id, values=v, force_overwrite=True)
+            for val in vals:
+                for key, value in val.items():
+                    psm.report(record_identifier=key, values=value, force_overwrite=True)
             psm.remove(record_identifier=rec_id)
-            if backend != "db":
-                assert rec_id not in psm.backend._data[STANDARD_TEST_PIPE_ID]
-            else:
-                col_name = list(vals[0].keys())[0]
-                value = list(vals[0].values())[0]
-                result = psm.select_records(
-                    filter_conditions=[
-                        {
-                            "key": col_name,
-                            "operator": "eq",
-                            "value": value,
-                        }
-                    ]
-                )
-                assert len(result["records"]) == 0
+            col_name = list(list(vals[0].values())[0].keys())[0]
+            value = list(list(vals[0].values())[0].values())[0]
+            result = psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": col_name,
+                        "operator": "eq",
+                        "value": value,
+                    }
+                ]
+            )
+            assert len(result["records"]) == 0
 
     @pytest.mark.parametrize(
         ["rec_id", "res_id"], [("sample2", "nonexistent"), ("sample2", "bogus")]
@@ -792,33 +862,22 @@ class TestNoRecordID:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
             psm.report(values=val)
-            if backend == "file":
-                assert_is_in_files(results_file_path, str(list(val.values())[0]))
-                assert (
-                    CONST_REC_ID in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
-                )
-                assert (
-                    list(val.keys())[0]
-                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][CONST_REC_ID]
-                )
-            if backend == "db":
-                val_name = list(val.keys())[0]
-                assert psm.select_records(
-                    filter_conditions=[
-                        {
-                            "key": val_name,
-                            "operator": "eq",
-                            "value": val[val_name],
-                        }
-                    ]
-                )
+            val_name = list(val.keys())[0]
+            assert psm.select_records(
+                filter_conditions=[
+                    {
+                        "key": val_name,
+                        "operator": "eq",
+                        "value": val[val_name],
+                    }
+                ]
+            )
 
     @pytest.mark.parametrize(
         "val",
         [
             {"name_of_something": "test_name"},
             {"number_of_things": 1},
-            {"percentage_of_things": 10.1},
         ],
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
@@ -851,7 +910,6 @@ class TestNoRecordID:
         [
             {"name_of_something": "test_name"},
             {"number_of_things": 1},
-            {"percentage_of_things": 10.1},
         ],
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
@@ -982,17 +1040,10 @@ class TestPipestatBoss:
         output_schema_html_report,
         results_file_path,
         backend,
+        values_sample,
+        values_project,
     ):
         pipeline_list = ["sample", "project"]
-        values_project = [
-            {"project_name_1": {"number_of_things": 2}},
-            {"project_name_1": {"name_of_something": "name of something string"}},
-        ]
-
-        values_sample = [
-            {"sample4": {"smooth_bw": "smooth_bw string"}},
-            {"sample5": {"output_file": {"path": "path_string", "title": "title_string"}}},
-        ]
 
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
@@ -1018,41 +1069,15 @@ class TestPipestatBoss:
 
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestHTMLReport:
-    @pytest.mark.parametrize(
-        ["rec_id", "val"],
-        [
-            ("sample1", {"name_of_something": "test_name"}),
-        ],
-    )
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_basics_samples(
+    def test_basics_samples_html_report(
         self,
-        rec_id,
-        val,
         config_file_path,
         output_schema_html_report,
         results_file_path,
         backend,
+        values_sample,
     ):
-        values_project = [
-            {"project_name_1": {"number_of_things": 2}},
-            {"project_name_1": {"name_of_something": "name of something string"}},
-        ]
-        values_sample = [
-            {"sample4": {"smooth_bw": "smooth_bw string"}},
-            {"sample5": {"output_file": {"path": "path_string", "title": "title_string"}}},
-            {"sample4": {"aligned_bam": "aligned_bam string"}},
-            {"sample6": {"output_file": {"path": "path_string", "title": "title_string"}}},
-            {
-                "sample7": {
-                    "output_image": {
-                        "path": "path_string",
-                        "thumbnail_path": "path_string",
-                        "title": "title_string",
-                    }
-                }
-            },
-        ]
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report, database_only=False)
@@ -1069,31 +1094,18 @@ class TestHTMLReport:
                     psm.report(record_identifier=r, values=v, force_overwrite=True)
                     psm.set_status(record_identifier=r, status_identifier="running")
 
-            try:
-                htmlreportpath = psm.summarize(amendment="")
-                assert htmlreportpath is not None
-            except:
-                assert 0
-
-            try:
-                table_paths = psm.table()
-                assert table_paths is not None
-            except:
-                assert 0
+            htmlreportpath = psm.summarize(amendment="")
+            assert htmlreportpath is not None
 
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_basics_project(
+    def test_basics_project_html_report(
         self,
         config_file_path,
         output_schema_html_report,
         results_file_path,
         backend,
+        values_project,
     ):
-        values_project = [
-            {"project_name_1": {"number_of_things": 2}},
-            {"project_name_1": {"name_of_something": "name of something string"}},
-        ]
-
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report, database_only=False)
@@ -1115,17 +1127,67 @@ class TestHTMLReport:
                     )
                     psm.set_status(record_identifier=r, status_identifier="running")
 
-            try:
-                htmlreportpath = psm.summarize(amendment="")
-                assert htmlreportpath is not None
-            except:
-                assert 0
+            htmlreportpath = psm.summarize(amendment="")
+            assert htmlreportpath is not None
 
-            try:
-                table_paths = psm.table()
-                assert table_paths is not None
-            except:
-                assert 0
+
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
+class TestTableCreation:
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_basics_table_for_samples(
+        self,
+        config_file_path,
+        output_schema_html_report,
+        results_file_path,
+        backend,
+        values_sample,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=output_schema_html_report, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in values_sample:
+                for r, v in i.items():
+                    psm.report(record_identifier=r, values=v, force_overwrite=True)
+                    psm.set_status(record_identifier=r, status_identifier="running")
+
+            table_paths = psm.table()
+            assert table_paths is not None
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_basics_table_for_project(
+        self,
+        config_file_path,
+        output_schema_html_report,
+        results_file_path,
+        backend,
+        values_project,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=output_schema_html_report, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = ProjectPipestatManager(**args)
+
+            for i in values_project:
+                for r, v in i.items():
+                    psm.report(record_identifier=r, values=v, force_overwrite=True)
+                    psm.set_status(record_identifier=r, status_identifier="running")
+
+            table_paths = psm.table()
+            assert table_paths is not None
 
 
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
@@ -1236,74 +1298,8 @@ class TestFileTypeLinking:
         output_schema_as_JSON_schema,
         results_file_path,
         backend,
+        values_complex_linking,
     ):
-        # paths to images and files
-        path_file_1 = get_data_file_path("test_file_links/results/project_dir_example_1/ex1.txt")
-        path_file_2 = get_data_file_path("test_file_links/results/project_dir_example_1/ex2.txt")
-        path_image_1 = get_data_file_path("test_file_links/results/project_dir_example_1/ex3.png")
-        path_image_2 = get_data_file_path("test_file_links/results/project_dir_example_1/ex4.png")
-
-        values_sample = [
-            {"sample1": {"number_of_things": 100}},
-            {"sample2": {"number_of_things": 200}},
-            {"sample1": {"output_file": {"path": path_file_1, "title": "title_string"}}},
-            {"sample2": {"output_file": {"path": path_file_2, "title": "title_string"}}},
-            {
-                "sample1": {
-                    "output_image": {
-                        "path": path_image_1,
-                        "thumbnail_path": "path_string",
-                        "title": "title_string",
-                    }
-                }
-            },
-            {
-                "sample2": {
-                    "output_image": {
-                        "path": path_image_2,
-                        "thumbnail_path": "path_string",
-                        "title": "title_string",
-                    }
-                }
-            },
-            {
-                "sample2": {
-                    "nested_object": {
-                        "example_property_1": {
-                            "path": path_file_1,
-                            "thumbnail_path": "path_string",
-                            "title": "title_string",
-                        },
-                        "example_property_2": {
-                            "path": path_image_1,
-                            "thumbnail_path": "path_string",
-                            "title": "title_string",
-                        },
-                    }
-                }
-            },
-            {
-                "sample2": {
-                    "output_file_nested_object": {
-                        "example_property_1": {
-                            "third_level_property_1": {
-                                "path": path_file_1,
-                                "thumbnail_path": "path_string",
-                                "title": "title_string",
-                            }
-                        },
-                        "example_property_2": {
-                            "third_level_property_1": {
-                                "path": path_file_1,
-                                "thumbnail_path": "path_string",
-                                "title": "title_string",
-                            }
-                        },
-                    }
-                }
-            },
-        ]
-
         with NamedTemporaryFile() as f, TemporaryDirectory() as d, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             temp_dir = d
@@ -1318,7 +1314,7 @@ class TestFileTypeLinking:
             schema = ParsedSchema(output_schema_as_JSON_schema)
             print(schema)
 
-            for i in values_sample:
+            for i in values_complex_linking:
                 for r, v in i.items():
                     psm.report(record_identifier=r, values=v, force_overwrite=True)
                     psm.set_status(record_identifier=r, status_identifier="running")
@@ -1431,7 +1427,7 @@ class TestTimeStamp:
             assert created != modified
 
     @pytest.mark.parametrize("backend", ["db", "file"])
-    def test_filtering_by_time(
+    def test_list_recent_results(
         self,
         config_file_path,
         schema_file_path,
@@ -1486,6 +1482,7 @@ class TestSelectRecords:
         results_file_path,
         recursive_schema_file_path,
         backend,
+        range_values,
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
@@ -1498,25 +1495,9 @@ class TestSelectRecords:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
 
-            for i in range(12):
-                r_id = "sample" + str(i)
-                val = {
-                    "md5sum": "hash" + str(i),
-                    "number_of_things": i * 10,
-                    "percentage_of_things": i % 2,
-                    "switch_value": bool(i % 2),
-                    "output_image": {
-                        "path": "path_to_" + str(i),
-                        "thumbnail_path": "thumbnail_path" + str(i),
-                        "title": "title_string" + str(i),
-                    },
-                    "output_file_in_object_nested": {
-                        "prop1": {
-                            "prop2": i,
-                        },
-                    },
-                }
-
+            for i in range_values:
+                r_id = i[0]
+                val = i[1]
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
             result1 = psm.select_records(
@@ -1572,6 +1553,7 @@ class TestSelectRecords:
         results_file_path,
         recursive_schema_file_path,
         backend,
+        range_values,
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
@@ -1584,25 +1566,9 @@ class TestSelectRecords:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
 
-            for i in range(2):
-                r_id = "sample" + str(i)
-                val = {
-                    "md5sum": "hash" + str(i),
-                    "number_of_things": i * 10,
-                    "percentage_of_things": i % 2,
-                    "switch_value": bool(i % 2),
-                    "output_image": {
-                        "path": "path_to_" + str(i),
-                        "thumbnail_path": "thumbnail_path" + str(i),
-                        "title": "title_string" + str(i),
-                    },
-                    "output_file_in_object_nested": {
-                        "prop1": {
-                            "prop2": i,
-                        },
-                    },
-                }
-
+            for i in range_values[:2]:
+                r_id = i[0]
+                val = i[1]
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
             result1 = psm.select_records(
@@ -1626,6 +1592,7 @@ class TestSelectRecords:
         results_file_path,
         recursive_schema_file_path,
         backend,
+        range_values,
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
@@ -1638,25 +1605,9 @@ class TestSelectRecords:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
 
-            for i in range(2):
-                r_id = "sample" + str(i)
-                val = {
-                    "md5sum": "hash" + str(i),
-                    "number_of_things": i * 10,
-                    "percentage_of_things": i % 2,
-                    "switch_value": bool(i % 2),
-                    "output_image": {
-                        "path": "path_to_" + str(i),
-                        "thumbnail_path": "thumbnail_path" + str(i),
-                        "title": "title_string" + str(i),
-                    },
-                    "output_file_in_object_nested": {
-                        "prop1": {
-                            "prop2": i,
-                        },
-                    },
-                }
-
+            for i in range_values[:2]:
+                r_id = i[0]
+                val = i[1]
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
             result1 = psm.select_records()
@@ -1665,12 +1616,13 @@ class TestSelectRecords:
             assert len(result1["records"]) == 2
 
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_select_records_bad_op(
+    def test_select_no_filter_limit(
         self,
         config_file_path,
         results_file_path,
         recursive_schema_file_path,
         backend,
+        range_values,
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
@@ -1683,24 +1635,39 @@ class TestSelectRecords:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
 
-            for i in range(2):
-                r_id = "sample" + str(i)
-                val = {
-                    "md5sum": "hash" + str(i),
-                    "number_of_things": i * 10,
-                    "switch_value": bool(i % 2),
-                    "output_image": {
-                        "path": "path_to_" + str(i),
-                        "thumbnail_path": "thumbnail_path" + str(i),
-                        "title": "title_string" + str(i),
-                    },
-                    "output_file_in_object_nested": {
-                        "prop1": {
-                            "prop2": i,
-                        },
-                    },
-                }
+            for i in range_values[:2]:
+                r_id = i[0]
+                val = i[1]
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
+            result1 = psm.select_records(limit=1)
+
+            print(result1)
+            assert len(result1["records"]) == 1
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_select_records_bad_operator_bad_key(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+        range_values,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range_values[:2]:
+                r_id = i[0]
+                val = i[1]
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
             with pytest.raises(ValueError):
@@ -1739,6 +1706,7 @@ class TestSelectRecords:
         results_file_path,
         recursive_schema_file_path,
         backend,
+        range_values,
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
@@ -1751,24 +1719,9 @@ class TestSelectRecords:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
 
-            for i in range(2):
-                r_id = "sample" + str(i)
-                val = {
-                    "md5sum": "hash" + str(i),
-                    "number_of_things": i * 10,
-                    "switch_value": bool(i % 2),
-                    "output_image": {
-                        "path": "path_to_" + str(i),
-                        "thumbnail_path": "thumbnail_path" + str(i),
-                        "title": "title_string" + str(i),
-                    },
-                    "output_file_in_object_nested": {
-                        "prop1": {
-                            "prop2": i,
-                        },
-                    },
-                }
-
+            for i in range_values[:2]:
+                r_id = i[0]
+                val = i[1]
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
             if backend == "db":
@@ -1793,6 +1746,7 @@ class TestSelectRecords:
         results_file_path,
         recursive_schema_file_path,
         backend,
+        range_values,
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
@@ -1805,22 +1759,9 @@ class TestSelectRecords:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
 
-            for i in range(2):
-                r_id = "sample" + str(i)
-                val = {
-                    "md5sum": "hash" + str(i),
-                    "output_image": {
-                        "path": "path_to_" + str(i),
-                        "thumbnail_path": "thumbnail_path" + str(i),
-                        "title": "title_string" + str(i),
-                    },
-                    "output_file_in_object_nested": {
-                        "prop1": {
-                            "prop2": i,
-                        }
-                    },
-                }
-
+            for i in range_values[:2]:
+                r_id = i[0]
+                val = i[1]
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
             result = psm.select_records(
@@ -1833,8 +1774,6 @@ class TestSelectRecords:
                 ],
             )
 
-            print(result)
-
             result = psm.select_records(
                 filter_conditions=[
                     {
@@ -1845,15 +1784,14 @@ class TestSelectRecords:
                 ],
             )
 
-            print(result)
-
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_select_records_retrieve_one_many(
+    def test_select_records_retrieve_one(
         self,
         config_file_path,
         results_file_path,
         recursive_schema_file_path,
         backend,
+        range_values,
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
@@ -1866,24 +1804,9 @@ class TestSelectRecords:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
 
-            for i in range(6):
-                r_id = "sample" + str(i)
-                val = {
-                    "md5sum": "hash" + str(i),
-                    "number_of_things": i * 10,
-                    "switch_value": bool(i % 2),
-                    "output_image": {
-                        "path": "path_to_" + str(i),
-                        "thumbnail_path": "thumbnail_path" + str(i),
-                        "title": "title_string" + str(i),
-                    },
-                    "output_file_in_object_nested": {
-                        "prop1": {
-                            "prop2": i,
-                        },
-                    },
-                }
-
+            for i in range_values[:6]:
+                r_id = i[0]
+                val = i[1]
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
             # Gets one or many records
@@ -1893,18 +1816,14 @@ class TestSelectRecords:
 
             assert result1["records"][0]["record_identifier"] == "sample1"
 
-            result2 = psm.retrieve_many(["sample1", "sample3", "sample5"])
-            assert len(result2["records"]) == 3
-
-            assert result2["records"][2]["record_identifier"] == "sample5"
-
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_select_records_retrieve_result(
+    def test_select_records_retrieve_many(
         self,
         config_file_path,
         results_file_path,
         recursive_schema_file_path,
         backend,
+        range_values,
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
@@ -1917,24 +1836,39 @@ class TestSelectRecords:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
 
-            for i in range(2):
-                r_id = "sample" + str(i)
-                val = {
-                    "md5sum": "hash" + str(i),
-                    "number_of_things": i * 10,
-                    "switch_value": bool(i % 2),
-                    "output_image": {
-                        "path": "path_to_" + str(i),
-                        "thumbnail_path": "thumbnail_path" + str(i),
-                        "title": "title_string" + str(i),
-                    },
-                    "output_file_in_object_nested": {
-                        "prop1": {
-                            "prop2": i,
-                        },
-                    },
-                }
+            for i in range_values[:6]:
+                r_id = i[0]
+                val = i[1]
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
+            result = psm.retrieve_many(["sample1", "sample3", "sample5"])
+            assert len(result["records"]) == 3
+
+            assert result["records"][2]["record_identifier"] == "sample5"
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_select_records_retrieve_result(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+        range_values,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range_values[:2]:
+                r_id = i[0]
+                val = i[1]
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
             # Gets one or many records
@@ -1949,6 +1883,7 @@ class TestSelectRecords:
         results_file_path,
         recursive_schema_file_path,
         backend,
+        range_values,
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
@@ -1961,24 +1896,9 @@ class TestSelectRecords:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
 
-            for i in range(2):
-                r_id = "sample" + str(i)
-                val = {
-                    "md5sum": "hash" + str(i),
-                    "number_of_things": i * 10,
-                    "switch_value": bool(i % 2),
-                    "output_image": {
-                        "path": "path_to_" + str(i),
-                        "thumbnail_path": "thumbnail_path" + str(i),
-                        "title": "title_string" + str(i),
-                    },
-                    "output_file_in_object_nested": {
-                        "prop1": {
-                            "prop2": i,
-                        },
-                    },
-                }
-
+            for i in range_values[:2]:
+                r_id = i[0]
+                val = i[1]
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
             # Gets one or many records
@@ -1995,6 +1915,7 @@ class TestSelectRecords:
         results_file_path,
         recursive_schema_file_path,
         backend,
+        range_values,
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
@@ -2007,24 +1928,9 @@ class TestSelectRecords:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
 
-            for i in range(10):
-                r_id = "sample" + str(i)
-                val = {
-                    "md5sum": "hash" + str(i),
-                    "number_of_things": i * 10,
-                    "switch_value": bool(i % 2),
-                    "output_image": {
-                        "path": "path_to_" + str(i),
-                        "thumbnail_path": "thumbnail_path" + str(i),
-                        "title": "title_string" + str(i),
-                    },
-                    "output_file_in_object_nested": {
-                        "prop1": {
-                            "prop2": i,
-                        },
-                    },
-                }
-
+            for i in range_values[:10]:
+                r_id = i[0]
+                val = i[1]
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
             for i in range(0, 10, 2):
@@ -2057,6 +1963,7 @@ class TestSelectRecords:
         results_file_path,
         recursive_schema_file_path,
         backend,
+        range_values,
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
@@ -2069,24 +1976,9 @@ class TestSelectRecords:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
 
-            for i in range(10):
-                r_id = "sample" + str(i)
-                val = {
-                    "md5sum": "hash" + str(i),
-                    "number_of_things": i * 10,
-                    "switch_value": bool(i % 2),
-                    "output_image": {
-                        "path": "path_to_" + str(i),
-                        "thumbnail_path": "thumbnail_path" + str(i),
-                        "title": "title_string" + str(i),
-                    },
-                    "output_file_in_object_nested": {
-                        "prop1": {
-                            "prop2": i,
-                        },
-                    },
-                }
-
+            for i in range_values[:10]:
+                r_id = i[0]
+                val = i[1]
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
             for i in range(0, 10, 2):
