@@ -206,3 +206,28 @@ def values_complex_linking():
         },
     ]
     return values_complex_linking
+
+
+@pytest.fixture
+def range_values():
+    range_values = []
+    for i in range(12):
+        r_id = "sample" + str(i)
+        val = {
+            "md5sum": "hash" + str(i),
+            "number_of_things": i * 10,
+            "percentage_of_things": i % 2,
+            "switch_value": bool(i % 2),
+            "output_image": {
+                "path": "path_to_" + str(i),
+                "thumbnail_path": "thumbnail_path" + str(i),
+                "title": "title_string" + str(i),
+            },
+            "output_file_in_object_nested": {
+                "prop1": {
+                    "prop2": i,
+                },
+            },
+        }
+        range_values.append((r_id, val))
+    return range_values
