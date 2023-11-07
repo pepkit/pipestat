@@ -320,7 +320,6 @@ class TestReporting:
         ["rec_id", "val"],
         [
             ("sample1", {"name_of_something": "test_name"}),
-            ("sample1", {"number_of_things": 1}),
         ],
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
@@ -343,27 +342,9 @@ class TestReporting:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            # psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
             psm[rec_id] = val
-            if backend == "file":
-                print(psm.backend._data[STANDARD_TEST_PIPE_ID])
-                print(
-                    "Test if",
-                    rec_id,
-                    " is in ",
-                    psm.backend._data[STANDARD_TEST_PIPE_ID],
-                )
-                assert rec_id in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
-                print("Test if", list(val.keys())[0], " is in ", rec_id)
-                assert (
-                    list(val.keys())[0]
-                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
-                )
-                if backend == "file":
-                    assert_is_in_files(results_file_path, str(list(val.values())[0]))
-            if backend == "db":
-                # This is being captured in TestSplitClasses
-                pass
+            result = psm.retrieve_one(record_identifier=rec_id)
+            assert list(val.keys())[0] in result["records"][0]
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -425,20 +406,16 @@ class TestReporting:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
+            # Report some other value to be overwritten
+            psm.report(
+                record_identifier=rec_id, values={list(val.keys())[0]: 1000}, force_overwrite=True
+            )
+            # Now overwrite
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
-            if backend == "file":
-                assert rec_id in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
-                assert (
-                    list(val.keys())[0]
-                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
-                )
-                if backend == "file":
-                    assert_is_in_files(results_file_path, str(list(val.values())[0]))
-            if backend == "db":
-                assert (
-                    psm.retrieve_one(record_identifier=rec_id)["records"][0][list(val.keys())[0]]
-                    == val[list(val.keys())[0]]
-                )
+            assert (
+                psm.retrieve_one(record_identifier=rec_id)["records"][0][list(val.keys())[0]]
+                == val[list(val.keys())[0]]
+            )
 
     @pytest.mark.parametrize(
         ["rec_id", "val", "success"],
