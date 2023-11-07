@@ -108,9 +108,9 @@ class ParsedSchema(object):
                 mappingkey="properties",
             )
             # TODO We should add the ability to look at an external source beyond the source schema (data)
-            sample_data = replace_JSON_refs(sample_data, data)
+            self._sample_level_data = replace_JSON_refs(sample_data, data)
 
-            prj_data = replace_JSON_refs(prj_data, data)
+            self._project_level_data = replace_JSON_refs(prj_data, data)
 
         else:
             self._pipeline_name = data.pop(SCHEMA_PIPELINE_NAME_KEY, None)
@@ -124,15 +124,14 @@ class ParsedSchema(object):
             self._status_data = _safe_pop_one_mapping(
                 mappingkey=self._STATUS_KEY, data=data, info_name="status"
             )
+            self._sample_level_data = _recursively_replace_custom_types(sample_data)
+
+            self._project_level_data = _recursively_replace_custom_types(prj_data)
 
         if not isinstance(self._pipeline_name, str):
             raise SchemaError(
                 f"Could not find valid pipeline identifier (key '{SCHEMA_PIPELINE_NAME_KEY}') in given schema data"
             )
-
-        self._sample_level_data = _recursively_replace_custom_types(sample_data)
-
-        self._project_level_data = _recursively_replace_custom_types(prj_data)
 
         # Sample- and/or project-level data must be declared.
         if not self._sample_level_data and not self._project_level_data:
@@ -290,8 +289,8 @@ def replace_JSON_refs(s: Dict[str, Any], data: Dict[str, Any]) -> Dict[str, Any]
             else:
                 result = None
             if result is not None:
-                s.update({split_value[2]: result})
-                s.update({"type": "object"})
+                for key, value in result.items():
+                    s.update({key: value})
                 del s["$ref"]
             else:
                 raise SchemaError(

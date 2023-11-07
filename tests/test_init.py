@@ -51,15 +51,11 @@ class TestPipestatManagerInstantiation:
         )
         assert (
             "path"
-            in psm.result_schemas["output_file_in_object"]["properties"]["prop1"]["file"][
-                "properties"
-            ]
+            in psm.result_schemas["output_file_in_object"]["properties"]["prop1"]["properties"]
         )
         assert (
             "thumbnail_path"
-            in psm.result_schemas["output_file_in_object"]["properties"]["prop2"]["image"][
-                "properties"
-            ]
+            in psm.result_schemas["output_file_in_object"]["properties"]["prop2"]["properties"]
         )
 
     def test_missing_cfg_data(self, schema_file_path):
