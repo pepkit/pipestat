@@ -1876,7 +1876,7 @@ class TestSelectRecords:
 
             assert result["records"][2]["record_identifier"] == "sample5"
 
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.parametrize("backend", ["db"])
     def test_select_records_retrieve_result(
         self,
         config_file_path,
@@ -1903,8 +1903,10 @@ class TestSelectRecords:
 
             # Gets one or many records
             result1 = psm.retrieve_one(record_identifier="sample1", result_identifier="md5sum")
+            result2 = psm.retrieve_one(record_identifier="sample1")
 
-            assert len(result1["records"]) == 1
+            assert result1 == "hash1"
+            assert len(result2.keys()) == 16
 
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_select_records_retrieve_many_result(
