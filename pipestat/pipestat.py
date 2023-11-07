@@ -755,7 +755,7 @@ class PipestatManager(MutableMapping):
 
         :return yacman.YAMLConfigManager: the object that stores the reported data
         """
-        return self.get(DATA_KEY)
+        return self.backend._data
 
     @property
     def db_url(self) -> str:
@@ -765,7 +765,7 @@ class PipestatManager(MutableMapping):
         :return str: database URL
         :raise PipestatDatabaseError: if the object is not backed by a database
         """
-        return self.get(DB_URL)
+        return self.cfg[DB_URL]
 
     @property
     def file(self) -> str:
@@ -774,7 +774,7 @@ class PipestatManager(MutableMapping):
 
         :return str: file path that the object is reporting the results into
         """
-        return self.get(FILE_KEY)
+        return self.cfg[FILE_KEY]
 
     @property
     def highlighted_results(self) -> List[str]:
@@ -792,7 +792,7 @@ class PipestatManager(MutableMapping):
 
         :return str: path to output_dir
         """
-        return self.get(OUTPUT_DIR)
+        return self.cfg[OUTPUT_DIR]
 
     @property
     def pipeline_name(self) -> str:
@@ -801,7 +801,7 @@ class PipestatManager(MutableMapping):
 
         :return str: Pipeline name
         """
-        return self.get(PIPELINE_NAME)
+        return self.cfg[PIPELINE_NAME]
 
     @property
     def project_name(self) -> str:
@@ -810,7 +810,7 @@ class PipestatManager(MutableMapping):
 
         :return str: project name the object writes the results to
         """
-        return self.get(PROJECT_NAME)
+        return self.cfg[PROJECT_NAME]
 
     @property
     def pipeline_type(self) -> str:
@@ -819,7 +819,7 @@ class PipestatManager(MutableMapping):
 
         :return str: pipeline type
         """
-        return self.get(PIPELINE_TYPE)
+        return self.cfg[PIPELINE_TYPE]
 
     @property
     def record_identifier(self) -> str:
@@ -828,7 +828,7 @@ class PipestatManager(MutableMapping):
 
         :return str: pipeline type
         """
-        return self.get(RECORD_IDENTIFIER)
+        return self.cfg[RECORD_IDENTIFIER]
 
     @property
     def record_count(self) -> int:
@@ -839,14 +839,6 @@ class PipestatManager(MutableMapping):
         """
         return self.count_records()
 
-    @property
-    def sample_name(self) -> str:
-        """
-        Unique identifier of the record
-
-        :return str: unique identifier of the record
-        """
-        return self.get(SAMPLE_NAME_ID_KEY)
 
     @property
     def result_schemas(self) -> Dict[str, Any]:
@@ -877,7 +869,7 @@ class PipestatManager(MutableMapping):
 
         :return str: path to the provided schema
         """
-        return self.get(SCHEMA_PATH)
+        return self.cfg[SCHEMA_PATH]
 
     @property
     def status_schema(self) -> Dict:
@@ -886,7 +878,7 @@ class PipestatManager(MutableMapping):
 
         :return dict: schema that formalizes the pipeline status structure
         """
-        return self.get(STATUS_SCHEMA_KEY)
+        return self.cfg[STATUS_SCHEMA_KEY]
 
     @property
     def status_schema_source(self) -> Dict:
@@ -896,7 +888,7 @@ class PipestatManager(MutableMapping):
         :return dict: source of the schema that formalizes
             the pipeline status structure
         """
-        return self.get(STATUS_SCHEMA_SOURCE_KEY)
+        return self.cfg[STATUS_SCHEMA_SOURCE_KEY]
 
 
 class SamplePipestatManager(PipestatManager):
