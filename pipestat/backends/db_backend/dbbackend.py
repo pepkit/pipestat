@@ -409,7 +409,7 @@ class DBBackend(PipestatBackend):
                     )
                 except AttributeError:
                     raise ColumnNotFoundError(
-                        msg=f"One of the supplied column does not exists in current table: {columns}"
+                        msg=f"One of the supplied column does not exist in current table: {columns}"
                     )
             else:
                 statement = sql_select(ORM).order_by(ORM.id)
