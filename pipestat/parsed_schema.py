@@ -298,6 +298,3 @@ def replace_JSON_refs(s: Dict[str, Any], data: Dict[str, Any]) -> Dict[str, Any]
                     msg=f"Could not find {split_value[1]} and {split_value[2]} in $def"
                 )
     return s
-
-
-
