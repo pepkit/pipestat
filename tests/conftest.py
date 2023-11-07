@@ -110,3 +110,99 @@ def output_schema_html_report():
 @pytest.fixture
 def output_schema_as_JSON_schema():
     return get_data_file_path("output_schema_as_JSON_schema.yaml")
+
+
+@pytest.fixture
+def val_dict():
+    val_dict = {
+        "sample1": {"name_of_something": "test_name"},
+        "sample2": {"number_of_things": 2},
+    }
+    return val_dict
+
+
+@pytest.fixture
+def values_project():
+    values_project = [
+        {"project_name_1": {"number_of_things": 2}},
+        {"project_name_1": {"name_of_something": "name of something string"}},
+    ]
+    return values_project
+
+
+@pytest.fixture
+def values_sample():
+    values_sample = [
+        {"sample1": {"smooth_bw": "smooth_bw string"}},
+        {"sample2": {"output_file": {"path": "path_string", "title": "title_string"}}},
+    ]
+    return values_sample
+
+
+@pytest.fixture
+def values_complex_linking():
+    # paths to images and files
+    path_file_1 = get_data_file_path("test_file_links/results/project_dir_example_1/ex1.txt")
+    path_file_2 = get_data_file_path("test_file_links/results/project_dir_example_1/ex2.txt")
+    path_image_1 = get_data_file_path("test_file_links/results/project_dir_example_1/ex3.png")
+    path_image_2 = get_data_file_path("test_file_links/results/project_dir_example_1/ex4.png")
+
+    values_complex_linking = [
+        {"sample1": {"output_file": {"path": path_file_1, "title": "title_string"}}},
+        {"sample2": {"output_file": {"path": path_file_2, "title": "title_string"}}},
+        {
+            "sample1": {
+                "output_image": {
+                    "path": path_image_1,
+                    "thumbnail_path": "path_string",
+                    "title": "title_string",
+                }
+            }
+        },
+        {
+            "sample2": {
+                "output_image": {
+                    "path": path_image_2,
+                    "thumbnail_path": "path_string",
+                    "title": "title_string",
+                }
+            }
+        },
+        {
+            "sample2": {
+                "nested_object": {
+                    "example_property_1": {
+                        "path": path_file_1,
+                        "thumbnail_path": "path_string",
+                        "title": "title_string",
+                    },
+                    "example_property_2": {
+                        "path": path_image_1,
+                        "thumbnail_path": "path_string",
+                        "title": "title_string",
+                    },
+                }
+            }
+        },
+        {
+            "sample2": {
+                "output_file_nested_object": {
+                    "example_property_1": {
+                        "third_level_property_1": {
+                            "path": path_file_1,
+                            "thumbnail_path": "path_string",
+                            "title": "title_string",
+                        }
+                    },
+                    "example_property_2": {
+                        "third_level_property_1": {
+                            "path": path_file_1,
+                            "thumbnail_path": "path_string",
+                            "title": "title_string",
+                        }
+                    },
+                }
+            }
+        },
+    ]
+    return values_complex_linking
