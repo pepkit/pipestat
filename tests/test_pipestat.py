@@ -42,6 +42,7 @@ def assert_is_in_files(fs, s):
             assert s in fh.read()
 
 
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestSplitClasses:
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -64,8 +65,6 @@ class TestSplitClasses:
         results_file_path,
         backend,
     ):
-        if SERVICE_UNAVAILABLE and backend == "file":
-            pytest.skip(reason="requires postgres service to be available")
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path, database_only=False)
@@ -118,8 +117,6 @@ class TestSplitClasses:
         results_file_path,
         backend,
     ):
-        if SERVICE_UNAVAILABLE and backend == "file":
-            pytest.skip(reason="requires postgres service to be available")
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report, database_only=False)
@@ -174,8 +171,6 @@ class TestReporting:
         results_file_path,
         backend,
     ):
-        if SERVICE_UNAVAILABLE and backend == "file":
-            pytest.skip(reason="requires postgres service to be available")
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path, database_only=False)
@@ -296,8 +291,6 @@ class TestReporting:
         results_file_path,
         backend,
     ):
-        if SERVICE_UNAVAILABLE and backend == "file":
-            pytest.skip(reason="requires postgres service to be available")
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path, database_only=False)
@@ -342,8 +335,6 @@ class TestReporting:
         backend,
         success,
     ):
-        if SERVICE_UNAVAILABLE and backend == "file":
-            pytest.skip(reason="requires postgres service to be available")
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path)
@@ -412,6 +403,7 @@ class TestReporting:
             assert value in results[0]
 
 
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestRetrieval:
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -433,8 +425,6 @@ class TestRetrieval:
         schema_file_path,
         backend,
     ):
-        if SERVICE_UNAVAILABLE and backend == "file":
-            pytest.skip(reason="requires postgres service to be available")
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path, database_only=False)
@@ -504,8 +494,6 @@ class TestRetrieval:
         schema_file_path,
         backend,
     ):
-        if SERVICE_UNAVAILABLE and backend == "file":
-            pytest.skip(reason="requires postgres service to be available")
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             val_dict = {
@@ -886,6 +874,7 @@ def test_highlighting_works(highlight_schema_file_path, results_file_path):
         assert psm.highlighted_results == schema_highlighted_results
 
 
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestEnvVars:
     def test_no_config__psm_is_built_from_env_vars(
         self, monkeypatch, results_file_path, schema_file_path
@@ -962,6 +951,7 @@ def absolutize_file(f: str) -> str:
         ]
     ],
 )
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 @pytest.mark.parametrize("backend_data", [BACKEND_KEY_FILE, BACKEND_KEY_DB], indirect=True)
 def test_manager_has_correct_status_schema_and_status_schema_source(
     schema_file_path, exp_status_schema, exp_status_schema_path, backend_data
@@ -971,6 +961,7 @@ def test_manager_has_correct_status_schema_and_status_schema_source(
     assert psm.cfg[STATUS_SCHEMA_SOURCE_KEY] == exp_status_schema_path
 
 
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestPipestatBoss:
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_basic_pipestatboss(
@@ -1013,6 +1004,7 @@ class TestPipestatBoss:
                     psb.projectmanager.set_status(record_identifier=r, status_identifier="running")
 
 
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestHTMLReport:
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -1124,6 +1116,7 @@ class TestHTMLReport:
                 assert 0
 
 
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestPipestatCLI:
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -1222,6 +1215,7 @@ class TestPipestatCLI:
                 main(test_args=x)
 
 
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestFileTypeLinking:
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_linking(
@@ -1336,6 +1330,7 @@ class TestFileTypeLinking:
                 print(files)
 
 
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestTimeStamp:
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -1470,6 +1465,7 @@ class TestTimeStamp:
             assert len(results["records"]) == 10
 
 
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestSelectRecords:
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_select_records_basic(
