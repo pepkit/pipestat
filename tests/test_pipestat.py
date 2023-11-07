@@ -41,6 +41,7 @@ def assert_is_in_files(fs, s):
         with open(f, "r") as fh:
             assert s in fh.read()
 
+
 @pytest.fixture
 def val_dict():
     val_dict = {
@@ -48,6 +49,24 @@ def val_dict():
         "sample2": {"number_of_things": 2},
     }
     return val_dict
+
+
+@pytest.fixture
+def values_project():
+    values_project = [
+        {"project_name_1": {"number_of_things": 2}},
+        {"project_name_1": {"name_of_something": "name of something string"}},
+    ]
+    return values_project
+
+
+@pytest.fixture
+def values_sample():
+    values_sample = [
+        {"sample1": {"smooth_bw": "smooth_bw string"}},
+        {"sample2": {"output_file": {"path": "path_string", "title": "title_string"}}},
+    ]
+    return values_sample
 
 
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
@@ -594,12 +613,7 @@ class TestRetrieval:
 
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_select_records_no_filter(
-        self,
-        config_file_path,
-        results_file_path,
-        schema_file_path,
-        backend,
-        val_dict
+        self, config_file_path, results_file_path, schema_file_path, backend, val_dict
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
@@ -714,7 +728,7 @@ class TestRemoval:
             psm = SamplePipestatManager(**args)
 
             for val in vals:
-                for key,value in val.items():
+                for key, value in val.items():
                     psm.report(record_identifier=key, values=value, force_overwrite=True)
 
             psm.remove(result_identifier=res_id, record_identifier=rec_id)
@@ -749,7 +763,7 @@ class TestRemoval:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
             for val in vals:
-                for key,value in val.items():
+                for key, value in val.items():
                     psm.report(record_identifier=key, values=value, force_overwrite=True)
             psm.remove(record_identifier=rec_id)
             col_name = list(list(vals[0].values())[0].keys())[0]
@@ -1053,17 +1067,10 @@ class TestPipestatBoss:
         output_schema_html_report,
         results_file_path,
         backend,
+        values_sample,
+        values_project,
     ):
         pipeline_list = ["sample", "project"]
-        values_project = [
-            {"project_name_1": {"number_of_things": 2}},
-            {"project_name_1": {"name_of_something": "name of something string"}},
-        ]
-
-        values_sample = [
-            {"sample4": {"smooth_bw": "smooth_bw string"}},
-            {"sample5": {"output_file": {"path": "path_string", "title": "title_string"}}},
-        ]
 
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
@@ -1089,41 +1096,15 @@ class TestPipestatBoss:
 
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestHTMLReport:
-    @pytest.mark.parametrize(
-        ["rec_id", "val"],
-        [
-            ("sample1", {"name_of_something": "test_name"}),
-        ],
-    )
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_basics_samples(
+    def test_basics_samples_html_report(
         self,
-        rec_id,
-        val,
         config_file_path,
         output_schema_html_report,
         results_file_path,
         backend,
+        values_sample,
     ):
-        values_project = [
-            {"project_name_1": {"number_of_things": 2}},
-            {"project_name_1": {"name_of_something": "name of something string"}},
-        ]
-        values_sample = [
-            {"sample4": {"smooth_bw": "smooth_bw string"}},
-            {"sample5": {"output_file": {"path": "path_string", "title": "title_string"}}},
-            {"sample4": {"aligned_bam": "aligned_bam string"}},
-            {"sample6": {"output_file": {"path": "path_string", "title": "title_string"}}},
-            {
-                "sample7": {
-                    "output_image": {
-                        "path": "path_string",
-                        "thumbnail_path": "path_string",
-                        "title": "title_string",
-                    }
-                }
-            },
-        ]
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report, database_only=False)
@@ -1140,31 +1121,18 @@ class TestHTMLReport:
                     psm.report(record_identifier=r, values=v, force_overwrite=True)
                     psm.set_status(record_identifier=r, status_identifier="running")
 
-            try:
-                htmlreportpath = psm.summarize(amendment="")
-                assert htmlreportpath is not None
-            except:
-                assert 0
-
-            try:
-                table_paths = psm.table()
-                assert table_paths is not None
-            except:
-                assert 0
+            htmlreportpath = psm.summarize(amendment="")
+            assert htmlreportpath is not None
 
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_basics_project(
+    def test_basics_project_html_report(
         self,
         config_file_path,
         output_schema_html_report,
         results_file_path,
         backend,
+        values_project,
     ):
-        values_project = [
-            {"project_name_1": {"number_of_things": 2}},
-            {"project_name_1": {"name_of_something": "name of something string"}},
-        ]
-
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report, database_only=False)
@@ -1186,17 +1154,67 @@ class TestHTMLReport:
                     )
                     psm.set_status(record_identifier=r, status_identifier="running")
 
-            try:
-                htmlreportpath = psm.summarize(amendment="")
-                assert htmlreportpath is not None
-            except:
-                assert 0
+            htmlreportpath = psm.summarize(amendment="")
+            assert htmlreportpath is not None
 
-            try:
-                table_paths = psm.table()
-                assert table_paths is not None
-            except:
-                assert 0
+
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
+class TestTableCreation:
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_basics_table_for_samples(
+        self,
+        config_file_path,
+        output_schema_html_report,
+        results_file_path,
+        backend,
+        values_sample,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=output_schema_html_report, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in values_sample:
+                for r, v in i.items():
+                    psm.report(record_identifier=r, values=v, force_overwrite=True)
+                    psm.set_status(record_identifier=r, status_identifier="running")
+
+            table_paths = psm.table()
+            assert table_paths is not None
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_basics_table_for_project(
+        self,
+        config_file_path,
+        output_schema_html_report,
+        results_file_path,
+        backend,
+        values_project,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=output_schema_html_report, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = ProjectPipestatManager(**args)
+
+            for i in values_project:
+                for r, v in i.items():
+                    psm.report(record_identifier=r, values=v, force_overwrite=True)
+                    psm.set_status(record_identifier=r, status_identifier="running")
+
+            table_paths = psm.table()
+            assert table_paths is not None
 
 
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
