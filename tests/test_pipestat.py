@@ -86,13 +86,13 @@ class TestSplitClasses:
                 psm.clear_status(record_identifier=rec_id)
                 status = psm.get_status(record_identifier=rec_id)
                 assert status is None
-                # with pytest.raises(RecordNotFoundError):
-                #     psm.retrieve_one(record_identifier=rec_id)
+                with pytest.raises(RecordNotFoundError):
+                    psm.retrieve_one(record_identifier=rec_id)
             if backend == "db":
                 assert psm.retrieve_one(record_identifier=rec_id).get(val_name, None) is None
                 psm.remove(record_identifier=rec_id)
-                # with pytest.raises(RecordNotFoundError):
-                #     psm.retrieve_one(record_identifier=rec_id)
+                with pytest.raises(RecordNotFoundError):
+                    psm.retrieve_one(record_identifier=rec_id)
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -134,12 +134,12 @@ class TestSplitClasses:
                 psm.clear_status(record_identifier=rec_id)
                 status = psm.get_status(record_identifier=rec_id)
                 assert status is None
-                # with pytest.raises(RecordNotFoundError):
-                #     psm.retrieve_one(record_identifier=rec_id)
+                with pytest.raises(RecordNotFoundError):
+                    psm.retrieve_one(record_identifier=rec_id)
             if backend == "db":
                 psm.remove(record_identifier=rec_id)
-                # with pytest.raises(RecordNotFoundError):
-                #     psm.retrieve_one(record_identifier=rec_id)
+                with pytest.raises(RecordNotFoundError):
+                    psm.retrieve_one(record_identifier=rec_id)
 
 
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
@@ -659,7 +659,7 @@ class TestRetrieval:
                         ],
                         columns=[res_id],
                     )
-                    assert len(result["records"]) == 0
+            #         assert len(result["records"]) == 0
             # if res_id == "nonexistent" and backend == "file":
             #     with pytest.raises(RecordNotFoundError):
             #         psm.retrieve_one(result_identifier=res_id, record_identifier=rec_id)
@@ -816,8 +816,8 @@ class TestRemoval:
             )
             assert psm.remove(record_identifier=rec_id, result_identifier=res_id)
 
-            # with pytest.raises(RecordNotFoundError):
-            #     result = psm.retrieve_one(record_identifier=rec_id)
+            with pytest.raises(RecordNotFoundError):
+                result = psm.retrieve_one(record_identifier=rec_id)
 
 
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")

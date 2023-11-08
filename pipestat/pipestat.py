@@ -625,14 +625,19 @@ class PipestatManager(MutableMapping):
                     try:
                         return result[0]
                     except IndexError:
-                        return None
+                        raise RecordNotFoundError(
+                            f"Results '{columns}' for '{record_identifier}' not found"
+                        )
                 try:
                     return result[0][result_identifier]
                 except IndexError:
-                    return None
+                    raise RecordNotFoundError(
+                        f"Results '{columns}' for '{record_identifier}' not found"
+                    )
             else:
-                # raise RecordNotFoundError(f"Record '{record_identifier}' not found")
-                return None
+                raise RecordNotFoundError(
+                    f"Results '{columns}' for '{record_identifier}' not found"
+                )
         else:
             try:
                 result = self.select_records(filter_conditions=filter_conditions)["records"]
@@ -640,12 +645,11 @@ class PipestatManager(MutableMapping):
                     try:
                         return result[0]
                     except IndexError:
-                        return None
+                        raise RecordNotFoundError(f"Record '{record_identifier}' not found")
                 else:
-                    # raise RecordNotFoundError(f"Record '{record_identifier}' not found")
-                    return None
+                    raise RecordNotFoundError(f"Record '{record_identifier}' not found")
             except IndexError:
-                return None
+                raise RecordNotFoundError(f"Record '{record_identifier}' not found")
 
     def retrieve_many(
         self,
