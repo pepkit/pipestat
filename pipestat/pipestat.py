@@ -592,7 +592,7 @@ class PipestatManager(MutableMapping):
     def retrieve_one(
         self,
         record_identifier: str,
-        result_identifier: Optional[str] = None,
+        result_identifier: Optional[Union[str, list[str]]] = None,
     ) -> Union[Any, Dict[str, Any]]:
         """
         Retrieve a single record
@@ -611,10 +611,21 @@ class PipestatManager(MutableMapping):
             },
         ]
         if result_identifier:
-            result = self.select_records(
-                filter_conditions=filter_conditions, columns=[result_identifier]
-            )["records"]
+            if isinstance(result_identifier, str):
+                columns = [result_identifier]
+            elif isinstance(result_identifier, list):
+                columns = result_identifier
+            else:
+                raise ValueError("Result identifier must be a str or list[str]")
+            result = self.select_records(filter_conditions=filter_conditions, columns=columns)[
+                "records"
+            ]
             if len(result) > 0:
+                if len(columns) > 1:
+                    try:
+                        return result[0]
+                    except IndexError:
+                        return None
                 try:
                     return result[0][result_identifier]
                 except IndexError:
@@ -838,7 +849,6 @@ class PipestatManager(MutableMapping):
         :return int: number of records reported
         """
         return self.count_records()
-
 
     @property
     def result_schemas(self) -> Dict[str, Any]:

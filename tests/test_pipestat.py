@@ -1900,6 +1900,37 @@ class TestSelectRecords:
             assert result1 == "hash1"
             assert len(result2.keys()) == 16
 
+    @pytest.mark.parametrize("backend", ["db", "file"])
+    def test_select_records_retrieve_multi_result(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+        range_values,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range_values[:2]:
+                r_id = i[0]
+                val = i[1]
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            # Gets one or many records
+            result1 = psm.retrieve_one(
+                record_identifier="sample1", result_identifier=["md5sum", "number_of_things"]
+            )
+            print(result1)
+
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_select_records_retrieve_many_result(
         self,
