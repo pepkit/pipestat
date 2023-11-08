@@ -592,7 +592,7 @@ class PipestatManager(MutableMapping):
     def retrieve_one(
         self,
         record_identifier: str,
-        result_identifier: Optional[Union[str, list[str]]] = None,
+        result_identifier: Optional[Union[str, List[str]]] = None,
     ) -> Union[Any, Dict[str, Any]]:
         """
         Retrieve a single record
