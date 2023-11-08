@@ -25,7 +25,7 @@ pip install pipestat
 
 ```console
 export PIPESTAT_RESULTS_SCHEMA=output_schema.yaml
-export PIPESTAT_SAMPLE_NAME=my_record
+export PIPESTAT_RECORD_IDENTIFIER=my_record
 export PIPESTAT_RESULTS_FILE=results_file.yaml
 export PIPESTAT_PROJECT_NAME=my_namespace
 ```
