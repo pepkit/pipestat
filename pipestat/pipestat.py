@@ -757,7 +757,7 @@ class PipestatManager(MutableMapping):
 
         :return str: path to the provided config
         """
-        return getattr(self, "_config_path", None)
+        return self.cfg.get("config_path", None)
 
     @property
     def data(self) -> YAMLConfigManager:
