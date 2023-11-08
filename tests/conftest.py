@@ -113,6 +113,11 @@ def output_schema_as_JSON_schema():
 
 
 @pytest.fixture
+def output_schema_no_refs():
+    return get_data_file_path("output_schema.yaml")
+
+
+@pytest.fixture
 def val_dict():
     val_dict = {
         "sample1": {"name_of_something": "test_name"},

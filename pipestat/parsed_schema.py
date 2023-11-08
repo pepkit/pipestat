@@ -78,7 +78,15 @@ class ParsedSchema(object):
         if not isinstance(data, dict):
             _, data = read_yaml_data(data, "schema")
 
+        # Keep a copy of the original schema
         self.original_schema = copy.deepcopy(data)
+        # Create a copy of a resolved schema
+        if "$defs" in data.keys():
+            self.resolved_schema = replace_JSON_refs(copy.deepcopy(data), data)
+            self.resolved_schema.pop("$defs")
+        else:
+            self.resolved_schema = copy.deepcopy(data)
+
         data = copy.deepcopy(data)
 
         # Currently supporting backwards compatibility with old output schema while now also supporting a JSON schema:
@@ -297,3 +305,30 @@ def replace_JSON_refs(s: Dict[str, Any], data: Dict[str, Any]) -> Dict[str, Any]
                     msg=f"Could not find {split_value[1]} and {split_value[2]} in $def"
                 )
     return s
+
+
+#
+# def resolve_ref(subschema: dict, schema: dict) -> dict:
+#     """
+#     Given a subschema, and its schema, resolve the $ref entry (if any)
+#     and return an equivalent subschema with the $ref resolved
+#
+#     @param subschema represents the schema for a specific property
+#     @param schema the parent schema, which may include the $defs for lookup
+#     """
+#     if "$ref" in subschema:
+#         uri = subschema["$ref"]
+#         if uri.startswith("#/$defs"):
+#             print("Found ref to local $def:", uri)
+#             relative_uri = uri.removeprefix("#/$defs")
+#             resolved_ref = schema["$defs"][relative_uri]  # resolve ref
+#             subschema.update(resolved_ref)  # update schema
+#         else if uri.startswith("http"):
+#             print("Found ref to remote schema: ", uri)
+#             response = httpx.get(uri)  # resolve ref
+#             subschema.update(response.json())  # update schema
+#         else:
+#             raise NotImplementedError(f"Can't resolve ref: {uri}")
+#         del subschema["$ref"]  # remove resolved ref
+#     return subschema
+#
