@@ -32,11 +32,8 @@ with open("requirements/requirements-db-backend.txt", "r") as reqs_file:
             continue
         # OPT_DEPENDENCIES.update({str(line.strip()):line.strip()})
         lines.append(line.strip())
-    OPT_DEPENDENCIES.update({"db-backend": line.strip()})
+    OPT_DEPENDENCIES.update({"db-backend": lines})
 
-extra["extras_require"] = OPT_DEPENDENCIES
-
-OPT_DEPENDENCIES = {}
 with open("requirements/requirements-pipestatreader.txt", "r") as reqs_file:
     lines = []
     for line in reqs_file:
@@ -44,9 +41,9 @@ with open("requirements/requirements-pipestatreader.txt", "r") as reqs_file:
             continue
         # OPT_DEPENDENCIES.update({str(line.strip()):line.strip()})
         lines.append(line.strip())
-    OPT_DEPENDENCIES.update({"pipestatreader": line.strip()})
+    OPT_DEPENDENCIES.update({"pipestatreader": lines})
 
-extra.update({"extras_require": OPT_DEPENDENCIES})
+extra["extras_require"] = OPT_DEPENDENCIES
 
 
 # Additional files to include with package
