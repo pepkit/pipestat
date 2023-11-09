@@ -4,7 +4,7 @@ from urllib.parse import quote_plus
 
 try:
     from sqlmodel import and_, or_, Integer, Float, String, Boolean
-except:
+except ImportError as e:
     pass
 
 from pipestat.exceptions import MissingConfigDataError
