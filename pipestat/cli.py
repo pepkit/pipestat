@@ -28,17 +28,15 @@ from .const import (
 from .exceptions import (
     SchemaNotFoundError,
     PipestatStartupError,
-    PipestatDependencyError,
 )
-from .pipestat import PipestatManager
+from .pipestat import PipestatManager, check_dependencies
 from .helpers import init_generic_config
 
 try:
     from pipestat.pipestatreader.reader import main as readermain
 except ImportError:
-    raise PipestatDependencyError(
-        msg="Missing required dependencies for this usage. Try pip install pipestat['pipestatreader']"
-    )
+    # We let this pass, but if the user attempts to user pipestat.serve check_dependencies raises exception.
+    pass
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -93,7 +91,15 @@ def main(test_args=None):
         sys.exit(0)
 
     if args.command == SERVE_CMD:
-        readermain(configfile=args.config, host=args.host, port=args.port)
+
+        @check_dependencies(
+            dependency_list=["readermain"],
+            msg="Missing required dependencies for this usage, e.g. try pip install pipestat['pipestatreader']",
+        )
+        def call_reader():
+            readermain(configfile=args.config, host=args.host, port=args.port)
+
+        call_reader()
         sys.exit(0)
 
     psm = PipestatManager(
