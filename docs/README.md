@@ -27,7 +27,6 @@ pip install pipestat
 export PIPESTAT_RESULTS_SCHEMA=output_schema.yaml
 export PIPESTAT_RECORD_IDENTIFIER=my_record
 export PIPESTAT_RESULTS_FILE=results_file.yaml
-export PIPESTAT_PROJECT_NAME=my_namespace
 ```
 Note: When setting environment variables as in the above example, you will need to provide an output_schema.yaml file in your current working directory with the following example data:
 ```
@@ -37,6 +36,7 @@ result_name:
 ```
 
 ## Pipeline results reporting and retrieval
+### For these examples below, it is assumed that the proper environment variables (see above) have been set.
 
 ### Report a result
 
@@ -60,7 +60,7 @@ psm.report(values={"result_name": 1.1})
 From command line:
 
 ```console
-pipestat retrieve -i result_name
+pipestat retrieve -r my_record
 ```
 
 From Python:
@@ -69,7 +69,7 @@ From Python:
 import pipestat
 
 psm = pipestat.PipestatManager()
-psm.retrieve(result_identifier="result_name")
+psm.retrieve_one(result_identifier="result_name")
 ```
 
 ## Pipeline status management

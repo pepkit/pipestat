@@ -591,7 +591,7 @@ class PipestatManager(MutableMapping):
     @require_backend
     def retrieve_one(
         self,
-        record_identifier: str,
+        record_identifier: str = None,
         result_identifier: Optional[Union[str, List[str]]] = None,
     ) -> Union[Any, Dict[str, Any]]:
         """
