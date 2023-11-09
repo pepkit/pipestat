@@ -1,11 +1,10 @@
 # Pipestat configuration file specification
 
-All the relevant pieces of information required to initialize the `PipestatManager` object can be provided to the object constructor or as a command line argument in a a form of YAML-formatted **pipestat configuration file**.
+All the relevant pieces of information required to initialize the `PipestatManager` object can be provided to the object constructor or as a command line argument in the form of a YAML-formatted **pipestat configuration file**.
 
 ```yaml
-project_name: <project_name>
+record_identifier: <unique record identifier for either sample or project-level reporting>
 schema_path: <path to the schema>
-sample_name: <unique record identifier or sample name>
 results_file_path: <path to results file> # either "results_file_path"
 database: # or DB login credentials
   name: <database name>
@@ -38,7 +37,6 @@ docker run -d
 The configuration file should look like this:
 
 ```yaml
-project_name: my_pipeline
 schema_path: /path/to/schema.yaml
 database:
   name: pipestat-test
