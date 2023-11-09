@@ -172,7 +172,9 @@ class PipestatManager(MutableMapping):
         )
         self.process_schema(schema_path)
 
-        self.cfg[RECORD_IDENTIFIER] = record_identifier
+        self.cfg[RECORD_IDENTIFIER] = self.cfg[CONFIG_KEY].priority_get(
+            "record_identifier", env_var=ENV_VARS["record_identifier"], override=record_identifier
+        )
 
         self.cfg[PIPELINE_NAME] = (
             self.cfg[SCHEMA_KEY].pipeline_name
