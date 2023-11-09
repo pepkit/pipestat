@@ -2,7 +2,8 @@
 
 Pipestat *requires* a few pieces of information to run:
 
-- a **pipeline_name** to write into, usually contained within the schema file:
+- a **pipeline_name** to write into, usually contained within the schema file (see below).
+- a path to the **schema** file that describes results that can be reported, e.g. `"your/path/sample_output_schema.yaml"`:
 ```yaml
 title: An example Pipestat output schema
 description: A pipeline that uses pipestat to report sample and project level results.
@@ -17,7 +18,6 @@ properties:
           description: "ResultName"
 
 ```
-- a path to the **schema** file that describes results that can be reported, e.g. `"your/path/sample_output_schema.yaml"`
 - **backend info**: either path to a YAML-formatted file or pipestat config with PostgreSQL database login credentials. Note that the config file can also contain a path to the yaml-formatted results file:
 ```yaml
 schema_path: sample_output_schema.yaml
