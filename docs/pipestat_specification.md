@@ -40,21 +40,21 @@ Importantly, pipestat extends the jsonschema vocabulary by adding two additional
     - `thumbnail`: path to the reported thumbnail, usually PNG or JPEG
     - `title`: human readable description of the image
 
-# Pipestat schema
+# Pipestat output schema
 
-Each pipestat-compatible pipeline must define a *pipestat schema*. The pipestat schema is where the pipeline author describes the results produced by the pipeline. The pipestat schema specifies:
+Each pipestat-compatible pipeline must define a *pipestat output schema*. The pipestat schema is where the pipeline author describes the results produced by the pipeline. The pipestat schema specifies:
 
 1. The result identifiers; that is, the immutable names of all the results reported by this pipeline.
 2. The data types associated with each result.
 3. Human-readable description of what each result represents.
 
-As a pipeline developer, your schema names, defines, and describes all of the important results to be recorded from your pipeline.
+As a pipeline developer, your schema defines and describes all the important results to be recorded from your pipeline.
 
 Pipestat uses the schema as a base for creating a collection of self-contained result-specific [jsonschema schemas](https://json-schema.org/) that are used to **validate** the reported results prior to storing them.
 
-## Pipestat schema format
+## Pipestat output schema format
 
-The pipestat schema is a YAML-formatted file. The top level keys are the unique result identifiers. The associated values are jsonschema schemas. The `type` attribute is required. This is an example of a minimal component, specifying only an identifier, and its type:
+The pipestat output schema is a YAML-formatted file. The top level keys are the unique result identifiers. The associated values are jsonschema types. The `type` attribute is required. This is an example of a minimal component, specifying only an identifier, and its type:
 
 ```yaml
 result_identifier:
@@ -195,22 +195,6 @@ log_file:
 ```
 
 The highlighted results can be later retrieved by pipestat clients via `PipestatManager.highlighted_results` property, which simply returns a list of result identifiers.
-
-## Database columns configuration (DB backend only)
-If the `PipestatManager` object is backed by a database, the database columns can be easily configured using the results schema via `db_column` section. For example:
-
-```yaml
-important_numeric_id:
-  type: integer
-  description: "An important ID that must be unique and always exist"
-  db_column:
-    unique: true
-    nullable: false
-```
-
-The values provided in the `db_column` section are passed to the `sqlalchemy.schema.Column` constructor. Therefore, please refer to [`sqlalchemy.Column` class constructor documentation](https://docs.sqlalchemy.org/en/14/core/metadata.html?highlight=column#sqlalchemy.schema.Column.__init__) to learn more about the keys that can be specified in this section.
-
-In the above example, the `important_numeric_id` result reported with the `PipestatManager` instance initialized with that schema will be forced to be always provided and unique across all records.
 
 # Status schema
 
