@@ -61,11 +61,18 @@ def main(test_args=None):
     # if args.config and not args.schema and args.command != STATUS_CMD:
     #     parser.error("the following arguments are required: -s/--schema")
     if not args.config and not args.results_file:
-        msg = (
-            "Either a config file or a results file must be provided. Either must be supplied to the object "
-            "constructor or via environment variable. \nPlease see: http://pipestat.databio.org/en/dev/cli/"
-        )
-        raise PipestatStartupError(msg)
+        # Try to get either the config or the results file from env variables:
+        args.config = os.getenv("PIPESTAT_CONFIG")
+        args.results_file = os.getenv("PIPESTAT_RESULTS_FILE")
+        if not args.config and not args.results_file:
+            msg = (
+                "Either a config file or a results file must be provided. Either must be supplied to the object "
+                "constructor or via environment variable. \nPlease see: http://pipestat.databio.org/en/dev/cli/"
+            )
+            raise PipestatStartupError(msg)
+        else:
+            # at least config or results_file was found, so simply pass
+            pass
 
     if args.command == SUMMARIZE_CMD:
         psm = PipestatManager(
@@ -111,6 +118,11 @@ def main(test_args=None):
         pipeline_type=args.pipeline_type,
     )
     types_to_read_from_json = ["object"] + list(CANONICAL_TYPES.keys())
+
+    # The next few commands require a record_identifier. Need to also check ENV variables for its existence.
+    if args.record_identifier is None:
+        args.record_identifier = os.getenv("PIPESTAT_RECORD_IDENTIFIER")
+
     if args.command == REPORT_CMD:
         value = args.value
         if psm.cfg[SCHEMA_KEY] is None:
