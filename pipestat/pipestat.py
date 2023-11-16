@@ -579,7 +579,12 @@ class PipestatManager(MutableMapping):
         :param int limit: maximum number of results to retrieve per page
         :param int cursor: cursor position to begin retrieving records
         :param bool bool_operator: Perform filtering with AND or OR Logic.
-        :return Dict[str, Any]
+        :return dict records_dict = {
+            "total_size": int,
+            "page_size": int,
+            "next_page_token": int,
+            "records": List[Dict[{key, Any}]],
+        }
         """
 
         return self.backend.select_records(
