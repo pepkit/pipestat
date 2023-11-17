@@ -13,6 +13,7 @@ from json import dumps
 from logging import getLogger
 from peppy.const import AMENDMENTS_KEY
 from typing import List
+from copy import deepcopy
 
 from ._version import __version__
 from .const import (
@@ -72,8 +73,12 @@ class HTMLReportBuilder(object):
         )
         self.prj_index_html_path = project_index_html
         self.index_html_path = os.path.join(self.pipeline_reports, "index.html")
-        schema_path = self.prj._schema_path
-        self.schema = read_schema(schema_path)[0]
+
+        self.schema = deepcopy(self.prj.result_schemas)
+        for k, v in self.schema.items():
+            if "object_type" in self.schema[k]:
+                self.schema[k]["type"] = self.schema[k]["object_type"]
+
         navbar = self.create_navbar(
             navbar_links=self.create_navbar_links(
                 wd=self.pipeline_reports,
@@ -275,7 +280,6 @@ class HTMLReportBuilder(object):
                 sample_name = sample["record_identifier"]
                 sample_result = fetch_pipeline_results(
                     project=self.prj,
-                    pipeline_name=self.pipeline_name,
                     sample_name=sample_name,
                 )
                 if file_result not in sample_result:
@@ -603,23 +607,14 @@ class HTMLReportBuilder(object):
             are not highlighted
         """
         results = []
-        if "samples" in self.schema:
-            for key, value in self.schema["samples"].items():
-                if self.schema["samples"][key]["type"] in types:
-                    if "highlight" not in self.schema["samples"][key].keys():
-                        results.append(key)
-                    # intentionally "== False" to exclude "falsy" values
-                    elif self.schema["samples"][key]["highlight"] is False:
-                        results.append(key)
 
-        if "project" in self.schema:
-            for key, value in self.schema["project"].items():
-                if self.schema["project"][key]["type"] in types:
-                    if "highlight" not in self.schema["project"][key].keys():
-                        results.append(key)
-                    # intentionally "== False" to exclude "falsy" values
-                    elif self.schema["project"][key]["highlight"] is False:
-                        results.append(key)
+        for key, value in self.schema.items():
+            if self.schema[key]["type"] in types:
+                if "highlight" not in self.schema[key].keys():
+                    results.append(key)
+                # intentionally "== False" to exclude "falsy" values
+                elif self.schema[key]["highlight"] is False:
+                    results.append(key)
 
         return results
 
