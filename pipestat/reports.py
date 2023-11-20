@@ -855,7 +855,7 @@ def create_status_table(project, pipeline_reports_dir: str) -> str:
         return "#{:02x}{:02x}{:02x}".format(r, g, b)
 
     def _warn(what, e, sn):
-        _LOGGER.warning(
+        _LOGGER.debug(
             f"Caught exception: {e}\n"
             f"Could not determine {what} for sample: {sn}. "
             f"Not reported or pipestat status schema is faulty."
@@ -889,7 +889,7 @@ def create_status_table(project, pipeline_reports_dir: str) -> str:
         sample_paths.append(f"{sample_name}.html".replace(" ", "_").lower())
         # log file path
         try:
-            log = psm.retrieve_one(result_identifier="log")["path"]
+            log = psm.retrieve_one(record_identifier=sample_name, result_identifier="log")["path"]
             assert os.path.exists(log), FileNotFoundError(f"Not found: {log}")
             log_link_names.append(os.path.basename(log))
             log_paths.append(os.path.relpath(log, pipeline_reports_dir))
@@ -899,7 +899,9 @@ def create_status_table(project, pipeline_reports_dir: str) -> str:
             log_paths.append("")
         # runtime and peak mem
         try:
-            profile = psm.retrieve_one(result_identifier="profile")["path"]
+            profile = psm.retrieve_one(record_identifier=sample_name, result_identifier="profile")[
+                "path"
+            ]
             assert os.path.exists(profile), FileNotFoundError(f"Not found: {profile}")
             df = _pd.read_csv(profile, sep="\t", comment="#", names=PROFILE_COLNAMES)
             df["runtime"] = _pd.to_timedelta(df["runtime"])
