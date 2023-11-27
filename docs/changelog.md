@@ -19,6 +19,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Added path expansion when creating database url.
 - added jinja2 requirement
 - `pipeline_name` column not populating in postgres db backend.
+- pipestat will now create subdirectories during results_file creation
 
 ### Changed
 - Removed `retrieve`, `get_one_record`, `get_records function`

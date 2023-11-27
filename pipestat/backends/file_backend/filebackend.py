@@ -637,6 +637,14 @@ class FileBackend(PipestatBackend):
         :return bool: whether the file has been created
         """
         _LOGGER.info(f"Initializing results file '{self.results_file_path}'")
+
+        # Must ensure sub-directories exist if they do not
+        # TODO should this actually be handled by yacman?
+        try:
+            os.makedirs(os.path.dirname(self.results_file_path))
+        except FileExistsError:
+            pass
+
         self._data = YAMLConfigManager(
             entries={self.pipeline_name: {}},
             filepath=self.results_file_path,
