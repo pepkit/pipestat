@@ -16,7 +16,6 @@ from typing import List, Dict, Any, Optional, Union, Literal, Callable, Tuple
 from ...exceptions import UnrecognizedStatusError, PipestatError
 from ...backends.abstract import PipestatBackend
 from ...const import DATE_FORMAT, PKG_NAME, CREATED_TIME, MODIFIED_TIME
-from ...helpers import resolve_multi_results_file_path
 
 
 _LOGGER = getLogger(PKG_NAME)
@@ -34,7 +33,6 @@ class FileBackend(PipestatBackend):
         status_file_dir: Optional[str] = None,
         result_formatter: Optional[staticmethod] = None,
         multi_pipelines: Optional[bool] = None,
-        multi_result_files: Optional[bool] = False,
     ):
         """
         Class representing a File backend
@@ -64,7 +62,6 @@ class FileBackend(PipestatBackend):
         self.status_file_dir = status_file_dir
         self.result_formatter = result_formatter
         self.multi_pipelines = multi_pipelines
-        self.multi_result_files = multi_result_files
 
         self.determine_results_file(self.results_file_path)
 
@@ -347,10 +344,6 @@ class FileBackend(PipestatBackend):
         # record_identifier = record_identifier or self.record_identifier
         record_identifier = record_identifier
 
-        if self.multi_result_files:
-            # Load this record identifier's results file
-            self.results_file_path = resolve_multi_results_file_path(self.results_file_path, record_identifier)
-            self.determine_results_file(self.results_file_path)
 
         result_formatter = result_formatter or self.result_formatter
         results_formatted = []

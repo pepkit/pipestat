@@ -20,7 +20,7 @@ from .exceptions import (
 )
 from pipestat.backends.file_backend.filebackend import FileBackend
 from .reports import HTMLReportBuilder, _create_stats_objs_summaries
-from .helpers import validate_type, mk_abs_via_cfg, read_yaml_data, default_formatter, determine_multi_results_files, get_all_result_files
+from .helpers import validate_type, mk_abs_via_cfg, read_yaml_data, default_formatter, get_all_result_files
 from .const import (
     PKG_NAME,
     DEFAULT_PIPELINE_NAME,
@@ -199,12 +199,12 @@ class PipestatManager(MutableMapping):
             "pipeline_type", default="sample", override=pipeline_type
         )
 
-        self.cfg[FILE_KEY] = mk_abs_via_cfg(
+        self.cfg[FILE_KEY] = mk_abs_via_cfg(self.resolve_results_file_path(
             self.cfg[CONFIG_KEY].priority_get(
                 "results_file_path",
                 env_var=ENV_VARS["results_file"],
                 override=results_file_path,
-            ),
+            )),
             self.cfg["config_path"],
         )
 
@@ -282,14 +282,21 @@ class PipestatManager(MutableMapping):
     def __len__(self):
         return len(self.cfg)
 
+    def resolve_results_file_path(self, results_file_path):
+        """Replace {record_identifier} in results_file_path if it exists.
+        :param str results_file_path: YAML file to report into, if file is
+        used as the object back-end
+        """
+        # Save for later when assessing if there may be multiple result files
+        self.cfg["unresolved_result_path"] = results_file_path
+
+        resolved_results_file_path = results_file_path.format(record_identifier=self.record_identifier)
+        return resolved_results_file_path
+
     def initialize_filebackend(self, record_identifier, results_file_path, flag_file_dir):
 
         # Check if there will be multiple results_file_paths
         _LOGGER.debug(f"Determined file as backend: {results_file_path}")
-        if determine_multi_results_files(results_file_path):
-            self.cfg[MULTI_RESULT_FILES] = True
-        else:
-            self.cfg[MULTI_RESULT_FILES] = False
 
 
         if self.cfg[DB_ONLY_KEY]:
@@ -318,7 +325,6 @@ class PipestatManager(MutableMapping):
             self.cfg[STATUS_FILE_DIR],
             self.cfg[RESULT_FORMATTER],
             self.cfg[MULTI_PIPELINE],
-            self.cfg[MULTI_RESULT_FILES],
         )
 
         return
