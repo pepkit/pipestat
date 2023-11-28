@@ -209,3 +209,20 @@ def force_symlink(file1, file2):
             )
             os.remove(file2)
             os.symlink(file1, file2)
+
+def determine_multi_results_files(results_file_path):
+    "Simply determine if there is {record_identifier} present"
+    if "{record_identifier}" in results_file_path:
+        return True
+    else:
+        return False
+
+def resolve_multi_results_file_path(results_file_path, record_identifier):
+    f"Replace {record_identifier} in results_file_path"
+    results_file_path = results_file_path.format(record_identifier=record_identifier)
+    return results_file_path
+
+def get_all_result_files(results_file_path):
+    # get parent directory, glob all results files, build one results file return
+    pass
+

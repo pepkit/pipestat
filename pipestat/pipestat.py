@@ -20,7 +20,7 @@ from .exceptions import (
 )
 from pipestat.backends.file_backend.filebackend import FileBackend
 from .reports import HTMLReportBuilder, _create_stats_objs_summaries
-from .helpers import validate_type, mk_abs_via_cfg, read_yaml_data, default_formatter
+from .helpers import validate_type, mk_abs_via_cfg, read_yaml_data, default_formatter, determine_multi_results_files, get_all_result_files
 from .const import (
     PKG_NAME,
     DEFAULT_PIPELINE_NAME,
@@ -48,6 +48,7 @@ from .const import (
     SCHEMA_KEY,
     SAMPLE_NAME_ID_KEY,
     DATA_KEY,
+    MULTI_RESULT_FILES,
 )
 
 try:
@@ -282,7 +283,15 @@ class PipestatManager(MutableMapping):
         return len(self.cfg)
 
     def initialize_filebackend(self, record_identifier, results_file_path, flag_file_dir):
+
+        # Check if there will be multiple results_file_paths
         _LOGGER.debug(f"Determined file as backend: {results_file_path}")
+        if determine_multi_results_files(results_file_path):
+            self.cfg[MULTI_RESULT_FILES] = True
+        else:
+            self.cfg[MULTI_RESULT_FILES] = False
+
+
         if self.cfg[DB_ONLY_KEY]:
             _LOGGER.debug(
                 "Running in database only mode does not make sense with a YAML file as a backend. "
@@ -309,6 +318,7 @@ class PipestatManager(MutableMapping):
             self.cfg[STATUS_FILE_DIR],
             self.cfg[RESULT_FORMATTER],
             self.cfg[MULTI_PIPELINE],
+            self.cfg[MULTI_RESULT_FILES],
         )
 
         return
@@ -729,6 +739,12 @@ class PipestatManager(MutableMapping):
         :return str: report_path
 
         """
+
+        if self.cfg[MULTI_RESULT_FILES] and self.file:
+            # aggregate all results file in the file path folder
+            # load aggregated results file as filebackend.
+            self[FILE_KEY] = get_all_result_files(self[FILE_KEY])
+            self.backend.determine_results_file(self[FILE_KEY])
 
         html_report_builder = HTMLReportBuilder(prj=self)
         report_path = html_report_builder(
