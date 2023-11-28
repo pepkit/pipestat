@@ -144,7 +144,7 @@ def init_generic_config():
         "schema_path": "sample_output_schema.yaml",
         "database": {
             "dialect": "postgresql",
-            "driver": "psycopg2",
+            "driver": "psycopg",
             "name": "pipestat-test",
             "user": "postgres",
             "password": "pipestat-password",
