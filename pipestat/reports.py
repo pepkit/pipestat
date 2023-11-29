@@ -1078,7 +1078,10 @@ def _create_stats_objs_summaries(prj, pipeline_name: str) -> List[str]:
             if v:
                 if k in prj.result_schemas and prj.result_schemas[k]["type"] in OBJECT_TYPES:
                     sample_reported_objects = {k: dict(v)}
-                    reported_objects[record_name] = sample_reported_objects
+                    if record_name in reported_objects:
+                        reported_objects[record_name].update(sample_reported_objects)
+                    else:
+                        reported_objects.update({record_name: sample_reported_objects})
                 if k in prj.result_schemas and prj.result_schemas[k]["type"] not in OBJECT_TYPES:
                     reported_stats.append(k)
                     reported_stats.append(v)
