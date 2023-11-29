@@ -4,6 +4,7 @@ import operator
 from copy import deepcopy
 from functools import reduce
 from itertools import chain
+from ...helpers import get_all_result_files
 
 
 from glob import glob
@@ -663,6 +664,29 @@ class FileBackend(PipestatBackend):
         self._data.setdefault(self.pipeline_name, {})
         self._data[self.pipeline_name].setdefault("project", {})
         self._data[self.pipeline_name].setdefault("sample", {})
+        with self._data as data_locked:
+            data_locked.write()
+
+    def aggregate_multi_results(self, results_directory):
+        print(f"results directory {results_directory}")
+        all_result_files = get_all_result_files(results_directory)
+        aggregate_results_file_path = os.path.join(results_directory,"aggregate_results.yaml")
+
+        # THIS WILL OVERWRITE self.results_file_path and self._data on the current psm!
+        self.results_file_path = aggregate_results_file_path
+        self._init_results_file()
+
+        for file in all_result_files:
+            try:
+                temp_data = YAMLConfigManager(filepath=file)
+            except ValueError:
+                temp_data = YAMLConfigManager()
+            if self.pipeline_name in temp_data:
+                if "project" in temp_data[self.pipeline_name]:
+                    self._data[self.pipeline_name]["project"].update(temp_data[self.pipeline_name]["project"])
+                if "sample" in temp_data[self.pipeline_name]:
+                    self._data[self.pipeline_name]["sample"].update(temp_data[self.pipeline_name]["sample"])
+
         with self._data as data_locked:
             data_locked.write()
 

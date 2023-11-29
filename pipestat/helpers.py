@@ -1,6 +1,7 @@
 """Assorted project utilities"""
 
 import logging
+import glob
 import os
 import errno
 import yaml
@@ -115,11 +116,19 @@ def mk_abs_via_cfg(
         return path
     if cfg_path is None:
         rel_to_cwd = os.path.join(os.getcwd(), path)
+        try:
+            os.makedirs(os.path.dirname(rel_to_cwd))
+        except FileExistsError:
+            pass
         if os.path.exists(rel_to_cwd) or os.access(os.path.dirname(rel_to_cwd), os.W_OK):
             return rel_to_cwd
         else:
             raise OSError(f"File not found: {path}")
     joined = os.path.join(os.path.dirname(cfg_path), path)
+    try:
+        os.makedirs(os.path.dirname(joined))
+    except FileExistsError:
+        pass
     if os.path.isabs(joined):
         return joined
     raise OSError(f"Could not make this path absolute: {path}")
@@ -212,6 +221,7 @@ def force_symlink(file1, file2):
 
 
 def get_all_result_files(results_file_path):
+    files = glob.glob(results_file_path+'**/*.yaml')
     # get parent directory, glob all results files, build one results file return
-    pass
+    return files
 

@@ -63,7 +63,6 @@ __all__ = [
     "RECORD_IDENTIFIER",
     "CREATED_TIME",
     "MODIFIED_TIME",
-    "MULTI_RESULT_FILES"
 ]
 
 PKG_NAME = "pipestat"
@@ -159,7 +158,6 @@ PIPESTAT_GENERIC_CONFIG = "generic_config.yaml"
 RESULT_FORMATTER = "_result_formatter"
 DEFAULT_PIPELINE_NAME = "default_pipeline_name"
 MULTI_PIPELINE = "_multi_pipelines"
-MULTI_RESULT_FILES = "multi_result_files"
 TEMPLATES_DIRNAME = "jinja_templates"
 OUTPUT_DIR = "_output_dir"
 
