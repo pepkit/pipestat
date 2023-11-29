@@ -221,7 +221,6 @@ def force_symlink(file1, file2):
 
 
 def get_all_result_files(results_file_path):
-    files = glob.glob(results_file_path+'**/*.yaml')
+    files = glob.glob(results_file_path + "**/*.yaml")
     # get parent directory, glob all results files, build one results file return
     return files
-

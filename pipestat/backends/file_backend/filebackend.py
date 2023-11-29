@@ -66,7 +66,6 @@ class FileBackend(PipestatBackend):
 
         self.determine_results_file(self.results_file_path)
 
-
     def determine_results_file(self, results_file_path: str) -> None:
         """Initialize or load results_file from given path
         :param str results_file_path: YAML file to report into, if file is
@@ -344,7 +343,6 @@ class FileBackend(PipestatBackend):
 
         # record_identifier = record_identifier or self.record_identifier
         record_identifier = record_identifier
-
 
         result_formatter = result_formatter or self.result_formatter
         results_formatted = []
@@ -670,7 +668,7 @@ class FileBackend(PipestatBackend):
     def aggregate_multi_results(self, results_directory):
         print(f"results directory {results_directory}")
         all_result_files = get_all_result_files(results_directory)
-        aggregate_results_file_path = os.path.join(results_directory,"aggregate_results.yaml")
+        aggregate_results_file_path = os.path.join(results_directory, "aggregate_results.yaml")
 
         # THIS WILL OVERWRITE self.results_file_path and self._data on the current psm!
         self.results_file_path = aggregate_results_file_path
@@ -683,9 +681,13 @@ class FileBackend(PipestatBackend):
                 temp_data = YAMLConfigManager()
             if self.pipeline_name in temp_data:
                 if "project" in temp_data[self.pipeline_name]:
-                    self._data[self.pipeline_name]["project"].update(temp_data[self.pipeline_name]["project"])
+                    self._data[self.pipeline_name]["project"].update(
+                        temp_data[self.pipeline_name]["project"]
+                    )
                 if "sample" in temp_data[self.pipeline_name]:
-                    self._data[self.pipeline_name]["sample"].update(temp_data[self.pipeline_name]["sample"])
+                    self._data[self.pipeline_name]["sample"].update(
+                        temp_data[self.pipeline_name]["sample"]
+                    )
 
         with self._data as data_locked:
             data_locked.write()

@@ -198,12 +198,14 @@ class PipestatManager(MutableMapping):
             "pipeline_type", default="sample", override=pipeline_type
         )
 
-        self.cfg[FILE_KEY] = mk_abs_via_cfg(self.resolve_results_file_path(
-            self.cfg[CONFIG_KEY].priority_get(
-                "results_file_path",
-                env_var=ENV_VARS["results_file"],
-                override=results_file_path,
-            )),
+        self.cfg[FILE_KEY] = mk_abs_via_cfg(
+            self.resolve_results_file_path(
+                self.cfg[CONFIG_KEY].priority_get(
+                    "results_file_path",
+                    env_var=ENV_VARS["results_file"],
+                    override=results_file_path,
+                )
+            ),
             self.cfg["config_path"],
         )
 
@@ -290,15 +292,16 @@ class PipestatManager(MutableMapping):
         if results_file_path:
             assert isinstance(results_file_path, str), TypeError("Path is expected to be a str")
             if not self.record_identifier and "{record_identifier}" in results_file_path:
-                raise NotImplementedError(f"Must provide record identifier during PipestatManager creation for this results_file_path: {results_file_path}")
+                raise NotImplementedError(
+                    f"Must provide record identifier during PipestatManager creation for this results_file_path: {results_file_path}"
+                )
             self.cfg["unresolved_result_path"] = results_file_path
             return results_file_path.format(record_identifier=self.record_identifier)
         return results_file_path
-    def initialize_filebackend(self, record_identifier, results_file_path, flag_file_dir):
 
+    def initialize_filebackend(self, record_identifier, results_file_path, flag_file_dir):
         # Check if there will be multiple results_file_paths
         _LOGGER.debug(f"Determined file as backend: {results_file_path}")
-
 
         if self.cfg[DB_ONLY_KEY]:
             _LOGGER.debug(
@@ -760,7 +763,9 @@ class PipestatManager(MutableMapping):
         if self.file and self.cfg["unresolved_result_path"] != self.file:
             if "{record_identifier}" in self.cfg["unresolved_result_path"]:
                 # assume there are multiple result files in sub-directories
-                results_directory = self.cfg["unresolved_result_path"].split("{record_identifier}")[0]
+                results_directory = self.cfg["unresolved_result_path"].split(
+                    "{record_identifier}"
+                )[0]
                 results_directory = mk_abs_via_cfg(results_directory, self.cfg["config_path"])
                 self.backend.aggregate_multi_results(results_directory)
 

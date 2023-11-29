@@ -638,7 +638,7 @@ class HTMLReportBuilder(object):
         for obj_id in objs:
             displayable_ids.append(obj_id.replace("_", " "))
             page_name = os.path.join(
-                self.pipeline_reports, (obj_id + ".html").replace(" ", "_").lower()
+                self.pipeline_reports, (obj_id + ".html").replace(" ", "%20").lower()
             )
             relpaths.append(_make_relpath(page_name, wd, context))
         return relpaths, displayable_ids
@@ -650,7 +650,7 @@ class HTMLReportBuilder(object):
             sample_name = sample["record_identifier"]
             page_name = os.path.join(
                 self.pipeline_reports,
-                f"{sample_name}.html".replace(" ", "_").lower(),
+                f"{sample_name}.html".replace(" ", "%20").lower(),
             )
             relpaths.append(_make_relpath(page_name, wd, context))
             sample_names.append(sample_name)
