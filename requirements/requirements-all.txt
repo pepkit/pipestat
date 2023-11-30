@@ -9,4 +9,5 @@ yacman>=0.9.1
 PyYAML
 pandas
 eido
+jinja2
 
