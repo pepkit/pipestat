@@ -8,7 +8,7 @@ import yaml
 import jsonschema
 from json import dumps
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union, List
 
 from oyaml import safe_load
 from ubiquerg import expandpath
@@ -220,7 +220,12 @@ def force_symlink(file1, file2):
             os.symlink(file1, file2)
 
 
-def get_all_result_files(results_file_path):
+def get_all_result_files(results_file_path: str) -> List:
+    """
+    Collects any yaml result files relative to the CURRENT results_file_path
+    :param str results_file_path: path to the pipestamanager's current result_file
+    :return: list
+    """
     files = glob.glob(results_file_path + "**/*.yaml")
-    # get parent directory, glob all results files, build one results file return
+
     return files

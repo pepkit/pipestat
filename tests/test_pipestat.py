@@ -1,6 +1,8 @@
+import glob
 import os.path
 import time
 from collections.abc import Mapping
+from yacman import YAMLConfigManager
 
 import pytest
 from jsonschema import ValidationError
@@ -2052,3 +2054,81 @@ class TestSelectRecords:
             # Gets one or many records
             result3 = psm.select_distinct(columns="md5sum")
             assert len(result3) == 6
+
+
+class TestMultiResultFiles:
+    @pytest.mark.parametrize("backend", ["file"])
+    def test_multi_results_not_implemented(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+        range_values,
+    ):
+        with NamedTemporaryFile() as f, TemporaryDirectory() as d, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            temp_dir = d
+            single_results_file_path = "{record_identifier}_results.yaml"
+            results_file_path = os.path.join(temp_dir, single_results_file_path)
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = {"results_file_path": results_file_path}
+            args.update(backend_data)
+
+            with pytest.raises(NotImplementedError):
+                psm = SamplePipestatManager(**args)
+
+    @pytest.mark.parametrize("backend", ["file"])
+    def test_multi_results_basic(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+        range_values,
+    ):
+        with TemporaryDirectory() as d, ContextManagerDBTesting(DB_URL):
+            temp_dir = d
+            single_results_file_path = "{record_identifier}_results.yaml"
+            results_file_path = os.path.join(temp_dir, single_results_file_path)
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            n = 3
+
+            for i in range_values[:n]:
+                r_id = i[0]
+                val = i[1]
+                backend_data = {"record_identifier": r_id, "results_file_path": results_file_path}
+                args.update(backend_data)
+                psm = SamplePipestatManager(**args)
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            files = glob.glob(os.path.dirname(psm.file) + "**/*.yaml")
+            assert len(files) == n
+
+    @pytest.mark.parametrize("backend", ["file"])
+    def test_multi_results_summarize(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+        range_values,
+    ):
+        with TemporaryDirectory() as d, ContextManagerDBTesting(DB_URL):
+            temp_dir = d
+            single_results_file_path = "{record_identifier}/results.yaml"
+            results_file_path = os.path.join(temp_dir, single_results_file_path)
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            n = 3
+
+            for i in range_values[:n]:
+                r_id = i[0]
+                val = i[1]
+                backend_data = {"record_identifier": r_id, "results_file_path": results_file_path}
+                args.update(backend_data)
+                psm = SamplePipestatManager(**args)
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            psm.summarize()
+            data = YAMLConfigManager(filepath=os.path.join(temp_dir, "aggregate_results.yaml"))
+            assert r_id in data[psm.pipeline_name][psm.pipeline_type].keys()

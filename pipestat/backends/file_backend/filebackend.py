@@ -665,9 +665,17 @@ class FileBackend(PipestatBackend):
         with self._data as data_locked:
             data_locked.write()
 
-    def aggregate_multi_results(self, results_directory):
-        print(f"results directory {results_directory}")
+    def aggregate_multi_results(self, results_directory) -> None:
+        """
+        Collects single results files and aggregates them into a new aggregate_results.yaml file
+        :param str results_directory: directory containing subdirectories containing results.yaml files
+        :return: None
+        """
         all_result_files = get_all_result_files(results_directory)
+        if len(all_result_files) == 0:
+            _LOGGER.warning(
+                "Attempting to aggregate multiple results files but no result files found. Ensure they are in subdirectories, e.g. 'record1/record1_results.yaml'"
+            )
         aggregate_results_file_path = os.path.join(results_directory, "aggregate_results.yaml")
 
         # THIS WILL OVERWRITE self.results_file_path and self._data on the current psm!
