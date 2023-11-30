@@ -1,6 +1,7 @@
 import os
 from abc import ABC
 from logging import getLogger
+from ubiquerg import expandpath
 from typing import List, Dict, Any, Optional, Union, Tuple
 
 from ..const import PKG_NAME, STATUS
@@ -99,6 +100,8 @@ class PipestatBackend(ABC):
             return key_value_pairs
 
         unique_result_identifiers = []
+
+        link_dir = expandpath(link_dir)
 
         all_records = self.select_records()
 

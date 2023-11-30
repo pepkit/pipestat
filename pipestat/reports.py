@@ -638,7 +638,7 @@ class HTMLReportBuilder(object):
         for obj_id in objs:
             displayable_ids.append(obj_id.replace("_", " "))
             page_name = os.path.join(
-                self.pipeline_reports, (obj_id + ".html").replace(" ", "_").lower()
+                self.pipeline_reports, (obj_id + ".html").replace(" ", "%20").lower()
             )
             relpaths.append(_make_relpath(page_name, wd, context))
         return relpaths, displayable_ids
@@ -650,7 +650,7 @@ class HTMLReportBuilder(object):
             sample_name = sample["record_identifier"]
             page_name = os.path.join(
                 self.pipeline_reports,
-                f"{sample_name}.html".replace(" ", "_").lower(),
+                f"{sample_name}.html".replace(" ", "%20").lower(),
             )
             relpaths.append(_make_relpath(page_name, wd, context))
             sample_names.append(sample_name)
@@ -1078,7 +1078,10 @@ def _create_stats_objs_summaries(prj, pipeline_name: str) -> List[str]:
             if v:
                 if k in prj.result_schemas and prj.result_schemas[k]["type"] in OBJECT_TYPES:
                     sample_reported_objects = {k: dict(v)}
-                    reported_objects[record_name] = sample_reported_objects
+                    if record_name in reported_objects:
+                        reported_objects[record_name].update(sample_reported_objects)
+                    else:
+                        reported_objects.update({record_name: sample_reported_objects})
                 if k in prj.result_schemas and prj.result_schemas[k]["type"] not in OBJECT_TYPES:
                     reported_stats.append(k)
                     reported_stats.append(v)

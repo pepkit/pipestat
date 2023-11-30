@@ -199,10 +199,12 @@ class PipestatManager(MutableMapping):
         )
 
         self.cfg[FILE_KEY] = mk_abs_via_cfg(
-            self.cfg[CONFIG_KEY].priority_get(
-                "results_file_path",
-                env_var=ENV_VARS["results_file"],
-                override=results_file_path,
+            self.resolve_results_file_path(
+                self.cfg[CONFIG_KEY].priority_get(
+                    "results_file_path",
+                    env_var=ENV_VARS["results_file"],
+                    override=results_file_path,
+                )
             ),
             self.cfg["config_path"],
         )
@@ -281,8 +283,26 @@ class PipestatManager(MutableMapping):
     def __len__(self):
         return len(self.cfg)
 
+    def resolve_results_file_path(self, results_file_path):
+        """Replace {record_identifier} in results_file_path if it exists.
+        :param str results_file_path: YAML file to report into, if file is
+        used as the object back-end
+        """
+        # Save for later when assessing if there may be multiple result files
+        if results_file_path:
+            assert isinstance(results_file_path, str), TypeError("Path is expected to be a str")
+            if not self.record_identifier and "{record_identifier}" in results_file_path:
+                raise NotImplementedError(
+                    f"Must provide record identifier during PipestatManager creation for this results_file_path: {results_file_path}"
+                )
+            self.cfg["unresolved_result_path"] = results_file_path
+            return results_file_path.format(record_identifier=self.record_identifier)
+        return results_file_path
+
     def initialize_filebackend(self, record_identifier, results_file_path, flag_file_dir):
+        # Check if there will be multiple results_file_paths
         _LOGGER.debug(f"Determined file as backend: {results_file_path}")
+
         if self.cfg[DB_ONLY_KEY]:
             _LOGGER.debug(
                 "Running in database only mode does not make sense with a YAML file as a backend. "
@@ -713,7 +733,7 @@ class PipestatManager(MutableMapping):
         :param str link_dir: path to desired symlink output directory
         :return str linked_results_path: path to symlink directory
         """
-
+        self.check_multi_results()
         linked_results_path = self.backend.link(link_dir=link_dir)
 
         return linked_results_path
@@ -730,11 +750,24 @@ class PipestatManager(MutableMapping):
 
         """
 
+        self.check_multi_results()
+
         html_report_builder = HTMLReportBuilder(prj=self)
         report_path = html_report_builder(
             pipeline_name=self.cfg[PIPELINE_NAME], amendment=amendment
         )
         return report_path
+
+    def check_multi_results(self):
+        # Check to see if the user used a path with "{record-identifier}"
+        if self.file and self.cfg["unresolved_result_path"] != self.file:
+            if "{record_identifier}" in self.cfg["unresolved_result_path"]:
+                # assume there are multiple result files in sub-directories
+                results_directory = self.cfg["unresolved_result_path"].split(
+                    "{record_identifier}"
+                )[0]
+                results_directory = mk_abs_via_cfg(results_directory, self.cfg["config_path"])
+                self.backend.aggregate_multi_results(results_directory)
 
     @require_backend
     def table(
@@ -746,6 +779,7 @@ class PipestatManager(MutableMapping):
 
         """
 
+        self.check_multi_results()
         pipeline_name = self.cfg[PIPELINE_NAME]
         table_path_list = _create_stats_objs_summaries(self, pipeline_name)
 

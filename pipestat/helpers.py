@@ -1,13 +1,14 @@
 """Assorted project utilities"""
 
 import logging
+import glob
 import os
 import errno
 import yaml
 import jsonschema
 from json import dumps
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union, List
 
 from oyaml import safe_load
 from ubiquerg import expandpath
@@ -115,11 +116,19 @@ def mk_abs_via_cfg(
         return path
     if cfg_path is None:
         rel_to_cwd = os.path.join(os.getcwd(), path)
+        try:
+            os.makedirs(os.path.dirname(rel_to_cwd))
+        except FileExistsError:
+            pass
         if os.path.exists(rel_to_cwd) or os.access(os.path.dirname(rel_to_cwd), os.W_OK):
             return rel_to_cwd
         else:
             raise OSError(f"File not found: {path}")
     joined = os.path.join(os.path.dirname(cfg_path), path)
+    try:
+        os.makedirs(os.path.dirname(joined))
+    except FileExistsError:
+        pass
     if os.path.isabs(joined):
         return joined
     raise OSError(f"Could not make this path absolute: {path}")
@@ -209,3 +218,14 @@ def force_symlink(file1, file2):
             )
             os.remove(file2)
             os.symlink(file1, file2)
+
+
+def get_all_result_files(results_file_path: str) -> List:
+    """
+    Collects any yaml result files relative to the CURRENT results_file_path
+    :param str results_file_path: path to the pipestamanager's current result_file
+    :return: list
+    """
+    files = glob.glob(results_file_path + "**/*.yaml")
+
+    return files

@@ -4,6 +4,7 @@ import operator
 from copy import deepcopy
 from functools import reduce
 from itertools import chain
+from ...helpers import get_all_result_files
 
 
 from glob import glob
@@ -63,6 +64,13 @@ class FileBackend(PipestatBackend):
         self.result_formatter = result_formatter
         self.multi_pipelines = multi_pipelines
 
+        self.determine_results_file(self.results_file_path)
+
+    def determine_results_file(self, results_file_path: str) -> None:
+        """Initialize or load results_file from given path
+        :param str results_file_path: YAML file to report into, if file is
+        used as the object back-end
+        """
         if not os.path.exists(self.results_file_path):
             _LOGGER.debug(
                 f"Results file doesn't yet exist. Initializing: {self.results_file_path}"
@@ -335,6 +343,7 @@ class FileBackend(PipestatBackend):
 
         # record_identifier = record_identifier or self.record_identifier
         record_identifier = record_identifier
+
         result_formatter = result_formatter or self.result_formatter
         results_formatted = []
         current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -653,6 +662,41 @@ class FileBackend(PipestatBackend):
         self._data.setdefault(self.pipeline_name, {})
         self._data[self.pipeline_name].setdefault("project", {})
         self._data[self.pipeline_name].setdefault("sample", {})
+        with self._data as data_locked:
+            data_locked.write()
+
+    def aggregate_multi_results(self, results_directory) -> None:
+        """
+        Collects single results files and aggregates them into a new aggregate_results.yaml file
+        :param str results_directory: directory containing subdirectories containing results.yaml files
+        :return: None
+        """
+        all_result_files = get_all_result_files(results_directory)
+        if len(all_result_files) == 0:
+            _LOGGER.warning(
+                "Attempting to aggregate multiple results files but no result files found. Ensure they are in subdirectories, e.g. 'record1/record1_results.yaml'"
+            )
+        aggregate_results_file_path = os.path.join(results_directory, "aggregate_results.yaml")
+
+        # THIS WILL OVERWRITE self.results_file_path and self._data on the current psm!
+        self.results_file_path = aggregate_results_file_path
+        self._init_results_file()
+
+        for file in all_result_files:
+            try:
+                temp_data = YAMLConfigManager(filepath=file)
+            except ValueError:
+                temp_data = YAMLConfigManager()
+            if self.pipeline_name in temp_data:
+                if "project" in temp_data[self.pipeline_name]:
+                    self._data[self.pipeline_name]["project"].update(
+                        temp_data[self.pipeline_name]["project"]
+                    )
+                if "sample" in temp_data[self.pipeline_name]:
+                    self._data[self.pipeline_name]["sample"].update(
+                        temp_data[self.pipeline_name]["sample"]
+                    )
+
         with self._data as data_locked:
             data_locked.write()
 
