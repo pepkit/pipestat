@@ -26,7 +26,7 @@ schema_path: sample_output_schema.yaml
 results_file_path: results_file.yaml 
 database:
   dialect: postgresql
-  driver: psycopg
+  driver: psycopg2
   name: pipestat-test
   user: postgres
   password: pipestat-password

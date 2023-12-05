@@ -11,7 +11,7 @@ from atexit import register
 REC_ID = "constant_record_id"
 BACKEND_KEY_DB = "db"
 BACKEND_KEY_FILE = "file"
-DB_URL = "postgresql+psycopg://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
+DB_URL = "postgresql+psycopg2://postgres:pipestat-password@127.0.0.1:5432/pipestat-test"
 DB_CMD = """
 docker run --rm -it --name pipestat_test_db \
     -e POSTGRES_USER=postgres \
