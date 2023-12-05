@@ -32,7 +32,7 @@ with open("requirements/requirements-db-backend.txt", "r") as reqs_file:
             continue
         # OPT_DEPENDENCIES.update({str(line.strip()):line.strip()})
         lines.append(line.strip())
-    OPT_DEPENDENCIES.update({"db-backend": lines})
+    OPT_DEPENDENCIES.update({"dbbackend": lines})
 
 with open("requirements/requirements-pipestatreader.txt", "r") as reqs_file:
     lines = []

@@ -10,7 +10,7 @@ Install pipestat from [GitHub releases](https://github.com/pepkit/pipestat/relea
 See if your installation worked by calling `pipestat -h` on the command line. If the `pipestat` executable is not in your `$PATH`, append this to your `.bashrc` or `.profile` (or `.bash_profile` on macOS):
 
 Note: with version 0.6.0, Pipestat installs with minimum dependencies to report _only_ using the YAML-formatted backend (FileBackend). If desired, the user can install additional functionality:
-database dependencies:  `pip install pipestat['db-backend']`
+database dependencies:  `pip install pipestat['dbbackend']`
 pipestat reader: `pip install pipestat['pipestatreader']`
 
 ```console

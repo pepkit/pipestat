@@ -335,7 +335,7 @@ class PipestatManager(MutableMapping):
 
     @check_dependencies(
         dependency_list=["DBBackend"],
-        msg="Missing required dependencies for this usage, e.g. try pip install pipestat['db-backend']",
+        msg="Missing required dependencies for this usage, e.g. try pip install pipestat['dbbackend']",
     )
     def initialize_dbbackend(self, record_identifier, show_db_logs):
         _LOGGER.debug("Determined database as backend")
