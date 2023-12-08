@@ -14,6 +14,7 @@ from logging import getLogger
 from peppy.const import AMENDMENTS_KEY
 from typing import List
 from copy import deepcopy
+from .helpers import mk_abs_via_cfg
 
 from ._version import __version__
 from .const import (
@@ -27,6 +28,8 @@ from .const import (
     PROJECT_NAME,
     TEMPLATES_DIRNAME,
     PROFILE_COLNAMES,
+    STATUS_FILE_DIR,
+    FILE_KEY,
 )
 
 
@@ -386,7 +389,18 @@ class HTMLReportBuilder(object):
             os.makedirs(self.pipeline_reports)
         html_page = os.path.join(self.pipeline_reports, f"{sample_name}.html".lower())
 
+        if self.prj.cfg["multi_result_files"] is True:
+            self.prj.cfg["record_identifier"] = sample_name
+            temp_result_file_path = mk_abs_via_cfg(
+                self.prj.resolve_results_file_path(self.prj.cfg["unresolved_result_path"]),
+                self.prj.cfg["config_path"],
+            )
+            self.prj.backend.status_file_dir = os.path.dirname(
+                mk_abs_via_cfg(temp_result_file_path, self.prj.cfg["config_path"])
+            )
+
         flag = self.prj.get_status(record_identifier=sample_name)
+
         if not flag:
             button_class = "btn btn-secondary"
             flag = "Missing"
@@ -878,6 +892,15 @@ def create_status_table(project, pipeline_reports_dir: str) -> str:
         sample_names.append(sample_name)
         # status and status style
         try:
+            if psm.cfg["multi_result_files"] is True:
+                psm.cfg["record_identifier"] = sample_name
+                temp_result_file_path = mk_abs_via_cfg(
+                    psm.resolve_results_file_path(psm.cfg["unresolved_result_path"]),
+                    psm.cfg["config_path"],
+                )
+                psm.backend.status_file_dir = os.path.dirname(
+                    mk_abs_via_cfg(temp_result_file_path, psm.cfg["config_path"])
+                )
             status = psm.get_status(record_identifier=sample_name)
             statuses.append(status)
             status_metadata = psm.status_schema[status]

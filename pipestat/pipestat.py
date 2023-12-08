@@ -213,6 +213,8 @@ class PipestatManager(MutableMapping):
 
         self.cfg[MULTI_PIPELINE] = multi_pipelines
 
+        self.cfg["multi_result_files"] = None
+
         self.cfg[OUTPUT_DIR] = self.cfg[CONFIG_KEY].priority_get("output_dir", override=output_dir)
 
         if self.cfg[FILE_KEY]:
@@ -763,6 +765,7 @@ class PipestatManager(MutableMapping):
         if self.file and self.cfg["unresolved_result_path"] != self.file:
             if "{record_identifier}" in self.cfg["unresolved_result_path"]:
                 # assume there are multiple result files in sub-directories
+                self.cfg["multi_result_files"] = True
                 results_directory = self.cfg["unresolved_result_path"].split(
                     "{record_identifier}"
                 )[0]
