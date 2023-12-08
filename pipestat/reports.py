@@ -514,7 +514,10 @@ class HTMLReportBuilder(object):
         # Produce table rows
         table_row_data = []
         _LOGGER.info(" * Creating sample pages")
-        # TODO currently broken?
+
+        # get all potentially reportable keys from the output schema
+        all_result_identifiers = list(self.schema.keys())
+
         for sample in self.prj.backend.select_records()["records"]:
             sample_name = sample["record_identifier"]
             sample_stat_results = fetch_pipeline_results(
@@ -523,17 +526,25 @@ class HTMLReportBuilder(object):
                 inclusion_fun=None,
                 casting_fun=str,
             )
+            for key in all_result_identifiers:
+                if key not in sample_stat_results.keys():
+                    sample_stat_results[key] = "None reported"
+
+            # Sort to ensure alignment in the table
+            sorted_sample_stat_results = dict(sorted(sample_stat_results.items()))
+
             sample_html = self.create_sample_html(
-                sample_stat_results,
+                sorted_sample_stat_results,
                 navbar,
                 footer,
                 sample_name,
             )
+            # sample_stat_results = sorted(sample_stat_results)
             rel_sample_html = os.path.relpath(sample_html, self.pipeline_reports)
             # treat sample_name column differently - will need to provide
             # a link to the sample page
             table_cell_data = [[rel_sample_html, sample_name]]
-            table_cell_data.append(list(sample_stat_results.values()))
+            table_cell_data += list(sorted_sample_stat_results.values())
             table_row_data.append(table_cell_data)
 
         # Create parent samples page with links to each sample
@@ -566,7 +577,10 @@ class HTMLReportBuilder(object):
             template=self.create_glossary_html(glossary_table, navbar, footer),
         )
         # Complete and close HTML file
-        columns = ["Record Identifiers", "Results"]
+        # columns = ["Record Identifiers", "Results"]
+        # columns = [self.prj.sample_table_index] + list(sample_stat_results.keys())
+        # columns = [self.prj.backend.select_records()["records"][0].keys()] + list(self.prj.result_schemas.keys())
+        columns = ["Record Identifiers"] + list(sample_stat_results.keys())
         template_vars = dict(
             navbar=navbar,
             stats_file_path=stats_file_path,
