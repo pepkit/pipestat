@@ -6,6 +6,7 @@ import pandas as _pd
 import sys
 import csv
 import yaml
+import glob
 
 from datetime import timedelta
 from eido import read_schema
@@ -914,7 +915,9 @@ def create_status_table(project, pipeline_reports_dir: str) -> str:
         sample_paths.append(f"{sample_name}.html".replace(" ", "_").lower())
         # log file path
         try:
-            log = psm.retrieve_one(record_identifier=sample_name, result_identifier="log")["path"]
+            log = glob.glob(psm.backend.status_file_dir + "**/*log.md")[
+                0
+            ]  # Assumes the log file will be in status dir
             assert os.path.exists(log), FileNotFoundError(f"Not found: {log}")
             log_link_names.append(os.path.basename(log))
             log_paths.append(os.path.relpath(log, pipeline_reports_dir))
@@ -924,9 +927,9 @@ def create_status_table(project, pipeline_reports_dir: str) -> str:
             log_paths.append("")
         # runtime and peak mem
         try:
-            profile = psm.retrieve_one(record_identifier=sample_name, result_identifier="profile")[
-                "path"
-            ]
+            profile = glob.glob(psm.backend.status_file_dir + "**/*profile.tsv")[
+                0
+            ]  # Assumes the profile file will be in status dir
             assert os.path.exists(profile), FileNotFoundError(f"Not found: {profile}")
             df = _pd.read_csv(profile, sep="\t", comment="#", names=PROFILE_COLNAMES)
             df["runtime"] = _pd.to_timedelta(df["runtime"])
