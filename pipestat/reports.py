@@ -496,37 +496,25 @@ class HTMLReportBuilder(object):
             sys.setdefaultencoding("utf-8")
         _LOGGER.info(f"Building index page for pipeline: {self.pipeline_name}")
 
+        # Create stats and object summaries
+        table_path_list = _create_stats_objs_summaries(self.prj, self.pipeline_name)
+
         # Add stats_summary.tsv button link
-        stats_file_path = get_file_for_project(
-            prj=self.prj,
-            pipeline_name=self.prj.cfg[PIPELINE_NAME],
-            appendix="stats_summary.tsv",
-            reportdir=self.reports_dir,
-        )
-        stats_file_path = (
-            os.path.relpath(stats_file_path, self.pipeline_reports)
-            if os.path.exists(stats_file_path)
-            else None
-        )
+        stats_file_path = table_path_list[0]
+
+        stats_file_path = stats_file_path if os.path.exists(stats_file_path) else None
 
         # Add objects_summary.yaml button link
-        objs_file_path = get_file_for_project(
-            prj=self.prj,
-            pipeline_name=self.prj.cfg[PIPELINE_NAME],
-            appendix="objs_summary.yaml",
-            reportdir=self.reports_dir,
-        )
-        objs_file_path = (
-            os.path.relpath(objs_file_path, self.pipeline_reports, None, self.reports_dir)
-            if os.path.exists(objs_file_path)
-            else None
-        )
+        objs_file_path = table_path_list[0]
+
+        objs_file_path = objs_file_path if os.path.exists(objs_file_path) else None
 
         # Add stats summary table to index page and produce individual
         # sample pages
         # Produce table rows
         table_row_data = []
         _LOGGER.info(" * Creating sample pages")
+        # TODO currently broken?
         for sample in self.prj.backend.select_records()["records"]:
             sample_name = sample["record_identifier"]
             sample_stat_results = fetch_pipeline_results(
