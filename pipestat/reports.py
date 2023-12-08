@@ -1080,39 +1080,48 @@ def _create_stats_objs_summaries(prj, pipeline_name: str) -> List[str]:
     reported_objects = {}
     stats = []
 
-    if prj.cfg[PIPELINE_TYPE] == "sample":
-        columns = ["Sample Index", "Sample Name", "Results"]
-    else:
-        columns = ["Sample Index", "Project Name", "Sample Name", "Results"]
+    columns = ["Sample Index", "Record Identifier", "Pipeline Type"]
 
     records = prj.backend.select_records()["records"]
     record_index = 0
+
+    all_result_identifiers = list(prj.result_schemas.keys())
+
     for record in records:
         record_index += 1
         record_name = record["record_identifier"]
 
         if prj.cfg[PIPELINE_TYPE] == "sample":
-            reported_stats = [record_index, record_name]
+            reported_stats = [record_index, record_name, "sample"]
             rep_data = prj.retrieve_one(record_identifier=record_name)
         else:
             rep_data = prj.retrieve_one(record_identifier=record_name)
-            reported_stats = [
-                record_index,
-                prj.cfg[PROJECT_NAME] or "No Project Name Supplied",
-                record_name,
-            ]
+            reported_stats = [record_index, record_name, "project"]
+        for key in all_result_identifiers:
+            if key not in rep_data.keys():
+                rep_data[key] = "None reported"
+
+        # Sort to ensure alignment in the table
+        rep_data = dict(sorted(rep_data.items()))
 
         for k, v in rep_data.items():
             if v:
                 if k in prj.result_schemas and prj.result_schemas[k]["type"] in OBJECT_TYPES:
-                    sample_reported_objects = {k: dict(v)}
+                    if k in all_result_identifiers:
+                        all_result_identifiers.remove(k)
+                    if v is not "None reported":
+                        sample_reported_objects = {k: dict(v)}
+                    else:
+                        sample_reported_objects = {k: "None reported"}
                     if record_name in reported_objects:
                         reported_objects[record_name].update(sample_reported_objects)
                     else:
                         reported_objects.update({record_name: sample_reported_objects})
                 if k in prj.result_schemas and prj.result_schemas[k]["type"] not in OBJECT_TYPES:
-                    reported_stats.append(k)
+                    if k not in columns:
+                        columns.append(k)
                     reported_stats.append(v)
+
         stats.append(reported_stats)
 
     # Stats File
