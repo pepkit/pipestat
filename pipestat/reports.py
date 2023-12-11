@@ -620,6 +620,9 @@ class HTMLReportBuilder(object):
             path=os.path.join(self.pipeline_reports, "glossary.html"),
             template=self.create_glossary_html(glossary_table, navbar, footer),
         )
+
+        project_objects = self.create_project_objects()
+        # project_objects = None
         # Complete and close HTML file
         # columns = ["Record Identifiers", "Results"]
         # columns = [self.prj.sample_table_index] + list(sample_stat_results.keys())
@@ -635,6 +638,7 @@ class HTMLReportBuilder(object):
             project_name=self.prj.cfg[PROJECT_NAME],
             pipeline_name=self.prj.cfg[PIPELINE_NAME],
             stats_json=self._stats_to_json_str(),
+            project_objects=project_objects,
             footer=footer,
             amendments="",
         )
@@ -643,6 +647,103 @@ class HTMLReportBuilder(object):
             self.index_html_path,
             render_jinja_template("index.html", self.jinja_env, template_vars),
         )
+
+    def create_project_objects(self):
+        """
+        Render available project level outputs defined in the
+        pipeline output schemas
+        """
+        _LOGGER.debug("Building project objects section...")
+        figures = []
+        links = []
+        warnings = []
+
+        file_results = self.get_nonhighlighted_results(["file"])
+        image_results = self.get_nonhighlighted_results(["image"])
+
+        if not os.path.exists(self.pipeline_reports):
+            os.makedirs(self.pipeline_reports)
+        for file_result in file_results:
+            links = []
+            html_page_path = os.path.join(self.pipeline_reports, f"{file_result}.html".lower())
+
+            pipeline_types = ["project"]
+
+            for pipeline_type in pipeline_types:
+                self.prj.backend.pipeline_type = pipeline_type
+                for sample in self.prj.backend.select_records()["records"]:
+                    sample_name = sample["record_identifier"]
+                    sample_result = fetch_pipeline_results(
+                        project=self.prj,
+                        sample_name=sample_name,
+                    )
+                    if file_result not in sample_result:
+                        pass
+                    else:
+                        try:
+                            links.append(
+                                [
+                                    sample_name,
+                                    os.path.relpath(
+                                        sample_result[file_result]["path"],
+                                        self.pipeline_reports,
+                                    ),
+                                ]
+                            )
+                        except Exception:
+                            links.append(["LinkPathNotFound"])
+                else:
+                    link_desc = (
+                        self.prj.result_schemas[file_result]["description"]
+                        if "description" in self.prj.result_schemas[file_result]
+                        else "No description in schema"
+                    )
+
+        for image_result in image_results:
+            html_page_path = os.path.join(self.pipeline_reports, f"{image_result}.html".lower())
+            figures = []
+
+            if self.prj.cfg["multi_result_files"] is True:
+                pipeline_types = ["sample", "project"]
+            else:
+                pipeline_types = [self.prj.backend.pipeline_type]
+
+            for pipeline_type in pipeline_types:
+                self.prj.backend.pipeline_type = pipeline_type
+                for sample in self.prj.backend.select_records()["records"]:
+                    sample_name = sample["record_identifier"]
+                    sample_result = fetch_pipeline_results(
+                        project=self.prj,
+                        sample_name=sample_name,
+                    )
+                    if image_result not in sample_result:
+                        pass
+                    else:
+                        try:
+                            figures.append(
+                                [
+                                    os.path.relpath(
+                                        sample_result[image_result]["path"],
+                                        self.pipeline_reports,
+                                    ),
+                                    sample_name,
+                                    os.path.relpath(
+                                        sample_result[image_result]["thumbnail_path"],
+                                        self.pipeline_reports,
+                                    ),
+                                ]
+                            )
+                        except:
+                            figures.append(["FigurePathNotFound"])
+                else:
+                    img_desc = (
+                        self.prj.result_schemas[image_result]["description"]
+                        if "description" in self.prj.result_schemas[image_result]
+                        else "No description in schema"
+                    )
+
+        template_vars = dict(figures=figures, links=links)
+        return render_jinja_template("project_object.html", self.jinja_env, template_vars)
 
     def get_nonhighlighted_results(self, types):
         """
