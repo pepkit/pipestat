@@ -163,7 +163,7 @@ class HTMLReportBuilder(object):
                     labels.append(sample_name)
 
         template_vars = dict(
-            navbar=navbar, footer=footer, labels=labels, pages=pages, header="Samples"
+            navbar=navbar, footer=footer, labels=labels, pages=pages, header="Records"
         )
         _LOGGER.debug(f"sample navbar_list_parent.html | template_vars:" f"\n{template_vars}")
         return render_jinja_template("navbar_list_parent.html", self.jinja_env, template_vars)
@@ -217,7 +217,7 @@ class HTMLReportBuilder(object):
             context=context,
         )
         samples_relpath = _make_relpath(
-            file_name=os.path.join(self.pipeline_reports, "samples.html"),
+            file_name=os.path.join(self.pipeline_reports, "records.html"),
             wd=wd,
             context=context,
         )
@@ -257,11 +257,11 @@ class HTMLReportBuilder(object):
             status_page_name="Status",
             dropdown_keys_objects=dropdown_keys_objects,
             objects_page_name="Objects",
-            samples_page_name="Samples",
+            samples_page_name="Records",
             objects_html_page=dropdown_relpaths_objects,
             samples_html_page=dropdown_relpaths_samples,
             menu_name_objects="Objects",
-            menu_name_samples="Samples",
+            menu_name_samples="Records",
             sample_names=sample_names,
             all_samples=samples_relpath,
             all_objects=objects_relpath,
@@ -593,7 +593,7 @@ class HTMLReportBuilder(object):
 
         # Create parent samples page with links to each sample
         save_html(
-            path=os.path.join(self.pipeline_reports, "samples.html"),
+            path=os.path.join(self.pipeline_reports, "records.html"),
             template=self.create_sample_parent_html(navbar, footer),
         )
         _LOGGER.info(" * Creating object pages")
