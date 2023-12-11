@@ -743,10 +743,12 @@ class PipestatManager(MutableMapping):
     @require_backend
     def summarize(
         self,
+        looper_samples: Optional[list] = None,
         amendment: Optional[str] = None,
     ) -> None:
         """
         Builds a browsable html report for reported results.
+        :param Iterable[str] looper_samples: list of looper Samples from PEP
         :param Iterable[str] amendment: name indicating amendment to use, optional
         :return str: report_path
 
@@ -756,7 +758,9 @@ class PipestatManager(MutableMapping):
 
         html_report_builder = HTMLReportBuilder(prj=self)
         report_path = html_report_builder(
-            pipeline_name=self.cfg[PIPELINE_NAME], amendment=amendment
+            pipeline_name=self.cfg[PIPELINE_NAME],
+            amendment=amendment,
+            looper_samples=looper_samples,
         )
         return report_path
 

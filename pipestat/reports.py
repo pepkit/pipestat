@@ -57,7 +57,9 @@ class HTMLReportBuilder(object):
         self.reports_dir = os.path.join(self.output_dir, "reports")
         _LOGGER.debug(f"Reports dir: {self.reports_dir}")
 
-    def __call__(self, pipeline_name, project_index_html=None, amendment=None):
+    def __call__(
+        self, pipeline_name, project_index_html=None, amendment=None, looper_samples=None
+    ):
         """
         Generate HTML report.
 
@@ -77,6 +79,7 @@ class HTMLReportBuilder(object):
         )
         self.prj_index_html_path = project_index_html
         self.index_html_path = os.path.join(self.pipeline_reports, "index.html")
+        self.looper_samples = looper_samples or None
 
         self.schema = deepcopy(self.prj.result_schemas)
         for k, v in self.schema.items():
@@ -555,11 +558,18 @@ class HTMLReportBuilder(object):
         # get all potentially reportable keys from the output schema
         all_result_identifiers = list(self.schema.keys())
 
+        if self.looper_samples is not None:
+            # If looper passes the samples from the PEP, we should add the attributes to the cell tables:
+            input_sample_attributes = self.looper_samples[0]._mapped_attr["_attributes"]
+            # Place at front of columns
+            all_result_identifiers = input_sample_attributes + all_result_identifiers
+
         if self.prj.cfg["multi_result_files"] is True:
             pipeline_types = ["sample", "project"]
         else:
             pipeline_types = [self.prj.backend.pipeline_type]
 
+        sorted_sample_stat_results = {}
         for pipeline_type in pipeline_types:
             self.prj.backend.pipeline_type = pipeline_type
             for sample in self.prj.backend.select_records()["records"]:
@@ -570,6 +580,14 @@ class HTMLReportBuilder(object):
                     inclusion_fun=None,
                     casting_fun=str,
                 )
+
+                if self.looper_samples is not None:
+                    for s in range(len(self.looper_samples)):
+                        if sample_name == self.looper_samples[s]._mapped_attr["sample_name"]:
+                            for attribute in input_sample_attributes:
+                                value = self.looper_samples[s]._mapped_attr[attribute]
+                                sample_stat_results.update({attribute: value})
+
                 for key in all_result_identifiers:
                     if key not in sample_stat_results.keys():
                         sample_stat_results[key] = "None reported"
@@ -627,7 +645,7 @@ class HTMLReportBuilder(object):
         # columns = ["Record Identifiers", "Results"]
         # columns = [self.prj.sample_table_index] + list(sample_stat_results.keys())
         # columns = [self.prj.backend.select_records()["records"][0].keys()] + list(self.prj.result_schemas.keys())
-        columns = ["Record Identifiers"] + list(sample_stat_results.keys())
+        columns = ["Record Identifiers"] + list(sorted_sample_stat_results.keys())
         template_vars = dict(
             navbar=navbar,
             stats_file_path=stats_file_path,
