@@ -2132,6 +2132,7 @@ class TestMultiResultFiles:
             psm.summarize()
             data = YAMLConfigManager(filepath=os.path.join(temp_dir, "aggregate_results.yaml"))
             assert r_id in data[psm.pipeline_name][psm.pipeline_type].keys()
+
     #
     # @pytest.mark.parametrize("backend", ["file"])
     # def test_temp(
