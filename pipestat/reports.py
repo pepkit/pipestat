@@ -601,7 +601,6 @@ class HTMLReportBuilder(object):
                     footer,
                     sample_name,
                 )
-                # sample_stat_results = sorted(sample_stat_results)
                 rel_sample_html = os.path.relpath(sample_html, self.pipeline_reports)
                 # treat sample_name column differently - will need to provide
                 # a link to the sample page
@@ -640,11 +639,6 @@ class HTMLReportBuilder(object):
         )
 
         project_objects = self.create_project_objects()
-        # project_objects = None
-        # Complete and close HTML file
-        # columns = ["Record Identifiers", "Results"]
-        # columns = [self.prj.sample_table_index] + list(sample_stat_results.keys())
-        # columns = [self.prj.backend.select_records()["records"][0].keys()] + list(self.prj.result_schemas.keys())
         columns = ["Record Identifiers"] + list(sorted_sample_stat_results.keys())
         template_vars = dict(
             navbar=navbar,
