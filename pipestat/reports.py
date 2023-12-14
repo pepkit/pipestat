@@ -6,6 +6,7 @@ import pandas as _pd
 import sys
 import csv
 import yaml
+import glob
 
 from datetime import timedelta
 from eido import read_schema
@@ -14,6 +15,7 @@ from logging import getLogger
 from peppy.const import AMENDMENTS_KEY
 from typing import List
 from copy import deepcopy
+from .helpers import mk_abs_via_cfg
 
 from ._version import __version__
 from .const import (
@@ -27,6 +29,8 @@ from .const import (
     PROJECT_NAME,
     TEMPLATES_DIRNAME,
     PROFILE_COLNAMES,
+    STATUS_FILE_DIR,
+    FILE_KEY,
 )
 
 
@@ -53,7 +57,9 @@ class HTMLReportBuilder(object):
         self.reports_dir = os.path.join(self.output_dir, "reports")
         _LOGGER.debug(f"Reports dir: {self.reports_dir}")
 
-    def __call__(self, pipeline_name, project_index_html=None, amendment=None):
+    def __call__(
+        self, pipeline_name, project_index_html=None, amendment=None, looper_samples=None
+    ):
         """
         Generate HTML report.
 
@@ -73,6 +79,7 @@ class HTMLReportBuilder(object):
         )
         self.prj_index_html_path = project_index_html
         self.index_html_path = os.path.join(self.pipeline_reports, "index.html")
+        self.looper_samples = looper_samples or None
 
         self.schema = deepcopy(self.prj.result_schemas)
         for k, v in self.schema.items():
@@ -136,22 +143,30 @@ class HTMLReportBuilder(object):
             os.makedirs(self.pipeline_reports)
         pages = []
         labels = []
-        for sample in self.prj.backend.select_records()["records"]:
-            sample_name = sample["record_identifier"]
-            sample_dir = self.pipeline_reports
 
-            # Confirm sample directory exists, then build page
-            if os.path.exists(sample_dir):
-                page_path = os.path.join(
-                    self.pipeline_reports,
-                    f"{sample_name}.html".replace(" ", "_").lower(),
-                )
-                page_relpath = os.path.relpath(page_path, self.pipeline_reports)
-                pages.append(page_relpath)
-                labels.append(sample_name)
+        if self.prj.cfg["multi_result_files"] is True:
+            pipeline_types = ["sample", "project"]
+        else:
+            pipeline_types = [self.prj.backend.pipeline_type]
+
+        for pipeline_type in pipeline_types:
+            self.prj.backend.pipeline_type = pipeline_type
+            for sample in self.prj.backend.select_records()["records"]:
+                sample_name = sample["record_identifier"]
+                sample_dir = self.pipeline_reports
+
+                # Confirm sample directory exists, then build page
+                if os.path.exists(sample_dir):
+                    page_path = os.path.join(
+                        self.pipeline_reports,
+                        f"{sample_name}.html".replace(" ", "_").lower(),
+                    )
+                    page_relpath = os.path.relpath(page_path, self.pipeline_reports)
+                    pages.append(page_relpath)
+                    labels.append(sample_name)
 
         template_vars = dict(
-            navbar=navbar, footer=footer, labels=labels, pages=pages, header="Samples"
+            navbar=navbar, footer=footer, labels=labels, pages=pages, header="Records"
         )
         _LOGGER.debug(f"sample navbar_list_parent.html | template_vars:" f"\n{template_vars}")
         return render_jinja_template("navbar_list_parent.html", self.jinja_env, template_vars)
@@ -205,7 +220,7 @@ class HTMLReportBuilder(object):
             context=context,
         )
         samples_relpath = _make_relpath(
-            file_name=os.path.join(self.pipeline_reports, "samples.html"),
+            file_name=os.path.join(self.pipeline_reports, "records.html"),
             wd=wd,
             context=context,
         )
@@ -245,11 +260,11 @@ class HTMLReportBuilder(object):
             status_page_name="Status",
             dropdown_keys_objects=dropdown_keys_objects,
             objects_page_name="Objects",
-            samples_page_name="Samples",
+            samples_page_name="Records",
             objects_html_page=dropdown_relpaths_objects,
             samples_html_page=dropdown_relpaths_samples,
             menu_name_objects="Objects",
-            menu_name_samples="Samples",
+            menu_name_samples="Records",
             sample_names=sample_names,
             all_samples=samples_relpath,
             all_objects=objects_relpath,
@@ -276,94 +291,108 @@ class HTMLReportBuilder(object):
             links = []
             html_page_path = os.path.join(self.pipeline_reports, f"{file_result}.html".lower())
 
-            for sample in self.prj.backend.select_records()["records"]:
-                sample_name = sample["record_identifier"]
-                sample_result = fetch_pipeline_results(
-                    project=self.prj,
-                    sample_name=sample_name,
-                )
-                if file_result not in sample_result:
-                    pass
-                else:
-                    try:
-                        links.append(
-                            [
-                                sample_name,
-                                os.path.relpath(
-                                    sample_result[file_result]["path"],
-                                    self.pipeline_reports,
-                                ),
-                            ]
-                        )
-                    except Exception:
-                        links.append(["LinkPathNotFound"])
+            if self.prj.cfg["multi_result_files"] is True:
+                pipeline_types = ["sample", "project"]
             else:
-                link_desc = (
-                    self.prj.result_schemas[file_result]["description"]
-                    if "description" in self.prj.result_schemas[file_result]
-                    else "No description in schema"
-                )
-                template_vars = dict(
-                    navbar=navbar,
-                    footer=footer,
-                    name=file_result,
-                    figures=[],
-                    links=links,
-                    desc=link_desc,
-                )
-                save_html(
-                    html_page_path,
-                    render_jinja_template("object.html", self.jinja_env, args=template_vars),
-                )
+                pipeline_types = [self.prj.backend.pipeline_type]
+
+            for pipeline_type in pipeline_types:
+                self.prj.backend.pipeline_type = pipeline_type
+                for sample in self.prj.backend.select_records()["records"]:
+                    sample_name = sample["record_identifier"]
+                    sample_result = fetch_pipeline_results(
+                        project=self.prj,
+                        sample_name=sample_name,
+                    )
+                    if file_result not in sample_result:
+                        pass
+                    else:
+                        try:
+                            links.append(
+                                [
+                                    sample_name,
+                                    os.path.relpath(
+                                        sample_result[file_result]["path"],
+                                        self.pipeline_reports,
+                                    ),
+                                ]
+                            )
+                        except Exception:
+                            links.append(["LinkPathNotFound"])
+                else:
+                    link_desc = (
+                        self.prj.result_schemas[file_result]["description"]
+                        if "description" in self.prj.result_schemas[file_result]
+                        else "No description in schema"
+                    )
+                    template_vars = dict(
+                        navbar=navbar,
+                        footer=footer,
+                        name=file_result,
+                        figures=[],
+                        links=links,
+                        desc=link_desc,
+                    )
+                    save_html(
+                        html_page_path,
+                        render_jinja_template("object.html", self.jinja_env, args=template_vars),
+                    )
 
         for image_result in image_results:
             html_page_path = os.path.join(self.pipeline_reports, f"{image_result}.html".lower())
             figures = []
 
-            for sample in self.prj.backend.select_records()["records"]:
-                sample_name = sample["record_identifier"]
-                sample_result = fetch_pipeline_results(
-                    project=self.prj,
-                    sample_name=sample_name,
-                )
-                if image_result not in sample_result:
-                    pass
-                else:
-                    try:
-                        figures.append(
-                            [
-                                os.path.relpath(
-                                    sample_result[image_result]["path"],
-                                    self.pipeline_reports,
-                                ),
-                                sample_name,
-                                os.path.relpath(
-                                    sample_result[image_result]["thumbnail_path"],
-                                    self.pipeline_reports,
-                                ),
-                            ]
-                        )
-                    except:
-                        figures.append(["FigurePathNotFound"])
+            if self.prj.cfg["multi_result_files"] is True:
+                pipeline_types = ["sample", "project"]
             else:
-                img_desc = (
-                    self.prj.result_schemas[image_result]["description"]
-                    if "description" in self.prj.result_schemas[image_result]
-                    else "No description in schema"
-                )
-                template_vars = dict(
-                    navbar=navbar,
-                    footer=footer,
-                    name=image_result,
-                    figures=figures,
-                    links=[],
-                    desc=img_desc,
-                )
-                _LOGGER.debug(f"object.html | template_vars:\n{template_vars}")
-                save_html(
-                    html_page_path,
-                    render_jinja_template("object.html", self.jinja_env, args=template_vars),
-                )
+                pipeline_types = [self.prj.backend.pipeline_type]
+
+            for pipeline_type in pipeline_types:
+                self.prj.backend.pipeline_type = pipeline_type
+                for sample in self.prj.backend.select_records()["records"]:
+                    sample_name = sample["record_identifier"]
+                    sample_result = fetch_pipeline_results(
+                        project=self.prj,
+                        sample_name=sample_name,
+                    )
+                    if image_result not in sample_result:
+                        pass
+                    else:
+                        try:
+                            figures.append(
+                                [
+                                    os.path.relpath(
+                                        sample_result[image_result]["path"],
+                                        self.pipeline_reports,
+                                    ),
+                                    sample_name,
+                                    os.path.relpath(
+                                        sample_result[image_result]["thumbnail_path"],
+                                        self.pipeline_reports,
+                                    ),
+                                ]
+                            )
+                        except:
+                            figures.append(["FigurePathNotFound"])
+                else:
+                    img_desc = (
+                        self.prj.result_schemas[image_result]["description"]
+                        if "description" in self.prj.result_schemas[image_result]
+                        else "No description in schema"
+                    )
+                    template_vars = dict(
+                        navbar=navbar,
+                        footer=footer,
+                        name=image_result,
+                        figures=figures,
+                        links=[],
+                        desc=img_desc,
+                    )
+                    _LOGGER.debug(f"object.html | template_vars:\n{template_vars}")
+                    save_html(
+                        html_page_path,
+                        render_jinja_template("object.html", self.jinja_env, args=template_vars),
+                    )
 
     def create_glossary_html(self, glossary_table, navbar, footer):
         template_vars = dict(glossary_table=glossary_table, navbar=navbar, footer=footer)
@@ -386,7 +415,18 @@ class HTMLReportBuilder(object):
             os.makedirs(self.pipeline_reports)
         html_page = os.path.join(self.pipeline_reports, f"{sample_name}.html".lower())
 
+        if self.prj.cfg["multi_result_files"] is True:
+            self.prj.cfg["record_identifier"] = sample_name
+            temp_result_file_path = mk_abs_via_cfg(
+                self.prj.resolve_results_file_path(self.prj.cfg["unresolved_result_path"]),
+                self.prj.cfg["config_path"],
+            )
+            self.prj.backend.status_file_dir = os.path.dirname(
+                mk_abs_via_cfg(temp_result_file_path, self.prj.cfg["config_path"])
+            )
+
         flag = self.prj.get_status(record_identifier=sample_name)
+
         if not flag:
             button_class = "btn btn-secondary"
             flag = "Missing"
@@ -496,61 +536,81 @@ class HTMLReportBuilder(object):
             sys.setdefaultencoding("utf-8")
         _LOGGER.info(f"Building index page for pipeline: {self.pipeline_name}")
 
+        # Create stats and object summaries
+        table_path_list = _create_stats_objs_summaries(self.prj, self.pipeline_name)
+
         # Add stats_summary.tsv button link
-        stats_file_path = get_file_for_project(
-            prj=self.prj,
-            pipeline_name=self.prj.cfg[PIPELINE_NAME],
-            appendix="stats_summary.tsv",
-            reportdir=self.reports_dir,
-        )
-        stats_file_path = (
-            os.path.relpath(stats_file_path, self.pipeline_reports)
-            if os.path.exists(stats_file_path)
-            else None
-        )
+        stats_file_path = table_path_list[0]
+
+        stats_file_path = stats_file_path if os.path.exists(stats_file_path) else None
 
         # Add objects_summary.yaml button link
-        objs_file_path = get_file_for_project(
-            prj=self.prj,
-            pipeline_name=self.prj.cfg[PIPELINE_NAME],
-            appendix="objs_summary.yaml",
-            reportdir=self.reports_dir,
-        )
-        objs_file_path = (
-            os.path.relpath(objs_file_path, self.pipeline_reports, None, self.reports_dir)
-            if os.path.exists(objs_file_path)
-            else None
-        )
+        objs_file_path = table_path_list[0]
+
+        objs_file_path = objs_file_path if os.path.exists(objs_file_path) else None
 
         # Add stats summary table to index page and produce individual
         # sample pages
         # Produce table rows
         table_row_data = []
         _LOGGER.info(" * Creating sample pages")
-        for sample in self.prj.backend.select_records()["records"]:
-            sample_name = sample["record_identifier"]
-            sample_stat_results = fetch_pipeline_results(
-                project=self.prj,
-                sample_name=sample_name,
-                inclusion_fun=None,
-                casting_fun=str,
-            )
-            sample_html = self.create_sample_html(
-                sample_stat_results,
-                navbar,
-                footer,
-                sample_name,
-            )
-            rel_sample_html = os.path.relpath(sample_html, self.pipeline_reports)
-            # treat sample_name column differently - will need to provide
-            # a link to the sample page
-            table_cell_data = [[rel_sample_html, sample_name]]
-            table_cell_data.append(list(sample_stat_results.values()))
-            table_row_data.append(table_cell_data)
+
+        # get all potentially reportable keys from the output schema
+        all_result_identifiers = list(self.schema.keys())
+
+        if self.looper_samples is not None:
+            # If looper passes the samples from the PEP, we should add the attributes to the cell tables:
+            input_sample_attributes = self.looper_samples[0]._mapped_attr["_attributes"]
+            # Place at front of columns
+            all_result_identifiers = input_sample_attributes + all_result_identifiers
+
+        if self.prj.cfg["multi_result_files"] is True:
+            pipeline_types = ["sample", "project"]
+        else:
+            pipeline_types = [self.prj.backend.pipeline_type]
+
+        sorted_sample_stat_results = {}
+        for pipeline_type in pipeline_types:
+            self.prj.backend.pipeline_type = pipeline_type
+            for sample in self.prj.backend.select_records()["records"]:
+                sample_name = sample["record_identifier"]
+                sample_stat_results = fetch_pipeline_results(
+                    project=self.prj,
+                    sample_name=sample_name,
+                    inclusion_fun=None,
+                    casting_fun=str,
+                )
+
+                if self.looper_samples is not None:
+                    for s in range(len(self.looper_samples)):
+                        if sample_name == self.looper_samples[s]._mapped_attr["sample_name"]:
+                            for attribute in input_sample_attributes:
+                                value = self.looper_samples[s]._mapped_attr[attribute]
+                                sample_stat_results.update({attribute: value})
+
+                for key in all_result_identifiers:
+                    if key not in sample_stat_results.keys():
+                        sample_stat_results[key] = "None reported"
+
+                # Sort to ensure alignment in the table
+                sorted_sample_stat_results = dict(sorted(sample_stat_results.items()))
+
+                sample_html = self.create_sample_html(
+                    sorted_sample_stat_results,
+                    navbar,
+                    footer,
+                    sample_name,
+                )
+                rel_sample_html = os.path.relpath(sample_html, self.pipeline_reports)
+                # treat sample_name column differently - will need to provide
+                # a link to the sample page
+                table_cell_data = [[rel_sample_html, sample_name]]
+                table_cell_data += list(sorted_sample_stat_results.values())
+                table_row_data.append(table_cell_data)
 
         # Create parent samples page with links to each sample
         save_html(
-            path=os.path.join(self.pipeline_reports, "samples.html"),
+            path=os.path.join(self.pipeline_reports, "records.html"),
             template=self.create_sample_parent_html(navbar, footer),
         )
         _LOGGER.info(" * Creating object pages")
@@ -577,8 +637,9 @@ class HTMLReportBuilder(object):
             path=os.path.join(self.pipeline_reports, "glossary.html"),
             template=self.create_glossary_html(glossary_table, navbar, footer),
         )
-        # Complete and close HTML file
-        columns = ["Record Identifiers", "Results"]
+
+        project_objects = self.create_project_objects()
+        columns = ["Record Identifiers"] + list(sorted_sample_stat_results.keys())
         template_vars = dict(
             navbar=navbar,
             stats_file_path=stats_file_path,
@@ -589,6 +650,7 @@ class HTMLReportBuilder(object):
             project_name=self.prj.cfg[PROJECT_NAME],
             pipeline_name=self.prj.cfg[PIPELINE_NAME],
             stats_json=self._stats_to_json_str(),
+            project_objects=project_objects,
             footer=footer,
             amendments="",
         )
@@ -597,6 +659,103 @@ class HTMLReportBuilder(object):
             self.index_html_path,
             render_jinja_template("index.html", self.jinja_env, template_vars),
         )
+
+    def create_project_objects(self):
+        """
+        Render available project level outputs defined in the
+        pipeline output schemas
+        """
+        _LOGGER.debug("Building project objects section...")
+        figures = []
+        links = []
+        warnings = []
+
+        file_results = self.get_nonhighlighted_results(["file"])
+        image_results = self.get_nonhighlighted_results(["image"])
+
+        if not os.path.exists(self.pipeline_reports):
+            os.makedirs(self.pipeline_reports)
+        for file_result in file_results:
+            links = []
+            html_page_path = os.path.join(self.pipeline_reports, f"{file_result}.html".lower())
+
+            pipeline_types = ["project"]
+
+            for pipeline_type in pipeline_types:
+                self.prj.backend.pipeline_type = pipeline_type
+                for sample in self.prj.backend.select_records()["records"]:
+                    sample_name = sample["record_identifier"]
+                    sample_result = fetch_pipeline_results(
+                        project=self.prj,
+                        sample_name=sample_name,
+                    )
+                    if file_result not in sample_result:
+                        pass
+                    else:
+                        try:
+                            links.append(
+                                [
+                                    sample_name,
+                                    os.path.relpath(
+                                        sample_result[file_result]["path"],
+                                        self.pipeline_reports,
+                                    ),
+                                ]
+                            )
+                        except Exception:
+                            links.append(["LinkPathNotFound"])
+                else:
+                    link_desc = (
+                        self.prj.result_schemas[file_result]["description"]
+                        if "description" in self.prj.result_schemas[file_result]
+                        else "No description in schema"
+                    )
+
+        for image_result in image_results:
+            html_page_path = os.path.join(self.pipeline_reports, f"{image_result}.html".lower())
+            figures = []
+
+            if self.prj.cfg["multi_result_files"] is True:
+                pipeline_types = ["sample", "project"]
+            else:
+                pipeline_types = [self.prj.backend.pipeline_type]
+
+            for pipeline_type in pipeline_types:
+                self.prj.backend.pipeline_type = pipeline_type
+                for sample in self.prj.backend.select_records()["records"]:
+                    sample_name = sample["record_identifier"]
+                    sample_result = fetch_pipeline_results(
+                        project=self.prj,
+                        sample_name=sample_name,
+                    )
+                    if image_result not in sample_result:
+                        pass
+                    else:
+                        try:
+                            figures.append(
+                                [
+                                    os.path.relpath(
+                                        sample_result[image_result]["path"],
+                                        self.pipeline_reports,
+                                    ),
+                                    sample_name,
+                                    os.path.relpath(
+                                        sample_result[image_result]["thumbnail_path"],
+                                        self.pipeline_reports,
+                                    ),
+                                ]
+                            )
+                        except:
+                            figures.append(["FigurePathNotFound"])
+                else:
+                    img_desc = (
+                        self.prj.result_schemas[image_result]["description"]
+                        if "description" in self.prj.result_schemas[image_result]
+                        else "No description in schema"
+                    )
+
+        template_vars = dict(figures=figures, links=links)
+        return render_jinja_template("project_object.html", self.jinja_env, template_vars)
 
     def get_nonhighlighted_results(self, types):
         """
@@ -620,14 +779,21 @@ class HTMLReportBuilder(object):
 
     def _stats_to_json_str(self):
         results = {}
-        for sample in self.prj.backend.select_records()["records"]:
-            sample_name = sample["record_identifier"]
-            results[sample_name] = fetch_pipeline_results(
-                project=self.prj,
-                sample_name=sample_name,
-                inclusion_fun=lambda x: x not in OBJECT_TYPES,
-                casting_fun=str,
-            )
+        if self.prj.cfg["multi_result_files"] is True:
+            pipeline_types = ["sample", "project"]
+        else:
+            pipeline_types = [self.prj.backend.pipeline_type]
+
+        for pipeline_type in pipeline_types:
+            self.prj.backend.pipeline_type = pipeline_type
+            for sample in self.prj.backend.select_records()["records"]:
+                sample_name = sample["record_identifier"]
+                results[sample_name] = fetch_pipeline_results(
+                    project=self.prj,
+                    sample_name=sample_name,
+                    inclusion_fun=lambda x: x not in OBJECT_TYPES,
+                    casting_fun=str,
+                )
         return dumps(results)
 
     def _get_navbar_dropdown_data_objects(self, objs, wd, context):
@@ -646,14 +812,21 @@ class HTMLReportBuilder(object):
     def _get_navbar_dropdown_data_samples(self, wd, context):
         relpaths = []
         sample_names = []
-        for sample in self.prj.backend.select_records()["records"]:
-            sample_name = sample["record_identifier"]
-            page_name = os.path.join(
-                self.pipeline_reports,
-                f"{sample_name}.html".replace(" ", "%20").lower(),
-            )
-            relpaths.append(_make_relpath(page_name, wd, context))
-            sample_names.append(sample_name)
+        if self.prj.cfg["multi_result_files"] is True:
+            pipeline_types = ["sample", "project"]
+        else:
+            pipeline_types = [self.prj.backend.pipeline_type]
+
+        for pipeline_type in pipeline_types:
+            self.prj.backend.pipeline_type = pipeline_type
+            for sample in self.prj.backend.select_records()["records"]:
+                sample_name = sample["record_identifier"]
+                page_name = os.path.join(
+                    self.pipeline_reports,
+                    f"{sample_name}.html".replace(" ", "%20").lower(),
+                )
+                relpaths.append(_make_relpath(page_name, wd, context))
+                sample_names.append(sample_name)
 
         return relpaths, sample_names
 
@@ -870,47 +1043,66 @@ def create_status_table(project, pipeline_reports_dir: str) -> str:
     times = []
     mems = []
     status_descs = []
-    for sample in project.backend.select_records()["records"]:
-        sample_name = sample["record_identifier"]
-        psm = project
-        sample_names.append(sample_name)
-        # status and status style
-        try:
-            status = psm.get_status(record_identifier=sample_name)
-            statuses.append(status)
-            status_metadata = psm.status_schema[status]
-            status_styles.append(_rgb2hex(*status_metadata["color"]))
-            status_descs.append(status_metadata["description"])
-        except Exception as e:
-            _warn("status", e, sample_name)
-            statuses.append(NO_DATA_PLACEHOLDER)
-            status_styles.append(NO_DATA_PLACEHOLDER)
-            status_descs.append(NO_DATA_PLACEHOLDER)
-        sample_paths.append(f"{sample_name}.html".replace(" ", "_").lower())
-        # log file path
-        try:
-            log = psm.retrieve_one(record_identifier=sample_name, result_identifier="log")["path"]
-            assert os.path.exists(log), FileNotFoundError(f"Not found: {log}")
-            log_link_names.append(os.path.basename(log))
-            log_paths.append(os.path.relpath(log, pipeline_reports_dir))
-        except Exception as e:
-            _warn("log", e, sample)
-            log_link_names.append(NO_DATA_PLACEHOLDER)
-            log_paths.append("")
-        # runtime and peak mem
-        try:
-            profile = psm.retrieve_one(record_identifier=sample_name, result_identifier="profile")[
-                "path"
-            ]
-            assert os.path.exists(profile), FileNotFoundError(f"Not found: {profile}")
-            df = _pd.read_csv(profile, sep="\t", comment="#", names=PROFILE_COLNAMES)
-            df["runtime"] = _pd.to_timedelta(df["runtime"])
-            times.append(_get_runtime(df))
-            mems.append(_get_maxmem(df))
-        except Exception as e:
-            _warn("profile", e, sample)
-            times.append(NO_DATA_PLACEHOLDER)
-            mems.append(NO_DATA_PLACEHOLDER)
+
+    if project.cfg["multi_result_files"] is True:
+        pipeline_types = ["sample", "project"]
+    else:
+        pipeline_types = [project.backend.pipeline_type]
+
+    for pipeline_type in pipeline_types:
+        project.backend.pipeline_type = pipeline_type
+        for sample in project.backend.select_records()["records"]:
+            sample_name = sample["record_identifier"]
+            psm = project
+            sample_names.append(sample_name)
+            # status and status style
+            try:
+                if psm.cfg["multi_result_files"] is True:
+                    psm.cfg["record_identifier"] = sample_name
+                    temp_result_file_path = mk_abs_via_cfg(
+                        psm.resolve_results_file_path(psm.cfg["unresolved_result_path"]),
+                        psm.cfg["config_path"],
+                    )
+                    psm.backend.status_file_dir = os.path.dirname(
+                        mk_abs_via_cfg(temp_result_file_path, psm.cfg["config_path"])
+                    )
+                status = psm.get_status(record_identifier=sample_name)
+                statuses.append(status)
+                status_metadata = psm.status_schema[status]
+                status_styles.append(_rgb2hex(*status_metadata["color"]))
+                status_descs.append(status_metadata["description"])
+            except Exception as e:
+                _warn("status", e, sample_name)
+                statuses.append(NO_DATA_PLACEHOLDER)
+                status_styles.append(NO_DATA_PLACEHOLDER)
+                status_descs.append(NO_DATA_PLACEHOLDER)
+            sample_paths.append(f"{sample_name}.html".replace(" ", "_").lower())
+            # log file path
+            try:
+                log = glob.glob(psm.backend.status_file_dir + "**/*log.md")[
+                    0
+                ]  # Assumes the log file will be in status dir
+                assert os.path.exists(log), FileNotFoundError(f"Not found: {log}")
+                log_link_names.append(os.path.basename(log))
+                log_paths.append(os.path.relpath(log, pipeline_reports_dir))
+            except Exception as e:
+                _warn("log", e, sample)
+                log_link_names.append(NO_DATA_PLACEHOLDER)
+                log_paths.append("")
+            # runtime and peak mem
+            try:
+                profile = glob.glob(psm.backend.status_file_dir + "**/*profile.tsv")[
+                    0
+                ]  # Assumes the profile file will be in status dir
+                assert os.path.exists(profile), FileNotFoundError(f"Not found: {profile}")
+                df = _pd.read_csv(profile, sep="\t", comment="#", names=PROFILE_COLNAMES)
+                df["runtime"] = _pd.to_timedelta(df["runtime"])
+                times.append(_get_runtime(df))
+                mems.append(_get_maxmem(df))
+            except Exception as e:
+                _warn("profile", e, sample)
+                times.append(NO_DATA_PLACEHOLDER)
+                mems.append(NO_DATA_PLACEHOLDER)
 
     template_vars = dict(
         sample_names=sample_names,
@@ -1052,40 +1244,59 @@ def _create_stats_objs_summaries(prj, pipeline_name: str) -> List[str]:
     reported_objects = {}
     stats = []
 
-    if prj.cfg[PIPELINE_TYPE] == "sample":
-        columns = ["Sample Index", "Sample Name", "Results"]
-    else:
-        columns = ["Sample Index", "Project Name", "Sample Name", "Results"]
+    columns = ["Sample Index", "Record Identifier", "Pipeline Type"]
 
-    records = prj.backend.select_records()["records"]
     record_index = 0
-    for record in records:
-        record_index += 1
-        record_name = record["record_identifier"]
 
-        if prj.cfg[PIPELINE_TYPE] == "sample":
-            reported_stats = [record_index, record_name]
-            rep_data = prj.retrieve_one(record_identifier=record_name)
-        else:
-            rep_data = prj.retrieve_one(record_identifier=record_name)
-            reported_stats = [
-                record_index,
-                prj.cfg[PROJECT_NAME] or "No Project Name Supplied",
-                record_name,
-            ]
+    all_result_identifiers = list(prj.result_schemas.keys())
 
-        for k, v in rep_data.items():
-            if v:
-                if k in prj.result_schemas and prj.result_schemas[k]["type"] in OBJECT_TYPES:
-                    sample_reported_objects = {k: dict(v)}
-                    if record_name in reported_objects:
-                        reported_objects[record_name].update(sample_reported_objects)
-                    else:
-                        reported_objects.update({record_name: sample_reported_objects})
-                if k in prj.result_schemas and prj.result_schemas[k]["type"] not in OBJECT_TYPES:
-                    reported_stats.append(k)
-                    reported_stats.append(v)
-        stats.append(reported_stats)
+    if prj.cfg["multi_result_files"] is True:
+        pipeline_types = ["sample", "project"]
+    else:
+        pipeline_types = [prj.backend.pipeline_type]
+
+    for pipeline_type in pipeline_types:
+        prj.backend.pipeline_type = pipeline_type
+        records = prj.backend.select_records()["records"]
+        for record in records:
+            record_index += 1
+            record_name = record["record_identifier"]
+
+            if prj.cfg[PIPELINE_TYPE] == "sample":
+                reported_stats = [record_index, record_name, "sample"]
+                rep_data = prj.retrieve_one(record_identifier=record_name)
+            else:
+                rep_data = prj.retrieve_one(record_identifier=record_name)
+                reported_stats = [record_index, record_name, "project"]
+            for key in all_result_identifiers:
+                if key not in rep_data.keys():
+                    rep_data[key] = "None reported"
+
+            # Sort to ensure alignment in the table
+            rep_data = dict(sorted(rep_data.items()))
+
+            for k, v in rep_data.items():
+                if v:
+                    if k in prj.result_schemas and prj.result_schemas[k]["type"] in OBJECT_TYPES:
+                        if k in all_result_identifiers:
+                            all_result_identifiers.remove(k)
+                        if v is not "None reported":
+                            sample_reported_objects = {k: dict(v)}
+                        else:
+                            sample_reported_objects = {k: "None reported"}
+                        if record_name in reported_objects:
+                            reported_objects[record_name].update(sample_reported_objects)
+                        else:
+                            reported_objects.update({record_name: sample_reported_objects})
+                    if (
+                        k in prj.result_schemas
+                        and prj.result_schemas[k]["type"] not in OBJECT_TYPES
+                    ):
+                        if k not in columns:
+                            columns.append(k)
+                        reported_stats.append(v)
+
+            stats.append(reported_stats)
 
     # Stats File
     tsv_outfile_path = get_file_for_table(prj, pipeline_name, "stats_summary.tsv")
