@@ -463,12 +463,16 @@ class HTMLReportBuilder(object):
                 if "description" in self.schema[result_id]
                 else ""
             )
-            links.append(
-                [
-                    f"<b>{result['title']}</b>: {desc}",
-                    os.path.relpath(result["path"], self.pipeline_reports),
-                ]
-            )
+            if result:
+                try:
+                    links.append(
+                        [
+                            f"<b>{result['title']}</b>: {desc}",
+                            os.path.relpath(result["path"], self.pipeline_reports),
+                        ]
+                    )
+                except FileNotFoundError:
+                    _LOGGER.warning(f"File not found for {result_id} and {result}")
         image_results = fetch_pipeline_results(
             project=self.prj,
             sample_name=sample_name,
@@ -476,13 +480,17 @@ class HTMLReportBuilder(object):
         )
         figures = []
         for result_id, result in image_results.items():
-            figures.append(
-                [
-                    os.path.relpath(result["path"], self.pipeline_reports),
-                    result["title"],
-                    os.path.relpath(result["thumbnail_path"], self.pipeline_reports),
-                ]
-            )
+            if result:
+                try:
+                    figures.append(
+                        [
+                            os.path.relpath(result["path"], self.pipeline_reports),
+                            result["title"],
+                            os.path.relpath(result["thumbnail_path"], self.pipeline_reports),
+                        ]
+                    )
+                except FileNotFoundError:
+                    _LOGGER.warning(f"File not found for {result_id} and {result}")
 
         template_vars = dict(
             report_class="Sample",
@@ -1000,7 +1008,8 @@ def fetch_pipeline_results(
     results = {
         k: casting_fun(v)
         for k, v in rep_data.items()
-        if k in psm.result_schemas and inclusion_fun(psm.result_schemas[k]["type"])
+        if k in psm.result_schemas
+        and inclusion_fun(psm.result_schemas[k].get("object_type", psm.result_schemas[k]["type"]))
     }
     if highlighted:
         return {k: v for k, v in results.items() if k in psm.highlighted_results}
