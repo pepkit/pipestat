@@ -684,7 +684,6 @@ class HTMLReportBuilder(object):
         if not os.path.exists(self.pipeline_reports):
             os.makedirs(self.pipeline_reports)
         for file_result in file_results:
-            links = []
             html_page_path = os.path.join(self.pipeline_reports, f"{file_result}.html".lower())
 
             pipeline_types = ["project"]
@@ -703,7 +702,7 @@ class HTMLReportBuilder(object):
                         try:
                             links.append(
                                 [
-                                    sample_name,
+                                    f"<b>{sample_result[file_result]['title']}</b>",
                                     os.path.relpath(
                                         sample_result[file_result]["path"],
                                         self.pipeline_reports,
@@ -721,12 +720,8 @@ class HTMLReportBuilder(object):
 
         for image_result in image_results:
             html_page_path = os.path.join(self.pipeline_reports, f"{image_result}.html".lower())
-            figures = []
 
-            if self.prj.cfg["multi_result_files"] is True:
-                pipeline_types = ["sample", "project"]
-            else:
-                pipeline_types = [self.prj.backend.pipeline_type]
+            pipeline_types = ["project"]
 
             for pipeline_type in pipeline_types:
                 self.prj.backend.pipeline_type = pipeline_type
@@ -746,7 +741,7 @@ class HTMLReportBuilder(object):
                                         sample_result[image_result]["path"],
                                         self.pipeline_reports,
                                     ),
-                                    sample_name,
+                                    sample_result[image_result]["title"],
                                     os.path.relpath(
                                         sample_result[image_result]["thumbnail_path"],
                                         self.pipeline_reports,
