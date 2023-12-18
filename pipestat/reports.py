@@ -1228,7 +1228,7 @@ def get_file_for_table(prj, pipeline_name: str, appendix=None, directory=None) -
     table_dir = output_dir or results_file_path or config_path
     if not os.path.isdir(table_dir):
         table_dir = os.path.dirname(table_dir)
-    fp = os.path.join(table_dir, directory or "", f"{prj.cfg[PROJECT_NAME]}_{pipeline_name}")
+    fp = os.path.join(table_dir, directory or "", f"{pipeline_name}")
     if hasattr(prj, "amendments") and getattr(prj, "amendments"):
         fp += f"_{'_'.join(prj.amendments)}"
     fp += f"_{appendix}"
