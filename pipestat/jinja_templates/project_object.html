@@ -5,31 +5,22 @@
 	</div>
 </div>
 {% endif %}
-{% if figures[0] is defined %}
-<div class="row">
-	<div class="col-12">
-		<h5>Figures</h5>
-	</div>
-</div>
-<div class="row">
-	<div class="col-12">
-		<!-- figures go here -->
-		<div class='row justify-content-start'>
-			{% for figure in figures %}
-			<figure class="figure">
-				<a href='{{ figure[0] }}'>
-					<img id="fig" src='{{ figure[2] }}' class="figure-img img-fluid rounded" alt="">
-				</a>
-				<a href='{{ figure[0] }}'>
-					<figcaption class="figure-caption text-left"><b>Fig.{{ loop.index }} </b><i>{{ figure[1] }}</i>
-					</figcaption>
-				</a>
-			</figure>
-			{% endfor %}
-		</div>
-	</div>
-</div>
-{% endif %}
+ <div class='container-fluid'>
+            {% if figures[0] is defined %}
+            <h5>Figures</h5>
+            {% for figure in figures %}
+            <figure class="figure">
+                <a href='{{ figure[0] }}'>
+                    <img id="fig" src='{{ figure[2] }}' class="figure-img img-fluid rounded" alt="">
+                </a>
+                <a href='{{ figure[0] }}'>
+                    <figcaption class="figure-caption text-center"><b>Fig.{{ loop.index }} </b><i>{{ figure[1] }}</i>
+                    </figcaption>
+                </a>
+            </figure>
+            {% endfor %}
+            {% endif %}
+ </div>
 {% if links[0] is defined %}
 <div class="row">
 	<div class="col-12">

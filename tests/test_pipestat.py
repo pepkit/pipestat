@@ -2132,36 +2132,3 @@ class TestMultiResultFiles:
             psm.summarize()
             data = YAMLConfigManager(filepath=os.path.join(temp_dir, "aggregate_results.yaml"))
             assert r_id in data[psm.pipeline_name][psm.pipeline_type].keys()
-
-    # @pytest.mark.parametrize("backend", ["file"])
-    # def test_temp(
-    #     self,
-    #     config_file_path,
-    #     results_file_path,
-    #     recursive_schema_file_path,
-    #     backend,
-    #     range_values,
-    # ):
-    #     # This is for temporary PEATAC testing for determining summarize function
-    #     with TemporaryDirectory() as d, ContextManagerDBTesting(DB_URL):
-    #         temp_dir = d
-    #         # single_results_file_path = "{record_identifier}/results.yaml"
-    #         # results_file_path = os.path.join(temp_dir, single_results_file_path)
-    #         # args = dict(schema_path=recursive_schema_file_path, database_only=False)
-    #         # n = 3
-    #         config_file_path = "/home/drc/pepatac_tutorial/processed/looper_pipestat_config.yaml"
-    #
-    #         # for i in range_values[:n]:
-    #         #     r_id = i[0]
-    #         #     val = i[1]
-    #         #     backend_data = {"record_identifier": r_id, "results_file_path": results_file_path}
-    #         #     args.update(backend_data)
-    #         #     psm = SamplePipestatManager(**args)
-    #         #     psm.report(record_identifier=r_id, values=val, force_overwrite=True)
-    #         psm = PipestatManager(config_file=config_file_path)
-    #         reportlink = psm.summarize()
-    #         print(reportlink)
-    #         statstsv = psm.table()
-    #         print(statstsv)
-    #         # data = YAMLConfigManager(filepath=os.path.join(temp_dir, "aggregate_results.yaml"))
-    #         # assert r_id in data[psm.pipeline_name][psm.pipeline_type].keys()
