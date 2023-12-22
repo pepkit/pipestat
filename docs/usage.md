@@ -72,7 +72,8 @@ options:
   -i I, --result-identifier I  ID of the result to report; needs to be defined in the
                                schema
   -r R, --record-identifier R  ID of the record to report the result for. If not provided
-                               'RECORD_IDENTIFIER' env var will be used. Currently not set
+                               'PIPESTAT_RECORD_IDENTIFIER' env var will be used.
+                               Currently not set
   -v V, --value V              Value of the result to report
   -o, --overwrite              Whether the result should override existing ones in case of
                                name clashes
@@ -144,7 +145,8 @@ options:
   -i I, --result-identifier I  ID of the result to report; needs to be defined in the
                                schema
   -r R, --record-identifier R  ID of the record to report the result for. If not provided
-                               'RECORD_IDENTIFIER' env var will be used. Currently not set
+                               'PIPESTAT_RECORD_IDENTIFIER' env var will be used.
+                               Currently not set
 ```
 
 ## `pipestat retrieve --help`
@@ -177,7 +179,8 @@ options:
                                pipestat backend.
   -p P, --pipeline-type P      project or sample level pipeline type.
   -r R, --record-identifier R  ID of the record to report the result for. If not provided
-                               'RECORD_IDENTIFIER' env var will be used. Currently not set
+                               'PIPESTAT_RECORD_IDENTIFIER' env var will be used.
+                               Currently not set
 ```
 
 ## `pipestat status --help`
@@ -225,7 +228,8 @@ options:
   --flag-dir FD                Path to the flag directory in case YAML file is the
                                pipestat backend.
   -r R, --record-identifier R  ID of the record to report the result for. If not provided
-                               'RECORD_IDENTIFIER' env var will be used. Currently not set
+                               'PIPESTAT_RECORD_IDENTIFIER' env var will be used.
+                               Currently not set
   -p P, --pipeline-type P      project or sample level pipeline type.
 ```
 
@@ -262,7 +266,8 @@ options:
   --flag-dir FD                Path to the flag directory in case YAML file is the
                                pipestat backend.
   -r R, --record-identifier R  ID of the record to report the result for. If not provided
-                               'RECORD_IDENTIFIER' env var will be used. Currently not set
+                               'PIPESTAT_RECORD_IDENTIFIER' env var will be used.
+                               Currently not set
   -p P, --pipeline-type P      project or sample level pipeline type.
 ```
 

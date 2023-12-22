@@ -2,7 +2,7 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
-## [0.6.0] - 2023-12-XX
+## [0.6.0] - 2023-12-22
 ### Added
 - `select_records`, which allows for a single API for selecting attributes (result_identifiers) given filter_conditions and/or columns
 - `retrieve_one`, and `retrieve_many` which allows for selecting one or multiple records given record_identifier
