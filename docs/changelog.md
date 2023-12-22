@@ -2,6 +2,7 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+
 ## [0.6.0] - 2023-12-22
 ### Added
 - `select_records`, which allows for a single API for selecting attributes (result_identifiers) given filter_conditions and/or columns
@@ -31,6 +32,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - `sample_name` -> `record_identifier`.
   - `pipeline_type` has been removed from most functions.
 - added optional dependencies for the database backend and pipestat reader, e.g. `pip install pipestat[dbbackend]`.
+
+## [0.5.2] - 2023-11-30
+### Fixed
+
+- add jinja2 to requirements doc.
 
 ## [0.5.1] - 2023-08-14
 ### Fixed
