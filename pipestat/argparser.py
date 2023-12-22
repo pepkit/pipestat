@@ -5,7 +5,7 @@ import os
 from ubiquerg import VersionInHelpParser
 from ._version import __version__
 
-from .const import *
+from .const import ENV_VARS, PKG_NAME, STATUS_SCHEMA
 
 REPORT_CMD = "report"
 INSPECT_CMD = "inspect"
@@ -14,6 +14,8 @@ RETRIEVE_CMD = "retrieve"
 STATUS_CMD = "status"
 INIT_CMD = "init"
 SUMMARIZE_CMD = "summarize"
+LINK_CMD = "link"
+SERVE_CMD = "serve"
 SUBPARSER_MESSAGES = {
     REPORT_CMD: "Report a result.",
     INSPECT_CMD: "Inspect a database.",
@@ -22,6 +24,8 @@ SUBPARSER_MESSAGES = {
     STATUS_CMD: "Manage pipeline status.",
     INIT_CMD: "Initialize generic config file",
     SUMMARIZE_CMD: "Generates HTML Report",
+    LINK_CMD: "Create symlinks of reported files",
+    SERVE_CMD: "Initializes pipestatreader API",
 }
 
 STATUS_GET_CMD = "get"
@@ -147,14 +151,21 @@ def build_argparser(desc):
             "--flag-dir",
             type=str,
             metavar="FD",
-            help=f"Path to the flag directory in case YAML file is " f"the pipestat backend.",
+            help="Path to the flag directory in case YAML file is the pipestat backend.",
         )
         status_sps[cmd].add_argument(
             "-r",
-            "--sample-name",
+            "--record-identifier",
             type=str,
             metavar="R",
-            help=f"ID of the record to report the result for. {_env_txt('sample_name')}",
+            help=f"ID of the record to report the result for. {_env_txt('record_identifier')}",
+        )
+        status_sps[cmd].add_argument(
+            "-p",
+            "--pipeline-type",
+            type=str,
+            metavar="P",
+            help="project or sample level pipeline type. ",
         )
 
     # remove, report and inspect
@@ -200,11 +211,18 @@ def build_argparser(desc):
             "--flag-dir",
             type=str,
             metavar="FD",
-            help=f"Path to the flag directory in case YAML file is " f"the pipestat backend.",
+            help="Path to the flag directory in case YAML file is the pipestat backend.",
+        )
+        sps[cmd].add_argument(
+            "-p",
+            "--pipeline-type",
+            type=str,
+            metavar="P",
+            help="project or sample level pipeline type. ",
         )
 
     # remove and report
-    for cmd in [REMOVE_CMD, REPORT_CMD, RETRIEVE_CMD]:
+    for cmd in [REMOVE_CMD, REPORT_CMD]:
         sps[cmd].add_argument(
             "-i",
             "--result-identifier",
@@ -215,11 +233,19 @@ def build_argparser(desc):
         )
         sps[cmd].add_argument(
             "-r",
-            "--sample-name",
+            "--record-identifier",
             type=str,
             metavar="R",
-            help=f"ID of the record to report the result for. {_env_txt('sample_name')}",
+            help=f"ID of the record to report the result for. {_env_txt('record_identifier')}",
         )
+
+    sps[RETRIEVE_CMD].add_argument(
+        "-r",
+        "--record-identifier",
+        type=str,
+        metavar="R",
+        help=f"ID of the record to report the result for. {_env_txt('record_identifier')}",
+    )
 
     # report
     sps[REPORT_CMD].add_argument(
@@ -256,6 +282,24 @@ def build_argparser(desc):
     sps[INSPECT_CMD].add_argument(
         "-d", "--data", action="store_true", help="Whether to display the data"
     )
+    # Serve
+    sps[SERVE_CMD].add_argument(
+        "-c",
+        "--config",
+        type=str,
+        metavar="C",
+        help=f"Path to the YAML configuration file. {_env_txt('config')}",
+    )
+    sps[SERVE_CMD].add_argument(
+        "--host",
+        type=str,
+        help="host address for uvicorn server.",
+    )
+    sps[SERVE_CMD].add_argument(
+        "--port",
+        type=int,
+        help="host address for uvicorn port.",
+    )
 
     # Summarize
     for cmd in [SUMMARIZE_CMD]:
@@ -281,6 +325,44 @@ def build_argparser(desc):
             type=str,
             metavar="S",
             help=f"Path to the schema that defines the results that can be reported. {_env_txt('schema')}",
+        )
+        sps[cmd].add_argument(
+            "-p",
+            "--pipeline-type",
+            type=str,
+            metavar="P",
+            help="project or sample level pipeline type. ",
+        )
+
+    # LINK
+    for cmd in [LINK_CMD]:
+        sps[cmd].add_argument(
+            "-f",
+            "--results-file",
+            type=str,
+            metavar="F",
+            help=f"Path to the YAML file where the results will be stored. "
+            f"This file will be used as {PKG_NAME} backend and to restore"
+            f" the reported results across sessions",
+        )
+        sps[cmd].add_argument(
+            "-c",
+            "--config",
+            type=str,
+            metavar="C",
+            help=f"Path to the YAML configuration file. {_env_txt('config')}",
+        )
+        sps[cmd].add_argument(
+            "-s",
+            "--schema",
+            type=str,
+            metavar="S",
+            help=f"Path to the schema that defines the results that can be reported. {_env_txt('schema')}",
+        )
+        sps[cmd].add_argument(
+            "--link-dir",
+            type=str,
+            help="Path to symlink directory ",
         )
 
     return parser

@@ -230,8 +230,7 @@
 	<div class="container">
 		<div class="row" style="margin-top: 20px; margin-bottom: 25px;">
 			<div class="col-10">
-				<h3>Looper summary</h3>
-				<h4 style="margin-bottom: 0px">Project name: <code>{{ project_name }}</code></h4>
+				<h3>Results summary</h3>
 				<h4 style="margin-bottom: 0px">Pipeline name: <code>{{ pipeline_name }}</code></h4>
 				{% if amendments is not none %}
 				<h4 style="margin-bottom: 0px;">Amendments: <code>{{ amendments|join(', ') }}</code></h4>
@@ -298,6 +297,7 @@
 				</div>
 			</div>
 		</div>
+		{{ project_objects }}
 	</div>
 </body>
 <hr class="featurette-divider">

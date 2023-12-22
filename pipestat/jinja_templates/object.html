@@ -19,7 +19,7 @@
 			<!-- Expects a 2 lists of lists: figures and links -->
 			{% if links[0] is defined %}
 		<ul class="list-group">
-			<li class="list-group-item list-group-item-dark" aria-current="true">Get a reported object for sample</li>
+			<li class="list-group-item list-group-item-dark" aria-current="true">Get a reported object for record</li>
 			{% for link in links %}
 			<a class="list-group-item list-group-item-action" href='{{ link[1] }}'>{{ link[0] }}</a>
 			{% endfor %}

@@ -16,7 +16,7 @@
 <body>
     <div class="container">
         <div class="container-fluid">
-            <h3>{{ report_class }} name: <code>{{ sample_name }}</code></h3>
+            <h3>Record Identifier: <code>{{ sample_name }}</code></h3>
             <h4>Pipeline name: <code>{{ pipeline_name }}</code></h4>
             {% if amendments is not none %}
             <h4 style="margin-bottom: 0px;">Amendments: <code>{{ amendments|join(', ') }}</code></h4>
@@ -69,7 +69,7 @@
             {% if links[0] is defined %}
             <h5>Links</h5>
             <ul class="list-group">
-                <li class="list-group-item list-group-item-dark" aria-current="true">Get a reported object for sample
+                <li class="list-group-item list-group-item-dark" aria-current="true">Get a reported object for record
                 </li>
                 {% for link in links %}
                 <a class="list-group-item list-group-item-action" href='{{ link[1] }}'>{{ link[0] }}</a>

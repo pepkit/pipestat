@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import *
 import pytest
 import oyaml
-from pipestat.const import SAMPLE_NAME, STATUS
+from pipestat.const import SAMPLE_NAME, STATUS, RECORD_IDENTIFIER
 from pipestat.exceptions import SchemaError
 from pipestat.parsed_schema import (
     NULL_MAPPING_VALUE,
@@ -227,10 +227,10 @@ SIMPLE_PROJECT_DATA = [("pct", {"type": "number", "description": "percentage"})]
         ]
         for extra in [
             [("id", {"type": "string", "description": "identifier"})],
-            [(SAMPLE_NAME, {"type": "string", "description": "identifier"})],
+            [(RECORD_IDENTIFIER, {"type": "string", "description": "identifier"})],
             [
                 ("id", {"type": "string", "description": "identifier"}),
-                (SAMPLE_NAME, {"type": "string", "description": "identifier"}),
+                (RECORD_IDENTIFIER, {"type": "string", "description": "identifier"}),
             ],
         ]
     ],
@@ -257,3 +257,21 @@ def test_sample_project_data_item_name_overlap__raises_expected_error_and_messag
     obs_msg = str(err_ctx.value)
     exp_msg = f"Overlap between project- and sample-level keys: {common_key}"
     assert obs_msg == exp_msg
+
+
+def test_JSON_schema_validation(output_schema_as_JSON_schema):
+    schema = ParsedSchema(output_schema_as_JSON_schema)
+    assert "number_of_things" in dict(schema.sample_level_data).keys()
+
+
+def test_JSON_schema_resolved_original(output_schema_as_JSON_schema, output_schema_no_refs):
+    # schema with defs and refs
+    schema = ParsedSchema(output_schema_as_JSON_schema)
+    print(schema.original_schema)
+    print(schema.resolved_schema)
+
+    # Schema without refs and defs
+    schema2 = ParsedSchema(output_schema_no_refs)
+    print(schema2.original_schema)
+    print(schema2.resolved_schema)
+    print("done")

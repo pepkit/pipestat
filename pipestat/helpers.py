@@ -1,23 +1,24 @@
 """Assorted project utilities"""
 
 import logging
+import glob
 import os
+import errno
 import yaml
 import jsonschema
-from json import dumps, loads
+from json import dumps
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union, List
 
-import sqlalchemy.orm
-import sqlmodel.sql.expression
-from sqlmodel.main import SQLModel
 from oyaml import safe_load
-from sqlmodel.sql.expression import SelectOfScalar
 from ubiquerg import expandpath
-from urllib.parse import quote_plus
 
-from .const import *
-from .exceptions import *
+from .const import (
+    PIPESTAT_GENERIC_CONFIG,
+    SCHEMA_PROP_KEY,
+    SCHEMA_TYPE_KEY,
+    CLASSES_BY_TYPE,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -115,91 +116,22 @@ def mk_abs_via_cfg(
         return path
     if cfg_path is None:
         rel_to_cwd = os.path.join(os.getcwd(), path)
+        try:
+            os.makedirs(os.path.dirname(rel_to_cwd))
+        except FileExistsError:
+            pass
         if os.path.exists(rel_to_cwd) or os.access(os.path.dirname(rel_to_cwd), os.W_OK):
             return rel_to_cwd
         else:
             raise OSError(f"File not found: {path}")
     joined = os.path.join(os.path.dirname(cfg_path), path)
+    try:
+        os.makedirs(os.path.dirname(joined))
+    except FileExistsError:
+        pass
     if os.path.isabs(joined):
         return joined
     raise OSError(f"Could not make this path absolute: {path}")
-
-
-def construct_db_url(dbconf):
-    """Builds database URL from config settings"""
-    try:
-        creds = dict(
-            name=dbconf["name"],
-            user=dbconf["user"],
-            passwd=dbconf["password"],
-            host=dbconf["host"],
-            port=dbconf["port"],
-            dialect=dbconf["dialect"],
-            driver=dbconf["driver"],
-        )  # driver = sqlite, mysql, postgresql, oracle, or mssql
-    except KeyError as e:
-        raise MissingConfigDataError(f"Could not determine database URL. Caught error: {str(e)}")
-    parsed_creds = {k: quote_plus(str(v)) for k, v in creds.items()}
-    return "{dialect}+{driver}://{user}:{passwd}@{host}:{port}/{name}".format(**parsed_creds)
-
-
-def dynamic_filter(
-    ORM: SQLModel,
-    statement: SelectOfScalar,
-    filter_conditions: Optional[List[Tuple[str, str, Union[str, List[str]]]]] = None,
-    json_filter_conditions: Optional[List[Tuple[str, str, str]]] = None,
-) -> sqlmodel.sql.expression.SelectOfScalar:
-    """
-    Return filtered query based on condition.
-
-    :param sqlalchemy.orm.DeclarativeMeta ORM:
-    :param sqlalchemy.orm.Query query: takes query
-    :param [(key,operator,value)] filter_conditions: e.g. [("id", "eq", 1)] operator list
-        - eq for ==
-        - lt for <
-        - ge for >=
-        - in for in_
-        - like for like
-    :param [(col,key,value)] json_filter_conditions: conditions for JSONB column to query.
-        Only '==' is supported e.g. [("other", "genome", "hg38")]
-    :return: query
-    """
-
-    def _unpack_tripartite(x):
-        if not (isinstance(x, List) or isinstance(x, Tuple)):
-            raise TypeError("Wrong filter class; a List or Tuple is required")
-        if len(x) != 3:
-            raise ValueError(
-                f"Invalid filter value: {x}. The filter must be a tripartite iterable"
-            )
-        return tuple(x)
-
-    if filter_conditions is not None:
-        for filter_condition in filter_conditions:
-            key, op, value = _unpack_tripartite(filter_condition)
-            column = getattr(ORM, key, None)
-            if column is None:
-                raise ValueError(f"Selected filter column does not exist: {key}")
-            if op == "in":
-                filt = column.in_(value if isinstance(value, list) else value.split(","))
-            else:
-                attr = next(
-                    filter(lambda a: hasattr(column, a), [op, op + "_", f"__{op}__"]),
-                    None,
-                )
-                if attr is None:
-                    raise ValueError(f"Invalid filter operator: {op}")
-                if value == "null":
-                    value = None
-                filt = getattr(column, attr)(value)
-            statement = statement.where(filt)
-
-    if json_filter_conditions is not None:
-        for json_filter_condition in json_filter_conditions:
-            col, key, value = _unpack_tripartite(json_filter_condition)
-            statement = statement.where(getattr(ORM, col) == value)
-
-    return statement
 
 
 def init_generic_config():
@@ -221,7 +153,7 @@ def init_generic_config():
         "schema_path": "sample_output_schema.yaml",
         "database": {
             "dialect": "postgresql",
-            "driver": "psycopg2",
+            "driver": "psycopg",
             "name": "pipestat-test",
             "user": "postgres",
             "password": "pipestat-password",
@@ -240,28 +172,28 @@ def init_generic_config():
     return True
 
 
-def markdown_formatter(pipeline_name, sample_name, res_id, value) -> str:
+def markdown_formatter(pipeline_name, record_identifier, res_id, value) -> str:
     """
     Returns Markdown formatted value as string
     """
-    if type(value) is not dict:
+    if not isinstance(value, dict):
         nl = "\n"
         rep_strs = [f"`{res_id}`: ```{value}```"]
         formatted_result = (
-            f"\n > Reported records for `'{sample_name}'` in `'{pipeline_name}'` {nl} "
+            f"\n > Reported records for `'{record_identifier}'` in `'{pipeline_name}'` {nl} "
             + f"{nl} {(nl).join(rep_strs)}"
         )
     else:
         nl = "\n"
         rep_strs = [f"`{res_id}`:\n ```\n{dumps(value, indent=2)}\n```"]
         formatted_result = (
-            f"\n > Reported records for `'{sample_name}'` in `'{pipeline_name}'` {nl} "
+            f"\n > Reported records for `'{record_identifier}'` in `'{pipeline_name}'` {nl} "
             + f"{nl} {(nl).join(rep_strs)}"
         )
     return formatted_result
 
 
-def default_formatter(pipeline_name, sample_name, res_id, value) -> str:
+def default_formatter(pipeline_name, record_identifier, res_id, value) -> str:
     """
     Returns formatted value as string
     """
@@ -269,7 +201,31 @@ def default_formatter(pipeline_name, sample_name, res_id, value) -> str:
     nl = "\n"
     rep_strs = [f"{res_id}: {value}"]
     formatted_result = (
-        f"Reported records for '{sample_name}' in '{pipeline_name}' "
+        f"Reported records for '{record_identifier}' in '{pipeline_name}' "
         + f":{nl} - {(nl + ' - ').join(rep_strs)}"
     )
     return formatted_result
+
+
+def force_symlink(file1, file2):
+    """Create a symlink between two files."""
+    try:
+        os.symlink(file1, file2)
+    except OSError as e:
+        if e.errno == errno.EEXIST:
+            _LOGGER.warning(
+                f"Symlink collision detected for {file1} and {file2}. Overwriting symlink."
+            )
+            os.remove(file2)
+            os.symlink(file1, file2)
+
+
+def get_all_result_files(results_file_path: str) -> List:
+    """
+    Collects any yaml result files relative to the CURRENT results_file_path
+    :param str results_file_path: path to the pipestamanager's current result_file
+    :return: list
+    """
+    files = glob.glob(results_file_path + "**/*.yaml")
+
+    return files

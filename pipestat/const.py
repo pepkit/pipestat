@@ -12,6 +12,8 @@ if int(sys.version.split(".")[1]) < 9:
 else:
     list_of_dicts = list[dict]
 
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+
 
 __all__ = [
     "CANONICAL_TYPES",
@@ -57,6 +59,10 @@ __all__ = [
     "TEMPLATES_DIRNAME",
     "NO_DATA_PLACEHOLDER",
     "PROFILE_COLNAMES",
+    "OUTPUT_DIR",
+    "RECORD_IDENTIFIER",
+    "CREATED_TIME",
+    "MODIFIED_TIME",
 ]
 
 PKG_NAME = "pipestat"
@@ -73,7 +79,10 @@ SCHEMA_ITEMS_KEY = "items"
 
 # DB column names
 SAMPLE_NAME = "sample_name"
+RECORD_IDENTIFIER = "record_identifier"
 STATUS = "status"
+CREATED_TIME = "pipestat_created_time"
+MODIFIED_TIME = "pipestat_modified_time"
 
 CANONICAL_TYPES = {
     "image": {
@@ -102,6 +111,8 @@ ENV_VARS = {
     "schema": "PIPESTAT_RESULTS_SCHEMA",
     "status_schema": "PIPESTAT_STATUS_SCHEMA",
     "sample_name": "PIPESTAT_SAMPLE_NAME",
+    "record_identifier": "PIPESTAT_RECORD_IDENTIFIER",
+    "pipeline_type": "PIPELINE_TYPE",
 }
 
 CLASSES_BY_TYPE = {
@@ -138,7 +149,7 @@ STATUS_FILE_DIR = "_status_file_dir"
 STATUS_SCHEMA_KEY = "_status_schema"
 STATUS_SCHEMA_SOURCE_KEY = "_status_schema_source"
 PROJECT_NAME = "project_name"
-PIPELINE_NAME = "_pipeline_name"
+PIPELINE_NAME = "pipeline_name"
 PIPELINE_TYPE = "_pipeline_type"
 DB_URL = "_db_url"
 SCHEMA_PATH = "_schema_path"
@@ -148,6 +159,7 @@ RESULT_FORMATTER = "_result_formatter"
 DEFAULT_PIPELINE_NAME = "default_pipeline_name"
 MULTI_PIPELINE = "_multi_pipelines"
 TEMPLATES_DIRNAME = "jinja_templates"
+OUTPUT_DIR = "_output_dir"
 
 
 OBJECT_TYPES = ["object", "file", "image", "array"]

@@ -16,21 +16,40 @@ from .argparser import (
     STATUS_SET_CMD,
     INIT_CMD,
     SUMMARIZE_CMD,
+    SERVE_CMD,
+    LINK_CMD,
 )
-from .const import *
-from .exceptions import SchemaNotFoundError, PipestatStartupError
-from .pipestat import PipestatManager
+from .const import (
+    SCHEMA_KEY,
+    SCHEMA_TYPE_KEY,
+    CANONICAL_TYPES,
+    PKG_NAME,
+)
+from .exceptions import (
+    SchemaNotFoundError,
+    PipestatStartupError,
+)
+from .pipestat import PipestatManager, check_dependencies
 from .helpers import init_generic_config
+
+try:
+    from pipestat.pipestatreader.reader import main as readermain
+except ImportError:
+    # We let this pass, but if the user attempts to user pipestat.serve check_dependencies raises exception.
+    pass
 
 _LOGGER = getLogger(PKG_NAME)
 
 
-def main():
+def main(test_args=None):
     """Primary workflow"""
     from inspect import getdoc
 
     parser = logmuse.add_logging_options(build_argparser(getdoc(PipestatManager)))
-    args = parser.parse_args()
+    if test_args:
+        args = parser.parse_args(test_args)
+    else:
+        args = parser.parse_args()
     if args.command is None:
         parser.print_help(sys.stderr)
         sys.exit(1)
@@ -39,24 +58,55 @@ def main():
     _LOGGER.debug("Args namespace:\n{}".format(args))
     if args.command == INIT_CMD:
         sys.exit(int(not init_generic_config()))
-    if args.config and not args.schema and args.command != STATUS_CMD:
-        parser.error("the following arguments are required: -s/--schema")
+    # if args.config and not args.schema and args.command != STATUS_CMD:
+    #     parser.error("the following arguments are required: -s/--schema")
     if not args.config and not args.results_file:
-        msg = (
-            "Either a config file or a results file must be provided. Either must be supplied to the object "
-            "constructor or via environment variable. \nPlease see: http://pipestat.databio.org/en/dev/cli/"
-        )
-        raise PipestatStartupError(msg)
+        # Try to get either the config or the results file from env variables:
+        args.config = os.getenv("PIPESTAT_CONFIG")
+        args.results_file = os.getenv("PIPESTAT_RESULTS_FILE")
+        if not args.config and not args.results_file:
+            msg = (
+                "Either a config file or a results file must be provided. Either must be supplied to the object "
+                "constructor or via environment variable. \nPlease see: http://pipestat.databio.org/en/dev/cli/"
+            )
+            raise PipestatStartupError(msg)
+        else:
+            # at least config or results_file was found, so simply pass
+            pass
+
     if args.command == SUMMARIZE_CMD:
         psm = PipestatManager(
             schema_path=args.schema,
             results_file_path=args.results_file,
             config_file=args.config,
+            pipeline_type=args.pipeline_type,
         )
         results_path = args.config or args.results_file
         html_report_path = psm.summarize()
         _LOGGER.info(f"\nGenerating HTML Report from {results_path} at: {html_report_path}\n")
 
+        sys.exit(0)
+
+    if args.command == LINK_CMD:
+        psm = PipestatManager(
+            schema_path=args.schema,
+            results_file_path=args.results_file,
+            config_file=args.config,
+        )
+        linkdir = psm.link(link_dir=args.link_dir)
+        _LOGGER.info(f"\nGenerating symlink directory at: {linkdir}\n")
+        sys.exit(0)
+
+    if args.command == SERVE_CMD:
+
+        @check_dependencies(
+            dependency_list=["readermain"],
+            msg="Missing required dependencies for this usage, e.g. try pip install pipestat['pipestatreader']",
+        )
+        def call_reader():
+            readermain(configfile=args.config, host=args.host, port=args.port)
+
+        call_reader()
         sys.exit(0)
 
     psm = PipestatManager(
@@ -65,13 +115,19 @@ def main():
         config_file=args.config,
         database_only=args.database_only,
         flag_file_dir=args.flag_dir,
+        pipeline_type=args.pipeline_type,
     )
     types_to_read_from_json = ["object"] + list(CANONICAL_TYPES.keys())
+
+    # The next few commands require a record_identifier. Need to also check ENV variables for its existence.
+    if args.record_identifier is None:
+        args.record_identifier = os.getenv("PIPESTAT_RECORD_IDENTIFIER")
+
     if args.command == REPORT_CMD:
         value = args.value
-        if psm.schema is None:
+        if psm.cfg[SCHEMA_KEY] is None:
             raise SchemaNotFoundError(msg="report", cli=True)
-        result_metadata = psm.schema.results_data[args.result_identifier]
+        result_metadata = psm.cfg[SCHEMA_KEY].results_data[args.result_identifier]
         if result_metadata[SCHEMA_TYPE_KEY] in types_to_read_from_json:
             path_to_read = expandpath(value)
             if os.path.exists(path_to_read):
@@ -84,7 +140,7 @@ def main():
                 _LOGGER.info(f"Path to read for {value} doesn't exist: {path_to_read}")
 
         reported_results = psm.report(
-            sample_name=args.sample_name,
+            record_identifier=args.record_identifier,
             values={args.result_identifier: value},
             force_overwrite=args.overwrite,
             strict_type=args.skip_convert,
@@ -101,22 +157,21 @@ def main():
     if args.command == REMOVE_CMD:
         psm.remove(
             result_identifier=args.result_identifier,
-            sample_name=args.sample_name,
+            record_identifier=args.record_identifier,
         )
     if args.command == RETRIEVE_CMD:
         print(
-            psm.retrieve(
-                result_identifier=args.result_identifier,
-                sample_name=args.sample_name,
+            psm.retrieve_one(
+                record_identifier=args.record_identifier,
             )
         )
     if args.command == STATUS_CMD:
         if args.subcommand == STATUS_GET_CMD:
-            print(psm.get_status(sample_name=args.sample_name))
+            print(psm.get_status(record_identifier=args.record_identifier))
         if args.subcommand == STATUS_SET_CMD:
             psm.set_status(
                 status_identifier=args.status_identifier,
-                sample_name=args.sample_name,
+                record_identifier=args.record_identifier,
             )
 
     sys.exit(0)

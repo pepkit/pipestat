@@ -1,7 +1,7 @@
 """ Package exception types """
 
-from typing import *
-from .const import *
+from typing import Iterable, Optional
+from .const import CLASSES_BY_TYPE, ENV_VARS
 
 __all__ = [
     "InvalidTypeError",
@@ -14,7 +14,27 @@ __all__ = [
     "SchemaNotFoundError",
     "PipestatDataError",
     "UnrecognizedStatusError",
+    "RecordNotFoundError",
+    "PipelineTypeNotSuppliedError",
+    "InvalidTimeFormatError",
+    "PipestatDependencyError",
+    "ColumnNotFoundError",
 ]
+
+
+class RecordNotFoundError(LookupError):
+    def __init__(self, msg):
+        super(RecordNotFoundError, self).__init__(msg)
+
+
+class ColumnNotFoundError(LookupError):
+    def __init__(self, msg):
+        super(ColumnNotFoundError, self).__init__(msg)
+
+
+class PipelineTypeNotSuppliedError(LookupError):
+    def __init__(self, msg):
+        super(PipelineTypeNotSuppliedError, self).__init__(msg)
 
 
 class PipestatError(Exception):
@@ -38,7 +58,7 @@ class SchemaNotFoundError(SchemaError):
     def __init__(self, msg, cli=False):
         txt = f"Results schema not found. The schema is required to {msg}. "
         txt += (
-            f"It needs to be supplied as an CLI argument"
+            "It needs to be supplied as an CLI argument"
             if cli
             else "It needs to be supplied to the object constructor"
         )
@@ -67,6 +87,20 @@ class PipestatDataError(PipestatError):
 
     def __init__(self, msg):
         super(PipestatDataError, self).__init__(msg)
+
+
+class InvalidTimeFormatError(PipestatError):
+    """Data error for local data associated with file backend"""
+
+    def __init__(self, msg):
+        super(InvalidTimeFormatError, self).__init__(msg)
+
+
+class PipestatDependencyError(PipestatError):
+    """Dependency error"""
+
+    def __init__(self, msg):
+        super(PipestatDependencyError, self).__init__(msg)
 
 
 class PipestatDatabaseError(PipestatError):

@@ -22,6 +22,30 @@ with open("requirements/requirements-all.txt", "r") as reqs_file:
 extra["install_requires"] = DEPENDENCIES
 
 
+# Optional dependencies
+# Extras requires a dictionary and not a list?
+OPT_DEPENDENCIES = {}
+with open("requirements/requirements-db-backend.txt", "r") as reqs_file:
+    lines = []
+    for line in reqs_file:
+        if not line.strip():
+            continue
+        # OPT_DEPENDENCIES.update({str(line.strip()):line.strip()})
+        lines.append(line.strip())
+    OPT_DEPENDENCIES.update({"dbbackend": lines})
+
+with open("requirements/requirements-pipestatreader.txt", "r") as reqs_file:
+    lines = []
+    for line in reqs_file:
+        if not line.strip():
+            continue
+        # OPT_DEPENDENCIES.update({str(line.strip()):line.strip()})
+        lines.append(line.strip())
+    OPT_DEPENDENCIES.update({"pipestatreader": lines})
+
+extra["extras_require"] = OPT_DEPENDENCIES
+
+
 # Additional files to include with package
 def get_static(name, condition=None):
     static = [

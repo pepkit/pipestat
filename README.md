@@ -18,7 +18,6 @@ First you need a local demo instance of posgres running to test the database bac
 
 ```
 docker run --rm -it -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=pipestat-password -e POSTGRES_DB=pipestat-test -p 5432:5432 postgres
-
 ```
 
 Then, run tests:

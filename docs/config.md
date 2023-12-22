@@ -1,11 +1,10 @@
 # Pipestat configuration file specification
 
-All the relevant pieces of information required to initialize the `PipestatManager` object can be provided to the object constructor or as a command line argument in a a form of YAML-formatted **pipestat configuration file**.
+All the relevant pieces of information required to initialize the `PipestatManager` object can be provided to the object constructor or as a command line argument in the form of a YAML-formatted **pipestat configuration file**.
 
 ```yaml
-project_name: <project_name>
+record_identifier: <unique record identifier for either sample or project-level reporting>
 schema_path: <path to the schema>
-sample_name: <unique record identifier or sample name>
 results_file_path: <path to results file> # either "results_file_path"
 database: # or DB login credentials
   name: <database name>
@@ -19,7 +18,7 @@ database: # or DB login credentials
 
 If both `results_file_path` and DB login credentials are provided, the YAML results file is given priority.
 
-Any of the settings specified in the configuration file, apart from the database login credentials, can be overwritten with the respectively named arguments in the `PipestatManager` object constructor, which implies the fact that the configuration file is *required* only if the the intended pipestat back-end is a database.
+Any of the settings specified in the configuration file, apart from the database login credentials, can be overwritten with the respectively named arguments in the `PipestatManager` object constructor. Therefore, the configuration file is *required* only if the intended pipestat back-end is a database or if using pipestat in tandem with [Looper](https://looper.databio.org/en/dev/pipestat/).
 
 ## Example
 
@@ -38,7 +37,6 @@ docker run -d
 The configuration file should look like this:
 
 ```yaml
-project_name: my_pipeline
 schema_path: /path/to/schema.yaml
 database:
   name: pipestat-test
@@ -47,5 +45,5 @@ database:
   host: 127.0.0.1
   port: 5432
   dialect: postgresql
-  driver: psycopg2
+  driver: psycopg
 ```

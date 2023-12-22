@@ -15,14 +15,14 @@ This document outlines the specification for pipestat results. If your pipeline 
 - *result*: An element produced by a pipeline. Results have defined data types, described herein.
 - *result identifier*. The name of a result, such as `aligned_read_count` or `duplication_rate`.
 - *value*. The actual data for an output result for a given record.
-- *namespace*: A way to group results that belong together. This is typically an identifier for a particular pipeline, like `rnaseq-pipeline`. All results from this pipeline will share this namespace.
+- *namespace*: A way to group results that belong together. In the api, this is referenced via `pipeline_name`. This is typically an identifier for a particular pipeline, like `rnaseq-pipeline`. All results from this pipeline will share this namespace.
 - *record identifier*. An identifier for a particular pipeline run, such as a sample name.
 - *pipestat specification*: the way to structure a set of results stored from one or more pipeline runs.
 - *backend*. The technology underlying the result storage, which can be either a simple file or a database.
 
 # Data types
 
-Each *result* reported by a pipeline must have a specified data type. Pipestat is build on jsonschema types, so the jsonschema documentation outlines the [basic available types](https://cswr.github.io/JsonSchema/spec/basic_types/). These types are:
+Each *result* reported by a pipeline must have a specified data type. Pipestat is built on jsonschema types, so the jsonschema documentation outlines the [basic available types](https://cswr.github.io/JsonSchema/spec/basic_types/). These types are:
 
 - string
 - number
@@ -40,21 +40,21 @@ Importantly, pipestat extends the jsonschema vocabulary by adding two additional
     - `thumbnail`: path to the reported thumbnail, usually PNG or JPEG
     - `title`: human readable description of the image
 
-# Pipestat schema
+# Pipestat output schema
 
-Each pipestat-compatible pipeline must define a *pipestat schema*. The pipestat schema is where the pipeline author describes the results produced by the pipeline. The pipestat schema specifies:
+Each pipestat-compatible pipeline must define a *pipestat output schema*. The pipestat schema is where the pipeline author describes the results produced by the pipeline. The pipestat schema specifies:
 
 1. The result identifiers; that is, the immutable names of all the results reported by this pipeline.
 2. The data types associated with each result.
 3. Human-readable description of what each result represents.
 
-As a pipeline developer, your schema names, defines, and describes all of the important results to be recorded from your pipeline.
+As a pipeline developer, your schema defines and describes all the important results to be recorded from your pipeline.
 
 Pipestat uses the schema as a base for creating a collection of self-contained result-specific [jsonschema schemas](https://json-schema.org/) that are used to **validate** the reported results prior to storing them.
 
-## Pipestat schema format
+## Pipestat output schema format
 
-The pipestat schema is a YAML-formatted file. The top level keys are the unique result identifiers. The associated values are jsonschema schemas. The `type` attribute is required. This is an example of a minimal component, specifying only an identifier, and its type:
+The pipestat output schema is a YAML-formatted file. The top level keys are the unique result identifiers. The associated values are jsonschema types. The `type` attribute is required. This is an example of a minimal component, specifying only an identifier, and its type:
 
 ```yaml
 result_identifier:
@@ -64,61 +64,117 @@ result_identifier:
 Here, `result_identifier` can be whatever name you want to use to identify this result. Here's a simple schema example that showcases most of the supported types:
 
 ```yaml
-number_of_things:
-  type: integer
-  description: "Number of things"
-percentage_of_things:
-  type: number
-  description: "Percentage of things"
-name_of_something:
-  type: string
-  description: "Name of something"
-swtich_value:
-  type: boolean
-  description: "Is the switch on of off"
-collection_of_things:
-  type: array
-  description: "This store collection of values"
-output_object:
-  type: object
-  description: "Object output"
-output_file:
-  type: file
-  description: "This a path to the output file"
-output_image:
-  type: image
-  description: "This a path to the output image"
+title: Example Pipestat Output Schema
+description: A pipeline that uses pipestat to report sample level results.
+type: object
+properties:
+  pipeline_name: "default_pipeline_name"
+  samples:
+    type: object
+    properties: # result identifiers are properties of the samples object
+      number_of_things:
+        type: integer
+        description: "Number of things"
+      percentage_of_things:
+        type: number
+        description: "Percentage of things"
+      name_of_something:
+        type: string
+        description: "Name of something"
+      switch_value:
+        type: boolean
+        description: "Is the switch on or off"
 ```
 
 Here's a more complex schema example that showcases some of the more advanced jsonschema features:
 
 ```yaml
-number_of_things:
-  type: integer
-  description: "Number of things, min 20, multiple of 10"
-  multipleOf: 10
-  minimum: 20
-name_of_something:
-  type: string
-  description: "Name of something, min len 2 characters"
-  minLength: 2
-collection_of_things:
-  type: array
-  items:
-    type: string
-  description: "This store collection of strings"
-output_object:
-  type: object
-  properties:
-    property1:
-      array:
+title: An example Pipestat output schema
+description: A pipeline that uses pipestat to report sample and project level results.
+type: object
+properties:
+  pipeline_name: "default_pipeline_name"
+  samples:
+    type: object
+    properties:
+      number_of_things:
+        type: integer
+        description: "Number of things"
+      percentage_of_things:
+        type: number
+        description: "Percentage of things"
+      name_of_something:
+        type: string
+        description: "Name of something"
+      switch_value:
+        type: boolean
+        description: "Is the switch on or off"
+      md5sum:
+        type: string
+        description: "MD5SUM of an object"
+        highlight: true
+      collection_of_images:
+        description: "This store collection of values or objects"
+        type: array
         items:
-          type: integer
-    property2:
-      type: boolean
-  required:
-    - property1
-  description: "Object output with required array of integers and optional boolean"
+          properties:
+              prop1:
+                description: "This is an example file"
+                $ref: "#/$defs/file"
+      output_file_in_object:
+        type: object
+        properties:
+          prop1:
+            description: "This is an example file"
+            $ref: "#/$defs/file"
+          prop2:
+            description: "This is an example image"
+            $ref: "#/$defs/image"
+        description: "Object output"
+      output_file_in_object_nested:
+        type: object
+        description: First Level
+        properties:
+          prop1:
+            type: object
+            description: Second Level
+            properties:
+              prop2:
+                type: integer
+                description: Third Level
+      output_file:
+        $ref: "#/$defs/file"
+        description: "This a path to the output file"
+      output_image:
+        $ref: "#/$defs/image"
+        description: "This a path to the output image"
+$defs:
+  image:
+    type: object
+    object_type: image
+    properties:
+      path:
+        type: string
+      thumbnail_path:
+        type: string
+      title:
+        type: string
+    required:
+      - path
+      - thumbnail_path
+      - title
+  file:
+    type: object
+    object_type: file
+    properties:
+      path:
+        type: string
+      title:
+        type: string
+    required:
+      - path
+      - title
+
 ```
 
 ## Results highlighting
@@ -139,22 +195,6 @@ log_file:
 ```
 
 The highlighted results can be later retrieved by pipestat clients via `PipestatManager.highlighted_results` property, which simply returns a list of result identifiers.
-
-## Database columns configuration (DB backend only)
-If the `PipestatManager` object is backed by a database, the database columns can be easily configured using the results schema via `db_column` section. For example:
-
-```yaml
-important_numeric_id:
-  type: integer
-  description: "An important ID that must be unique and always exist"
-  db_column:
-    unique: true
-    nullable: false
-```
-
-The values provided in the `db_column` section are passed to the `sqlalchemy.schema.Column` constructor. Therefore, please refer to [`sqlalchemy.Column` class constructor documentation](https://docs.sqlalchemy.org/en/14/core/metadata.html?highlight=column#sqlalchemy.schema.Column.__init__) to learn more about the keys that can be specified in this section.
-
-In the above example, the `important_numeric_id` result reported with the `PipestatManager` instance initialized with that schema will be forced to be always provided and unique across all records.
 
 # Status schema
 
