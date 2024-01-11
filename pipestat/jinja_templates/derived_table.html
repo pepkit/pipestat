@@ -1,0 +1,17 @@
+{% if rows[0] is defined %}
+<div class="row">
+	<div class="col-12">
+		<h5>Derived Attributes</h5>
+	</div>
+</div>
+<div class="row">
+	<div class="col-12">
+		<!-- the list of rows goes here -->
+		<div class="list-group" style="display:inline-block">
+			{% for row in rows %}
+			<a href='{{ row }}' class="list-group-item">{{ row }}</a>
+			{% endfor %}
+		</div>
+	</div>
+</div>
+{% endif %}

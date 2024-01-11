@@ -650,8 +650,19 @@ class HTMLReportBuilder(object):
 
         if self.looper_samples:
             try:
-                sources = self.looper_samples[0]._mapped_attr["_project"].config["sample_modifiers"]['derive']['sources']
-                derived_table = self.create_derived_table(derived_attributes=sources)
+                sources = (
+                    self.looper_samples[0]
+                    ._mapped_attr["_project"]
+                    .config["sample_modifiers"]["derive"]["sources"]
+                )
+                attributes = (
+                    self.looper_samples[0]
+                    ._mapped_attr["_project"]
+                    .config["sample_modifiers"]["derive"]["attributes"]
+                )
+                derived_table = self.create_derived_table(
+                    derived_sources=sources, derived_attributes=attributes
+                )
             except KeyError:
                 # No sample modifers or sources, so just pass
                 derived_table = None
@@ -670,6 +681,7 @@ class HTMLReportBuilder(object):
             pipeline_name=self.prj.cfg[PIPELINE_NAME],
             stats_json=self._stats_to_json_str(),
             project_objects=project_objects,
+            derived_table=derived_table,
             footer=footer,
             amendments="",
         )
@@ -679,15 +691,26 @@ class HTMLReportBuilder(object):
             render_jinja_template("index.html", self.jinja_env, template_vars),
         )
 
-    def create_derived_table(self, derived_attributes):
-        print("Placeholder")
-        if derived_attributes:
-            for k,v in derived_attributes.items():
-                print(f"{k}     {v}")
+    def create_derived_table(self, derived_sources, derived_attributes):
+        rows = []
+        if derived_sources and derived_attributes:
+            # simply concatenate for now, pairing the derived attrribute to the key value pair
+            for i in range(len(derived_attributes)):
+                row_text = (
+                    "Derived Attribute:  "
+                    + derived_attributes[i]
+                    + "Source Key:  "
+                    + list(derived_sources.keys())[i]
+                    + "Source Value:  "
+                    + list(derived_sources.values())[i]
+                )
+                rows.append(row_text)
 
-
-        return None
-
+        if rows != []:
+            template_vars = dict(rows=rows)
+            return render_jinja_template("derived_table.html", self.jinja_env, template_vars)
+        else:
+            return None
 
     def create_project_objects(self):
         """
