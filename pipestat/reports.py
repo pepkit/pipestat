@@ -647,6 +647,17 @@ class HTMLReportBuilder(object):
         )
 
         project_objects = self.create_project_objects()
+
+        if self.looper_samples:
+            try:
+                sources = self.looper_samples[0]._mapped_attr["_project"].config["sample_modifiers"]['derive']['sources']
+                derived_table = self.create_derived_table(derived_attributes=sources)
+            except KeyError:
+                # No sample modifers or sources, so just pass
+                derived_table = None
+        else:
+            derived_table = None
+
         columns = ["Record Identifiers"] + list(sorted_sample_stat_results.keys())
         template_vars = dict(
             navbar=navbar,
@@ -667,6 +678,16 @@ class HTMLReportBuilder(object):
             self.index_html_path,
             render_jinja_template("index.html", self.jinja_env, template_vars),
         )
+
+    def create_derived_table(self, derived_attributes):
+        print("Placeholder")
+        if derived_attributes:
+            for k,v in derived_attributes.items():
+                print(f"{k}     {v}")
+
+
+        return None
+
 
     def create_project_objects(self):
         """
