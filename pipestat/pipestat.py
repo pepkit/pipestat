@@ -280,7 +280,11 @@ class PipestatManager(MutableMapping):
         return result
 
     def __iter__(self):
-        return iter(self.cfg)
+        if self.file:
+            return iter(self.select_records()['records'])
+        else:
+            # For db backend
+            return iter(self.cfg)
 
     def __len__(self):
         return len(self.cfg)
