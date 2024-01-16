@@ -553,7 +553,7 @@ class HTMLReportBuilder(object):
         stats_file_path = stats_file_path if os.path.exists(stats_file_path) else None
 
         # Add objects_summary.yaml button link
-        objs_file_path = table_path_list[0]
+        objs_file_path = table_path_list[1]
 
         objs_file_path = objs_file_path if os.path.exists(objs_file_path) else None
 
