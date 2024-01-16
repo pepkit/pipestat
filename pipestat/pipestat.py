@@ -279,12 +279,16 @@ class PipestatManager(MutableMapping):
         result = self.remove(record_identifier=key)
         return result
 
-    def __iter__(self):
+    def __iter__(
+        self,
+        limit: Optional[int] = 1000,
+        cursor: Optional[int] = None,
+    ):
         if self.file:
-            return iter(self.select_records()['records'])
+            # File backend does not support cursor-based paging
+            return iter(self.select_records(limit=limit)["records"])
         else:
-            # For db backend
-            return iter(self.cfg)
+            return iter(self.select_records(limit=limit, cursor=cursor)["records"])
 
     def __len__(self):
         return len(self.cfg)

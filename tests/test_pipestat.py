@@ -2055,6 +2055,7 @@ class TestSelectRecords:
             result3 = psm.select_distinct(columns="md5sum")
             assert len(result3) == 6
 
+
 class TestPipestatIter:
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_pipestat_iter(
@@ -2076,13 +2077,22 @@ class TestPipestatIter:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
 
-            for i in range_values[:10]:
+            for i in range_values[:12]:
                 r_id = i[0]
                 val = i[1]
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
-            for i in psm.__iter__():
-                print(i)
+            cursor = 10
+            limit = 6
+            count = 0
+            for j in psm.__iter__(cursor=cursor, limit=limit):
+                count += 1
+
+            if backend == "db":
+                assert count == 2
+            if backend == "file":
+                assert count == 6
+
 
 class TestMultiResultFiles:
     @pytest.mark.parametrize("backend", ["file"])
