@@ -8,7 +8,7 @@ from collections.abc import MutableMapping
 
 from jsonschema import validate
 from yacman import YAMLConfigManager, select_config
-from typing import Optional, Union, Dict, Any, List
+from typing import Optional, Union, Dict, Any, List, Iterator
 
 from .exceptions import (
     PipestatDependencyError,
@@ -279,8 +279,23 @@ class PipestatManager(MutableMapping):
         result = self.remove(record_identifier=key)
         return result
 
-    def __iter__(self):
-        return iter(self.cfg)
+    def __iter__(
+        self,
+        limit: Optional[int] = 1000,
+        cursor: Optional[int] = None,
+    ) -> Iterator:
+        """
+        This is a wrapper around select_records that creates an iterator of records
+
+        :param int limit: maximum number of results to retrieve per page
+        :param int cursor: cursor position to begin retrieving records
+        :return: Iterator
+        """
+        if self.file:
+            # File backend does not support cursor-based paging
+            return iter(self.select_records(limit=limit)["records"])
+        else:
+            return iter(self.select_records(limit=limit, cursor=cursor)["records"])
 
     def __len__(self):
         return len(self.cfg)
