@@ -227,8 +227,10 @@ class DBBackend(PipestatBackend):
                 record_identifier=record_identifier,
             ):
                 with self.session as s:
-                    records = s.query(ORMClass).filter(
-                        getattr(ORMClass, "record_identifier") == record_identifier
+                    records = s.exec(
+                        sql_select(ORMClass).where(
+                            getattr(ORMClass, "record_identifier") == record_identifier
+                        )
                     )
                     if rm_record is True:
                         self.remove_record(
@@ -276,10 +278,12 @@ class DBBackend(PipestatBackend):
                     record_identifier=record_identifier,
                 ):
                     with self.session as s:
-                        records = s.query(ORMClass).filter(
-                            getattr(ORMClass, "record_identifier") == record_identifier
-                        )
-                        records.delete()
+                        record = s.exec(
+                            sql_select(ORMClass).where(
+                                getattr(ORMClass, "record_identifier") == record_identifier
+                            )
+                        ).first()
+                        s.delete(record)
                         s.commit()
                 else:
                     raise RecordNotFoundError(f"Record '{record_identifier}' not found")
@@ -346,11 +350,11 @@ class DBBackend(PipestatBackend):
                     s.commit()
             else:
                 with self.session as s:
-                    record_to_update = (
-                        s.query(ORMClass)
-                        .filter(getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier)
-                        .first()
-                    )
+                    record_to_update = s.exec(
+                        sql_select(ORMClass).where(
+                            getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
+                        )
+                    ).first()
                     values.update({MODIFIED_TIME: datetime.datetime.now()})
                     for result_id, result_value in values.items():
                         setattr(record_to_update, result_id, result_value)
@@ -444,7 +448,7 @@ class DBBackend(PipestatBackend):
         # SQL model returns either a SQLModelMetaCLass OR a sqlalchemy Row.
         # We must create a dictionary containing the record before returning
         if not columns:
-            end_results = [r.dict() for r in results]
+            end_results = [r.model_dump() for r in results]
         else:
             for record in results:
                 record_dict = dict(record._mapping)
@@ -475,9 +479,8 @@ class DBBackend(PipestatBackend):
 
         ORM = self.get_model(table_name=self.table_name)
         with self.session as s:
-            query = s.query(*[getattr(ORM, column) for column in columns])
-            query = query.distinct()
-            result = query.all()
+            list_columns = [getattr(ORM, column) for column in columns]
+            result = s.exec(sql_select(*list_columns).distinct()).all()
         return result
 
     def set_status(
