@@ -556,7 +556,6 @@ class HTMLReportBuilder(object):
 
         objs_file_path = table_path_list[1]
 
-
         objs_file_path = objs_file_path if os.path.exists(objs_file_path) else None
 
         # Add stats summary table to index page and produce individual

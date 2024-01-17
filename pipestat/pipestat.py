@@ -281,7 +281,6 @@ class PipestatManager(MutableMapping):
         result = self.remove(record_identifier=key)
         return result
 
-
     def __iter__(
         self,
         limit: Optional[int] = 1000,
@@ -299,7 +298,6 @@ class PipestatManager(MutableMapping):
             return iter(self.select_records(limit=limit)["records"])
         else:
             return iter(self.select_records(limit=limit, cursor=cursor)["records"])
-
 
     def __len__(self):
         return len(self.cfg)
@@ -724,8 +722,6 @@ class PipestatManager(MutableMapping):
             result = self.select_records(filter_conditions=[filter], columns=[result_identifier])
         else:
             result = self.select_records(filter_conditions=[filter])
-
-
 
         if len(result["records"]) == 0:
             RecordNotFoundError(f"Records, '{record_identifiers}',  not found")

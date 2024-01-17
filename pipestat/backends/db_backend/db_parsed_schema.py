@@ -59,7 +59,6 @@ def get_base_model():
 
         model_config = ConfigDict(arbitrary_types_allowed=True)
 
-
     # return SQLModel
     return BaseModel
 
@@ -174,9 +173,7 @@ class ParsedSchemaDB(ParsedSchema):
                     # Optional[str],
                     # CLASSES_BY_TYPE[subdata[SCHEMA_TYPE_KEY]],
                     data_type,
-
                     Field(default=subdata.get("default"), nullable=True),
-
                 )
         return defs
 
@@ -239,7 +236,6 @@ class ParsedSchemaDB(ParsedSchema):
 
         field_defs[PROJECT_NAME] = (str, Field(default=None, nullable=True))
 
-
         return field_defs
 
     @staticmethod
@@ -250,7 +246,6 @@ class ParsedSchemaDB(ParsedSchema):
             )
 
         field_defs[PIPELINE_NAME] = (str, Field(default=None, nullable=True))
-
 
         return field_defs
 

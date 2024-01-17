@@ -2056,7 +2056,6 @@ class TestSelectRecords:
             assert len(result3) == 6
 
 
-
 class TestPipestatIter:
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_pipestat_iter(
@@ -2093,6 +2092,7 @@ class TestPipestatIter:
                 assert count == 2
             if backend == "file":
                 assert count == 6
+
 
 class TestMultiResultFiles:
     @pytest.mark.parametrize("backend", ["file"])
