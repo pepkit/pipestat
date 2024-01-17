@@ -5,7 +5,9 @@ import datetime
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional
+
 from pydantic import ConfigDict, create_model
+
 
 from sqlalchemy import Column, null
 from sqlalchemy.dialects.postgresql import JSONB
@@ -54,7 +56,9 @@ def _custom_types_column_specifications():
 def get_base_model():
     class BaseModel(SQLModel):
         __table_args__ = {"extend_existing": True}
+
         model_config = ConfigDict(arbitrary_types_allowed=True)
+
 
     # return SQLModel
     return BaseModel
@@ -170,7 +174,9 @@ class ParsedSchemaDB(ParsedSchema):
                     # Optional[str],
                     # CLASSES_BY_TYPE[subdata[SCHEMA_TYPE_KEY]],
                     data_type,
+
                     Field(default=subdata.get("default"), nullable=True),
+
                 )
         return defs
 
@@ -230,7 +236,9 @@ class ParsedSchemaDB(ParsedSchema):
             raise SchemaError(
                 f"'{PROJECT_NAME}' is reserved as identifier and can't be part of schema."
             )
+
         field_defs[PROJECT_NAME] = (str, Field(default=None, nullable=True))
+
 
         return field_defs
 
@@ -240,7 +248,9 @@ class ParsedSchemaDB(ParsedSchema):
             raise SchemaError(
                 f"'{PIPELINE_NAME}' is reserved as identifier and can't be part of schema."
             )
+
         field_defs[PIPELINE_NAME] = (str, Field(default=None, nullable=True))
+
 
         return field_defs
 
@@ -262,7 +272,9 @@ class ParsedSchemaDB(ParsedSchema):
             raise SchemaError(
                 f"'{RECORD_IDENTIFIER}' is reserved as identifier and can't be part of schema."
             )
+
         field_defs[RECORD_IDENTIFIER] = (str, Field(default=None, nullable=True))
+
         return field_defs
 
     @staticmethod
@@ -271,7 +283,9 @@ class ParsedSchemaDB(ParsedSchema):
             raise SchemaError(
                 f"'{SAMPLE_NAME}' is reserved as identifier and can't be part of schema."
             )
+
         field_defs[SAMPLE_NAME] = (str, Field(default=None, nullable=True))
+
         return field_defs
 
     @staticmethod
@@ -280,7 +294,9 @@ class ParsedSchemaDB(ParsedSchema):
             raise SchemaError(
                 f"'{STATUS}' is reserved for status reporting and can't be part of schema."
             )
+
         field_defs[STATUS] = (str, Field(default=None, nullable=True))
+
         return field_defs
 
     @staticmethod
@@ -289,7 +305,9 @@ class ParsedSchemaDB(ParsedSchema):
             raise SchemaError(
                 f"'{CREATED_TIME}' is reserved for time reporting and can't be part of schema."
             )
+
         field_defs[CREATED_TIME] = (datetime.datetime, Field(default=None, nullable=True))
+
         return field_defs
 
     @staticmethod
@@ -298,7 +316,9 @@ class ParsedSchemaDB(ParsedSchema):
             raise SchemaError(
                 f"'{MODIFIED_TIME}' is reserved for time reporting and can't be part of schema."
             )
+
         field_defs[MODIFIED_TIME] = (datetime.datetime, Field(default=None, nullable=True))
+
         return field_defs
 
     def _table_name(self, suffix: str) -> str:
