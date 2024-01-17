@@ -231,6 +231,15 @@ class HTMLReportBuilder(object):
         )
         # determine the outputs IDs by type
         obj_result_ids = self.get_nonhighlighted_results(OBJECT_TYPES)
+        # Remove project level objects because they are stored at the bottom of the index
+        obj_to_remove = []
+        for obj in obj_result_ids:
+            if obj in list(self.prj.schema.project_level_data.keys()):
+                if obj not in list(self.prj.schema.sample_level_data.keys()):
+                    # The object is not in sample level keys but it IS in project level
+                    obj_to_remove.append(obj)
+        obj_result_ids = list(set(obj_to_remove) ^ set(obj_result_ids))
+
         dropdown_keys_objects = None
         dropdown_relpaths_objects = None
         sample_names = None
