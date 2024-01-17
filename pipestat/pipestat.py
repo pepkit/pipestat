@@ -8,7 +8,9 @@ from collections.abc import MutableMapping
 
 from jsonschema import validate
 from yacman import YAMLConfigManager, select_config
-from typing import Optional, Union, Dict, Any, List
+
+from typing import Optional, Union, Dict, Any, List, Iterator
+
 
 from .exceptions import (
     PipestatDependencyError,
@@ -279,8 +281,23 @@ class PipestatManager(MutableMapping):
         result = self.remove(record_identifier=key)
         return result
 
-    def __iter__(self):
-        return iter(self.cfg)
+    def __iter__(
+        self,
+        limit: Optional[int] = 1000,
+        cursor: Optional[int] = None,
+    ) -> Iterator:
+        """
+        This is a wrapper around select_records that creates an iterator of records
+
+        :param int limit: maximum number of results to retrieve per page
+        :param int cursor: cursor position to begin retrieving records
+        :return: Iterator
+        """
+        if self.file:
+            # File backend does not support cursor-based paging
+            return iter(self.select_records(limit=limit)["records"])
+        else:
+            return iter(self.select_records(limit=limit, cursor=cursor)["records"])
 
     def __len__(self):
         return len(self.cfg)
@@ -401,6 +418,7 @@ class PipestatManager(MutableMapping):
         Get the current pipeline status
         :param str record_identifier: name of the sample_level record
         :return str: status identifier, e.g. 'running'
+
         """
 
         r_id = record_identifier or self.record_identifier
@@ -421,6 +439,7 @@ class PipestatManager(MutableMapping):
         :param str time_column: created or modified column/attribute to filter on
         :return dict results: a dict containing start, end, num of records, and list of retrieved records
         """
+
         date_format = "%Y-%m-%d %H:%M:%S"
         if start is None:
             start = datetime.datetime.now()
@@ -628,6 +647,8 @@ class PipestatManager(MutableMapping):
         :param str record_identifier: single record_identifier
         :param str result_identifier: single record_identifier
         :return: Dict[str, any]: a mapping with filtered
+
+
             results reported for the record
         """
         r_id = record_identifier or self.record_identifier

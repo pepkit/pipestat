@@ -2056,6 +2056,44 @@ class TestSelectRecords:
             assert len(result3) == 6
 
 
+class TestPipestatIter:
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_pipestat_iter(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+        range_values,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range_values[:12]:
+                r_id = i[0]
+                val = i[1]
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            cursor = 10
+            limit = 6
+            count = 0
+            for j in psm.__iter__(cursor=cursor, limit=limit):
+                count += 1
+
+            if backend == "db":
+                assert count == 2
+            if backend == "file":
+                assert count == 6
+
+
 class TestMultiResultFiles:
     @pytest.mark.parametrize("backend", ["file"])
     def test_multi_results_not_implemented(
