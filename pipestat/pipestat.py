@@ -766,18 +766,20 @@ class PipestatManager(MutableMapping):
         self,
         looper_samples: Optional[list] = None,
         amendment: Optional[str] = None,
+        portable: Optional[bool] = False,
     ) -> None:
         """
         Builds a browsable html report for reported results.
         :param Iterable[str] looper_samples: list of looper Samples from PEP
         :param Iterable[str] amendment: name indicating amendment to use, optional
+        :param bool portable: moves figures and report files to directory for easy sharing
         :return str: report_path
 
         """
 
         self.check_multi_results()
 
-        html_report_builder = HTMLReportBuilder(prj=self)
+        html_report_builder = HTMLReportBuilder(prj=self, portable=portable)
         report_path = html_report_builder(
             pipeline_name=self.cfg[PIPELINE_NAME],
             amendment=amendment,
