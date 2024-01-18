@@ -334,6 +334,13 @@ def build_argparser(desc):
             help="project or sample level pipeline type. ",
         )
 
+        sps[cmd].add_argument(
+            "--portable",
+            type=bool,
+            metavar="X",
+            help="project or sample level pipeline type. ",
+        )
+
     # LINK
     for cmd in [LINK_CMD]:
         sps[cmd].add_argument(

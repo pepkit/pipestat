@@ -62,6 +62,7 @@ class HTMLReportBuilder(object):
         if not self.portable:
             self.reports_dir = os.path.join(self.output_dir, "reports")
         else:
+            _LOGGER.info(f"Portable flag set: {self.portable}")
             self.reports_dir = os.path.join(self.output_dir, "portable_reports")
 
         _LOGGER.debug(f"Reports dir: {self.reports_dir}")
@@ -125,13 +126,12 @@ class HTMLReportBuilder(object):
         destinationfile = os.path.join(destination_dir, record_identifier)
         destinationfile = os.path.join(destinationfile, full_name)
         os.makedirs(os.path.dirname(destinationfile), exist_ok=True)
-        print(destinationfile)
 
         try:
             shutil.copyfile(parentpath, destinationfile)
         except Exception as e:
             # if any exception occurs, simply return original path
-            print(e)
+            _LOGGER.warning(e)
             return parentpath
 
         return destinationfile

@@ -82,7 +82,8 @@ def main(test_args=None):
             pipeline_type=args.pipeline_type,
         )
         results_path = args.config or args.results_file
-        html_report_path = psm.summarize()
+        portable = args.portable or False
+        html_report_path = psm.summarize(portable=portable)
         _LOGGER.info(f"\nGenerating HTML Report from {results_path} at: {html_report_path}\n")
 
         sys.exit(0)
