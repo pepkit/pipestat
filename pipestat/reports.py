@@ -41,7 +41,7 @@ _LOGGER = getLogger(PKG_NAME)
 class HTMLReportBuilder(object):
     """Generate HTML summary report for project/samples"""
 
-    def __init__(self, prj, portable):
+    def __init__(self, prj, portable=False):
         """
         The Project defines the instance.
 
@@ -52,7 +52,7 @@ class HTMLReportBuilder(object):
         self.prj = prj
         self.jinja_env = get_jinja_env()
 
-        self.portable = portable or False
+        self.portable = portable
 
         results_file_path = getattr(self.prj.backend, "results_file_path", None)
         config_path = self.prj.cfg.get("config_path", None)
@@ -110,21 +110,20 @@ class HTMLReportBuilder(object):
         self.create_index_html(navbar, self.create_footer())
         return self.index_html_path
 
-    def _create_copy_for_porting(self, parentpath, record_identifier):
+    def _create_copy_for_porting(self, parentpath: str, record_identifier: str):
         """
         Helper function that assists with copying images (pdfs)
         Original images stay in their original location.
         This does NOT move the original data.
 
-        :param parentpath: path of existing file
-        :param newpath: desired destination
-        :return: newpath if successful else returns parentpath
+        :param str parentpath: path of existing file
+        :param str newpath: desired destination
+        :return str newpath if successful else returns parentpath
         """
         destination_dir = os.path.join(self.pipeline_reports, "resources")
         full_name = os.path.basename(parentpath)
 
-        destinationfile = os.path.join(destination_dir, record_identifier)
-        destinationfile = os.path.join(destinationfile, full_name)
+        destinationfile = os.path.join(os.path.join(destination_dir, record_identifier), full_name)
         os.makedirs(os.path.dirname(destinationfile), exist_ok=True)
 
         try:

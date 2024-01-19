@@ -4,7 +4,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [0.7.1] - 2024-xx-xx
 ### Added
-- added `portable` flag to allow for easier sharing of reports.
+- added `portable` flag to pipestat summarize to create a shareable version of the html report.
 
 ## [0.7.0] - 2024-01-17
 ### Added
