@@ -1,4 +1,5 @@
 """ Generate HTML reports """
+import shutil
 
 import jinja2
 import os
@@ -40,21 +41,30 @@ _LOGGER = getLogger(PKG_NAME)
 class HTMLReportBuilder(object):
     """Generate HTML summary report for project/samples"""
 
-    def __init__(self, prj):
+    def __init__(self, prj, portable=False):
         """
         The Project defines the instance.
 
         :param PipestatManager prj: Project with which to work/operate on
+        :param bool portable: moves figures and report files to directory for easy sharing
         """
 
         self.prj = prj
         self.jinja_env = get_jinja_env()
+
+        self.portable = portable
+
         results_file_path = getattr(self.prj.backend, "results_file_path", None)
         config_path = self.prj.cfg.get("config_path", None)
         output_dir = getattr(self.prj.cfg[OUTPUT_DIR], "output_dir", None)
         self.output_dir = output_dir or results_file_path or config_path
         self.output_dir = os.path.dirname(self.output_dir)
-        self.reports_dir = os.path.join(self.output_dir, "reports")
+        if not self.portable:
+            self.reports_dir = os.path.join(self.output_dir, "reports")
+        else:
+            _LOGGER.info(f"Portable flag set: {self.portable}")
+            self.reports_dir = os.path.join(self.output_dir, "portable_reports")
+
         _LOGGER.debug(f"Reports dir: {self.reports_dir}")
 
     def __call__(
@@ -99,6 +109,34 @@ class HTMLReportBuilder(object):
         )
         self.create_index_html(navbar, self.create_footer())
         return self.index_html_path
+
+    def _create_copy_for_porting(self, parent_path: str, record_identifier: str):
+        """
+        Helper function that assists with copying images (pdfs)
+        Original images stay in their original location.
+        This does NOT move the original data.
+
+        :param str parentpath: path of existing file
+        :param str newpath: desired destination
+        :return str newpath if successful else returns parentpath
+        """
+        destination_dir = os.path.join(self.pipeline_reports, "resources")
+        full_name = os.path.basename(parent_path)
+
+        destination_file = os.path.join(
+            os.path.join(destination_dir, record_identifier), full_name
+        )
+
+        os.makedirs(os.path.dirname(destination_file), exist_ok=True)
+
+        try:
+            shutil.copyfile(parent_path, destination_file)
+        except Exception as e:
+            # if any exception occurs, simply return original path
+            _LOGGER.warning(e)
+            return parent_path
+
+        return destination_file
 
     def create_object_parent_html(self, navbar, footer):
         """
@@ -231,6 +269,7 @@ class HTMLReportBuilder(object):
         )
         # determine the outputs IDs by type
         obj_result_ids = self.get_nonhighlighted_results(OBJECT_TYPES)
+
         # Remove project level objects because they are stored at the bottom of the index
         obj_to_remove = []
         for obj in obj_result_ids:
@@ -317,6 +356,13 @@ class HTMLReportBuilder(object):
                         pass
                     else:
                         try:
+                            if self.portable:
+                                new_image_path = self._create_copy_for_porting(
+                                    parent_path=sample_result[file_result]["path"],
+                                    record_identifier=sample_name,
+                                )
+                                sample_result[file_result]["path"] = new_image_path
+
                             links.append(
                                 [
                                     sample_name,
@@ -368,6 +414,21 @@ class HTMLReportBuilder(object):
                         pass
                     else:
                         try:
+                            if self.portable:
+                                new_image_path = self._create_copy_for_porting(
+                                    parent_path=sample_result[image_result]["path"],
+                                    record_identifier=sample_name,
+                                )
+
+                                sample_result[image_result]["path"] = new_image_path
+
+                                new_thumbnail_path = self._create_copy_for_porting(
+                                    parent_path=sample_result[image_result]["thumbnail_path"],
+                                    record_identifier=sample_name,
+                                )
+
+                                sample_result[image_result]["thumbnail_path"] = new_thumbnail_path
+
                             figures.append(
                                 [
                                     os.path.relpath(
@@ -474,6 +535,12 @@ class HTMLReportBuilder(object):
             )
             if result:
                 try:
+                    if self.portable:
+                        new_image_path = self._create_copy_for_porting(
+                            parent_path=result["path"], record_identifier=sample_name
+                        )
+                        result["path"] = new_image_path
+
                     links.append(
                         [
                             f"<b>{result['title']}</b>: {desc}",
@@ -491,6 +558,19 @@ class HTMLReportBuilder(object):
         for result_id, result in image_results.items():
             if result:
                 try:
+                    if self.portable:
+                        new_image_path = self._create_copy_for_porting(
+                            parent_path=result["path"], record_identifier=sample_name
+                        )
+
+                        result["path"] = new_image_path
+
+                        new_thumbnail_path = self._create_copy_for_porting(
+                            parent_path=result["thumbnail_path"], record_identifier=sample_name
+                        )
+
+                        result["thumbnail_path"] = new_thumbnail_path
+
                     figures.append(
                         [
                             os.path.relpath(result["path"], self.pipeline_reports),
@@ -566,6 +646,18 @@ class HTMLReportBuilder(object):
         objs_file_path = table_path_list[1]
 
         objs_file_path = objs_file_path if os.path.exists(objs_file_path) else None
+
+        if self.portable:
+            stats_file_path = self._create_copy_for_porting(stats_file_path, "")
+            stats_file_path = os.path.relpath(
+                stats_file_path,
+                self.pipeline_reports,
+            )
+            objs_file_path = self._create_copy_for_porting(objs_file_path, "")
+            objs_file_path = os.path.relpath(
+                objs_file_path,
+                self.pipeline_reports,
+            )
 
         # Add stats summary table to index page and produce individual
         # sample pages
@@ -710,6 +802,13 @@ class HTMLReportBuilder(object):
                         pass
                     else:
                         try:
+                            if self.portable:
+                                new_image_path = self._create_copy_for_porting(
+                                    parent_path=sample_result[file_result]["path"],
+                                    record_identifier=sample_name,
+                                )
+                                sample_result[file_result]["path"] = new_image_path
+
                             links.append(
                                 [
                                     f"<b>{sample_result[file_result]['title']}</b>",
@@ -745,6 +844,21 @@ class HTMLReportBuilder(object):
                         pass
                     else:
                         try:
+                            if self.portable:
+                                new_image_path = self._create_copy_for_porting(
+                                    parent_path=sample_result[image_result]["path"],
+                                    record_identifier=sample_name,
+                                )
+
+                                sample_result[image_result]["path"] = new_image_path
+
+                                new_thumbnail_path = self._create_copy_for_porting(
+                                    parent_path=sample_result[image_result]["thumbnail_path"],
+                                    record_identifier=sample_name,
+                                )
+
+                                sample_result[image_result]["thumbnail_path"] = new_thumbnail_path
+
                             figures.append(
                                 [
                                     os.path.relpath(

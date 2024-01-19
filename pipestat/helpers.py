@@ -13,6 +13,8 @@ from typing import Any, Dict, Optional, Tuple, Union, List
 from oyaml import safe_load
 from ubiquerg import expandpath
 
+from zipfile import ZipFile, ZIP_DEFLATED
+
 from .const import (
     PIPESTAT_GENERIC_CONFIG,
     SCHEMA_PROP_KEY,
@@ -229,3 +231,30 @@ def get_all_result_files(results_file_path: str) -> List:
     files = glob.glob(results_file_path + "**/*.yaml")
 
     return files
+
+
+def zip_report(report_dir: str):
+    """
+
+    Walks through files and attempts to zip them into a Zip object using default compression.
+    Gracefully fails and informs user if compression library is not available.
+
+    :param result_dir: path to report directory
+    :return: None
+    """
+
+    zip_file_name = report_dir + "_report_portable.zip"
+
+    try:
+        with ZipFile(zip_file_name, "w", compression=ZIP_DEFLATED) as zip_object:
+            for folder, sub_folders, files in os.walk(report_dir):
+                for file in files:
+                    file_path = os.path.join(folder, file)
+                    zip_object.write(file_path, os.path.basename(file_path))
+    except RuntimeError as e:
+        _LOGGER.warning("Report zip file not created! \n {e}")
+
+    if os.path.exists(zip_file_name):
+        _LOGGER.info(f"Report zip file successfully created: {zip_file_name}")
+    else:
+        _LOGGER.warning("Report zip file not created.")

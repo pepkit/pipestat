@@ -6,7 +6,7 @@ Here you can see the command-line usage instructions for the main command and fo
 ## `pipestat --help`
 ```console
 Configure by setting PIPESTAT_CONFIG env var
-version: 0.6.0
+version: 0.7.0
 usage: pipestat [-h] [--version] [--silent] [--verbosity V] [--logdev]
                 {report,inspect,remove,retrieve,status,init,summarize,link,serve}
                 ...
