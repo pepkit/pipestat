@@ -22,7 +22,7 @@ from .exceptions import (
 )
 from pipestat.backends.file_backend.filebackend import FileBackend
 from .reports import HTMLReportBuilder, _create_stats_objs_summaries
-from .helpers import validate_type, mk_abs_via_cfg, read_yaml_data, default_formatter
+from .helpers import validate_type, mk_abs_via_cfg, read_yaml_data, default_formatter, zip_report
 from .const import (
     PKG_NAME,
     DEFAULT_PIPELINE_NAME,
@@ -785,6 +785,10 @@ class PipestatManager(MutableMapping):
             amendment=amendment,
             looper_samples=looper_samples,
         )
+
+        if portable is True:
+            zip_report(report_dir=os.path.dirname(report_path))
+
         return report_path
 
     def check_multi_results(self):

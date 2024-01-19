@@ -1159,6 +1159,43 @@ class TestHTMLReport:
             htmlreportpath = psm.summarize(amendment="", portable=True)
             assert htmlreportpath is not None
 
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_zip_html_report_portable(
+        self,
+        config_file_path,
+        output_schema_html_report,
+        results_file_path,
+        backend,
+        values_project,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=output_schema_html_report, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            # project level
+            psm = ProjectPipestatManager(**args)
+
+            for i in values_project:
+                for r, v in i.items():
+                    psm.report(
+                        record_identifier=r,
+                        values=v,
+                        force_overwrite=True,
+                    )
+                    psm.set_status(record_identifier=r, status_identifier="running")
+
+            htmlreportpath = psm.summarize(amendment="", portable=True)
+
+            directory = os.path.dirname(htmlreportpath)
+            zip_files = glob.glob(directory + "*.zip")
+
+            assert len(zip_files) > 0
+
 
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestTableCreation:
