@@ -413,7 +413,7 @@ class HTMLReportBuilder(object):
                         try:
                             if self.portable:
                                 newimagepath = self._create_copy_for_porting(
-                                    parentpath=sample_result[image_result]["path"],
+                                    parent_path=sample_result[image_result]["path"],
                                     record_identifier=sample_name,
                                 )
 
