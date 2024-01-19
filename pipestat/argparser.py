@@ -336,8 +336,7 @@ def build_argparser(desc):
 
         sps[cmd].add_argument(
             "--portable",
-            type=bool,
-            metavar="X",
+            action="store_true",
             help="project or sample level pipeline type. ",
         )
 
