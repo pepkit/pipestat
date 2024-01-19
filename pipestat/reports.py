@@ -110,7 +110,7 @@ class HTMLReportBuilder(object):
         self.create_index_html(navbar, self.create_footer())
         return self.index_html_path
 
-    def _create_copy_for_porting(self, parentpath: str, record_identifier: str):
+    def _create_copy_for_porting(self, parent_path: str, record_identifier: str):
         """
         Helper function that assists with copying images (pdfs)
         Original images stay in their original location.
@@ -121,19 +121,22 @@ class HTMLReportBuilder(object):
         :return str newpath if successful else returns parentpath
         """
         destination_dir = os.path.join(self.pipeline_reports, "resources")
-        full_name = os.path.basename(parentpath)
+        full_name = os.path.basename(parent_path)
 
-        destinationfile = os.path.join(os.path.join(destination_dir, record_identifier), full_name)
-        os.makedirs(os.path.dirname(destinationfile), exist_ok=True)
+        destination_file = os.path.join(
+            os.path.join(destination_dir, record_identifier), full_name
+        )
+
+        os.makedirs(os.path.dirname(destination_file), exist_ok=True)
 
         try:
-            shutil.copyfile(parentpath, destinationfile)
+            shutil.copyfile(parent_path, destination_file)
         except Exception as e:
             # if any exception occurs, simply return original path
             _LOGGER.warning(e)
-            return parentpath
+            return parent_path
 
-        return destinationfile
+        return destination_file
 
     def create_object_parent_html(self, navbar, footer):
         """
@@ -354,11 +357,11 @@ class HTMLReportBuilder(object):
                     else:
                         try:
                             if self.portable:
-                                newimagepath = self._create_copy_for_porting(
-                                    parentpath=sample_result[file_result]["path"],
+                                new_image_path = self._create_copy_for_porting(
+                                    parent_path=sample_result[file_result]["path"],
                                     record_identifier=sample_name,
                                 )
-                                sample_result[file_result]["path"] = newimagepath
+                                sample_result[file_result]["path"] = new_image_path
 
                             links.append(
                                 [
@@ -412,19 +415,19 @@ class HTMLReportBuilder(object):
                     else:
                         try:
                             if self.portable:
-                                newimagepath = self._create_copy_for_porting(
+                                new_image_path = self._create_copy_for_porting(
                                     parent_path=sample_result[image_result]["path"],
                                     record_identifier=sample_name,
                                 )
 
-                                sample_result[image_result]["path"] = newimagepath
+                                sample_result[image_result]["path"] = new_image_path
 
-                                newthumbnailpath = self._create_copy_for_porting(
-                                    parentpath=sample_result[image_result]["thumbnail_path"],
+                                new_thumbnail_path = self._create_copy_for_porting(
+                                    parent_path=sample_result[image_result]["thumbnail_path"],
                                     record_identifier=sample_name,
                                 )
 
-                                sample_result[image_result]["thumbnail_path"] = newthumbnailpath
+                                sample_result[image_result]["thumbnail_path"] = new_thumbnail_path
 
                             figures.append(
                                 [
@@ -533,10 +536,10 @@ class HTMLReportBuilder(object):
             if result:
                 try:
                     if self.portable:
-                        newimagepath = self._create_copy_for_porting(
-                            parentpath=result["path"], record_identifier=sample_name
+                        new_image_path = self._create_copy_for_porting(
+                            parent_path=result["path"], record_identifier=sample_name
                         )
-                        result["path"] = newimagepath
+                        result["path"] = new_image_path
 
                     links.append(
                         [
@@ -556,17 +559,17 @@ class HTMLReportBuilder(object):
             if result:
                 try:
                     if self.portable:
-                        newimagepath = self._create_copy_for_porting(
-                            parentpath=result["path"], record_identifier=sample_name
+                        new_image_path = self._create_copy_for_porting(
+                            parent_path=result["path"], record_identifier=sample_name
                         )
 
-                        result["path"] = newimagepath
+                        result["path"] = new_image_path
 
-                        newthumbnailpath = self._create_copy_for_porting(
-                            parentpath=result["thumbnail_path"], record_identifier=sample_name
+                        new_thumbnail_path = self._create_copy_for_porting(
+                            parent_path=result["thumbnail_path"], record_identifier=sample_name
                         )
 
-                        result["thumbnail_path"] = newthumbnailpath
+                        result["thumbnail_path"] = new_thumbnail_path
 
                     figures.append(
                         [
@@ -800,11 +803,11 @@ class HTMLReportBuilder(object):
                     else:
                         try:
                             if self.portable:
-                                newimagepath = self._create_copy_for_porting(
-                                    parentpath=sample_result[file_result]["path"],
+                                new_image_path = self._create_copy_for_porting(
+                                    parent_path=sample_result[file_result]["path"],
                                     record_identifier=sample_name,
                                 )
-                                sample_result[file_result]["path"] = newimagepath
+                                sample_result[file_result]["path"] = new_image_path
 
                             links.append(
                                 [
@@ -842,19 +845,19 @@ class HTMLReportBuilder(object):
                     else:
                         try:
                             if self.portable:
-                                newimagepath = self._create_copy_for_porting(
-                                    parentpath=sample_result[image_result]["path"],
+                                new_image_path = self._create_copy_for_porting(
+                                    parent_path=sample_result[image_result]["path"],
                                     record_identifier=sample_name,
                                 )
 
-                                sample_result[image_result]["path"] = newimagepath
+                                sample_result[image_result]["path"] = new_image_path
 
-                                newthumbnailpath = self._create_copy_for_porting(
-                                    parentpath=sample_result[image_result]["thumbnail_path"],
+                                new_thumbnail_path = self._create_copy_for_porting(
+                                    parent_path=sample_result[image_result]["thumbnail_path"],
                                     record_identifier=sample_name,
                                 )
 
-                                sample_result[image_result]["thumbnail_path"] = newthumbnailpath
+                                sample_result[image_result]["thumbnail_path"] = new_thumbnail_path
 
                             figures.append(
                                 [
