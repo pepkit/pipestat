@@ -8,6 +8,7 @@ import yaml
 import jsonschema
 from json import dumps
 from pathlib import Path
+from shutil import make_archive
 from typing import Any, Dict, Optional, Tuple, Union, List
 
 from oyaml import safe_load
@@ -233,28 +234,24 @@ def get_all_result_files(results_file_path: str) -> List:
     return files
 
 
-def zip_report(report_dir: str):
+def zip_report(report_dir_name: str):
     """
 
     Walks through files and attempts to zip them into a Zip object using default compression.
     Gracefully fails and informs user if compression library is not available.
 
-    :param result_dir: path to report directory
+    :param report_dir_name: directory name of report directory
     :return: None
     """
 
-    zip_file_name = report_dir + "_report_portable.zip"
+    zip_file_name = report_dir_name + "_report_portable"
 
     try:
-        with ZipFile(zip_file_name, "w", compression=ZIP_DEFLATED) as zip_object:
-            for folder, sub_folders, files in os.walk(report_dir):
-                for file in files:
-                    file_path = os.path.join(folder, file)
-                    zip_object.write(file_path, os.path.basename(file_path))
+        make_archive(zip_file_name, "zip", report_dir_name)
     except RuntimeError as e:
         _LOGGER.warning("Report zip file not created! \n {e}")
 
-    if os.path.exists(zip_file_name):
+    if os.path.exists(zip_file_name + ".zip"):
         _LOGGER.info(f"Report zip file successfully created: {zip_file_name}")
     else:
         _LOGGER.warning("Report zip file not created.")

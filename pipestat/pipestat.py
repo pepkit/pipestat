@@ -787,7 +787,7 @@ class PipestatManager(MutableMapping):
         )
 
         if portable is True:
-            zip_report(report_dir=os.path.dirname(report_path))
+            zip_report(report_dir_name=os.path.dirname(report_path))
 
         return report_path
 
