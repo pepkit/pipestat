@@ -337,7 +337,7 @@ def build_argparser(desc):
         sps[cmd].add_argument(
             "--portable",
             action="store_true",
-            help="project or sample level pipeline type. ",
+            help="Makes html report portable.",
         )
 
     # LINK
