@@ -1022,9 +1022,10 @@ def absolutize_file(f: str) -> str:
 def test_manager_has_correct_status_schema_and_status_schema_source(
     schema_file_path, exp_status_schema, exp_status_schema_path, backend_data
 ):
-    psm = SamplePipestatManager(schema_path=schema_file_path, **backend_data)
-    assert psm.cfg[STATUS_SCHEMA_KEY] == exp_status_schema
-    assert psm.cfg[STATUS_SCHEMA_SOURCE_KEY] == exp_status_schema_path
+    with ContextManagerDBTesting(DB_URL):
+        psm = SamplePipestatManager(schema_path=schema_file_path, **backend_data)
+        assert psm.cfg[STATUS_SCHEMA_KEY] == exp_status_schema
+        assert psm.cfg[STATUS_SCHEMA_SOURCE_KEY] == exp_status_schema_path
 
 
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
