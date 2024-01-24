@@ -2,9 +2,10 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
-## [0.8.0] - 2024-xx-xx
+## [0.8.0] - 2024-01-xx
 ### Added
 - added `portable` flag to pipestat summarize to create a shareable version of the html report.
+- added setting `index: True` within output schema to index specific results for DB backend.
 ### Fixed
 - pipestat summarize: objects drop down now only shows sample-level
 
