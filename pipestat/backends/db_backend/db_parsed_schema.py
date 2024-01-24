@@ -174,7 +174,8 @@ class ParsedSchemaDB(ParsedSchema):
                 )
             else:
                 if "index" in subdata:
-                    result_indexed = subdata["index"]
+                    if isinstance(subdata["index"], bool):
+                        result_indexed = subdata["index"]
                 defs[name] = (
                     data_type,
                     Field(
