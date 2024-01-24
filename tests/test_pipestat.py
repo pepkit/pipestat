@@ -2241,3 +2241,43 @@ class TestMultiResultFiles:
             psm.summarize()
             data = YAMLConfigManager(filepath=os.path.join(temp_dir, "aggregate_results.yaml"))
             assert r_id in data[psm.pipeline_name][psm.pipeline_type].keys()
+
+
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
+class TestSetIndexTrue:
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("sample1", {"name_of_something": "test_name"}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["db"])
+    def test_set_index(
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        output_schema_with_index,
+        results_file_path,
+        backend,
+        range_values,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=output_schema_with_index, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range_values[:10]:
+                r_id = i[0]
+                val = i[1]
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            mod = psm.backend.get_model(table_name=psm.backend.table_name)
+            assert mod.md5sum.index is True
+            assert mod.number_of_things.index is False

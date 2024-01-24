@@ -151,6 +151,7 @@ class ParsedSchemaDB(ParsedSchema):
         # TODO: parse "required" ?
         defs = {}
         for name, subdata in data.items():
+            result_indexed = False
             try:
                 typename = subdata[SCHEMA_TYPE_KEY]
             except KeyError:
@@ -162,18 +163,26 @@ class ParsedSchemaDB(ParsedSchema):
             else:
                 data_type = self._get_data_type(typename)
             if data_type == CLASSES_BY_TYPE["object"] or data_type == CLASSES_BY_TYPE["array"]:
+                if "index" in subdata and subdata["index"] is True:
+                    _LOGGER.warning(f"Cannot index JSONB Column, ignoring index: True for {name} ")
                 defs[name] = (
                     data_type,
-                    Field(sa_column=Column(JSONB), default=null()),
+                    Field(
+                        sa_column=Column(JSONB),
+                        default=null(),
+                    ),
                 )
             else:
+                if "index" in subdata:
+                    if isinstance(subdata["index"], bool):
+                        result_indexed = subdata["index"]
                 defs[name] = (
-                    # Optional[subdata[SCHEMA_TYPE_KEY]],
-                    # subdata[SCHEMA_TYPE_KEY],
-                    # Optional[str],
-                    # CLASSES_BY_TYPE[subdata[SCHEMA_TYPE_KEY]],
                     data_type,
-                    Field(default=subdata.get("default"), nullable=True),
+                    Field(
+                        default=subdata.get("default"),
+                        nullable=True,
+                        index=result_indexed,
+                    ),
                 )
         return defs
 
