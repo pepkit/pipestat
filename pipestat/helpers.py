@@ -5,7 +5,6 @@ import glob
 import os
 import errno
 
-# import yaml
 import jsonschema
 from json import dumps
 from pathlib import Path
