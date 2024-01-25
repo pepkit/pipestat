@@ -244,7 +244,7 @@ def zip_report(report_dir_name: str):
     :return: None
     """
 
-    zip_file_name = report_dir_name + "_report_portable"
+    zip_file_name = f"{report_dir_name}_report_portable"
 
     try:
         make_archive(zip_file_name, "zip", report_dir_name)
