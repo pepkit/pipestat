@@ -113,6 +113,11 @@ def output_schema_as_JSON_schema():
 
 
 @pytest.fixture
+def output_schema_with_index():
+    return get_data_file_path("sample_output_schema_with_index.yaml")
+
+
+@pytest.fixture
 def output_schema_no_refs():
     return get_data_file_path("output_schema.yaml")
 

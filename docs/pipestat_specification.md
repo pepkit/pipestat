@@ -196,6 +196,24 @@ log_file:
 
 The highlighted results can be later retrieved by pipestat clients via `PipestatManager.highlighted_results` property, which simply returns a list of result identifiers.
 
+## Add indexing to a Result (database backend only)
+If you would like to index a specific result, you can add `index: True` to the result:
+
+```yaml
+title: An example Pipestat output schema
+description: A pipeline that uses pipestat to report sample and project level results.
+type: object
+properties:
+  pipeline_name: "default_pipeline_name"
+  samples:
+    type: object
+    properties:
+      number_of_things:
+        type: integer
+        description: "Number of things"
+        index: True
+```
+
 # Status schema
 
 Apart from results reporting pipestat provides a robust pipeline status management system, which can be used to report pipeline status from within the pipeline and monitor pipeline's status in other software. Status schema file defines the possible pipeline status identifiers and provides other metadata, like `description` or `color` for display purposes.

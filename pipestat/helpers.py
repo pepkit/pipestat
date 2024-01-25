@@ -4,14 +4,17 @@ import logging
 import glob
 import os
 import errno
-import yaml
+
 import jsonschema
 from json import dumps
 from pathlib import Path
+from shutil import make_archive
 from typing import Any, Dict, Optional, Tuple, Union, List
 
-from oyaml import safe_load
+from oyaml import safe_load, dump
 from ubiquerg import expandpath
+
+from zipfile import ZipFile, ZIP_DEFLATED
 
 from .const import (
     PIPESTAT_GENERIC_CONFIG,
@@ -164,7 +167,7 @@ def init_generic_config():
     # Write file
     if not os.path.exists(dest_file):
         with open(dest_file, "w") as file:
-            yaml.dump(generic_config_dict, file)
+            dump(generic_config_dict, file)
         print(f"Generic configuration file successfully created at: {dest_file}")
     else:
         print(f"Generic configuration file already exists `{dest_file}`. Skipping creation..")
@@ -229,3 +232,26 @@ def get_all_result_files(results_file_path: str) -> List:
     files = glob.glob(results_file_path + "**/*.yaml")
 
     return files
+
+
+def zip_report(report_dir_name: str):
+    """
+
+    Walks through files and attempts to zip them into a Zip object using default compression.
+    Gracefully fails and informs user if compression library is not available.
+
+    :param report_dir_name: directory name of report directory
+    :return: None
+    """
+
+    zip_file_name = f"{report_dir_name}_report_portable"
+
+    try:
+        make_archive(zip_file_name, "zip", report_dir_name)
+    except RuntimeError as e:
+        _LOGGER.warning("Report zip file not created! \n {e}")
+
+    if os.path.exists(zip_file_name + ".zip"):
+        _LOGGER.info(f"Report zip file successfully created: {zip_file_name}")
+    else:
+        _LOGGER.warning("Report zip file not created.")

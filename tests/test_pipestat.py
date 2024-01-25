@@ -1022,9 +1022,10 @@ def absolutize_file(f: str) -> str:
 def test_manager_has_correct_status_schema_and_status_schema_source(
     schema_file_path, exp_status_schema, exp_status_schema_path, backend_data
 ):
-    psm = SamplePipestatManager(schema_path=schema_file_path, **backend_data)
-    assert psm.cfg[STATUS_SCHEMA_KEY] == exp_status_schema
-    assert psm.cfg[STATUS_SCHEMA_SOURCE_KEY] == exp_status_schema_path
+    with ContextManagerDBTesting(DB_URL):
+        psm = SamplePipestatManager(schema_path=schema_file_path, **backend_data)
+        assert psm.cfg[STATUS_SCHEMA_KEY] == exp_status_schema
+        assert psm.cfg[STATUS_SCHEMA_SOURCE_KEY] == exp_status_schema_path
 
 
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
@@ -1125,6 +1126,76 @@ class TestHTMLReport:
 
             htmlreportpath = psm.summarize(amendment="")
             assert htmlreportpath is not None
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_html_report_portable(
+        self,
+        config_file_path,
+        output_schema_html_report,
+        results_file_path,
+        backend,
+        values_project,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=output_schema_html_report, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            # project level
+            psm = ProjectPipestatManager(**args)
+
+            for i in values_project:
+                for r, v in i.items():
+                    psm.report(
+                        record_identifier=r,
+                        values=v,
+                        force_overwrite=True,
+                    )
+                    psm.set_status(record_identifier=r, status_identifier="running")
+
+            htmlreportpath = psm.summarize(amendment="", portable=True)
+            assert htmlreportpath is not None
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_zip_html_report_portable(
+        self,
+        config_file_path,
+        output_schema_html_report,
+        results_file_path,
+        backend,
+        values_project,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=output_schema_html_report, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            # project level
+            psm = ProjectPipestatManager(**args)
+
+            for i in values_project:
+                for r, v in i.items():
+                    psm.report(
+                        record_identifier=r,
+                        values=v,
+                        force_overwrite=True,
+                    )
+                    psm.set_status(record_identifier=r, status_identifier="running")
+
+            htmlreportpath = psm.summarize(amendment="", portable=True)
+
+            directory = os.path.dirname(htmlreportpath)
+            zip_files = glob.glob(directory + "*.zip")
+
+            assert len(zip_files) > 0
 
 
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
@@ -2170,3 +2241,43 @@ class TestMultiResultFiles:
             psm.summarize()
             data = YAMLConfigManager(filepath=os.path.join(temp_dir, "aggregate_results.yaml"))
             assert r_id in data[psm.pipeline_name][psm.pipeline_type].keys()
+
+
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
+class TestSetIndexTrue:
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("sample1", {"name_of_something": "test_name"}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["db"])
+    def test_set_index(
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        output_schema_with_index,
+        results_file_path,
+        backend,
+        range_values,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=output_schema_with_index, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range_values[:10]:
+                r_id = i[0]
+                val = i[1]
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            mod = psm.backend.get_model(table_name=psm.backend.table_name)
+            assert mod.md5sum.index is True
+            assert mod.number_of_things.index is False

@@ -14,3 +14,4 @@ ignore:
   - "*/cli.py"
   - "*/__main__.py"
   - "setup.py"
+  - "tests/"

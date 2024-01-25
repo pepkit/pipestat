@@ -142,3 +142,4 @@ dmypy.json
 /tests/data/test_file_links/link_results/
 /tests/data/default_pipeline_name_objs_summary.yaml
 /tests/data/default_pipeline_name_stats_summary.tsv
+/tests/data/portable_reports/
