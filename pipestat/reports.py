@@ -110,7 +110,7 @@ class HTMLReportBuilder(object):
         self.create_index_html(navbar, self.create_footer())
         return self.index_html_path
 
-    def _create_copy_for_porting(self, parent_path: str, record_identifier: str):
+    def _create_copy_for_porting(self, parent_path: str, record_identifier: str) -> str:
         """
         Helper function that assists with copying images (pdfs)
         Original images stay in their original location.
