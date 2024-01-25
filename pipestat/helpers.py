@@ -4,14 +4,15 @@ import logging
 import glob
 import os
 import errno
-import yaml
+
+# import yaml
 import jsonschema
 from json import dumps
 from pathlib import Path
 from shutil import make_archive
 from typing import Any, Dict, Optional, Tuple, Union, List
 
-from oyaml import safe_load
+from oyaml import safe_load, dump
 from ubiquerg import expandpath
 
 from zipfile import ZipFile, ZIP_DEFLATED
@@ -167,7 +168,7 @@ def init_generic_config():
     # Write file
     if not os.path.exists(dest_file):
         with open(dest_file, "w") as file:
-            yaml.dump(generic_config_dict, file)
+            dump(generic_config_dict, file)
         print(f"Generic configuration file successfully created at: {dest_file}")
     else:
         print(f"Generic configuration file already exists `{dest_file}`. Skipping creation..")
