@@ -1,4 +1,5 @@
 """ Generate HTML reports """
+
 import shutil
 
 import jinja2
@@ -83,9 +84,11 @@ class HTMLReportBuilder(object):
         self.amendments_str = "_".join(self.amendment) if self.amendment else ""
         self.pipeline_reports = os.path.join(
             self.reports_dir,
-            f"{self.pipeline_name}_{self.amendments_str}"
-            if self.amendments_str
-            else self.pipeline_name,
+            (
+                f"{self.pipeline_name}_{self.amendments_str}"
+                if self.amendments_str
+                else self.pipeline_name
+            ),
         )
         self.prj_index_html_path = project_index_html
         self.index_html_path = os.path.join(self.pipeline_reports, "index.html")
@@ -99,11 +102,11 @@ class HTMLReportBuilder(object):
         navbar = self.create_navbar(
             navbar_links=self.create_navbar_links(
                 wd=self.pipeline_reports,
-                project_index_html_relpath=os.path.relpath(
-                    self.prj_index_html_path, self.pipeline_reports
-                )
-                if self.prj_index_html_path
-                else None,
+                project_index_html_relpath=(
+                    os.path.relpath(self.prj_index_html_path, self.pipeline_reports)
+                    if self.prj_index_html_path
+                    else None
+                ),
             ),
             index_html_relpath=os.path.relpath(self.index_html_path, self.pipeline_reports),
         )
