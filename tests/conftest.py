@@ -31,6 +31,19 @@ except:
     register(print, f"Some tests require a test database. To initiate it, run:\n{DB_CMD}")
     SERVICE_UNAVAILABLE = True
 
+try:
+    result = subprocess.check_output(
+        "pipestat report --c 'tests/data/config.yaml' -i 'name_of_something' -v 'test_value' -r 'dependency_value'",
+        shell=True,
+    )
+    DB_DEPENDENCIES = True
+except:
+    register(
+        print,
+        f"Warning: you must install dependencies with pip install pipestat['dbbackend'] to run database tests.",
+    )
+    DB_DEPENDENCIES = False
+
 
 def get_data_file_path(filename: str) -> str:
     data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")

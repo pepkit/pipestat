@@ -2,6 +2,11 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.8.1] - 2024-02-XX
+### Changed
+- Readme to reflect docker db configuration for testing.
+- added dependency warning when attempting to run pytest suite without optional dependencies.
+
 ## [0.8.0] - 2024-01-25
 ### Added
 - added `portable` flag to pipestat summarize to create a shareable version of the html report.

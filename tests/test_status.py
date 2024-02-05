@@ -6,13 +6,20 @@ import pytest
 from pipestat import SamplePipestatManager
 
 from pipestat.const import STATUS_FILE_DIR, FILE_KEY
-from .conftest import BACKEND_KEY_DB, BACKEND_KEY_FILE, DB_URL, SERVICE_UNAVAILABLE
+from .conftest import (
+    BACKEND_KEY_DB,
+    BACKEND_KEY_FILE,
+    DB_URL,
+    SERVICE_UNAVAILABLE,
+    DB_DEPENDENCIES,
+)
 
 from .test_db_only_mode import ContextManagerDBTesting
 from pipestat.exceptions import UnrecognizedStatusError
 from tempfile import NamedTemporaryFile
 
 
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
 class TestStatus:
     def test_status_file_default_location(self, schema_file_path, results_file_path):

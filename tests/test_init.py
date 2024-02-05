@@ -9,12 +9,13 @@ from pipestat import PipestatManager, SamplePipestatManager, ProjectPipestatMana
 from pipestat.exceptions import *
 from pipestat.parsed_schema import SCHEMA_PIPELINE_NAME_KEY
 from tempfile import NamedTemporaryFile, TemporaryDirectory
-from .conftest import STANDARD_TEST_PIPE_ID
+from .conftest import STANDARD_TEST_PIPE_ID, DB_DEPENDENCIES
 from .conftest import SERVICE_UNAVAILABLE
 from pipestat.helpers import init_generic_config
 from pipestat.const import PIPESTAT_GENERIC_CONFIG, SCHEMA_KEY
 
 
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
 class TestPipestatManagerInstantiation:
     def test_obj_creation_file(self, schema_file_path, results_file_path):
@@ -82,7 +83,6 @@ class TestPipestatManagerInstantiation:
         )
         assert os.path.exists(tmp_res_file)
 
-    # @pytest.mark.skip()
     def test_use_other_project_name_file(self, schema_file_path, tmp_path):
         """Results file can be used with just one project name"""
         tmp_res_file = os.path.join(mkdtemp(), "res.yml")
@@ -111,7 +111,6 @@ class TestPipestatManagerInstantiation:
                 results_file_path=tmp_res_file,
                 schema_path=temp_schema_path,
             )
-        # exp_msg = f"'{tmp_res_file}' is already used to report results for a different (not {ns2}) namespace: {psm1.schema.pipeline_name}"
         exp_msg = f"'{tmp_res_file}' is already in use for 1 namespaces: {psm1.cfg[SCHEMA_KEY].pipeline_name} and multi_pipelines = False."
         obs_msg = str(exc_ctx.value)
         assert obs_msg == exp_msg
