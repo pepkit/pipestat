@@ -724,7 +724,7 @@ class HTMLReportBuilder(object):
 
                 for key in all_result_identifiers:
                     if key not in sample_stat_results.keys():
-                        sample_stat_results[key] = "None reported"
+                        sample_stat_results[key] = ""
 
                 # Sort to ensure alignment in the table
                 sorted_sample_stat_results = dict(sorted(sample_stat_results.items()))
@@ -758,8 +758,10 @@ class HTMLReportBuilder(object):
         )
         # Create status page with each sample's status listed
         status_tab = create_status_table(
+            report_obj=self,
             project=self.prj,
             pipeline_reports_dir=self.pipeline_reports,
+            portable=self.portable,
         )
         save_html(
             path=os.path.join(self.pipeline_reports, "status.html"),
@@ -1167,12 +1169,14 @@ def uniqify(seq):
     return [x for x in seq if not (x in seen or seen_add(x))]
 
 
-def create_status_table(project, pipeline_reports_dir: str) -> str:
+def create_status_table(report_obj, project, pipeline_reports_dir: str, portable: bool) -> str:
     """
     Creates status table, the core of the status page.
 
+    :param report_obj: The HTML builder object
     :param PipestatManager project: project to get the results for
     :param str pipeline_reports_dir: path to the pipeline reports directory
+    :param bool portable: is the report to be portable?
     :return str: rendered status HTML file
     """
 
@@ -1235,6 +1239,12 @@ def create_status_table(project, pipeline_reports_dir: str) -> str:
                     0
                 ]  # Assumes the log file will be in status dir
                 assert os.path.exists(log), FileNotFoundError(f"Not found: {log}")
+                if portable:
+                    new_log_path = report_obj._create_copy_for_porting(
+                        parent_path=log,
+                        record_identifier=sample_name,
+                    )
+                    log = new_log_path
                 log_link_names.append(os.path.basename(log))
                 log_paths.append(os.path.relpath(log, pipeline_reports_dir))
             except Exception as e:
