@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Changed
 - Readme to reflect docker db configuration for testing.
 - added dependency warning when attempting to run pytest suite without optional dependencies.
+### Fixed
+- ensure log files are gathered for portable reports, #149
+- Fix minor html report title bugs #151
 
 ## [0.8.0] - 2024-01-25
 ### Added
