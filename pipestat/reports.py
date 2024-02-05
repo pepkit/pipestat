@@ -164,7 +164,12 @@ class HTMLReportBuilder(object):
             pages.append(os.path.relpath(page_path, self.pipeline_reports))
 
         template_vars = dict(
-            navbar=navbar, footer=footer, labels=labels, pages=pages, header="Objects"
+            navbar=navbar,
+            footer=footer,
+            labels=labels,
+            pages=pages,
+            header="Objects",
+            pipeline_name=self.pipeline_name,
         )
         _LOGGER.debug(f"object navbar_list_parent.html | template_vars:" f"\n{template_vars}")
         return render_jinja_template("navbar_list_parent.html", self.jinja_env, template_vars)
@@ -204,7 +209,12 @@ class HTMLReportBuilder(object):
                     labels.append(sample_name)
 
         template_vars = dict(
-            navbar=navbar, footer=footer, labels=labels, pages=pages, header="Records"
+            navbar=navbar,
+            footer=footer,
+            labels=labels,
+            pages=pages,
+            header="Records",
+            pipeline_name=self.pipeline_name,
         )
         _LOGGER.debug(f"sample navbar_list_parent.html | template_vars:" f"\n{template_vars}")
         return render_jinja_template("navbar_list_parent.html", self.jinja_env, template_vars)
@@ -390,6 +400,7 @@ class HTMLReportBuilder(object):
                         figures=[],
                         links=links,
                         desc=link_desc,
+                        pipeline_name=self.pipeline_name,
                     )
                     save_html(
                         html_page_path,
@@ -468,7 +479,12 @@ class HTMLReportBuilder(object):
                     )
 
     def create_glossary_html(self, glossary_table, navbar, footer):
-        template_vars = dict(glossary_table=glossary_table, navbar=navbar, footer=footer)
+        template_vars = dict(
+            glossary_table=glossary_table,
+            navbar=navbar,
+            footer=footer,
+            pipeline_name=self.pipeline_name,
+        )
         _LOGGER.debug(f"glossary.html | template_vars:\n{template_vars}")
         return render_jinja_template("glossary.html", self.jinja_env, template_vars)
 
@@ -615,7 +631,12 @@ class HTMLReportBuilder(object):
         :return str: rendered status HTML file
         """
         _LOGGER.debug("Building status page...")
-        template_vars = dict(status_table=status_table, navbar=navbar, footer=footer)
+        template_vars = dict(
+            status_table=status_table,
+            navbar=navbar,
+            footer=footer,
+            pipeline_name=self.pipeline_name,
+        )
         _LOGGER.debug(f"status.html | template_vars:\n{template_vars}")
         return render_jinja_template("status.html", self.jinja_env, template_vars)
 
@@ -761,7 +782,7 @@ class HTMLReportBuilder(object):
             columns_json=dumps(columns),
             table_row_data=table_row_data,
             project_name=self.prj.cfg[PROJECT_NAME],
-            pipeline_name=self.prj.cfg[PIPELINE_NAME],
+            pipeline_name=self.pipeline_name,
             stats_json=self._stats_to_json_str(),
             project_objects=project_objects,
             footer=footer,
