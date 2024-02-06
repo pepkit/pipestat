@@ -2,10 +2,11 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
-## [0.8.1] - 2024-02-XX
+## [0.8.1] - 2024-02-07
 ### Changed
 - Readme to reflect docker db configuration for testing. #145
 - added dependency warning when attempting to run pytest suite without optional dependencies. #146
+- Remove most docs in favor of new docs location: https://pep.databio.org/pipestat/
 ### Fixed
 - ensure log files are gathered for portable reports, #149
 - Fix minor html report title bugs #151
