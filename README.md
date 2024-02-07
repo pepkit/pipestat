@@ -9,20 +9,33 @@
 
 Pipestat standardizes reporting of pipeline results. It provides 1) a standard specification for how pipeline outputs should be stored; and 2) an implementation to easily write results to that format from within Python or from the command line. A pipeline author defines all the outputs produced by a pipeline by writing a JSON-schema. The pipeline then uses pipestat to report pipeline outputs as the pipeline runs, either via the Python API or command line interface. The user configures results to be stored either in a [YAML-formatted file](https://yaml.org/spec/1.2/spec.html) or a [PostgreSQL database](https://www.postgresql.org/).
 
-See [Pipestat documentation](https://pipestat.databio.org) for complete details.
+See [Pipestat documentation](https://pep.databio.org/pipestat/) for complete details.
 
 
 ## Developer tests
 
-First you need a local demo instance of posgres running to test the database back-end. you can get one using docker matching the included config file like this:
+###  Optional Dependencies
+
+Note: to run the pytest suite locally, you will need to install the related requirements:
+
+```bash
+cd pipestat
+
+pip install -r requirements/requirements-test.txt
 
 ```
-docker run --rm -it -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=pipestat-password -e POSTGRES_DB=pipestat-test -p 5432:5432 postgres
-```
 
-Then, run tests:
+### Database Backend Configuration for Tests
 
-```
-pytest
+Many of the tests require a postgres database to be set up otherwise many of the tests will skip.
+
+We recommend using docker:
+```bash
+docker run --rm -it --name pipestat_test_db \
+    -e POSTGRES_USER=postgres \
+    -e POSTGRES_PASSWORD=pipestat-password \
+    -e POSTGRES_DB=pipestat-test \
+    -p 5432:5432 \
+    postgres
 ```
 

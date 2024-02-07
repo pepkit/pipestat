@@ -1,4 +1,5 @@
 """ Generate HTML reports """
+
 import shutil
 
 import jinja2
@@ -83,9 +84,11 @@ class HTMLReportBuilder(object):
         self.amendments_str = "_".join(self.amendment) if self.amendment else ""
         self.pipeline_reports = os.path.join(
             self.reports_dir,
-            f"{self.pipeline_name}_{self.amendments_str}"
-            if self.amendments_str
-            else self.pipeline_name,
+            (
+                f"{self.pipeline_name}_{self.amendments_str}"
+                if self.amendments_str
+                else self.pipeline_name
+            ),
         )
         self.prj_index_html_path = project_index_html
         self.index_html_path = os.path.join(self.pipeline_reports, "index.html")
@@ -99,11 +102,11 @@ class HTMLReportBuilder(object):
         navbar = self.create_navbar(
             navbar_links=self.create_navbar_links(
                 wd=self.pipeline_reports,
-                project_index_html_relpath=os.path.relpath(
-                    self.prj_index_html_path, self.pipeline_reports
-                )
-                if self.prj_index_html_path
-                else None,
+                project_index_html_relpath=(
+                    os.path.relpath(self.prj_index_html_path, self.pipeline_reports)
+                    if self.prj_index_html_path
+                    else None
+                ),
             ),
             index_html_relpath=os.path.relpath(self.index_html_path, self.pipeline_reports),
         )
@@ -164,7 +167,12 @@ class HTMLReportBuilder(object):
             pages.append(os.path.relpath(page_path, self.pipeline_reports))
 
         template_vars = dict(
-            navbar=navbar, footer=footer, labels=labels, pages=pages, header="Objects"
+            navbar=navbar,
+            footer=footer,
+            labels=labels,
+            pages=pages,
+            header="Objects",
+            pipeline_name=self.pipeline_name,
         )
         _LOGGER.debug(f"object navbar_list_parent.html | template_vars:" f"\n{template_vars}")
         return render_jinja_template("navbar_list_parent.html", self.jinja_env, template_vars)
@@ -204,7 +212,12 @@ class HTMLReportBuilder(object):
                     labels.append(sample_name)
 
         template_vars = dict(
-            navbar=navbar, footer=footer, labels=labels, pages=pages, header="Records"
+            navbar=navbar,
+            footer=footer,
+            labels=labels,
+            pages=pages,
+            header="Records",
+            pipeline_name=self.pipeline_name,
         )
         _LOGGER.debug(f"sample navbar_list_parent.html | template_vars:" f"\n{template_vars}")
         return render_jinja_template("navbar_list_parent.html", self.jinja_env, template_vars)
@@ -390,6 +403,7 @@ class HTMLReportBuilder(object):
                         figures=[],
                         links=links,
                         desc=link_desc,
+                        pipeline_name=self.pipeline_name,
                     )
                     save_html(
                         html_page_path,
@@ -468,7 +482,12 @@ class HTMLReportBuilder(object):
                     )
 
     def create_glossary_html(self, glossary_table, navbar, footer):
-        template_vars = dict(glossary_table=glossary_table, navbar=navbar, footer=footer)
+        template_vars = dict(
+            glossary_table=glossary_table,
+            navbar=navbar,
+            footer=footer,
+            pipeline_name=self.pipeline_name,
+        )
         _LOGGER.debug(f"glossary.html | template_vars:\n{template_vars}")
         return render_jinja_template("glossary.html", self.jinja_env, template_vars)
 
@@ -615,7 +634,12 @@ class HTMLReportBuilder(object):
         :return str: rendered status HTML file
         """
         _LOGGER.debug("Building status page...")
-        template_vars = dict(status_table=status_table, navbar=navbar, footer=footer)
+        template_vars = dict(
+            status_table=status_table,
+            navbar=navbar,
+            footer=footer,
+            pipeline_name=self.pipeline_name,
+        )
         _LOGGER.debug(f"status.html | template_vars:\n{template_vars}")
         return render_jinja_template("status.html", self.jinja_env, template_vars)
 
@@ -703,7 +727,7 @@ class HTMLReportBuilder(object):
 
                 for key in all_result_identifiers:
                     if key not in sample_stat_results.keys():
-                        sample_stat_results[key] = "None reported"
+                        sample_stat_results[key] = ""
 
                 # Sort to ensure alignment in the table
                 sorted_sample_stat_results = dict(sorted(sample_stat_results.items()))
@@ -737,8 +761,10 @@ class HTMLReportBuilder(object):
         )
         # Create status page with each sample's status listed
         status_tab = create_status_table(
+            report_obj=self,
             project=self.prj,
             pipeline_reports_dir=self.pipeline_reports,
+            portable=self.portable,
         )
         save_html(
             path=os.path.join(self.pipeline_reports, "status.html"),
@@ -761,7 +787,7 @@ class HTMLReportBuilder(object):
             columns_json=dumps(columns),
             table_row_data=table_row_data,
             project_name=self.prj.cfg[PROJECT_NAME],
-            pipeline_name=self.prj.cfg[PIPELINE_NAME],
+            pipeline_name=self.pipeline_name,
             stats_json=self._stats_to_json_str(),
             project_objects=project_objects,
             footer=footer,
@@ -1146,12 +1172,14 @@ def uniqify(seq):
     return [x for x in seq if not (x in seen or seen_add(x))]
 
 
-def create_status_table(project, pipeline_reports_dir: str) -> str:
+def create_status_table(report_obj, project, pipeline_reports_dir: str, portable: bool) -> str:
     """
     Creates status table, the core of the status page.
 
+    :param report_obj: The HTML builder object
     :param PipestatManager project: project to get the results for
     :param str pipeline_reports_dir: path to the pipeline reports directory
+    :param bool portable: is the report to be portable?
     :return str: rendered status HTML file
     """
 
@@ -1214,6 +1242,12 @@ def create_status_table(project, pipeline_reports_dir: str) -> str:
                     0
                 ]  # Assumes the log file will be in status dir
                 assert os.path.exists(log), FileNotFoundError(f"Not found: {log}")
+                if portable:
+                    new_log_path = report_obj._create_copy_for_porting(
+                        parent_path=log,
+                        record_identifier=sample_name,
+                    )
+                    log = new_log_path
                 log_link_names.append(os.path.basename(log))
                 log_paths.append(os.path.relpath(log, pipeline_reports_dir))
             except Exception as e:
