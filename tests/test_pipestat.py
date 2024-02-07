@@ -23,6 +23,7 @@ from .conftest import (
     SERVICE_UNAVAILABLE,
     DB_URL,
     REC_ID,
+    DB_DEPENDENCIES,
 )
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
@@ -44,6 +45,7 @@ def assert_is_in_files(fs, s):
             assert s in fh.read()
 
 
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestSplitClasses:
     @pytest.mark.parametrize(
@@ -144,6 +146,7 @@ class TestSplitClasses:
                     psm.retrieve_one(record_identifier=rec_id)
 
 
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
 class TestReporting:
     @pytest.mark.parametrize(
@@ -500,6 +503,7 @@ class TestReporting:
             assert value in results[0]
 
 
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestRetrieval:
     @pytest.mark.parametrize(
@@ -669,6 +673,7 @@ class TestRetrieval:
             # assert len(result['records'][0]) == 0
 
 
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
 class TestRemoval:
     @pytest.mark.parametrize(["rec_id", "res_id", "val"], [("sample2", "number_of_things", 1)])
@@ -822,6 +827,7 @@ class TestRemoval:
                 result = psm.retrieve_one(record_identifier=rec_id)
 
 
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
 class TestNoRecordID:
     @pytest.mark.parametrize(
@@ -940,6 +946,7 @@ def test_highlighting_works(highlight_schema_file_path, results_file_path):
         assert psm.highlighted_results == schema_highlighted_results
 
 
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestEnvVars:
     def test_no_config__psm_is_built_from_env_vars(
@@ -968,6 +975,8 @@ class TestEnvVars:
             pytest.fail(f"Error during pipestat manager creation: {e}")
 
 
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 def test_no_constructor_args__raises_expected_exception():
     """See Issue #3 in the repository."""
     with pytest.raises(SchemaNotFoundError):
@@ -1017,6 +1026,7 @@ def absolutize_file(f: str) -> str:
         ]
     ],
 )
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 @pytest.mark.parametrize("backend_data", [BACKEND_KEY_FILE, BACKEND_KEY_DB], indirect=True)
 def test_manager_has_correct_status_schema_and_status_schema_source(
@@ -1028,6 +1038,7 @@ def test_manager_has_correct_status_schema_and_status_schema_source(
         assert psm.cfg[STATUS_SCHEMA_SOURCE_KEY] == exp_status_schema_path
 
 
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestPipestatBoss:
     @pytest.mark.parametrize("backend", ["file", "db"])
@@ -1064,6 +1075,7 @@ class TestPipestatBoss:
                     psb.projectmanager.set_status(record_identifier=r, status_identifier="running")
 
 
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestHTMLReport:
     @pytest.mark.parametrize("backend", ["file", "db"])
@@ -1198,6 +1210,7 @@ class TestHTMLReport:
             assert len(zip_files) > 0
 
 
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestTableCreation:
     @pytest.mark.parametrize("backend", ["file", "db"])
@@ -1257,6 +1270,7 @@ class TestTableCreation:
             assert table_paths is not None
 
 
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestPipestatCLI:
     @pytest.mark.parametrize(
@@ -1356,6 +1370,7 @@ class TestPipestatCLI:
                 main(test_args=x)
 
 
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestFileTypeLinking:
     @pytest.mark.parametrize("backend", ["file", "db"])
@@ -1405,6 +1420,7 @@ class TestFileTypeLinking:
                 print(files)
 
 
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestTimeStamp:
     @pytest.mark.parametrize(
@@ -1540,6 +1556,7 @@ class TestTimeStamp:
             assert len(results["records"]) == 10
 
 
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestSelectRecords:
     @pytest.mark.parametrize("backend", ["file", "db"])
@@ -2127,6 +2144,8 @@ class TestSelectRecords:
             assert len(result3) == 6
 
 
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 class TestPipestatIter:
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_pipestat_iter(
@@ -2175,7 +2194,7 @@ class TestMultiResultFiles:
         backend,
         range_values,
     ):
-        with NamedTemporaryFile() as f, TemporaryDirectory() as d, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, TemporaryDirectory() as d:
             results_file_path = f.name
             temp_dir = d
             single_results_file_path = "{record_identifier}_results.yaml"
@@ -2196,7 +2215,7 @@ class TestMultiResultFiles:
         backend,
         range_values,
     ):
-        with TemporaryDirectory() as d, ContextManagerDBTesting(DB_URL):
+        with TemporaryDirectory() as d:
             temp_dir = d
             single_results_file_path = "{record_identifier}_results.yaml"
             results_file_path = os.path.join(temp_dir, single_results_file_path)
@@ -2223,7 +2242,7 @@ class TestMultiResultFiles:
         backend,
         range_values,
     ):
-        with TemporaryDirectory() as d, ContextManagerDBTesting(DB_URL):
+        with TemporaryDirectory() as d:
             temp_dir = d
             single_results_file_path = "{record_identifier}/results.yaml"
             results_file_path = os.path.join(temp_dir, single_results_file_path)
@@ -2243,6 +2262,7 @@ class TestMultiResultFiles:
             assert r_id in data[psm.pipeline_name][psm.pipeline_type].keys()
 
 
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestSetIndexTrue:
     @pytest.mark.parametrize(

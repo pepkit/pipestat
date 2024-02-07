@@ -4,10 +4,14 @@ from pipestat import SamplePipestatManager
 from pipestat.const import *
 from .conftest import DB_URL
 
-from .conftest import SERVICE_UNAVAILABLE
-from sqlmodel import SQLModel, create_engine
+from .conftest import SERVICE_UNAVAILABLE, DB_DEPENDENCIES
 
-from sqlmodel.main import default_registry
+try:
+    from sqlmodel import SQLModel, create_engine
+
+    from sqlmodel.main import default_registry
+except ModuleNotFoundError:
+    pass
 
 
 class ContextManagerDBTesting:
@@ -30,6 +34,7 @@ class ContextManagerDBTesting:
         self.connection.close()
 
 
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestDatabaseOnly:
     # TODO: parameterize this against different schemas.
