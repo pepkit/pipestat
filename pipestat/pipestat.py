@@ -7,7 +7,8 @@ from abc import ABC
 from collections.abc import MutableMapping
 
 from jsonschema import validate
-from yacman import YAMLConfigManager, select_config
+from yacman import FutureYAMLConfigManager as YAMLConfigManager
+from yacman.yacman_future import select_config
 
 from typing import Optional, Union, Dict, Any, List, Iterator
 
@@ -162,9 +163,14 @@ class PipestatManager(MutableMapping):
 
         self.cfg["config_path"] = select_config(config_file, ENV_VARS["config"])
 
-        self.cfg[CONFIG_KEY] = YAMLConfigManager(
-            entries=config_dict, filepath=self.cfg["config_path"]
-        )
+        if config_dict is not None:
+            self.cfg[CONFIG_KEY] = YAMLConfigManager.from_obj(entries=config_dict)
+        elif self.cfg["config_path"] is not None:
+            self.cfg[CONFIG_KEY] = YAMLConfigManager.from_yaml_file(
+                filepath=self.cfg["config_path"]
+            )
+        else:
+            self.cfg[CONFIG_KEY] = YAMLConfigManager()
 
         _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
         validate(self.cfg[CONFIG_KEY].exp, cfg_schema)
