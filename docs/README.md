@@ -29,7 +29,7 @@ export PIPESTAT_RECORD_IDENTIFIER=my_record
 export PIPESTAT_RESULTS_FILE=results_file.yaml
 ```
 Note: When setting environment variables as in the above example, you will need to provide an output_schema.yaml file in your current working directory with the following example data:
-```
+```yaml
 samples:
   result_name:
     type: string
