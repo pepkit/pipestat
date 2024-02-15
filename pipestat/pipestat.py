@@ -14,12 +14,13 @@ from typing import Optional, Union, Dict, Any, List, Iterator
 
 
 from .exceptions import (
-    PipestatDependencyError,
+    ColumnNotFoundError,
     NoBackendSpecifiedError,
-    SchemaNotFoundError,
     InvalidTimeFormatError,
+    PipestatDependencyError,
     PipestatDatabaseError,
     RecordNotFoundError,
+    SchemaNotFoundError,
 )
 from pipestat.backends.file_backend.filebackend import FileBackend
 from .reports import HTMLReportBuilder, _create_stats_objs_summaries
@@ -572,6 +573,12 @@ class PipestatManager(MutableMapping):
         result_identifiers = list(values.keys())
         if self.cfg[SCHEMA_KEY] is not None:
             for r in result_identifiers:
+                # First confirm this property is defined in the schema
+                if r not in self.result_schemas:
+                    raise ColumnNotFoundError(
+                        f"Can't report a result for attribute '{r}'; it is not defined in the output schema."
+                    )
+
                 validate_type(
                     value=values[r],
                     schema=self.result_schemas[r],
