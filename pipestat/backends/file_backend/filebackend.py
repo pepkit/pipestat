@@ -727,5 +727,7 @@ class FileBackend(PipestatBackend):
                 _LOGGER.warning("MULTI PIPELINES FOR SINGLE RESULTS FILE")
             else:
                 raise PipestatError(
-                    f"'{self.results_file_path}' is already in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)} and multi_pipelines = False."
+                    f"Trying to report result for namespace '{self.pipeline_name}' at '{self.results_file_path}', but "
+                    f"{num_namespaces} other namespaces are already in the file: [{', '.join(namespaces_reported)}]. "
+                    f"Pipestat will not report multiple namespaces to one file unless `multi_pipelines` is True."
                 )
