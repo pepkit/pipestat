@@ -41,6 +41,7 @@ properties:
         result_name:
           type: string
           description: "ResultName"
+```
 
 ## Pipeline results reporting and retrieval
 ### For these examples below, it is assumed that the proper environment variables (see above) have been set.
