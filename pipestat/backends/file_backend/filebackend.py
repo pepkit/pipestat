@@ -549,7 +549,14 @@ class FileBackend(PipestatBackend):
                                 retrieved_results.append(record_identifier)
                     else:
                         # If user wants record_identifier
-                        if record_identifier in filter_condition["value"]:
+                        if isinstance(filter_condition["value"], list):
+                            for v in filter_condition["value"]:
+                                if (
+                                    record_identifier == v
+                                    and record_identifier not in retrieved_results
+                                ):
+                                    retrieved_results.append(record_identifier)
+                        elif record_identifier == filter_condition["value"]:
                             retrieved_results.append(record_identifier)
 
                 if retrieved_results:

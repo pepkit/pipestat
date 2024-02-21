@@ -98,6 +98,45 @@ class TestSplitClasses:
                 with pytest.raises(RecordNotFoundError):
                     psm.retrieve_one(record_identifier=rec_id)
 
+    @pytest.mark.parametrize("backend", ["file"])
+    def test_similar_record_ids(
+        self,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            #####
+            rec_id1 = "sample1"
+            rec_id2 = "sample"
+
+            val = {"name_of_something": "ABCDEFG"}
+            psm.report(record_identifier=rec_id1, values=val, force_overwrite=True)
+
+            val = {"name_of_something": "HIJKLMOP"}
+            psm.report(record_identifier=rec_id2, values=val, force_overwrite=True)
+
+            result1 = psm.retrieve_one(
+                record_identifier=rec_id1, result_identifier="name_of_something"
+            )
+            result2 = psm.retrieve_one(
+                record_identifier=rec_id2, result_identifier="name_of_something"
+            )
+
+            assert result1 == "ABCDEFG"
+            assert result2 == "HIJKLMOP"
+
     @pytest.mark.parametrize(
         ["rec_id", "val"],
         [
