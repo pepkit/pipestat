@@ -170,19 +170,33 @@ class ParsedSchema(object):
         :return str: string representation of the object
         """
         res = f"{self.__class__.__name__} ({self._pipeline_name})"
+        def add_props(props):
+            res = ""
+            if len(props) == 0:
+                res += "\n - None"
+            else:
+                for k, v in props:
+                    res += f"\n - {k} : {v}"
+            return res
+
         if self._project_level_data is not None:
-            res += "\n Project Level Data:"
-            for k, v in self._project_level_data.items():
-                res += f"\n -  {k} : {v}"
+            res += "\n Project-level properties:"
+            res += add_props(self._project_level_data.items())
         if self._sample_level_data is not None:
-            res += "\n Sample Level Data:"
-            for k, v in self._sample_level_data.items():
-                res += f"\n -  {k} : {v}"
+            res += "\n Sample-level properties:"
+            res += add_props(self._sample_level_data.items())
         if self._status_data is not None:
-            res += "\n Status Data:"
-            for k, v in self._status_data.items():
-                res += f"\n -  {k} : {v}"
+            res += "\n Status properties:"
+            res += add_props(self._status_data.items())
         return res
+
+    def __repr__(self):
+        """
+        Generate string representation of the object.
+
+        :return str: string representation of the object
+        """
+        return self.__str__()
 
     @property
     def pipeline_name(self):
