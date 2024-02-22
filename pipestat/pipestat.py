@@ -7,18 +7,20 @@ from abc import ABC
 from collections.abc import MutableMapping
 
 from jsonschema import validate
-from yacman import YAMLConfigManager, select_config
+from yacman import FutureYAMLConfigManager as YAMLConfigManager
+from yacman.yacman_future import select_config
 
 from typing import Optional, Union, Dict, Any, List, Iterator
 
 
 from .exceptions import (
-    PipestatDependencyError,
+    ColumnNotFoundError,
     NoBackendSpecifiedError,
-    SchemaNotFoundError,
     InvalidTimeFormatError,
+    PipestatDependencyError,
     PipestatDatabaseError,
     RecordNotFoundError,
+    SchemaNotFoundError,
 )
 from pipestat.backends.file_backend.filebackend import FileBackend
 from .reports import HTMLReportBuilder, _create_stats_objs_summaries
@@ -162,9 +164,14 @@ class PipestatManager(MutableMapping):
 
         self.cfg["config_path"] = select_config(config_file, ENV_VARS["config"])
 
-        self.cfg[CONFIG_KEY] = YAMLConfigManager(
-            entries=config_dict, filepath=self.cfg["config_path"]
-        )
+        if config_dict is not None:
+            self.cfg[CONFIG_KEY] = YAMLConfigManager.from_obj(entries=config_dict)
+        elif self.cfg["config_path"] is not None:
+            self.cfg[CONFIG_KEY] = YAMLConfigManager.from_yaml_file(
+                filepath=self.cfg["config_path"]
+            )
+        else:
+            self.cfg[CONFIG_KEY] = YAMLConfigManager()
 
         _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
         validate(self.cfg[CONFIG_KEY].exp, cfg_schema)
@@ -486,7 +493,7 @@ class PipestatManager(MutableMapping):
         )
 
         if self._schema_path is None:
-            _LOGGER.warning("No schema supplied.")
+            _LOGGER.warning("No pipestat output schema was supplied to PipestatManager.")
             self.cfg[SCHEMA_KEY] = None
             self.cfg[STATUS_SCHEMA_KEY] = None
             self.cfg[STATUS_SCHEMA_SOURCE_KEY] = None
@@ -566,6 +573,12 @@ class PipestatManager(MutableMapping):
         result_identifiers = list(values.keys())
         if self.cfg[SCHEMA_KEY] is not None:
             for r in result_identifiers:
+                # First confirm this property is defined in the schema
+                if r not in self.result_schemas:
+                    raise ColumnNotFoundError(
+                        f"Can't report a result for attribute '{r}'; it is not defined in the output schema."
+                    )
+
                 validate_type(
                     value=values[r],
                     schema=self.result_schemas[r],

@@ -9,7 +9,9 @@ from ...helpers import get_all_result_files
 
 from glob import glob
 from logging import getLogger
-from yacman import YAMLConfigManager
+from yacman import FutureYAMLConfigManager as YAMLConfigManager
+from yacman import read_lock, write_lock
+
 from ubiquerg import create_lock, remove_lock
 
 from typing import List, Dict, Any, Optional, Union, Literal, Callable, Tuple
@@ -289,7 +291,7 @@ class FileBackend(PipestatBackend):
                     record_identifier=record_identifier,
                     rm_record=rm_record,
                 )
-            with self._data as locked_data:
+            with write_lock(self._data) as locked_data:
                 locked_data.write()
         return True
 
@@ -384,7 +386,7 @@ class FileBackend(PipestatBackend):
                 )
             )
 
-        with self._data as locked_data:
+        with write_lock(self._data) as locked_data:
             locked_data.write()
 
         return results_formatted
@@ -547,7 +549,14 @@ class FileBackend(PipestatBackend):
                                 retrieved_results.append(record_identifier)
                     else:
                         # If user wants record_identifier
-                        if record_identifier in filter_condition["value"]:
+                        if isinstance(filter_condition["value"], list):
+                            for v in filter_condition["value"]:
+                                if (
+                                    record_identifier == v
+                                    and record_identifier not in retrieved_results
+                                ):
+                                    retrieved_results.append(record_identifier)
+                        elif record_identifier == filter_condition["value"]:
                             retrieved_results.append(record_identifier)
 
                 if retrieved_results:
@@ -654,15 +663,15 @@ class FileBackend(PipestatBackend):
         except FileExistsError:
             pass
 
-        self._data = YAMLConfigManager(
-            entries={self.pipeline_name: {}},
-            filepath=self.results_file_path,
+        self._data = YAMLConfigManager.from_yaml_file(
+            self.results_file_path,
             create_file=True,
         )
+        self._data.update_from_obj({self.pipeline_name: {}})
         self._data.setdefault(self.pipeline_name, {})
         self._data[self.pipeline_name].setdefault("project", {})
         self._data[self.pipeline_name].setdefault("sample", {})
-        with self._data as data_locked:
+        with write_lock(self._data) as data_locked:
             data_locked.write()
 
     def aggregate_multi_results(self, results_directory) -> None:
@@ -684,7 +693,7 @@ class FileBackend(PipestatBackend):
 
         for file in all_result_files:
             try:
-                temp_data = YAMLConfigManager(filepath=file)
+                temp_data = YAMLConfigManager.from_yaml_file(file)
             except ValueError:
                 temp_data = YAMLConfigManager()
             if self.pipeline_name in temp_data:
@@ -697,18 +706,18 @@ class FileBackend(PipestatBackend):
                         temp_data[self.pipeline_name]["sample"]
                     )
 
-        with self._data as data_locked:
+        with write_lock(self._data) as data_locked:
             data_locked.write()
 
     def _load_results_file(self) -> None:
         _LOGGER.debug(f"Reading data from '{self.results_file_path}'")
-        data = YAMLConfigManager(filepath=self.results_file_path)
+        data = YAMLConfigManager.from_yaml_file(self.results_file_path)
         if not bool(data):
             self._data = data
             self._data.setdefault(self.pipeline_name, {})
             self._data[self.pipeline_name].setdefault("project", {})
             self._data[self.pipeline_name].setdefault("sample", {})
-            with self._data as data_locked:
+            with write_lock(self._data) as data_locked:
                 data_locked.write()
         namespaces_reported = [k for k in data.keys() if not k.startswith("_")]
         num_namespaces = len(namespaces_reported)
@@ -725,5 +734,7 @@ class FileBackend(PipestatBackend):
                 _LOGGER.warning("MULTI PIPELINES FOR SINGLE RESULTS FILE")
             else:
                 raise PipestatError(
-                    f"'{self.results_file_path}' is already in use for {num_namespaces} namespaces: {', '.join(namespaces_reported)} and multi_pipelines = False."
+                    f"Trying to report result for namespace '{self.pipeline_name}' at '{self.results_file_path}', but "
+                    f"{num_namespaces} other namespaces are already in the file: [{', '.join(namespaces_reported)}]. "
+                    f"Pipestat will not report multiple namespaces to one file unless `multi_pipelines` is True."
                 )

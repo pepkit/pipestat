@@ -28,6 +28,8 @@ class RecordNotFoundError(LookupError):
 
 
 class ColumnNotFoundError(LookupError):
+    """A specified attribute (column) is not in the table or schema"""
+
     def __init__(self, msg):
         super(ColumnNotFoundError, self).__init__(msg)
 
