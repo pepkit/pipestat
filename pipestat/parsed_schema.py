@@ -4,7 +4,7 @@ import copy
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Union
-
+import yacman
 from .const import (
     CANONICAL_TYPES,
     CLASSES_BY_TYPE,
@@ -76,7 +76,8 @@ class ParsedSchema(object):
     def __init__(self, data: Union[Dict[str, Any], Path, str]) -> None:
         # initial validation and parse
         if not isinstance(data, dict):
-            _, data = read_yaml_data(data, "schema")
+            # _, data = read_yaml_data(data, "schema")
+            data = yacman.load_yaml(data)
 
         # Keep a copy of the original schema
         self.original_schema = copy.deepcopy(data)
