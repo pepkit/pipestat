@@ -12,7 +12,7 @@ from shutil import make_archive
 from typing import Any, Dict, Optional, Tuple, Union, List
 
 from oyaml import safe_load, dump
-from ubiquerg import expandpath
+from ubiquerg import expandpath, is_url
 
 from zipfile import ZipFile, ZIP_DEFLATED
 
@@ -110,9 +110,11 @@ def mk_abs_via_cfg(
     Assumes a relative path is relative to cfg_path, or to current working directory if cfg_path is None.
 
     : param str path: The path to make absolute.
-    : param str cfg_path: Relative paths will be relative the containing folder of this pat
+    : param str cfg_path: Relative paths will be relative the containing folder of this path
     """
     if path is None:
+        return path
+    if is_url(path):
         return path
     assert isinstance(path, str), TypeError("Path is expected to be a str")
     if os.path.isabs(path):

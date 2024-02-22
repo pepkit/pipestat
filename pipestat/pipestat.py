@@ -9,6 +9,8 @@ from collections.abc import MutableMapping
 from jsonschema import validate
 from yacman import FutureYAMLConfigManager as YAMLConfigManager
 from yacman.yacman_future import select_config
+from ubiquerg import mkabs
+
 
 from typing import Optional, Union, Dict, Any, List, Iterator
 
@@ -493,7 +495,7 @@ class PipestatManager(MutableMapping):
         )
 
         if self._schema_path is None:
-            _LOGGER.warning("No pipestat output schema was supplied to PipestatManager.")
+            _LOGGER.warning("No schema supplied.")
             self.cfg[SCHEMA_KEY] = None
             self.cfg[STATUS_SCHEMA_KEY] = None
             self.cfg[STATUS_SCHEMA_SOURCE_KEY] = None
@@ -501,7 +503,7 @@ class PipestatManager(MutableMapping):
             # raise SchemaNotFoundError("PipestatManager creation failed; no schema")
         else:
             # Main schema
-            schema_to_read = mk_abs_via_cfg(self._schema_path, self.cfg["config_path"])
+            schema_to_read = mkabs(self._schema_path, self.cfg["config_path"])
             self._schema_path = schema_to_read
             parsed_schema = ParsedSchema(schema_to_read)
             self.cfg[SCHEMA_KEY] = parsed_schema
