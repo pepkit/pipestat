@@ -16,7 +16,7 @@ class PipestatBackend(ABC):
     """Abstract class representing a pipestat backend"""
 
     def __init__(self, pipeline_type):
-        _LOGGER.warning("Initialize PipestatBackend")
+        _LOGGER.debug("Initialize PipestatBackend")
         self.pipeline_type = pipeline_type
 
     def assert_results_defined(self, results: List[str], pipeline_type: str) -> None:
