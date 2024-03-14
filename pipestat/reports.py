@@ -1327,46 +1327,6 @@ def _get_runtime(profile_df: _pd.DataFrame) -> str:
     ).split(".")[0]
 
 
-def get_file_for_project(
-    prj,
-    pipeline_name: str,
-    appendix: str = None,
-    directory: str = None,
-    reportdir: str = None,
-) -> str:
-    """
-    Create a path to the file for the current project.
-    Takes the possibility of amendment being activated at the time
-
-    Format of the output path:
-    {output_dir}/{directory}/{p.name}_{pipeline_name}_{active_amendments}_{appendix}
-
-    :param pipestat.PipestatManager prj: pipestat manager object
-    :param str pipeline_name: name of the pipeline to get the file for
-    :param str appendix: the appendix of the file to create the path for,
-        like 'objs_summary.tsv' for objects summary file
-    :param str directory: optional subdirectory for location of file
-    :return str fp: path to the file, e.g. objects.yaml, stats.tsv
-    """
-    # TODO try to combine with get_file_for_table to reduce code.
-    if reportdir is None:  # Determine a default reportdir if not provided
-        results_file_path = getattr(prj.backend, "results_file_path", None)
-        config_path = getattr(prj, "config_path", None)
-        output_dir = getattr(prj, "output_dir", None)
-        output_dir = output_dir or results_file_path or config_path
-        output_dir = os.path.dirname(output_dir)
-        reportdir = os.path.join(output_dir, "reports")
-    if prj.cfg["project_name"] is None:
-        fp = os.path.join(reportdir, directory or "", f"NO_PROJECT_NAME_{pipeline_name}")
-    else:
-        fp = os.path.join(reportdir, directory or "", f"{prj.cfg['project_name']}_{pipeline_name}")
-
-    if hasattr(prj, "amendments") and getattr(prj, "amendments"):
-        fp += f"_{'_'.join(prj.amendments)}"
-    fp += f"_{appendix}"
-    return fp
-
-
 def get_file_for_table(prj, pipeline_name: str, appendix=None, directory=None) -> str:
     """
     Create a path to the file for the current project.
@@ -1392,7 +1352,8 @@ def get_file_for_table(prj, pipeline_name: str, appendix=None, directory=None) -
     fp = os.path.join(table_dir, directory or "", f"{pipeline_name}")
     if hasattr(prj, "amendments") and getattr(prj, "amendments"):
         fp += f"_{'_'.join(prj.amendments)}"
-    fp += f"_{appendix}"
+    if appendix:
+        fp += f"_{appendix}"
     return fp
 
 
