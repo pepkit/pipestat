@@ -311,8 +311,8 @@ class FileBackend(PipestatBackend):
             try:
                 _LOGGER.info(f"Removing '{record_identifier}' record")
                 del self._data[self.pipeline_name][self.pipeline_type][record_identifier]
-                with self._data as locked_data:
-                    locked_data.write()
+                with write_lock(self._data) as data_locked:
+                    data_locked.write()
                 return True
             except:
                 _LOGGER.warning(
