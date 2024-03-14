@@ -2,6 +2,10 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.8.3] - 2024-03-xx
+### Fixed
+- Bug with rm_record for filebackend
+
 ## [0.8.2] - 2024-02-22
 ### Changed
 - Changed yacman requirement and using FutureYamlConfigManager.
