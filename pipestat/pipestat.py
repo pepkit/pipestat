@@ -501,7 +501,7 @@ class PipestatManager(MutableMapping):
         )
 
         if self._schema_path is None:
-            _LOGGER.warning("No schema supplied.")
+            _LOGGER.warning("No pipestat output schema was supplied to PipestatManager.")
             self.cfg[SCHEMA_KEY] = None
             self.cfg[STATUS_SCHEMA_KEY] = None
             self.cfg[STATUS_SCHEMA_SOURCE_KEY] = None
