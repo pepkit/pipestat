@@ -26,7 +26,13 @@ from .exceptions import (
 )
 from pipestat.backends.file_backend.filebackend import FileBackend
 from .reports import HTMLReportBuilder, _create_stats_objs_summaries
-from .helpers import validate_type, mk_abs_via_cfg, read_yaml_data, default_formatter, zip_report
+from .helpers import (
+    validate_type,
+    read_yaml_data,
+    default_formatter,
+    zip_report,
+    make_subdirectories,
+)
 from .const import (
     PKG_NAME,
     DEFAULT_PIPELINE_NAME,
@@ -209,7 +215,7 @@ class PipestatManager(MutableMapping):
             "pipeline_type", default="sample", override=pipeline_type
         )
 
-        self.cfg[FILE_KEY] = mk_abs_via_cfg(
+        self.cfg[FILE_KEY] = mkabs(
             self.resolve_results_file_path(
                 self.cfg[CONFIG_KEY].priority_get(
                     "results_file_path",
@@ -219,6 +225,7 @@ class PipestatManager(MutableMapping):
             ),
             self.cfg["config_path"],
         )
+        make_subdirectories(self.cfg[FILE_KEY])
 
         self.cfg[RESULT_FORMATTER] = result_formatter
 
@@ -343,9 +350,8 @@ class PipestatManager(MutableMapping):
             override=flag_file_dir,
             default=os.path.dirname(self.cfg[FILE_KEY]),
         )
-        self.cfg[STATUS_FILE_DIR] = mk_abs_via_cfg(
-            flag_file_dir, self.config_path or self.cfg[FILE_KEY]
-        )
+        self.cfg[STATUS_FILE_DIR] = mkabs(flag_file_dir, self.config_path or self.cfg[FILE_KEY])
+        make_subdirectories(self.cfg[STATUS_FILE_DIR])
 
         self.backend = FileBackend(
             self.cfg[FILE_KEY],
@@ -815,7 +821,8 @@ class PipestatManager(MutableMapping):
                 results_directory = self.cfg["unresolved_result_path"].split(
                     "{record_identifier}"
                 )[0]
-                results_directory = mk_abs_via_cfg(results_directory, self.cfg["config_path"])
+                results_directory = mkabs(results_directory, self.cfg["config_path"])
+                make_subdirectories(results_directory)
                 self.backend.aggregate_multi_results(results_directory)
 
     @require_backend
