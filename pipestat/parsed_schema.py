@@ -170,6 +170,7 @@ class ParsedSchema(object):
         :return str: string representation of the object
         """
         res = f"{self.__class__.__name__} ({self._pipeline_name})"
+
         def add_props(props):
             res = ""
             if len(props) == 0:

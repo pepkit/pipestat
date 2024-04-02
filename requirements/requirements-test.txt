@@ -6,7 +6,7 @@ jinja2
 jsonschema
 logmuse>=0.2.5
 oyaml
-ubiquerg>=0.6.1
+ubiquerg>=0.8.0
 yacman>=0.9.2
 PyYAML
 pandas
