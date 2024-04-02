@@ -4,7 +4,7 @@ import copy
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Union
-
+import yacman
 from .const import (
     CANONICAL_TYPES,
     CLASSES_BY_TYPE,
@@ -15,7 +15,6 @@ from .const import (
     SCHEMA_TYPE_KEY,
 )
 from .exceptions import SchemaError
-from .helpers import read_yaml_data
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -76,7 +75,7 @@ class ParsedSchema(object):
     def __init__(self, data: Union[Dict[str, Any], Path, str]) -> None:
         # initial validation and parse
         if not isinstance(data, dict):
-            _, data = read_yaml_data(data, "schema")
+            data = yacman.load_yaml(data)
 
         # Keep a copy of the original schema
         self.original_schema = copy.deepcopy(data)
@@ -169,19 +168,34 @@ class ParsedSchema(object):
         :return str: string representation of the object
         """
         res = f"{self.__class__.__name__} ({self._pipeline_name})"
+
+        def add_props(props):
+            res = ""
+            if len(props) == 0:
+                res += "\n - None"
+            else:
+                for k, v in props:
+                    res += f"\n - {k} : {v}"
+            return res
+
         if self._project_level_data is not None:
-            res += "\n Project Level Data:"
-            for k, v in self._project_level_data.items():
-                res += f"\n -  {k} : {v}"
+            res += "\n Project-level properties:"
+            res += add_props(self._project_level_data.items())
         if self._sample_level_data is not None:
-            res += "\n Sample Level Data:"
-            for k, v in self._sample_level_data.items():
-                res += f"\n -  {k} : {v}"
+            res += "\n Sample-level properties:"
+            res += add_props(self._sample_level_data.items())
         if self._status_data is not None:
-            res += "\n Status Data:"
-            for k, v in self._status_data.items():
-                res += f"\n -  {k} : {v}"
+            res += "\n Status properties:"
+            res += add_props(self._status_data.items())
         return res
+
+    def __repr__(self):
+        """
+        Generate string representation of the object.
+
+        :return str: string representation of the object
+        """
+        return self.__str__()
 
     @property
     def pipeline_name(self):

@@ -9,6 +9,9 @@ from collections.abc import MutableMapping
 from jsonschema import validate
 from yacman import FutureYAMLConfigManager as YAMLConfigManager
 from yacman.yacman_future import select_config
+from ubiquerg import mkabs
+from yacman import load_yaml
+
 
 from typing import Optional, Union, Dict, Any, List, Iterator
 
@@ -24,7 +27,12 @@ from .exceptions import (
 )
 from pipestat.backends.file_backend.filebackend import FileBackend
 from .reports import HTMLReportBuilder, _create_stats_objs_summaries
-from .helpers import validate_type, mk_abs_via_cfg, read_yaml_data, default_formatter, zip_report
+from .helpers import (
+    validate_type,
+    default_formatter,
+    zip_report,
+    make_subdirectories,
+)
 from .const import (
     PKG_NAME,
     DEFAULT_PIPELINE_NAME,
@@ -173,7 +181,7 @@ class PipestatManager(MutableMapping):
         else:
             self.cfg[CONFIG_KEY] = YAMLConfigManager()
 
-        _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
+        cfg_schema = load_yaml(CFG_SCHEMA)
         validate(self.cfg[CONFIG_KEY].exp, cfg_schema)
 
         self.cfg[SCHEMA_PATH] = self.cfg[CONFIG_KEY].priority_get(
@@ -207,7 +215,7 @@ class PipestatManager(MutableMapping):
             "pipeline_type", default="sample", override=pipeline_type
         )
 
-        self.cfg[FILE_KEY] = mk_abs_via_cfg(
+        self.cfg[FILE_KEY] = mkabs(
             self.resolve_results_file_path(
                 self.cfg[CONFIG_KEY].priority_get(
                     "results_file_path",
@@ -217,6 +225,7 @@ class PipestatManager(MutableMapping):
             ),
             self.cfg["config_path"],
         )
+        make_subdirectories(self.cfg[FILE_KEY])
 
         self.cfg[RESULT_FORMATTER] = result_formatter
 
@@ -341,9 +350,8 @@ class PipestatManager(MutableMapping):
             override=flag_file_dir,
             default=os.path.dirname(self.cfg[FILE_KEY]),
         )
-        self.cfg[STATUS_FILE_DIR] = mk_abs_via_cfg(
-            flag_file_dir, self.config_path or self.cfg[FILE_KEY]
-        )
+        self.cfg[STATUS_FILE_DIR] = mkabs(flag_file_dir, self.config_path or self.cfg[FILE_KEY])
+        make_subdirectories(self.cfg[STATUS_FILE_DIR])
 
         self.backend = FileBackend(
             self.cfg[FILE_KEY],
@@ -501,7 +509,7 @@ class PipestatManager(MutableMapping):
             # raise SchemaNotFoundError("PipestatManager creation failed; no schema")
         else:
             # Main schema
-            schema_to_read = mk_abs_via_cfg(self._schema_path, self.cfg["config_path"])
+            schema_to_read = mkabs(self._schema_path, self.cfg["config_path"])
             self._schema_path = schema_to_read
             parsed_schema = ParsedSchema(schema_to_read)
             self.cfg[SCHEMA_KEY] = parsed_schema
@@ -509,10 +517,8 @@ class PipestatManager(MutableMapping):
             # Status schema
             self.cfg[STATUS_SCHEMA_KEY] = parsed_schema.status_data
             if not self.cfg[STATUS_SCHEMA_KEY]:
-                (
-                    self.cfg[STATUS_SCHEMA_SOURCE_KEY],
-                    self.cfg[STATUS_SCHEMA_KEY],
-                ) = read_yaml_data(path=STATUS_SCHEMA, what="default status schema")
+                self.cfg[STATUS_SCHEMA_SOURCE_KEY] = STATUS_SCHEMA
+                self.cfg[STATUS_SCHEMA_KEY] = load_yaml(filepath=STATUS_SCHEMA)
             else:
                 self.cfg[STATUS_SCHEMA_SOURCE_KEY] = schema_to_read
 
@@ -813,7 +819,8 @@ class PipestatManager(MutableMapping):
                 results_directory = self.cfg["unresolved_result_path"].split(
                     "{record_identifier}"
                 )[0]
-                results_directory = mk_abs_via_cfg(results_directory, self.cfg["config_path"])
+                results_directory = mkabs(results_directory, self.cfg["config_path"])
+                make_subdirectories(results_directory)
                 self.backend.aggregate_multi_results(results_directory)
 
     @require_backend

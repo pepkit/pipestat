@@ -12,9 +12,7 @@ from shutil import make_archive
 from typing import Any, Dict, Optional, Tuple, Union, List
 
 from oyaml import safe_load, dump
-from ubiquerg import expandpath
-
-from zipfile import ZipFile, ZIP_DEFLATED
+from ubiquerg import expandpath, is_url
 
 from .const import (
     PIPESTAT_GENERIC_CONFIG,
@@ -100,41 +98,14 @@ def mk_list_of_str(x):
     )
 
 
-def mk_abs_via_cfg(
-    path: Optional[str],
-    cfg_path: Optional[str],
-) -> Optional[str]:
-    """
-    Helper function to ensure a path is absolute.
+def make_subdirectories(path):
+    """Takes an absolute file path and creates subdirectories to file if they do not exist"""
 
-    Assumes a relative path is relative to cfg_path, or to current working directory if cfg_path is None.
-
-    : param str path: The path to make absolute.
-    : param str cfg_path: Relative paths will be relative the containing folder of this pat
-    """
-    if path is None:
-        return path
-    assert isinstance(path, str), TypeError("Path is expected to be a str")
-    if os.path.isabs(path):
-        return path
-    if cfg_path is None:
-        rel_to_cwd = os.path.join(os.getcwd(), path)
+    if path:
         try:
-            os.makedirs(os.path.dirname(rel_to_cwd))
+            os.makedirs(os.path.dirname(path))
         except FileExistsError:
             pass
-        if os.path.exists(rel_to_cwd) or os.access(os.path.dirname(rel_to_cwd), os.W_OK):
-            return rel_to_cwd
-        else:
-            raise OSError(f"File not found: {path}")
-    joined = os.path.join(os.path.dirname(cfg_path), path)
-    try:
-        os.makedirs(os.path.dirname(joined))
-    except FileExistsError:
-        pass
-    if os.path.isabs(joined):
-        return joined
-    raise OSError(f"Could not make this path absolute: {path}")
 
 
 def init_generic_config():

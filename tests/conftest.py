@@ -5,7 +5,7 @@ import pytest
 import subprocess
 
 from pipestat.const import STATUS_SCHEMA
-from pipestat.helpers import read_yaml_data
+from yacman import load_yaml
 from atexit import register
 
 REC_ID = "constant_record_id"
@@ -51,12 +51,10 @@ def get_data_file_path(filename: str) -> str:
 
 
 # Data corresponding to the non-default status schema info used in a few places in the test data files.
-_, COMMON_CUSTOM_STATUS_DATA = read_yaml_data(
-    path=get_data_file_path("custom_status_schema.yaml"), what="custom test schema data"
-)
+COMMON_CUSTOM_STATUS_DATA = load_yaml(filepath=get_data_file_path("custom_status_schema.yaml"))
 
 # Data corresponding to default status schema, at pipestat/schema/status_schema.yaml
-_, DEFAULT_STATUS_DATA = read_yaml_data(path=STATUS_SCHEMA, what="default status schema")
+DEFAULT_STATUS_DATA = load_yaml(filepath=STATUS_SCHEMA)
 
 
 @pytest.fixture
