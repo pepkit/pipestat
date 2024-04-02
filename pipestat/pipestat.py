@@ -10,6 +10,7 @@ from jsonschema import validate
 from yacman import FutureYAMLConfigManager as YAMLConfigManager
 from yacman.yacman_future import select_config
 from ubiquerg import mkabs
+from yacman import load_yaml
 
 
 from typing import Optional, Union, Dict, Any, List, Iterator
@@ -28,7 +29,6 @@ from pipestat.backends.file_backend.filebackend import FileBackend
 from .reports import HTMLReportBuilder, _create_stats_objs_summaries
 from .helpers import (
     validate_type,
-    read_yaml_data,
     default_formatter,
     zip_report,
     make_subdirectories,
@@ -181,7 +181,7 @@ class PipestatManager(MutableMapping):
         else:
             self.cfg[CONFIG_KEY] = YAMLConfigManager()
 
-        _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
+        cfg_schema = load_yaml(CFG_SCHEMA)
         validate(self.cfg[CONFIG_KEY].exp, cfg_schema)
 
         self.cfg[SCHEMA_PATH] = self.cfg[CONFIG_KEY].priority_get(
@@ -517,10 +517,8 @@ class PipestatManager(MutableMapping):
             # Status schema
             self.cfg[STATUS_SCHEMA_KEY] = parsed_schema.status_data
             if not self.cfg[STATUS_SCHEMA_KEY]:
-                (
-                    self.cfg[STATUS_SCHEMA_SOURCE_KEY],
-                    self.cfg[STATUS_SCHEMA_KEY],
-                ) = read_yaml_data(path=STATUS_SCHEMA, what="default status schema")
+                self.cfg[STATUS_SCHEMA_SOURCE_KEY] = STATUS_SCHEMA
+                self.cfg[STATUS_SCHEMA_KEY] = load_yaml(filepath=STATUS_SCHEMA)
             else:
                 self.cfg[STATUS_SCHEMA_SOURCE_KEY] = schema_to_read
 
