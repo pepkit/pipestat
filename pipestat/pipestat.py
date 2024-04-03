@@ -589,6 +589,7 @@ class PipestatManager(MutableMapping):
                     value=values[r],
                     schema=self.result_schemas[r],
                     strict_type=strict_type,
+                    record_identifier=record_identifier,
                 )
 
         reported_results = self.backend.report(

@@ -12,6 +12,7 @@ from shutil import make_archive
 from typing import Any, Dict, Optional, Tuple, Union, List
 
 from yaml import dump
+from .exceptions import SchemaValidationErrorDuringReport
 
 from .const import (
     PIPESTAT_GENERIC_CONFIG,
@@ -23,7 +24,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-def validate_type(value, schema, strict_type=False):
+def validate_type(value, schema, strict_type=False, record_identifier=None):
     """
     Validate reported result against a partial schema, in case of failure try
     to cast the value into the required class.
@@ -34,13 +35,19 @@ def validate_type(value, schema, strict_type=False):
     :param dict schema: partial jsonschema schema to validate
         against, e.g. {"type": "integer"}
     :param bool strict_type: whether the value should validate as is
+    :param str record_identifier: used for clarifying error messages
     """
 
     try:
         jsonschema.validate(value, schema)
     except jsonschema.exceptions.ValidationError as e:
         if strict_type:
-            raise
+            raise SchemaValidationErrorDuringReport(
+                msg=str(e),
+                record_identifier=record_identifier,
+                result_identifier=schema,
+                result=value,
+            )
         _LOGGER.debug(f"{str(e)}")
         if schema[SCHEMA_TYPE_KEY] != "object":
             value = CLASSES_BY_TYPE[schema[SCHEMA_TYPE_KEY]](value)

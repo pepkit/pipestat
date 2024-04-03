@@ -68,6 +68,16 @@ class SchemaNotFoundError(SchemaError):
         super(SchemaNotFoundError, self).__init__(txt)
 
 
+class SchemaValidationErrorDuringReport(SchemaError):
+    """Adds clarity to JSON schema validation errors by providing additional information to error message."""
+
+    def __init__(self, msg, record_identifier, result_identifier, result):
+
+        txt = msg  # original schema validation error
+        txt += f"\nRecord identifier {record_identifier} \nResult_identifier {result_identifier} \nReported result: {result}"
+        super(SchemaValidationErrorDuringReport, self).__init__(txt)
+
+
 class MissingConfigDataError(PipestatError):
     """Exception for invalid config file."""
 
