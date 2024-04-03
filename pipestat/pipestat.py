@@ -699,7 +699,7 @@ class PipestatManager(MutableMapping):
                             f"Results '{columns}' for '{record_identifier}' not found"
                         )
                 try:
-                    return result[0][result_identifier]
+                    return result[0][columns[0]]
                 except IndexError:
                     raise RecordNotFoundError(
                         f"Results '{columns}' for '{record_identifier}' not found"

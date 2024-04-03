@@ -591,6 +591,35 @@ class TestRetrieval:
     @pytest.mark.parametrize(
         ["rec_id", "val"],
         [
+            ("sample1", {"number_of_things": 2}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_retrieve_one_single_result_as_list(
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        results_file_path,
+        schema_file_path,
+        backend,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            assert psm.retrieve_one(record_identifier=rec_id, result_identifier="number_of_things") == psm.retrieve_one(record_identifier=rec_id, result_identifier=["number_of_things"])
+
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
             ("sample1", {"name_of_something": "test_name"}),
             ("sample1", {"number_of_things": 2}),
         ],
