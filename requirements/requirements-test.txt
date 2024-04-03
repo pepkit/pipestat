@@ -16,5 +16,7 @@ pydantic>=2.5.3, <3.0.0
 sqlmodel>=0.0.14
 uvicorn
 fastapi
+coverage
+smokeshow
 
 

@@ -1,0 +1,56 @@
+name: Pipestat Test Coverage
+
+on:
+  push:
+    branches: [master, dev]
+
+jobs:
+  cli-coverage-report:
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+        os: [ ubuntu-latest ] # can't use macOS when using service containers or container jobs
+    runs-on: ${{ matrix.os }}
+    services:
+      postgres:
+        image: postgres
+        env: # needs to match DB config in: ../../tests/data/config.yaml
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: pipestat-password
+          POSTGRES_DB: pipestat-test
+          #POSTGRES_HOST: localhost
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version:  ${{ matrix.python-version }}
+
+      - name: Install dev dependencies
+        run: if [ -f requirements/requirements-dev.txt ]; then pip install -r requirements/requirements-dev.txt; fi
+
+      - name: Install test dependencies
+        run: if [ -f requirements/requirements-test.txt ]; then pip install -r requirements/requirements-test.txt; fi
+
+      - name: Install pipestat
+        run: python -m pip install .
+
+      - name: Run tests
+        run: coverage run -m pytest
+
+      - name: build coverage
+        run: coverage html -i
+
+      - run: smokeshow upload htmlcov
+        env:
+          SMOKESHOW_GITHUB_STATUS_DESCRIPTION: Coverage {coverage-percentage}
+          SMOKESHOW_GITHUB_COVERAGE_THRESHOLD: 50
+          SMOKESHOW_GITHUB_CONTEXT: coverage
+          SMOKESHOW_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SMOKESHOW_GITHUB_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SMOKESHOW_AUTH_KEY: ${{ secrets.SMOKESHOW_AUTH_KEY }}
