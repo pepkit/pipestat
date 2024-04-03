@@ -287,35 +287,38 @@ def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:
     return s
 
 
-def replace_JSON_refs(s: Dict[str, Any], data: Dict[str, Any]) -> Dict[str, Any]:
+def replace_JSON_refs(
+    target_schema: Dict[str, Any], source_schema: Dict[str, Any]
+) -> Dict[str, Any]:
     """
-    Recursively search and replace the $refs if they exist in schema, s, and if their corresponding $defs exist in
-    source schema, data
+    Recursively search and replace the $refs if they exist in schema, target_schema, and if their corresponding $defs
+    exist in source schema, source_schema. If $defs  exist in the target schema and target_schema is the same as
+    source_schema then deepcopy should be used such that target_schema = copy.deepcopy(source_schema)
 
-    :param dict s: schema to replace types in
-    :param dict data: source schema
-    :return dict s: schema with types replaced
+    :param dict target_schema: schema to replace types in
+    :param dict source_schema: source schema
+    :return dict target_schema: schema with types replaced
     """
 
-    for k, v in list(s.items()):
+    for k, v in list(target_schema.items()):
         if isinstance(v, dict):
-            replace_JSON_refs(s[k], data)
+            replace_JSON_refs(target_schema[k], source_schema)
         if "$ref" == k:
             split_value = v.split("/")
             if len(split_value) != 3:
                 raise SchemaError(
                     msg=f"$ref exists in source schema but path,{v} ,not valid, e.g. '#/$defs/file' "
                 )
-            if split_value[1] in data and split_value[2] in data[split_value[1]]:
-                result = data[split_value[1]][split_value[2]]
+            if split_value[1] in source_schema and split_value[2] in source_schema[split_value[1]]:
+                result = source_schema[split_value[1]][split_value[2]]
             else:
                 result = None
             if result is not None:
                 for key, value in result.items():
-                    s.update({key: value})
-                del s["$ref"]
+                    target_schema.update({key: value})
+                del target_schema["$ref"]
             else:
                 raise SchemaError(
                     msg=f"Could not find {split_value[1]} and {split_value[2]} in $def"
                 )
-    return s
+    return target_schema
