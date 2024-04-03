@@ -5,10 +5,9 @@ pytest-cov>=2.8.1
 jinja2
 jsonschema
 logmuse>=0.2.5
-oyaml
+pyyaml
 ubiquerg>=0.8.0
 yacman>=0.9.2
-PyYAML
 pandas
 eido
 psycopg

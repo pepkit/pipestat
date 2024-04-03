@@ -11,8 +11,7 @@ from pathlib import Path
 from shutil import make_archive
 from typing import Any, Dict, Optional, Tuple, Union, List
 
-from oyaml import safe_load, dump
-from ubiquerg import expandpath, is_url
+from yaml import dump
 
 from .const import (
     PIPESTAT_GENERIC_CONFIG,

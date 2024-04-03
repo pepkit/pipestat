@@ -1,6 +1,5 @@
 from tempfile import mkdtemp
 
-import oyaml
 import pytest
 import os
 from yaml import dump

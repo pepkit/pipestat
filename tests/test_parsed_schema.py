@@ -4,7 +4,7 @@ from functools import partial
 from pathlib import Path
 from typing import *
 import pytest
-import oyaml
+import yaml
 from pipestat.const import SAMPLE_NAME, STATUS, RECORD_IDENTIFIER
 from pipestat.exceptions import SchemaError
 from pipestat.parsed_schema import (
@@ -19,7 +19,7 @@ TEMP_SCHEMA_FILENAME = "schema.tmp.yaml"
 
 def write_yaml(data: Mapping[str, Any], path: Path) -> Path:
     with open(path, "w") as fH:
-        oyaml.dump(data, fH)
+        yaml.dump(data, fH)
     return path
 
 
@@ -30,7 +30,7 @@ def echo_data(data: Mapping[str, Any], path: Path) -> Mapping[str, Any]:
 
 def read_yaml(path: Union[str, Path]) -> Dict[str, Any]:
     with open(path, "r") as fh:
-        return oyaml.safe_load(fh)
+        return yaml.safe_load(fh)
 
 
 @pytest.fixture(scope="function", params=[lambda p: p, read_yaml])
