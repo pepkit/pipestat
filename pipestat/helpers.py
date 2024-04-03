@@ -60,27 +60,6 @@ def validate_type(value, schema, strict_type=False):
         _LOGGER.debug(f"Value '{value}' validated successfully against a schema")
 
 
-def read_yaml_data(path: Union[str, Path], what: str) -> Tuple[str, Dict[str, Any]]:
-    """
-    Safely read YAML file and log message
-
-    :param str path: YAML file to read
-    :param str what: context
-    :return (str, dict): absolute path to the read file and the read data
-    """
-    if isinstance(path, Path):
-        test = lambda p: p.is_file()
-    elif isinstance(path, str):
-        path = expandpath(path)
-        test = os.path.isfile
-    else:
-        raise TypeError(f"Alleged path to YAML file to read is neither path nor string: {path}")
-    assert test(path), FileNotFoundError(f"File not found: {path}")
-    _LOGGER.debug(f"Reading {what} from '{path}'")
-    with open(path, "r") as f:
-        return path, safe_load(f)
-
-
 def mk_list_of_str(x):
     """
     Make sure the input is a list of strings
