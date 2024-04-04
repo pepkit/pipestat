@@ -279,9 +279,10 @@ class FileBackend(PipestatBackend):
                 self._data[self.pipeline_name][self.pipeline_type][record_identifier].keys()
             )
             if (
-                len(remaining_attributes) == 2
+                len(remaining_attributes) == 3
                 and CREATED_TIME in remaining_attributes
                 and MODIFIED_TIME in remaining_attributes
+                and "history" in remaining_attributes
             ):
                 _LOGGER.info(
                     f"Last result removed for '{record_identifier}'. " f"Removing the record"
@@ -376,6 +377,7 @@ class FileBackend(PipestatBackend):
         self._data[self.pipeline_name][self.pipeline_type].setdefault(record_identifier, {})
 
         for res_id, val in values.items():
+            self._modify_history(data=self._data[self.pipeline_name][self.pipeline_type][record_identifier],res_id=res_id, type="reported_result", time=current_time, value=val)
             self._data[self.pipeline_name][self.pipeline_type][record_identifier][res_id] = val
             results_formatted.append(
                 result_formatter(
@@ -738,3 +740,16 @@ class FileBackend(PipestatBackend):
                     f"{num_namespaces} other namespaces are already in the file: [{', '.join(namespaces_reported)}]. "
                     f"Pipestat will not report multiple namespaces to one file unless `multi_pipelines` is True."
                 )
+
+    def _modify_history(self, data,res_id, type, time, value):
+        """ Modify File backend with each change
+
+        data is the loaded yaml results file in dict format
+        type = "report", "deletion"
+        """
+        if "history" not in data:
+            data.setdefault("history", {})
+        if res_id not in data["history"]:
+            data["history"].setdefault(res_id, {})
+
+        data["history"][res_id].update({time:{type:value}})
