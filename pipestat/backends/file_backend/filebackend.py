@@ -377,7 +377,13 @@ class FileBackend(PipestatBackend):
         self._data[self.pipeline_name][self.pipeline_type].setdefault(record_identifier, {})
 
         for res_id, val in values.items():
-            self._modify_history(data=self._data[self.pipeline_name][self.pipeline_type][record_identifier],res_id=res_id, type="reported_result", time=current_time, value=val)
+            self._modify_history(
+                data=self._data[self.pipeline_name][self.pipeline_type][record_identifier],
+                res_id=res_id,
+                type="reported_result",
+                time=current_time,
+                value=val,
+            )
             self._data[self.pipeline_name][self.pipeline_type][record_identifier][res_id] = val
             results_formatted.append(
                 result_formatter(
@@ -741,8 +747,8 @@ class FileBackend(PipestatBackend):
                     f"Pipestat will not report multiple namespaces to one file unless `multi_pipelines` is True."
                 )
 
-    def _modify_history(self, data,res_id, type, time, value):
-        """ Modify File backend with each change
+    def _modify_history(self, data, res_id, type, time, value):
+        """Modify File backend with each change
 
         data is the loaded yaml results file in dict format
         type = "report", "deletion"
@@ -752,4 +758,4 @@ class FileBackend(PipestatBackend):
         if res_id not in data["history"]:
             data["history"].setdefault(res_id, {})
 
-        data["history"][res_id].update({time:{type:value}})
+        data["history"][res_id].update({time: {type: value}})

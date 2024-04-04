@@ -2371,3 +2371,49 @@ class TestSetIndexTrue:
             mod = psm.backend.get_model(table_name=psm.backend.table_name)
             assert mod.md5sum.index is True
             assert mod.number_of_things.index is False
+
+
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
+class TestRetrieveHistory:
+    @pytest.mark.parametrize("backend", ["file"])
+    def test_select_history_basic(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+        range_values,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            for i in range_values:
+                r_id = i[0]
+                val = i[1]
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            time.sleep(0.20)
+
+            for i in range_values:
+                r_id = i[0]
+                val = i[1]
+                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+
+            history_result = psm.retrieve_history(
+                record_identifier="sample1", result_identifier="number_of_things"
+            )
+
+            assert len(history_result.keys()) == 2
+
+            all_history_result = psm.retrieve_history(record_identifier="sample1")
+
+            assert len(all_history_result.keys()) == 8

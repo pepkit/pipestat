@@ -666,10 +666,7 @@ class PipestatManager(MutableMapping):
         Retrieve a single record
         :param str record_identifier: single record_identifier
         :param str result_identifier: single record_identifier
-        :return: Dict[str, any]: a mapping with filtered
-
-
-            results reported for the record
+        :return: Dict[str, any]: a mapping with filtered results reported for the record
         """
         r_id = record_identifier or self.record_identifier
 
@@ -720,6 +717,31 @@ class PipestatManager(MutableMapping):
                     raise RecordNotFoundError(f"Record '{record_identifier}' not found")
             except IndexError:
                 raise RecordNotFoundError(f"Record '{record_identifier}' not found")
+
+    def retrieve_history(
+        self,
+        record_identifier: str = None,
+        result_identifier: Optional[str] = None,
+    ) -> Union[Any, Dict[str, Any]]:
+        """
+        Retrieve a single record's history
+        :param str record_identifier: single record_identifier
+        :param str result_identifier: single result_identifier
+        :return: Dict[str, any]: a mapping with filtered historical results
+        """
+
+        result = self.retrieve_one(record_identifier=record_identifier)
+
+        if "history" not in result:
+            _LOGGER.warning(f"No history available for Record: {record_identifier}")
+            return {}
+
+        if result_identifier in result:
+            history = result["history"][result_identifier]
+        else:
+            history = result["history"]
+
+        return history
 
     def retrieve_many(
         self,
