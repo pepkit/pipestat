@@ -298,7 +298,7 @@ class DBBackend(PipestatBackend):
         self,
         values: Dict[str, Any],
         record_identifier: str,
-        force_overwrite: bool = False,
+        force_overwrite: bool = True,
         result_formatter: Optional[staticmethod] = None,
     ) -> Union[List[str], bool]:
         """

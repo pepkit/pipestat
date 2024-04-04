@@ -615,7 +615,9 @@ class TestRetrieval:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
-            assert psm.retrieve_one(record_identifier=rec_id, result_identifier="number_of_things") == psm.retrieve_one(record_identifier=rec_id, result_identifier=["number_of_things"])
+            assert psm.retrieve_one(
+                record_identifier=rec_id, result_identifier="number_of_things"
+            ) == psm.retrieve_one(record_identifier=rec_id, result_identifier=["number_of_things"])
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],

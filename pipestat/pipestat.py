@@ -551,7 +551,7 @@ class PipestatManager(MutableMapping):
         self,
         values: Dict[str, Any],
         record_identifier: Optional[str] = None,
-        force_overwrite: bool = False,
+        force_overwrite: bool = True,
         result_formatter: Optional[staticmethod] = None,
         strict_type: bool = True,
     ) -> Union[List[str], bool]:
