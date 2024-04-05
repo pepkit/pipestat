@@ -196,51 +196,53 @@ class ParsedSchemaDB(ParsedSchema):
     def file_like_table_name(self):
         return self._table_name("files")
 
-    def build_link_model(self, pipeline_type):
-        if pipeline_type == "project":
-            link_table_name = self.project_table_name + "_link"
-            main_table_id = self.project_table_name + ".id"
-            history_table_id = self.project_table_name + "_history" + ".id"
-
-        elif pipeline_type == "sample":
-            link_table_name = self.sample_table_name + "_link"
-            main_table_id = self.sample_table_name + ".id"
-            history_table_id = self.sample_table_name + "_history" + ".id"
-
-        else:
-            raise PipestatError(
-                f"Building model requires pipeline type. Provided type: '{pipeline_type}' "
-            )
-
-        defs = {
-            main_table_id: (
-                int,
-                Field(
-                    default=None,
-                    foreign_key=history_table_id,
-                    primary_key=True,
-                ),
-            ),
-            history_table_id: (
-                int,
-                Field(
-                    default=None,
-                    foreign_key=main_table_id,
-                    primary_key=True,
-                ),
-            ),
-        }
-
-        return _create_model(link_table_name, **defs), link_table_name
+    # def build_link_model(self, pipeline_type):
+    #     if pipeline_type == "project":
+    #         link_table_name = self.project_table_name + "_link"
+    #         main_table_id = self.project_table_name + ".id"
+    #         history_table_id = self.project_table_name + "_history" + ".id"
+    #
+    #     elif pipeline_type == "sample":
+    #         link_table_name = self.sample_table_name + "_link"
+    #         main_table_id = self.sample_table_name + ".id"
+    #         history_table_id = self.sample_table_name + "_history" + ".id"
+    #
+    #     else:
+    #         raise PipestatError(
+    #             f"Building model requires pipeline type. Provided type: '{pipeline_type}' "
+    #         )
+    #
+    #     defs = {
+    #         main_table_id: (
+    #             int,
+    #             Field(
+    #                 default=None,
+    #                 foreign_key=history_table_id,
+    #                 primary_key=True,
+    #             ),
+    #         ),
+    #         history_table_id: (
+    #             int,
+    #             Field(
+    #                 default=None,
+    #                 foreign_key=main_table_id,
+    #                 primary_key=True,
+    #             ),
+    #         ),
+    #     }
+    #
+    #     return _create_model(link_table_name, **defs), link_table_name
 
     def build_history_model(self, pipeline_type):
         if pipeline_type == "project":
             history_table_name = self.project_table_name + "_history"
             data = self.project_level_data
+            main_table_id = self.project_table_name + ".id"
 
         elif pipeline_type == "sample":
             history_table_name = self.sample_table_name + "_history"
             data = self.sample_level_data
+            main_table_id = self.sample_table_name + ".id"
 
         else:
             raise PipestatError(
@@ -258,6 +260,14 @@ class ParsedSchemaDB(ParsedSchema):
         field_defs = self._add_created_time_field(field_defs)
         field_defs = self._add_modified_time_field(field_defs)
         # field_defs = self._add_relationship(field_defs)
+
+        field_defs["source_record_id"] = (
+            int,
+            Field(
+                default=None,
+                foreign_key=main_table_id,
+            ),
+        )
 
         history_model = _create_model(history_table_name, **field_defs)
 
