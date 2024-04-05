@@ -375,6 +375,16 @@ class DBBackend(PipestatBackend):
                     for result_id, result_value in values.items():
                         setattr(record_to_update, result_id, result_value)
                     s.commit()
+                with self.session as s:
+                    source_record = s.exec(
+                        sql_select(ORMClass).where(
+                            getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
+                        )
+                    ).first()
+                    new_record_history = ORMClass_History(**values)
+                    new_record_history.source_record_id = source_record.id
+                    s.add(new_record_history)
+                    s.commit()
 
             for res_id, val in values.items():
                 results_formatted.append(
