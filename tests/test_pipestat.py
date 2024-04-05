@@ -2376,18 +2376,26 @@ class TestSetIndexTrue:
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestRetrieveHistory:
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("sample1", {"name_of_something": "test_name"}),
+        ],
+    )
     @pytest.mark.parametrize("backend", ["file"])
     def test_select_history_basic(
         self,
         config_file_path,
         results_file_path,
-        recursive_schema_file_path,
+        schema_file_path,
         backend,
         range_values,
+        rec_id,
+        val,
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path, database_only=False)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -2396,17 +2404,22 @@ class TestRetrieveHistory:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
 
-            for i in range_values:
-                r_id = i[0]
-                val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+            val["number_of_things"] = 1
+
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+
+            val = {"name_of_something": "MODIFIED_test_name", "number_of_things": 2}
+
+            time.sleep(1)
+
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
 
             history_result = psm.retrieve_history(
-                record_identifier="sample1", result_identifier="number_of_things"
+                record_identifier="sample1", result_identifier="name_of_something"
             )
 
-            assert len(history_result.keys()) == 1
+            assert len(history_result.keys()) == 2
 
             all_history_result = psm.retrieve_history(record_identifier="sample1")
 
-            assert len(all_history_result.keys()) == 8
+            assert len(all_history_result.keys()) == 4
