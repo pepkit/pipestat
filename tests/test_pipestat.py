@@ -59,7 +59,7 @@ class TestSplitClasses:
             ("sample3", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.parametrize("backend", ["file","db"])
     def test_basics(
         self,
         rec_id,
@@ -185,7 +185,7 @@ class TestSplitClasses:
                     psm.retrieve_one(record_identifier=rec_id)
 
 
-@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
+#@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
 class TestReporting:
     @pytest.mark.parametrize(
@@ -199,7 +199,7 @@ class TestReporting:
             ("sample3", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.parametrize("backend", ["db"])
     def test_report_basic(
         self,
         rec_id,

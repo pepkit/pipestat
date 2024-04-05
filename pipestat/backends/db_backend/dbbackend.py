@@ -340,6 +340,7 @@ class DBBackend(PipestatBackend):
 
         try:
             ORMClass = self.get_model(table_name=self.table_name)
+            ORMClass_History = self.history_table[list(self.history_table.keys())[0]]
             values.update({RECORD_IDENTIFIER: record_identifier})
 
             if not self.check_record_exists(
@@ -349,8 +350,18 @@ class DBBackend(PipestatBackend):
                 values.update({CREATED_TIME: current_time})
                 values.update({MODIFIED_TIME: current_time})
                 new_record = ORMClass(**values)
+                new_record_history = ORMClass_History(**values)
                 with self.session as s:
                     s.add(new_record)
+                    s.commit()
+                with self.session as s:
+                    source_record = s.exec(
+                        sql_select(ORMClass).where(
+                            getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
+                        )
+                    ).first()
+                    new_record_history.source_record_id = source_record.id
+                    s.add(new_record_history)
                     s.commit()
             else:
                 with self.session as s:
