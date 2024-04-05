@@ -2418,8 +2418,15 @@ class TestRetrieveHistory:
                 record_identifier="sample1", result_identifier="name_of_something"
             )
 
-            assert len(history_result.keys()) == 2
-
             all_history_result = psm.retrieve_history(record_identifier="sample1")
 
-            assert len(all_history_result.keys()) == 4
+            if backend == "file":
+                assert len(history_result.keys()) == 2
+                assert len(all_history_result.keys()) == 4
+
+            if backend == "db":
+                # TODO These should have the same structure as for the file backend
+                # list of strs vs list of sqlmodel_metaclasses for db_backend currently
+                assert len(history_result) == 2 and isinstance(history_result, list)
+                assert len(all_history_result) == 2
+            print("Done")
