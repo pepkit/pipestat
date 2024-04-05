@@ -253,11 +253,19 @@ class FileBackend(PipestatBackend):
             return False
 
         if rm_record:
+            # NOTE: THIS CURRENTLY REMOVES ALL HISTORY OF THE RECORD AS WELL
             self.remove_record(
                 record_identifier=record_identifier,
                 rm_record=rm_record,
             )
         else:
+            self._modify_history(
+                data=self._data[self.pipeline_name][self.pipeline_type][record_identifier],
+                res_id=result_identifier,
+                type="deletion",
+                time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                value="",
+            )
             del self._data[self.pipeline_name][self.pipeline_type][record_identifier][
                 result_identifier
             ]

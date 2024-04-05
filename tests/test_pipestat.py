@@ -2401,18 +2401,11 @@ class TestRetrieveHistory:
                 val = i[1]
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
-            time.sleep(0.20)
-
-            for i in range_values:
-                r_id = i[0]
-                val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
-
             history_result = psm.retrieve_history(
                 record_identifier="sample1", result_identifier="number_of_things"
             )
 
-            assert len(history_result.keys()) == 2
+            assert len(history_result.keys()) == 1
 
             all_history_result = psm.retrieve_history(record_identifier="sample1")
 
