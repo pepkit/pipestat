@@ -282,18 +282,22 @@ class DBBackend(PipestatBackend):
                     record_identifier=record_identifier,
                 ):
                     with self.session as s:
-                        source_record_id = s.exec(
-                            sql_select(ORMClass).where(
-                                getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
+                        source_record_id = (
+                            s.exec(
+                                sql_select(ORMClass).where(
+                                    getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
+                                )
                             )
-                        ).first().id
+                            .first()
+                            .id
+                        )
                         linked_records = s.exec(
                             sql_select(ORMClass_History).where(
-                                getattr(ORMClass_History, 'source_record_id') == source_record_id
-                            )).all()
+                                getattr(ORMClass_History, "source_record_id") == source_record_id
+                            )
+                        ).all()
                         for r in linked_records:
                             s.delete(r)
-                        #s.delete(linked_records)
                         s.commit()
                     with self.session as s:
                         record = s.exec(

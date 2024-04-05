@@ -52,14 +52,14 @@ class TestSplitClasses:
         ["rec_id", "val"],
         [
             ("sample1", {"name_of_something": "test_name"}),
-            # ("sample1", {"number_of_things": 1}),
-            # ("sample2", {"number_of_things": 2}),
-            # ("sample2", {"percentage_of_things": 10.1}),
-            # ("sample2", {"name_of_something": "test_name"}),
-            # ("sample3", {"name_of_something": "test_name"}),
+            ("sample1", {"number_of_things": 1}),
+            ("sample2", {"number_of_things": 2}),
+            ("sample2", {"percentage_of_things": 10.1}),
+            ("sample2", {"name_of_something": "test_name"}),
+            ("sample3", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["db"])
+    @pytest.mark.parametrize("backend", ["file", "db"])
     def test_basics_all(
         self,
         rec_id,
@@ -83,19 +83,15 @@ class TestSplitClasses:
             val_name = list(val.keys())[0]
             psm.set_status(status_identifier="running", record_identifier=rec_id)
             status = psm.get_status(record_identifier=rec_id)
-            val = {"name_of_something": "ANOTHER TEST NAME"}
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
-            val = {"name_of_something": "Final TEST NAME"}
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
             assert status == "running"
             assert psm.retrieve_one(record_identifier=rec_id)[val_name] == val[val_name]
             psm.remove(record_identifier=rec_id, result_identifier=val_name)
-            # if backend == "file":
-            #     psm.clear_status(record_identifier=rec_id)
-            #     status = psm.get_status(record_identifier=rec_id)
-            #     assert status is None
-            #     with pytest.raises(RecordNotFoundError):
-            #         psm.retrieve_one(record_identifier=rec_id)
+            if backend == "file":
+                psm.clear_status(record_identifier=rec_id)
+                status = psm.get_status(record_identifier=rec_id)
+                assert status is None
+                with pytest.raises(RecordNotFoundError):
+                    psm.retrieve_one(record_identifier=rec_id)
             if backend == "db":
                 assert psm.retrieve_one(record_identifier=rec_id).get(val_name, None) is None
                 psm.remove(record_identifier=rec_id)
