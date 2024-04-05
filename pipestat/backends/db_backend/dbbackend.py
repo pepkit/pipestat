@@ -61,7 +61,10 @@ class DBBackend(PipestatBackend):
         self.status_schema_source = status_schema_source
         self.result_formatter = result_formatter
 
+        self.link_table_name = self._create_link_orms(pipeline_type=pipeline_type)
         self.orms = self._create_orms(pipeline_type=pipeline_type)
+        self.history_table = self._create_history_orms(pipeline_type=pipeline_type)
+
         self.table_name = list(self.orms.keys())[0]
         SQLModel.metadata.create_all(self._engine)
 
@@ -532,6 +535,26 @@ class DBBackend(PipestatBackend):
         model = self.parsed_schema.build_model(pipeline_type=pipeline_type)
         table_name = self.parsed_schema._table_name(pipeline_type)
         # TODO reconsider line below. Why do we need to return a dict?
+        if model:
+            return {table_name: model}
+        else:
+            raise SchemaError(
+                f"Neither project nor samples model could be built from schema source: {self.status_schema_source}"
+            )
+
+    def _create_link_orms(self, pipeline_type):
+        """Creates the additional ORMs for linking result modifications"""
+        model, table_name = self.parsed_schema.build_link_model(pipeline_type=pipeline_type)
+        if model:
+            return {table_name: model}
+        else:
+            raise SchemaError(
+                f"Neither project nor samples model could be built from schema source: {self.status_schema_source}"
+            )
+
+    def _create_history_orms(self, pipeline_type):
+        """Creates the additional ORMs for auditing result modifications"""
+        model, table_name = self.parsed_schema.build_history_model(pipeline_type=pipeline_type)
         if model:
             return {table_name: model}
         else:
