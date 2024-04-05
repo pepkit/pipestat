@@ -730,16 +730,19 @@ class PipestatManager(MutableMapping):
         :return: Dict[str, any]: a mapping with filtered historical results
         """
 
-        result = self.retrieve_one(record_identifier=record_identifier)
+        if self.file:
+            result = self.retrieve_one(record_identifier=record_identifier)
 
-        if "history" not in result:
-            _LOGGER.warning(f"No history available for Record: {record_identifier}")
-            return {}
+            if "history" not in result:
+                _LOGGER.warning(f"No history available for Record: {record_identifier}")
+                return {}
 
-        if result_identifier in result:
-            history = result["history"][result_identifier]
+            if result_identifier in result:
+                history = result["history"][result_identifier]
+            else:
+                history = result["history"]
         else:
-            history = result["history"]
+            history = self.backend.retrieve_history_db(record_identifier, result_identifier)
 
         return history
 

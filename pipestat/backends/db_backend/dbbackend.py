@@ -509,6 +509,63 @@ class DBBackend(PipestatBackend):
 
         return records_dict
 
+    def retrieve_history_db(self, record_identifier, result_identifier):
+
+        ORMClass = self.get_model(table_name=self.table_name)
+        ORMClass_History = self.history_table[list(self.history_table.keys())[0]]
+
+        columns = [result_identifier]
+
+        if not self.check_record_exists(
+            record_identifier=record_identifier,
+        ):
+            return None
+        else:
+            with self.session as s:
+
+                source_record_id = (
+                    s.exec(
+                        sql_select(ORMClass).where(
+                            getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
+                        )
+                    )
+                    .first()
+                    .id
+                )
+
+                if columns is not None:
+                    history_records = s.exec(
+                        sql_select(
+                            *[getattr(ORMClass_History, column) for column in columns]
+                        ).where(getattr(ORMClass_History, "source_record_id") == source_record_id)
+                    ).all()
+                else:
+                    history_records = s.exec(
+                        sql_select(ORMClass_History).where(
+                            getattr(ORMClass_History, "source_record_id") == source_record_id
+                        )
+                    ).all()
+
+        end_results = []
+
+        # SQL model returns either a SQLModelMetaCLass OR a sqlalchemy Row.
+        # We must create a dictionary containing the record before returning
+
+        if not columns:
+            end_results = [r.model_dump() for r in history_records]
+
+        else:
+            for record in history_records:
+                record_dict = dict(record._mapping)
+                # del record_dict["id"]
+                end_results.append(record_dict)
+
+        records_dict = {
+            "history": end_results,
+        }
+
+        return records_dict
+
     def select_distinct(
         self,
         columns: Union[str, List[str]],

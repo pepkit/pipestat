@@ -2382,7 +2382,7 @@ class TestRetrieveHistory:
             ("sample1", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file"])
+    @pytest.mark.parametrize("backend", ["file", "db"])
     def test_select_history_basic(
         self,
         config_file_path,
