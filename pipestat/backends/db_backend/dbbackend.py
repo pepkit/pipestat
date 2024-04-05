@@ -277,9 +277,24 @@ class DBBackend(PipestatBackend):
         if rm_record:
             try:
                 ORMClass = self.get_model(table_name=self.table_name)
+                ORMClass_History = self.history_table[list(self.history_table.keys())[0]]
                 if self.check_record_exists(
                     record_identifier=record_identifier,
                 ):
+                    with self.session as s:
+                        source_record_id = s.exec(
+                            sql_select(ORMClass).where(
+                                getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
+                            )
+                        ).first().id
+                        linked_records = s.exec(
+                            sql_select(ORMClass_History).where(
+                                getattr(ORMClass_History, 'source_record_id') == source_record_id
+                            )).all()
+                        for r in linked_records:
+                            s.delete(r)
+                        #s.delete(linked_records)
+                        s.commit()
                     with self.session as s:
                         record = s.exec(
                             sql_select(ORMClass).where(
@@ -287,7 +302,6 @@ class DBBackend(PipestatBackend):
                             )
                         ).first()
                         s.delete(record)
-
                         s.commit()
                 else:
                     raise RecordNotFoundError(f"Record '{record_identifier}' not found")

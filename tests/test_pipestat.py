@@ -89,18 +89,18 @@ class TestSplitClasses:
             psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
             assert status == "running"
             assert psm.retrieve_one(record_identifier=rec_id)[val_name] == val[val_name]
-            # psm.remove(record_identifier=rec_id, result_identifier=val_name)
+            psm.remove(record_identifier=rec_id, result_identifier=val_name)
             # if backend == "file":
             #     psm.clear_status(record_identifier=rec_id)
             #     status = psm.get_status(record_identifier=rec_id)
             #     assert status is None
             #     with pytest.raises(RecordNotFoundError):
             #         psm.retrieve_one(record_identifier=rec_id)
-            # if backend == "db":
-            #     assert psm.retrieve_one(record_identifier=rec_id).get(val_name, None) is None
-            #     psm.remove(record_identifier=rec_id)
-            #     with pytest.raises(RecordNotFoundError):
-            #         psm.retrieve_one(record_identifier=rec_id)
+            if backend == "db":
+                assert psm.retrieve_one(record_identifier=rec_id).get(val_name, None) is None
+                psm.remove(record_identifier=rec_id)
+                with pytest.raises(RecordNotFoundError):
+                    psm.retrieve_one(record_identifier=rec_id)
 
     @pytest.mark.parametrize("backend", ["file"])
     def test_similar_record_ids(
