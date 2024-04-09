@@ -2425,8 +2425,7 @@ class TestRetrieveHistory:
                 assert len(all_history_result.keys()) == 4
 
             if backend == "db":
-                # TODO These should have the same structure as for the file backend
-                # list of strs vs list of sqlmodel_metaclasses for db_backend currently
                 assert len(history_result) == 2 and isinstance(history_result, list)
                 assert len(all_history_result) == 2
+
             print("Done")

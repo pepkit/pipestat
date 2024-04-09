@@ -508,23 +508,42 @@ class DBBackend(PipestatBackend):
 
         return records_dict
 
-    def retrieve_history_db(self, record_identifier, result_identifier):
+    def retrieve_history_db(self, record_identifier, result_identifier=None):
+        """
+
+        :param record_identifier: single record_identifier
+        :param result_identifier: single or list of result identifiers
+        :return: dict records_dict = {
+            "history": List[Dict[{key, Any}]],
+        }
+        """
+
+        record_identifier = record_identifier or self.record_identifier
 
         ORMClass = self.get_model(table_name=self.table_name)
         ORMClass_History = self.history_table[list(self.history_table.keys())[0]]
 
-        if result_identifier:
-            columns = [result_identifier]
-        else:
+        if not result_identifier:
             columns = None
+        else:
+            if isinstance(result_identifier, str):
+                columns = [result_identifier]
+            elif isinstance(result_identifier, list):
+                columns = result_identifier
+            else:
+                raise ValueError("Result identifier must be a str or list[str]")
+            for i in ["id", "record_identifier", MODIFIED_TIME]:
+                if i not in columns:
+                    columns = [i] + columns
 
         if not self.check_record_exists(
             record_identifier=record_identifier,
         ):
-            return None
+            return {
+                "history": [],
+            }
         else:
             with self.session as s:
-
                 source_record_id = (
                     s.exec(
                         sql_select(ORMClass).where(
@@ -534,7 +553,6 @@ class DBBackend(PipestatBackend):
                     .first()
                     .id
                 )
-
                 if columns is not None:
                     try:
                         statement = sql_select(
@@ -558,21 +576,19 @@ class DBBackend(PipestatBackend):
         # SQL model returns either a SQLModelMetaCLass OR a sqlalchemy Row.
         # We must create a dictionary containing the record before returning
 
-        # if not columns:
-        #     end_results = [r.model_dump() for r in history_records]
-        #
-        # else:
-        #     for record in history_records:
-        #         record_dict = dict(record._mapping)
-        #         # del record_dict["id"]
-        #         end_results.append(record_dict)
-        #
-        # records_dict = {
-        #     "history": end_results,
-        # }
+        if not columns:
+            end_results = [r.model_dump() for r in history_records]
 
-        # return records_dict
-        return history_records
+        else:
+            for record in history_records:
+                record_dict = dict(record._mapping)
+                end_results.append(record_dict)
+
+        records_dict = {
+            "history": end_results,
+        }
+
+        return records_dict
 
     def select_distinct(
         self,
