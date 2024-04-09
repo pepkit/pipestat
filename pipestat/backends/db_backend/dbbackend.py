@@ -646,7 +646,6 @@ class DBBackend(PipestatBackend):
                 f"Neither project nor samples model could be built from schema source: {self.status_schema_source}"
             )
 
-
     def _create_history_orms(self, pipeline_type):
         """Creates the additional ORMs for auditing result modifications"""
         model, table_name = self.parsed_schema.build_history_model(pipeline_type=pipeline_type)
