@@ -2420,12 +2420,12 @@ class TestRetrieveHistory:
 
             all_history_result = psm.retrieve_history(record_identifier="sample1")
 
+            assert len(history_result.keys()) == 2
+
             if backend == "file":
-                assert len(history_result.keys()) == 2
                 assert len(all_history_result.keys()) == 4
 
             if backend == "db":
-                assert len(history_result) == 2 and isinstance(history_result, list)
-                assert len(all_history_result) == 2
+                assert len(all_history_result.keys()) == 6
 
             print("Done")

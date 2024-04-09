@@ -532,7 +532,7 @@ class DBBackend(PipestatBackend):
                 columns = result_identifier
             else:
                 raise ValueError("Result identifier must be a str or list[str]")
-            for i in ["id", "record_identifier", MODIFIED_TIME]:
+            for i in ["id", MODIFIED_TIME]:
                 if i not in columns:
                     columns = [i] + columns
 
@@ -584,8 +584,25 @@ class DBBackend(PipestatBackend):
                 record_dict = dict(record._mapping)
                 end_results.append(record_dict)
 
+        # This next step is to process the results such that they will match output similar to the filebackend
+
+        collected_keys = []
+        new_history_dict = {}
+        for result in end_results:
+            for key, value in result.items():
+                if key == MODIFIED_TIME:
+                    continue
+                elif value:
+                    if key not in new_history_dict:
+                        collected_keys.append(key)
+                        new_history_dict[key] = {result[MODIFIED_TIME]: {"reported_result": value}}
+                    else:
+                        new_history_dict[key].update(
+                            {result[MODIFIED_TIME]: {"reported_result": value}}
+                        )
+
         records_dict = {
-            "history": end_results,
+            "history": new_history_dict,
         }
 
         return records_dict
