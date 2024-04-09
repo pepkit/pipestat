@@ -222,7 +222,6 @@ class ParsedSchemaDB(ParsedSchema):
         field_defs = self._add_pipeline_name_field(field_defs)
         field_defs = self._add_created_time_field(field_defs)
         field_defs = self._add_modified_time_field(field_defs)
-        # field_defs = self._add_relationship(field_defs)
 
         field_defs["source_record_id"] = (
             int,

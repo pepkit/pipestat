@@ -2,9 +2,11 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
-## [0.8.3] - 2024-03-xx
+## [0.9.0] - 2024-04-xx
 ### Fixed
 - Bug with rm_record for filebackend
+### Added
+- Added results history and history retrieval for both file and db backends.
 
 ## [0.8.2] - 2024-02-22
 ### Changed

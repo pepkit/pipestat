@@ -185,7 +185,7 @@ class TestSplitClasses:
                     psm.retrieve_one(record_identifier=rec_id)
 
 
-# @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
 class TestReporting:
     @pytest.mark.parametrize(
