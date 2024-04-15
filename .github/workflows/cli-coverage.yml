@@ -3,6 +3,8 @@ name: Pipestat Test Coverage
 on:
   push:
     branches: [master, dev]
+  pull_request:
+    branches: [ dev ]
 
 jobs:
   cli-coverage-report:
@@ -18,7 +20,7 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: pipestat-password
           POSTGRES_DB: pipestat-test
-          #POSTGRES_HOST: localhost
+          POSTGRES_HOST: localhost
         ports:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
