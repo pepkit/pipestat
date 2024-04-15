@@ -285,20 +285,9 @@ class FileBackend(PipestatBackend):
             remaining_attributes = list(
                 self._data[self.pipeline_name][self.pipeline_type][record_identifier].keys()
             )
-            if (
-                len(remaining_attributes) == 3
-                and CREATED_TIME in remaining_attributes
-                and MODIFIED_TIME in remaining_attributes
-                and "history" in remaining_attributes
-            ):
-                _LOGGER.info(
-                    f"Last result removed for '{record_identifier}'. " f"Removing the record"
-                )
-                rm_record = True
-                self.remove_record(
-                    record_identifier=record_identifier,
-                    rm_record=rm_record,
-                )
+            if len(remaining_attributes) == 1 and META_KEY in remaining_attributes:
+                _LOGGER.info(f"Last result removed for '{record_identifier}'.")
+
             with write_lock(self._data) as locked_data:
                 locked_data.write()
         return True
