@@ -18,7 +18,7 @@ from typing import List, Dict, Any, Optional, Union, Literal, Callable, Tuple
 
 from ...exceptions import UnrecognizedStatusError, PipestatError
 from ...backends.abstract import PipestatBackend
-from ...const import DATE_FORMAT, PKG_NAME, CREATED_TIME, MODIFIED_TIME
+from ...const import DATE_FORMAT, PKG_NAME, CREATED_TIME, MODIFIED_TIME, META_KEY, HISTORY_KEY
 
 
 _LOGGER = getLogger(PKG_NAME)
@@ -262,7 +262,6 @@ class FileBackend(PipestatBackend):
             self._modify_history(
                 data=self._data[self.pipeline_name][self.pipeline_type][record_identifier],
                 res_id=result_identifier,
-                type="deletion",
                 time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 value="",
             )
@@ -364,31 +363,50 @@ class FileBackend(PipestatBackend):
             self.assert_results_defined(
                 results=result_identifiers, pipeline_type=self.pipeline_type
             )
+
         existing = self.list_results(
             record_identifier=record_identifier,
             restrict_to=result_identifiers,
         )
+
         if existing:
             existing_str = ", ".join(existing)
             _LOGGER.warning(f"These results exist for '{record_identifier}': {existing_str}")
             if not force_overwrite:
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
-            values.update({MODIFIED_TIME: current_time})
+            self._data[self.pipeline_name][self.pipeline_type][record_identifier][META_KEY].update(
+                {MODIFIED_TIME: current_time}
+            )
         if not existing:
             if record_identifier in self._data[self.pipeline_name][self.pipeline_type].keys():
-                values.update({MODIFIED_TIME: current_time})
-            else:
-                values.update({CREATED_TIME: current_time})
-                values.update({MODIFIED_TIME: current_time})
+                self._data[self.pipeline_name][self.pipeline_type][record_identifier].setdefault(
+                    META_KEY, {}
+                )
+                self._data[self.pipeline_name][self.pipeline_type][record_identifier][
+                    META_KEY
+                ].update({MODIFIED_TIME: current_time})
 
-        self._data[self.pipeline_name][self.pipeline_type].setdefault(record_identifier, {})
+            else:
+                self._data[self.pipeline_name][self.pipeline_type].setdefault(
+                    record_identifier, {}
+                )
+                self._data[self.pipeline_name][self.pipeline_type][record_identifier].setdefault(
+                    META_KEY, {}
+                )
+                self._data[self.pipeline_name][self.pipeline_type][record_identifier][
+                    META_KEY
+                ].update({MODIFIED_TIME: current_time})
+                self._data[self.pipeline_name][self.pipeline_type][record_identifier][
+                    META_KEY
+                ].update({CREATED_TIME: current_time})
 
         for res_id, val in values.items():
             self._modify_history(
-                data=self._data[self.pipeline_name][self.pipeline_type][record_identifier],
+                data=self._data[self.pipeline_name][self.pipeline_type][record_identifier][
+                    META_KEY
+                ],
                 res_id=res_id,
-                type="reported_result",
                 time=current_time,
                 value=val,
             )
@@ -755,15 +773,15 @@ class FileBackend(PipestatBackend):
                     f"Pipestat will not report multiple namespaces to one file unless `multi_pipelines` is True."
                 )
 
-    def _modify_history(self, data, res_id, type, time, value):
+    def _modify_history(self, data, res_id, time, value):
         """Modify File backend with each change
 
         data is the loaded yaml results file in dict format
         type = "report", "deletion"
         """
         if "history" not in data:
-            data.setdefault("history", {})
-        if res_id not in data["history"]:
-            data["history"].setdefault(res_id, {})
+            data.setdefault(HISTORY_KEY, {})
+        if res_id not in data[HISTORY_KEY]:
+            data[HISTORY_KEY].setdefault(res_id, {})
 
-        data["history"][res_id].update({time: {type: value}})
+        data[HISTORY_KEY][res_id].update({time: value})

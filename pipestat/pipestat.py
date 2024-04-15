@@ -476,21 +476,26 @@ class PipestatManager(MutableMapping):
             col_name = CREATED_TIME
         else:
             col_name = MODIFIED_TIME
-        results = self.select_records(
-            limit=limit,
-            filter_conditions=[
-                {
-                    "key": col_name,
-                    "operator": "lt",
-                    "value": start,
-                },
-                {
-                    "key": col_name,
-                    "operator": "gt",
-                    "value": end,
-                },
-            ],
-        )
+
+        if not self.file:
+            results = self.select_records(
+                limit=limit,
+                filter_conditions=[
+                    {
+                        "key": col_name,
+                        "operator": "lt",
+                        "value": start,
+                    },
+                    {
+                        "key": col_name,
+                        "operator": "gt",
+                        "value": end,
+                    },
+                ],
+            )
+        else:
+            # FIle backend will require special function to get results via modified time
+            results = {"records": {}}
 
         return results
 
@@ -729,6 +734,8 @@ class PipestatManager(MutableMapping):
         :param str result_identifier: single result_identifier or list of result identifiers
         :return: Dict[str, any]: a mapping with filtered historical results
         """
+
+        record_identifier = record_identifier or self.record_identifier
 
         if self.file:
             result = self.retrieve_one(record_identifier=record_identifier)
