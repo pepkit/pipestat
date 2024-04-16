@@ -368,20 +368,9 @@ class DBBackend(PipestatBackend):
                 values.update({CREATED_TIME: current_time})
                 values.update({MODIFIED_TIME: current_time})
                 new_record = ORMClass(**values)
-                new_record_history = ORMClass_History(**values)
                 with self.session as s:
                     s.add(new_record)
                     s.commit()
-                if history_enabled:
-                    with self.session as s:
-                        source_record = s.exec(
-                            sql_select(ORMClass).where(
-                                getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
-                            )
-                        ).first()
-                        new_record_history.source_record_id = source_record.id
-                        s.add(new_record_history)
-                        s.commit()
             else:
                 with self.session as s:
                     record_to_update = s.exec(
@@ -389,19 +378,21 @@ class DBBackend(PipestatBackend):
                             getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
                         )
                     ).first()
-
+                    old_record_attributes = record_to_update.model_dump()
                     values.update({MODIFIED_TIME: datetime.datetime.now()})
                     for result_id, result_value in values.items():
                         setattr(record_to_update, result_id, result_value)
                     s.commit()
                 if history_enabled:
+                    if "id" in old_record_attributes:
+                        del old_record_attributes["id"]
                     with self.session as s:
                         source_record = s.exec(
                             sql_select(ORMClass).where(
                                 getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
                             )
                         ).first()
-                        new_record_history = ORMClass_History(**values)
+                        new_record_history = ORMClass_History(**old_record_attributes)
                         new_record_history.source_record_id = source_record.id
                         s.add(new_record_history)
                         s.commit()
