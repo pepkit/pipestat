@@ -1035,7 +1035,6 @@ class TestEnvVars:
         except Exception as e:
             pytest.fail(f"Error during pipestat manager creation: {e}")
 
-    # @pytest.mark.skip(reason="known failure for now with config file")
     def test_config__psm_is_built_from_config_file_env_var(self, monkeypatch, config_file_path):
         """PSM can be created from config parsed from env var value."""
         monkeypatch.setenv(ENV_VARS["config"], config_file_path)
@@ -1490,7 +1489,6 @@ class TestFileTypeLinking:
                 print(files)
 
 
-@pytest.mark.skip("Test must be redone with changes to history")
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestTimeStamp:
@@ -1630,7 +1628,7 @@ class TestTimeStamp:
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestSelectRecords:
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.parametrize("backend", ["db", "file"])
     def test_select_records_basic(
         self,
         config_file_path,

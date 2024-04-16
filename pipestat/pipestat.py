@@ -477,26 +477,21 @@ class PipestatManager(MutableMapping):
         else:
             col_name = MODIFIED_TIME
 
-        if not self.file:
-            results = self.select_records(
-                limit=limit,
-                filter_conditions=[
-                    {
-                        "key": col_name,
-                        "operator": "lt",
-                        "value": start,
-                    },
-                    {
-                        "key": col_name,
-                        "operator": "gt",
-                        "value": end,
-                    },
-                ],
-            )
-        else:
-            # FIle backend will require special function to get results via modified time
-            results = {"records": {}}
-
+        results = self.select_records(
+            limit=limit,
+            filter_conditions=[
+                {
+                    "key": col_name,
+                    "operator": "lt",
+                    "value": start,
+                },
+                {
+                    "key": col_name,
+                    "operator": "gt",
+                    "value": end,
+                },
+            ],
+        )
         return results
 
     def process_schema(self, schema_path):

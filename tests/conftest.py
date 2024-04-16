@@ -45,6 +45,10 @@ except:
     DB_DEPENDENCIES = False
 
 
+# SERVICE_UNAVAILABLE = False
+# DB_DEPENDENCIES = True
+
+
 def get_data_file_path(filename: str) -> str:
     data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
     return os.path.join(data_path, filename)

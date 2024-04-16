@@ -317,7 +317,9 @@ class FileBackend(PipestatBackend):
                 )
                 return False
         else:
-            _LOGGER.info(f" rm_record flag False, aborting Removing '{record_identifier}' record")
+            _LOGGER.info(
+                f" rm_record flag is set to False, aborting Removing '{record_identifier}' record"
+            )
 
     def report(
         self,
@@ -542,7 +544,7 @@ class FileBackend(PipestatBackend):
                     if filter_condition["key"] != "record_identifier":
                         for key, value in data[record_identifier].items():
                             result = False
-                            if isinstance(value, dict):
+                            if isinstance(value, dict) and key != "meta":
                                 if key == filter_condition["key"][0]:
                                     result = get_nested_column(
                                         value,
@@ -550,12 +552,17 @@ class FileBackend(PipestatBackend):
                                         retrieved_operator,
                                     )
                             else:
-                                if filter_condition["key"] == key:
+                                if key == "meta":
                                     # Filter datetime objects
-                                    if key in CREATED_TIME or key in MODIFIED_TIME:
+                                    if (
+                                        filter_condition["key"] == CREATED_TIME
+                                        or filter_condition["key"] == MODIFIED_TIME
+                                    ):
                                         try:
                                             time_stamp = datetime.datetime.strptime(
-                                                data[record_identifier][key],
+                                                data[record_identifier][META_KEY][
+                                                    filter_condition["key"]
+                                                ],
                                                 DATE_FORMAT,
                                             )
                                             result = retrieved_operator(
@@ -563,10 +570,8 @@ class FileBackend(PipestatBackend):
                                             )
                                         except TypeError:
                                             result = False
-                                    else:
-                                        result = retrieved_operator(
-                                            value, filter_condition["value"]
-                                        )
+                                elif filter_condition["key"] == key:
+                                    result = retrieved_operator(value, filter_condition["value"])
 
                             if result:
                                 retrieved_results.append(record_identifier)
@@ -612,6 +617,8 @@ class FileBackend(PipestatBackend):
                 if record != {}:
                     record.update({"record_identifier": record_identifier})
                     records_list.append(record)
+                    if "meta" in record:
+                        del record["meta"]
 
         records_dict = {
             "total_size": total_count,
