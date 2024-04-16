@@ -395,14 +395,17 @@ class FileBackend(PipestatBackend):
 
         for res_id, val in values.items():
             if history_enabled:
-                self._modify_history(
-                    data=self._data[self.pipeline_name][self.pipeline_type][record_identifier][
-                        META_KEY
-                    ],
-                    res_id=res_id,
-                    time=current_time,
-                    value=val,
-                )
+                if existing:
+                    self._modify_history(
+                        data=self._data[self.pipeline_name][self.pipeline_type][record_identifier][
+                            META_KEY
+                        ],
+                        res_id=res_id,
+                        time=current_time,
+                        value=self._data[self.pipeline_name][self.pipeline_type][
+                            record_identifier
+                        ][res_id],
+                    )
             self._data[self.pipeline_name][self.pipeline_type][record_identifier][res_id] = val
             results_formatted.append(
                 result_formatter(
