@@ -756,10 +756,12 @@ class PipestatManager(MutableMapping):
             )["records"][0]
 
             if "meta" in result and "history" in result["meta"]:
+                history = {}
                 if isinstance(result_identifier, str) and result_identifier in result:
-                    history = result["meta"]["history"][result_identifier]
+                    history.update(
+                        {result_identifier: result["meta"]["history"][result_identifier]}
+                    )
                 elif isinstance(result_identifier, list):
-                    history = {}
                     for r in result_identifier:
                         if r in result["meta"]["history"]:
                             history.update({r: result["meta"]["history"][r]})
@@ -776,6 +778,17 @@ class PipestatManager(MutableMapping):
                 ]
             else:
                 history = self.backend.retrieve_history_db(record_identifier)["history"]
+
+            # DB backend returns some extra_keys that we can remove before returning them to the user.
+            extra_keys_to_delete = [
+                "id",
+                "pipestat_created_time",
+                "source_record_id",
+                "record_identifier",
+            ]
+            history = {
+                key: value for key, value in history.items() if key not in extra_keys_to_delete
+            }
 
         return history
 
