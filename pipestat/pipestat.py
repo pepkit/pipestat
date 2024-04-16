@@ -744,15 +744,31 @@ class PipestatManager(MutableMapping):
         record_identifier = record_identifier or self.record_identifier
 
         if self.file:
-            result = self.retrieve_one(record_identifier=record_identifier)
+            result = self.backend.select_records(
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": record_identifier,
+                    }
+                ],
+                meta_data_bool=True,
+            )["records"][0]
 
-            if "history" not in result:
+            if "meta" in result and "history" in result["meta"]:
+                if isinstance(result_identifier, str) and result_identifier in result:
+                    history = result["meta"]["history"][result_identifier]
+                elif isinstance(result_identifier, list):
+                    history = {}
+                    for r in result_identifier:
+                        if r in result["meta"]["history"]:
+                            history.update({r: result["meta"]["history"][r]})
+                else:
+                    history = result["meta"]["history"]
+            else:
                 _LOGGER.warning(f"No history available for Record: {record_identifier}")
                 return {}
-            if result_identifier in result:
-                history = result["history"][result_identifier]
-            else:
-                history = result["history"]
+
         else:
             if result_identifier:
                 history = self.backend.retrieve_history_db(record_identifier, result_identifier)[

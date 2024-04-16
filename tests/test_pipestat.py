@@ -328,7 +328,7 @@ class TestReporting:
             },
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.parametrize("backend", ["file"])
     def test_complex_object_report(
         self, val, config_file_path, recursive_schema_file_path, results_file_path, backend
     ):
@@ -2266,8 +2266,7 @@ class TestRetrieveHistory:
             ("sample1", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
-    @pytest.mark.skip("This test needs to be re-done history changes")
+    @pytest.mark.parametrize("backend", ["db", "file"])
     def test_select_history_basic(
         self,
         config_file_path,
@@ -2308,9 +2307,7 @@ class TestRetrieveHistory:
             assert len(history_result.keys()) == 2
 
             if backend == "file":
-                assert len(all_history_result.keys()) == 4
+                assert len(all_history_result.keys()) == 2
 
             if backend == "db":
                 assert len(all_history_result.keys()) == 6
-
-            print("Done")

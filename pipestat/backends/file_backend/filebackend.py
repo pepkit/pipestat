@@ -454,6 +454,7 @@ class FileBackend(PipestatBackend):
         limit: Optional[int] = 1000,
         cursor: Optional[int] = None,
         bool_operator: Optional[str] = "AND",
+        meta_data_bool: Optional[bool] = False,
     ) -> Dict[str, Any]:
         """
         Select records from the FileBackend
@@ -467,6 +468,7 @@ class FileBackend(PipestatBackend):
         :param int limit: maximum number of results to retrieve per page
         :param int cursor: cursor position to begin retrieving records
         :param bool bool_operator: Perform filtering with AND or OR Logic.
+        :param bool meta_data: Should this return associated meta data with records?
         :return dict records_dict = {
             "total_size": int,
             "page_size": int,
@@ -617,7 +619,7 @@ class FileBackend(PipestatBackend):
                 if record != {}:
                     record.update({"record_identifier": record_identifier})
                     records_list.append(record)
-                    if "meta" in record:
+                    if "meta" in record and not meta_data_bool:
                         del record["meta"]
 
         records_dict = {
