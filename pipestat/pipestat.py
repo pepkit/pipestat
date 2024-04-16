@@ -547,6 +547,17 @@ class PipestatManager(MutableMapping):
         )
 
     @require_backend
+    def remove_record(
+        self,
+        record_identifier: Optional[str] = None,
+        rm_record: Optional[bool] = False,
+    ) -> bool:
+        return self.backend.remove_record(
+            record_identifier=record_identifier,
+            rm_record=rm_record,
+        )
+
+    @require_backend
     def report(
         self,
         values: Dict[str, Any],
