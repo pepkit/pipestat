@@ -327,6 +327,7 @@ class FileBackend(PipestatBackend):
         record_identifier: Optional[str] = None,
         force_overwrite: bool = True,
         result_formatter: Optional[staticmethod] = None,
+        history_enabled: bool = True,
     ) -> Union[List[str], bool]:
         """
         Update the value of a result in a current namespace.
@@ -393,14 +394,15 @@ class FileBackend(PipestatBackend):
                 ].update({CREATED_TIME: current_time})
 
         for res_id, val in values.items():
-            self._modify_history(
-                data=self._data[self.pipeline_name][self.pipeline_type][record_identifier][
-                    META_KEY
-                ],
-                res_id=res_id,
-                time=current_time,
-                value=val,
-            )
+            if history_enabled:
+                self._modify_history(
+                    data=self._data[self.pipeline_name][self.pipeline_type][record_identifier][
+                        META_KEY
+                    ],
+                    res_id=res_id,
+                    time=current_time,
+                    value=val,
+                )
             self._data[self.pipeline_name][self.pipeline_type][record_identifier][res_id] = val
             results_formatted.append(
                 result_formatter(

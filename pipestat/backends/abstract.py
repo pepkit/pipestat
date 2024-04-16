@@ -153,6 +153,7 @@ class PipestatBackend(ABC):
         record_identifier: str,
         force_overwrite: bool = False,
         result_formatter: Optional[staticmethod] = None,
+        history_enabled: bool = True,
     ) -> str:
         _LOGGER.warning("Not implemented yet for this backend")
 

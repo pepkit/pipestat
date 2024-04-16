@@ -565,6 +565,7 @@ class PipestatManager(MutableMapping):
         force_overwrite: bool = True,
         result_formatter: Optional[staticmethod] = None,
         strict_type: bool = True,
+        history_enabled: bool = True,
     ) -> Union[List[str], bool]:
         """
         Report a result.
@@ -578,6 +579,7 @@ class PipestatManager(MutableMapping):
         :param bool strict_type: whether the type of the reported values should
             remain as is. Pipestat would attempt to convert to the
             schema-defined one otherwise
+        :param bool history_enabled: Should history of reported results be enabled?
         :return str reported_results: return list of formatted string
         """
 
@@ -608,6 +610,7 @@ class PipestatManager(MutableMapping):
             record_identifier=r_id,
             force_overwrite=force_overwrite,
             result_formatter=result_formatter,
+            history_enabled=history_enabled,
         )
 
         return reported_results
