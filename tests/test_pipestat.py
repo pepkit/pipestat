@@ -2306,6 +2306,7 @@ class TestRetrieveHistory:
 
             assert len(all_history_result.keys()) == 2
             assert len(history_result.keys()) == 1
+            assert len(history_result["name_of_something"].keys()) == 1
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -2351,3 +2352,76 @@ class TestRetrieveHistory:
             )
 
             assert len(history_result.keys()) == 2
+            assert len(history_result["name_of_something"].keys()) == 1
+
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            (
+                "sample1",
+                {
+                    "output_image": {
+                        "path": "path_string",
+                        "thumbnail_path": "thumbnail_path_string",
+                        "title": "title_string",
+                    }
+                },
+            ),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["db", "file"])
+    def test_select_history_complex_objects(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+        range_values,
+        rec_id,
+        val,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+
+            val = {
+                "output_image": {
+                    "path": "path_string2",
+                    "thumbnail_path": "thumbnail_path_string2",
+                    "title": "title_string2",
+                }
+            }
+
+            time.sleep(1)
+
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+
+            val = {
+                "output_image": {
+                    "path": "path_string3",
+                    "thumbnail_path": "thumbnail_path_string3",
+                    "title": "title_string3",
+                }
+            }
+
+            time.sleep(1)
+
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+
+            history_result = psm.retrieve_history(
+                record_identifier="sample1",
+                result_identifier="output_image",
+            )
+
+            assert len(history_result.keys()) == 1
+            assert "output_image" in history_result
+            assert len(history_result["output_image"].keys()) == 2
