@@ -22,31 +22,31 @@ docker run --rm -it --name pipestat_test_db \
 """
 STANDARD_TEST_PIPE_ID = "default_pipeline_name"
 
-# try:
-#     subprocess.check_output(
-#         "docker inspect pipestat_test_db --format '{{.State.Status}}'", shell=True
-#     )
-#     SERVICE_UNAVAILABLE = False
-# except:
-#     register(print, f"Some tests require a test database. To initiate it, run:\n{DB_CMD}")
-#     SERVICE_UNAVAILABLE = True
-#
-# try:
-#     result = subprocess.check_output(
-#         "pipestat report --c 'tests/data/config.yaml' -i 'name_of_something' -v 'test_value' -r 'dependency_value'",
-#         shell=True,
-#     )
-#     DB_DEPENDENCIES = True
-# except:
-#     register(
-#         print,
-#         f"Warning: you must install dependencies with pip install pipestat['dbbackend'] to run database tests.",
-#     )
-#     DB_DEPENDENCIES = False
-#
+try:
+    subprocess.check_output(
+        "docker inspect pipestat_test_db --format '{{.State.Status}}'", shell=True
+    )
+    SERVICE_UNAVAILABLE = False
+except:
+    register(print, f"Some tests require a test database. To initiate it, run:\n{DB_CMD}")
+    SERVICE_UNAVAILABLE = True
 
-SERVICE_UNAVAILABLE = False
-DB_DEPENDENCIES = True
+try:
+    result = subprocess.check_output(
+        "pipestat report --c 'tests/data/config.yaml' -i 'name_of_something' -v 'test_value' -r 'dependency_value'",
+        shell=True,
+    )
+    DB_DEPENDENCIES = True
+except:
+    register(
+        print,
+        f"Warning: you must install dependencies with pip install pipestat['dbbackend'] to run database tests.",
+    )
+    DB_DEPENDENCIES = False
+
+
+# SERVICE_UNAVAILABLE = False
+# DB_DEPENDENCIES = True
 
 
 def get_data_file_path(filename: str) -> str:
