@@ -1362,7 +1362,7 @@ class TestPipestatCLI:
                     list(val.keys())[0],
                     "--value",
                     list(val.values())[0],
-                    "--config-file",
+                    "--config",
                     config_file_path,
                     "--schema",
                     schema_file_path,
@@ -1381,8 +1381,6 @@ class TestPipestatCLI:
                     rec_id,
                     "--result-identifier",
                     list(val.keys())[0],
-                    "--value",
-                    list(val.values())[0],
                     "--results-file",
                     results_file_path,
                     "--schema",
@@ -1395,9 +1393,34 @@ class TestPipestatCLI:
                     rec_id,
                     "--result-identifier",
                     list(val.keys())[0],
-                    "--value",
-                    list(val.values())[0],
-                    "--config-file",
+                    "--config",
+                    config_file_path,
+                    "--schema",
+                    schema_file_path,
+                ]
+
+            with pytest.raises(
+                SystemExit
+            ):  # pipestat cli normal behavior is to end with a "sys.exit(0)"
+                main(test_args=x)
+
+            # history
+            if backend != "db":
+                x = [
+                    "history",
+                    "--record-identifier",
+                    rec_id,
+                    "--results-file",
+                    results_file_path,
+                    "--schema",
+                    schema_file_path,
+                ]
+            else:
+                x = [
+                    "history",
+                    "--record-identifier",
+                    rec_id,
+                    "--config",
                     config_file_path,
                     "--schema",
                     schema_file_path,
