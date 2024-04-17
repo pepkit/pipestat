@@ -1,3 +1,4 @@
+import copy
 import datetime
 from logging import getLogger
 from contextlib import contextmanager
@@ -446,9 +447,10 @@ class DBBackend(PipestatBackend):
             total_count = len(s.exec(sql_select(ORM)).all())
 
             if columns is not None:
+                columns = copy.deepcopy(columns)
                 for i in ["id", "record_identifier"]:  # Must add id, need it for cursor
                     if i not in columns:
-                        columns = [i] + columns
+                        columns.insert(0, i)
                 try:
                     statement = sql_select(*[getattr(ORM, column) for column in columns]).order_by(
                         ORM.id
@@ -523,12 +525,12 @@ class DBBackend(PipestatBackend):
             if isinstance(result_identifier, str):
                 columns = [result_identifier]
             elif isinstance(result_identifier, list):
-                columns = result_identifier
+                columns = copy.deepcopy(result_identifier)
             else:
                 raise ValueError("Result identifier must be a str or list[str]")
             for i in ["id", MODIFIED_TIME]:
                 if i not in columns:
-                    columns = [i] + columns
+                    columns.insert(0, i)
 
         if not self.check_record_exists(
             record_identifier=record_identifier,
