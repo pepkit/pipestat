@@ -291,13 +291,10 @@ class DBBackend(PipestatBackend):
                             .first()
                             .id
                         )
-                        linked_records = s.exec(
-                            sql_select(ORMClass_History).where(
-                                getattr(ORMClass_History, "source_record_id") == source_record_id
-                            )
-                        ).all()
-                        for r in linked_records:
-                            s.delete(r)
+                        # synchronize_session="fetch", safer but slower than = False
+                        s.query(ORMClass_History).filter(
+                            ORMClass_History.source_record_id == source_record_id
+                        ).delete(synchronize_session="fetch")
                         s.commit()
                     with self.session as s:
                         record = s.exec(
