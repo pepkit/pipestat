@@ -501,7 +501,11 @@ class DBBackend(PipestatBackend):
 
         return records_dict
 
-    def retrieve_history_db(self, record_identifier, result_identifier=None):
+    def retrieve_history_db(
+        self,
+        record_identifier: str,
+        result_identifier: Optional[Union[str, List[str]]] = None,
+    ) -> Dict[str, Any]:
         """
 
         :param record_identifier: single record_identifier

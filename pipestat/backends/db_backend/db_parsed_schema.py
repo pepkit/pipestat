@@ -197,6 +197,10 @@ class ParsedSchemaDB(ParsedSchema):
         return self._table_name("files")
 
     def build_history_model(self, pipeline_type):
+        """Creates model for history ORM
+        :param str pipeline_type: project or sample-level pipeline
+        :return model: (model, table_name)
+        """
         if pipeline_type == "project":
             history_table_name = self.project_table_name + "_history"
             data = self.project_level_data
