@@ -533,9 +533,7 @@ class DBBackend(PipestatBackend):
         if not self.check_record_exists(
             record_identifier=record_identifier,
         ):
-            return {
-                "history": [],
-            }
+            raise RecordNotFoundError(f"{record_identifier} does not exist.")
         else:
             with self.session as s:
                 source_record_id = (
@@ -661,7 +659,10 @@ class DBBackend(PipestatBackend):
             _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
 
     def _create_orms(self, pipeline_type):
-        """Create ORMs."""
+        """Create ORMs.
+        :param str pipeline_type: project or sample-level pipeline
+        :return dict: {table_name: model}
+        """
         _LOGGER.debug(f"Creating models for '{self.pipeline_name}' table in '{PKG_NAME}' database")
         model = self.parsed_schema.build_model(pipeline_type=pipeline_type)
         table_name = self.parsed_schema._table_name(pipeline_type)
@@ -674,7 +675,10 @@ class DBBackend(PipestatBackend):
             )
 
     def _create_history_orms(self, pipeline_type):
-        """Creates the additional ORMs for auditing result modifications"""
+        """Creates the additional ORMs for auditing result modifications
+        :param str pipeline_type: project or sample-level pipeline
+        :return dict: {table_name: model}
+        """
         model, table_name = self.parsed_schema.build_history_model(pipeline_type=pipeline_type)
         if model:
             return {table_name: model}
