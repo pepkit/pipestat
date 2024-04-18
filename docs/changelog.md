@@ -2,7 +2,7 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
-## [0.9.0] - 2024-04-xx
+## [0.9.0] - 2024-04-19
 ### Fixed
 - Bug with rm_record for filebackend
 ### Added
