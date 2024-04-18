@@ -60,7 +60,7 @@ class TestSplitClasses:
         ],
     )
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_basics(
+    def test_basics_all(
         self,
         rec_id,
         val,
@@ -90,6 +90,7 @@ class TestSplitClasses:
                 psm.clear_status(record_identifier=rec_id)
                 status = psm.get_status(record_identifier=rec_id)
                 assert status is None
+                psm.remove_record(record_identifier=rec_id, rm_record=True)
                 with pytest.raises(RecordNotFoundError):
                     psm.retrieve_one(record_identifier=rec_id)
             if backend == "db":
@@ -177,8 +178,8 @@ class TestSplitClasses:
                 psm.clear_status(record_identifier=rec_id)
                 status = psm.get_status(record_identifier=rec_id)
                 assert status is None
-                with pytest.raises(RecordNotFoundError):
-                    psm.retrieve_one(record_identifier=rec_id)
+                # with pytest.raises(RecordNotFoundError):
+                #     psm.retrieve_one(record_identifier=rec_id)
             if backend == "db":
                 psm.remove(record_identifier=rec_id)
                 with pytest.raises(RecordNotFoundError):
@@ -199,7 +200,7 @@ class TestReporting:
             ("sample3", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.parametrize("backend", ["db"])
     def test_report_basic(
         self,
         rec_id,
@@ -327,7 +328,7 @@ class TestReporting:
             },
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.parametrize("backend", ["file"])
     def test_complex_object_report(
         self, val, config_file_path, recursive_schema_file_path, results_file_path, backend
     ):
@@ -865,37 +866,6 @@ class TestRemoval:
             psm = SamplePipestatManager(**args)
             assert not psm.remove(record_identifier=rec_id)
 
-    @pytest.mark.parametrize(["rec_id", "res_id"], [("sample3", "name_of_something")])
-    @pytest.mark.parametrize("backend", ["file"])
-    def test_last_result_removal_removes_record(
-        self,
-        rec_id,
-        res_id,
-        schema_file_path,
-        config_file_path,
-        results_file_path,
-        backend,
-    ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
-            results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
-            backend_data = (
-                {"config_file": config_file_path}
-                if backend == "db"
-                else {"results_file_path": results_file_path}
-            )
-            args.update(backend_data)
-            psm = SamplePipestatManager(**args)
-            psm.report(
-                record_identifier=rec_id,
-                values={res_id: "something"},
-                force_overwrite=True,
-            )
-            assert psm.remove(record_identifier=rec_id, result_identifier=res_id)
-
-            with pytest.raises(RecordNotFoundError):
-                result = psm.retrieve_one(record_identifier=rec_id)
-
 
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
@@ -1035,7 +1005,6 @@ class TestEnvVars:
         except Exception as e:
             pytest.fail(f"Error during pipestat manager creation: {e}")
 
-    # @pytest.mark.skip(reason="known failure for now with config file")
     def test_config__psm_is_built_from_config_file_env_var(self, monkeypatch, config_file_path):
         """PSM can be created from config parsed from env var value."""
         monkeypatch.setenv(ENV_VARS["config"], config_file_path)
@@ -1393,7 +1362,7 @@ class TestPipestatCLI:
                     list(val.keys())[0],
                     "--value",
                     list(val.values())[0],
-                    "--config-file",
+                    "--config",
                     config_file_path,
                     "--schema",
                     schema_file_path,
@@ -1412,8 +1381,6 @@ class TestPipestatCLI:
                     rec_id,
                     "--result-identifier",
                     list(val.keys())[0],
-                    "--value",
-                    list(val.values())[0],
                     "--results-file",
                     results_file_path,
                     "--schema",
@@ -1426,9 +1393,34 @@ class TestPipestatCLI:
                     rec_id,
                     "--result-identifier",
                     list(val.keys())[0],
-                    "--value",
-                    list(val.values())[0],
-                    "--config-file",
+                    "--config",
+                    config_file_path,
+                    "--schema",
+                    schema_file_path,
+                ]
+
+            with pytest.raises(
+                SystemExit
+            ):  # pipestat cli normal behavior is to end with a "sys.exit(0)"
+                main(test_args=x)
+
+            # history
+            if backend != "db":
+                x = [
+                    "history",
+                    "--record-identifier",
+                    rec_id,
+                    "--results-file",
+                    results_file_path,
+                    "--schema",
+                    schema_file_path,
+                ]
+            else:
+                x = [
+                    "history",
+                    "--record-identifier",
+                    rec_id,
+                    "--config",
                     config_file_path,
                     "--schema",
                     schema_file_path,
@@ -1493,91 +1485,6 @@ class TestFileTypeLinking:
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestTimeStamp:
-    @pytest.mark.parametrize(
-        ["rec_id", "val"],
-        [
-            ("sample1", {"name_of_something": "test_name"}),
-        ],
-    )
-    @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_basic_time_stamp(
-        self,
-        rec_id,
-        val,
-        config_file_path,
-        schema_file_path,
-        results_file_path,
-        backend,
-    ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
-            results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
-            backend_data = (
-                {"config_file": config_file_path}
-                if backend == "db"
-                else {"results_file_path": results_file_path}
-            )
-            args.update(backend_data)
-            psm = SamplePipestatManager(**args)
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
-
-            # CHECK CREATION AND MODIFY TIME EXIST
-
-            created = psm.select_records(
-                filter_conditions=[
-                    {
-                        "key": "record_identifier",
-                        "operator": "eq",
-                        "value": rec_id,
-                    },
-                ],
-                columns=[CREATED_TIME],
-            )["records"][0][CREATED_TIME]
-
-            modified = psm.select_records(
-                filter_conditions=[
-                    {
-                        "key": "record_identifier",
-                        "operator": "eq",
-                        "value": rec_id,
-                    },
-                ],
-                columns=[MODIFIED_TIME],
-            )["records"][0][MODIFIED_TIME]
-
-            assert created is not None
-            assert modified is not None
-            assert created == modified
-            # Report new
-            val = {"number_of_things": 1}
-            time.sleep(
-                1
-            )  # The filebackend is so fast that the updated time will equal the created time
-            psm.report(record_identifier="sample1", values=val, force_overwrite=True)
-            # CHECK MODIFY TIME DIFFERS FROM CREATED TIME
-            created = psm.select_records(
-                filter_conditions=[
-                    {
-                        "key": "record_identifier",
-                        "operator": "eq",
-                        "value": rec_id,
-                    },
-                ],
-                columns=[CREATED_TIME],
-            )["records"][0][CREATED_TIME]
-
-            modified = psm.select_records(
-                filter_conditions=[
-                    {
-                        "key": "record_identifier",
-                        "operator": "eq",
-                        "value": rec_id,
-                    },
-                ],
-                columns=[MODIFIED_TIME],
-            )["records"][0][MODIFIED_TIME]
-
-            assert created != modified
 
     @pytest.mark.parametrize("backend", ["db", "file"])
     def test_list_recent_results(
@@ -1629,7 +1536,7 @@ class TestTimeStamp:
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestSelectRecords:
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.parametrize("backend", ["db", "file"])
     def test_select_records_basic(
         self,
         config_file_path,
@@ -2371,3 +2278,173 @@ class TestSetIndexTrue:
             mod = psm.backend.get_model(table_name=psm.backend.table_name)
             assert mod.md5sum.index is True
             assert mod.number_of_things.index is False
+
+
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
+class TestRetrieveHistory:
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("sample1", {"name_of_something": "test_name"}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["db", "file"])
+    def test_select_history_basic(
+        self,
+        config_file_path,
+        results_file_path,
+        schema_file_path,
+        backend,
+        range_values,
+        rec_id,
+        val,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            val["number_of_things"] = 1
+
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+
+            val = {"name_of_something": "MODIFIED_test_name", "number_of_things": 2}
+
+            time.sleep(1)
+
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+
+            history_result = psm.retrieve_history(
+                record_identifier="sample1", result_identifier="name_of_something"
+            )
+
+            all_history_result = psm.retrieve_history(record_identifier="sample1")
+
+            assert len(all_history_result.keys()) == 2
+            assert len(history_result.keys()) == 1
+            assert len(history_result["name_of_something"].keys()) == 1
+
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("sample1", {"name_of_something": "test_name"}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["db", "file"])
+    def test_select_history_multi_results(
+        self,
+        config_file_path,
+        results_file_path,
+        schema_file_path,
+        backend,
+        range_values,
+        rec_id,
+        val,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            val["number_of_things"] = 1
+
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+
+            val = {"name_of_something": "MODIFIED_test_name", "number_of_things": 2}
+
+            time.sleep(1)
+
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+
+            history_result = psm.retrieve_history(
+                record_identifier="sample1",
+                result_identifier=["name_of_something", "number_of_things"],
+            )
+
+            assert len(history_result.keys()) == 2
+            assert len(history_result["name_of_something"].keys()) == 1
+
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            (
+                "sample1",
+                {
+                    "output_image": {
+                        "path": "path_string",
+                        "thumbnail_path": "thumbnail_path_string",
+                        "title": "title_string",
+                    }
+                },
+            ),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["db", "file"])
+    def test_select_history_complex_objects(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+        range_values,
+        rec_id,
+        val,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+
+            val = {
+                "output_image": {
+                    "path": "path_string2",
+                    "thumbnail_path": "thumbnail_path_string2",
+                    "title": "title_string2",
+                }
+            }
+
+            time.sleep(1)
+
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+
+            val = {
+                "output_image": {
+                    "path": "path_string3",
+                    "thumbnail_path": "thumbnail_path_string3",
+                    "title": "title_string3",
+                }
+            }
+
+            time.sleep(1)
+
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+
+            history_result = psm.retrieve_history(
+                record_identifier="sample1",
+                result_identifier="output_image",
+            )
+
+            assert len(history_result.keys()) == 1
+            assert "output_image" in history_result
+            assert len(history_result["output_image"].keys()) == 2

@@ -476,6 +476,7 @@ class PipestatManager(MutableMapping):
             col_name = CREATED_TIME
         else:
             col_name = MODIFIED_TIME
+
         results = self.select_records(
             limit=limit,
             filter_conditions=[
@@ -491,7 +492,6 @@ class PipestatManager(MutableMapping):
                 },
             ],
         )
-
         return results
 
     def process_schema(self, schema_path):
@@ -547,6 +547,17 @@ class PipestatManager(MutableMapping):
         )
 
     @require_backend
+    def remove_record(
+        self,
+        record_identifier: Optional[str] = None,
+        rm_record: Optional[bool] = False,
+    ) -> bool:
+        return self.backend.remove_record(
+            record_identifier=record_identifier,
+            rm_record=rm_record,
+        )
+
+    @require_backend
     def report(
         self,
         values: Dict[str, Any],
@@ -554,6 +565,7 @@ class PipestatManager(MutableMapping):
         force_overwrite: bool = True,
         result_formatter: Optional[staticmethod] = None,
         strict_type: bool = True,
+        history_enabled: bool = True,
     ) -> Union[List[str], bool]:
         """
         Report a result.
@@ -567,6 +579,7 @@ class PipestatManager(MutableMapping):
         :param bool strict_type: whether the type of the reported values should
             remain as is. Pipestat would attempt to convert to the
             schema-defined one otherwise
+        :param bool history_enabled: Should history of reported results be enabled?
         :return str reported_results: return list of formatted string
         """
 
@@ -597,6 +610,7 @@ class PipestatManager(MutableMapping):
             record_identifier=r_id,
             force_overwrite=force_overwrite,
             result_formatter=result_formatter,
+            history_enabled=history_enabled,
         )
 
         return reported_results
@@ -665,11 +679,8 @@ class PipestatManager(MutableMapping):
         """
         Retrieve a single record
         :param str record_identifier: single record_identifier
-        :param str result_identifier: single record_identifier
-        :return: Dict[str, any]: a mapping with filtered
-
-
-            results reported for the record
+        :param str result_identifier: single record_identifier or list of result identifiers
+        :return: Dict[str, any]: a mapping with filtered results reported for the record
         """
         r_id = record_identifier or self.record_identifier
 
@@ -720,6 +731,69 @@ class PipestatManager(MutableMapping):
                     raise RecordNotFoundError(f"Record '{record_identifier}' not found")
             except IndexError:
                 raise RecordNotFoundError(f"Record '{record_identifier}' not found")
+
+    def retrieve_history(
+        self,
+        record_identifier: str = None,
+        result_identifier: Optional[Union[str, List[str]]] = None,
+    ) -> Union[Any, Dict[str, Any]]:
+        """
+        Retrieve a single record's history
+        :param str record_identifier: single record_identifier
+        :param str result_identifier: single result_identifier or list of result identifiers
+        :return: Dict[str, any]: a mapping with filtered historical results
+        """
+
+        record_identifier = record_identifier or self.record_identifier
+
+        if self.file:
+            result = self.backend.select_records(
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": record_identifier,
+                    }
+                ],
+                meta_data_bool=True,
+            )["records"][0]
+
+            if "meta" in result and "history" in result["meta"]:
+                history = {}
+                if isinstance(result_identifier, str) and result_identifier in result:
+                    history.update(
+                        {result_identifier: result["meta"]["history"][result_identifier]}
+                    )
+                elif isinstance(result_identifier, list):
+                    for r in result_identifier:
+                        if r in result["meta"]["history"]:
+                            history.update({r: result["meta"]["history"][r]})
+                else:
+                    history = result["meta"]["history"]
+            else:
+                _LOGGER.warning(f"No history available for Record: {record_identifier}")
+                return {}
+
+        else:
+            if result_identifier:
+                history = self.backend.retrieve_history_db(record_identifier, result_identifier)[
+                    "history"
+                ]
+            else:
+                history = self.backend.retrieve_history_db(record_identifier)["history"]
+
+            # DB backend returns some extra_keys that we can remove before returning them to the user.
+            extra_keys_to_delete = [
+                "id",
+                "pipestat_created_time",
+                "source_record_id",
+                "record_identifier",
+            ]
+            history = {
+                key: value for key, value in history.items() if key not in extra_keys_to_delete
+            }
+
+        return history
 
     def retrieve_many(
         self,

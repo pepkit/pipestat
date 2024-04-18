@@ -1,3 +1,4 @@
+import copy
 import datetime
 from logging import getLogger
 from contextlib import contextmanager
@@ -62,6 +63,8 @@ class DBBackend(PipestatBackend):
         self.result_formatter = result_formatter
 
         self.orms = self._create_orms(pipeline_type=pipeline_type)
+        self.history_table = self._create_history_orms(pipeline_type=pipeline_type)
+
         self.table_name = list(self.orms.keys())[0]
         SQLModel.metadata.create_all(self._engine)
 
@@ -274,9 +277,28 @@ class DBBackend(PipestatBackend):
         if rm_record:
             try:
                 ORMClass = self.get_model(table_name=self.table_name)
+                ORMClass_History = self.history_table[list(self.history_table.keys())[0]]
                 if self.check_record_exists(
                     record_identifier=record_identifier,
                 ):
+                    with self.session as s:
+                        source_record_id = (
+                            s.exec(
+                                sql_select(ORMClass).where(
+                                    getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
+                                )
+                            )
+                            .first()
+                            .id
+                        )
+                        linked_records = s.exec(
+                            sql_select(ORMClass_History).where(
+                                getattr(ORMClass_History, "source_record_id") == source_record_id
+                            )
+                        ).all()
+                        for r in linked_records:
+                            s.delete(r)
+                        s.commit()
                     with self.session as s:
                         record = s.exec(
                             sql_select(ORMClass).where(
@@ -284,7 +306,6 @@ class DBBackend(PipestatBackend):
                             )
                         ).first()
                         s.delete(record)
-
                         s.commit()
                 else:
                     raise RecordNotFoundError(f"Record '{record_identifier}' not found")
@@ -300,6 +321,7 @@ class DBBackend(PipestatBackend):
         record_identifier: str,
         force_overwrite: bool = True,
         result_formatter: Optional[staticmethod] = None,
+        history_enabled: bool = True,
     ) -> Union[List[str], bool]:
         """
         Update the value of a result in a current namespace.
@@ -337,6 +359,7 @@ class DBBackend(PipestatBackend):
 
         try:
             ORMClass = self.get_model(table_name=self.table_name)
+            ORMClass_History = self.history_table[list(self.history_table.keys())[0]]
             values.update({RECORD_IDENTIFIER: record_identifier})
 
             if not self.check_record_exists(
@@ -356,11 +379,24 @@ class DBBackend(PipestatBackend):
                             getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
                         )
                     ).first()
-
+                    old_record_attributes = record_to_update.model_dump()
                     values.update({MODIFIED_TIME: datetime.datetime.now()})
                     for result_id, result_value in values.items():
                         setattr(record_to_update, result_id, result_value)
                     s.commit()
+                if history_enabled:
+                    if "id" in old_record_attributes:
+                        del old_record_attributes["id"]
+                    with self.session as s:
+                        source_record = s.exec(
+                            sql_select(ORMClass).where(
+                                getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
+                            )
+                        ).first()
+                        new_record_history = ORMClass_History(**old_record_attributes)
+                        new_record_history.source_record_id = source_record.id
+                        s.add(new_record_history)
+                        s.commit()
 
             for res_id, val in values.items():
                 results_formatted.append(
@@ -411,9 +447,10 @@ class DBBackend(PipestatBackend):
             total_count = len(s.exec(sql_select(ORM)).all())
 
             if columns is not None:
+                columns = copy.deepcopy(columns)
                 for i in ["id", "record_identifier"]:  # Must add id, need it for cursor
                     if i not in columns:
-                        columns = [i] + columns
+                        columns.insert(0, i)
                 try:
                     statement = sql_select(*[getattr(ORM, column) for column in columns]).order_by(
                         ORM.id
@@ -463,6 +500,105 @@ class DBBackend(PipestatBackend):
             "page_size": limit,
             "next_page_token": next_cursor,
             "records": end_results,
+        }
+
+        return records_dict
+
+    def retrieve_history_db(
+        self,
+        record_identifier: str,
+        result_identifier: Optional[Union[str, List[str]]] = None,
+    ) -> Dict[str, Any]:
+        """
+
+        :param record_identifier: single record_identifier
+        :param result_identifier: single or list of result identifiers
+        :return: dict records_dict = {
+            "history": List[Dict[{key, Any}]],
+        }
+        """
+
+        record_identifier = record_identifier or self.record_identifier
+
+        ORMClass = self.get_model(table_name=self.table_name)
+        ORMClass_History = self.history_table[list(self.history_table.keys())[0]]
+
+        if not result_identifier:
+            columns = None
+        else:
+            if isinstance(result_identifier, str):
+                columns = [result_identifier]
+            elif isinstance(result_identifier, list):
+                columns = copy.deepcopy(result_identifier)
+            else:
+                raise ValueError("Result identifier must be a str or list[str]")
+            for i in ["id", MODIFIED_TIME]:
+                if i not in columns:
+                    columns.insert(0, i)
+
+        if not self.check_record_exists(
+            record_identifier=record_identifier,
+        ):
+            raise RecordNotFoundError(f"{record_identifier} does not exist.")
+        else:
+            with self.session as s:
+                source_record_id = (
+                    s.exec(
+                        sql_select(ORMClass).where(
+                            getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
+                        )
+                    )
+                    .first()
+                    .id
+                )
+                if columns is not None:
+                    try:
+                        statement = sql_select(
+                            *[getattr(ORMClass_History, column) for column in columns]
+                        ).order_by(ORMClass_History.id)
+                    except AttributeError:
+                        raise ColumnNotFoundError(
+                            msg=f"One of the supplied columns does not exist in current table: {columns}"
+                        )
+                else:
+                    statement = sql_select(ORMClass_History).order_by(ORMClass_History.id)
+
+                statement = statement.where(
+                    getattr(ORMClass_History, "source_record_id") == source_record_id
+                )
+
+                history_records = s.exec(statement).all()
+
+        end_results = []
+
+        # SQL model returns either a SQLModelMetaCLass OR a sqlalchemy Row.
+        # We must create a dictionary containing the record before returning
+
+        if not columns:
+            end_results = [r.model_dump() for r in history_records]
+
+        else:
+            for record in history_records:
+                record_dict = dict(record._mapping)
+                end_results.append(record_dict)
+
+        # This next step is to process the results such that they will match output similar to the filebackend
+
+        collected_keys = []
+        new_history_dict = {}
+        for result in end_results:
+            for key, value in result.items():
+                if key == MODIFIED_TIME:
+                    continue
+                elif value:
+                    if key not in new_history_dict:
+                        collected_keys.append(key)
+                        new_history_dict[key] = {result[MODIFIED_TIME]: value}
+                    else:
+                        new_history_dict[key].update({result[MODIFIED_TIME]: value})
+
+        records_dict = {
+            "history": new_history_dict,
         }
 
         return records_dict
@@ -527,11 +663,27 @@ class DBBackend(PipestatBackend):
             _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
 
     def _create_orms(self, pipeline_type):
-        """Create ORMs."""
+        """Create ORMs.
+        :param str pipeline_type: project or sample-level pipeline
+        :return dict: {table_name: model}
+        """
         _LOGGER.debug(f"Creating models for '{self.pipeline_name}' table in '{PKG_NAME}' database")
         model = self.parsed_schema.build_model(pipeline_type=pipeline_type)
         table_name = self.parsed_schema._table_name(pipeline_type)
         # TODO reconsider line below. Why do we need to return a dict?
+        if model:
+            return {table_name: model}
+        else:
+            raise SchemaError(
+                f"Neither project nor samples model could be built from schema source: {self.status_schema_source}"
+            )
+
+    def _create_history_orms(self, pipeline_type):
+        """Creates the additional ORMs for auditing result modifications
+        :param str pipeline_type: project or sample-level pipeline
+        :return dict: {table_name: model}
+        """
+        model, table_name = self.parsed_schema.build_history_model(pipeline_type=pipeline_type)
         if model:
             return {table_name: model}
         else:

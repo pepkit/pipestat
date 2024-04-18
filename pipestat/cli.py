@@ -18,6 +18,7 @@ from .argparser import (
     SUMMARIZE_CMD,
     SERVE_CMD,
     LINK_CMD,
+    HISTORY_CMD,
 )
 from .const import (
     SCHEMA_KEY,
@@ -174,5 +175,12 @@ def main(test_args=None):
                 status_identifier=args.status_identifier,
                 record_identifier=args.record_identifier,
             )
+    if args.command == HISTORY_CMD:
+        print(f"\nHistory for Record: {args.record_identifier}")
+        print(
+            psm.retrieve_history(
+                record_identifier=args.record_identifier, result_identifier=args.result_identifier
+            )
+        )
 
     sys.exit(0)

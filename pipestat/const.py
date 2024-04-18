@@ -63,6 +63,9 @@ __all__ = [
     "RECORD_IDENTIFIER",
     "CREATED_TIME",
     "MODIFIED_TIME",
+    "DATE_FORMAT",
+    "META_KEY",
+    "HISTORY_KEY",
 ]
 
 PKG_NAME = "pipestat"
@@ -83,6 +86,9 @@ RECORD_IDENTIFIER = "record_identifier"
 STATUS = "status"
 CREATED_TIME = "pipestat_created_time"
 MODIFIED_TIME = "pipestat_modified_time"
+
+META_KEY = "meta"
+HISTORY_KEY = "history"
 
 CANONICAL_TYPES = {
     "image": {

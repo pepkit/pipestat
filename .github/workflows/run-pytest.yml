@@ -48,8 +48,8 @@ jobs:
     - name: Run pytest tests
       run: pytest tests -x -vv --cov=./ --cov-report=xml
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v1
-      with:
-        file: ./coverage.xml
-        name: py-${{ matrix.python-version }}-${{ matrix.os }}
+#    - name: Upload coverage to Codecov
+#      uses: codecov/codecov-action@v1
+#      with:
+#        file: ./coverage.xml
+#        name: py-${{ matrix.python-version }}-${{ matrix.os }}
