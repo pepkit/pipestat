@@ -593,11 +593,9 @@ class DBBackend(PipestatBackend):
                 elif value:
                     if key not in new_history_dict:
                         collected_keys.append(key)
-                        new_history_dict[key] = {result[MODIFIED_TIME]: {"reported_result": value}}
+                        new_history_dict[key] = {result[MODIFIED_TIME]: value}
                     else:
-                        new_history_dict[key].update(
-                            {result[MODIFIED_TIME]: {"reported_result": value}}
-                        )
+                        new_history_dict[key].update({result[MODIFIED_TIME]: value})
 
         records_dict = {
             "history": new_history_dict,
