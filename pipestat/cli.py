@@ -122,7 +122,7 @@ def main(test_args=None):
     types_to_read_from_json = ["object"] + list(CANONICAL_TYPES.keys())
 
     # The next few commands require a record_identifier. Need to also check ENV variables for its existence.
-    if args.record_identifier is None:
+    if not hasattr(args, "record_identifier") or getattr(args, "record_identifier", None) is None:
         args.record_identifier = os.getenv("PIPESTAT_RECORD_IDENTIFIER")
 
     if args.command == REPORT_CMD:
