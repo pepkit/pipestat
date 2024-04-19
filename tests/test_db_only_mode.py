@@ -47,6 +47,7 @@ class TestDatabaseOnly:
                     database_only=True,
                     config_file=config_file_path,
                 )
+                print("done")
             except Exception as e:
                 pytest.fail(f"Pipestat manager construction failed: {e})")
 

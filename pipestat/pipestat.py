@@ -9,6 +9,9 @@ from collections.abc import MutableMapping
 from jsonschema import validate
 from yacman import FutureYAMLConfigManager as YAMLConfigManager
 from yacman.yacman_future import select_config
+from ubiquerg import mkabs
+from yacman import load_yaml
+
 
 from typing import Optional, Union, Dict, Any, List, Iterator
 
@@ -24,7 +27,12 @@ from .exceptions import (
 )
 from pipestat.backends.file_backend.filebackend import FileBackend
 from .reports import HTMLReportBuilder, _create_stats_objs_summaries
-from .helpers import validate_type, mk_abs_via_cfg, read_yaml_data, default_formatter, zip_report
+from .helpers import (
+    validate_type,
+    default_formatter,
+    zip_report,
+    make_subdirectories,
+)
 from .const import (
     PKG_NAME,
     DEFAULT_PIPELINE_NAME,
@@ -173,7 +181,7 @@ class PipestatManager(MutableMapping):
         else:
             self.cfg[CONFIG_KEY] = YAMLConfigManager()
 
-        _, cfg_schema = read_yaml_data(CFG_SCHEMA, "config schema")
+        cfg_schema = load_yaml(CFG_SCHEMA)
         validate(self.cfg[CONFIG_KEY].exp, cfg_schema)
 
         self.cfg[SCHEMA_PATH] = self.cfg[CONFIG_KEY].priority_get(
@@ -207,7 +215,7 @@ class PipestatManager(MutableMapping):
             "pipeline_type", default="sample", override=pipeline_type
         )
 
-        self.cfg[FILE_KEY] = mk_abs_via_cfg(
+        self.cfg[FILE_KEY] = mkabs(
             self.resolve_results_file_path(
                 self.cfg[CONFIG_KEY].priority_get(
                     "results_file_path",
@@ -217,6 +225,7 @@ class PipestatManager(MutableMapping):
             ),
             self.cfg["config_path"],
         )
+        make_subdirectories(self.cfg[FILE_KEY])
 
         self.cfg[RESULT_FORMATTER] = result_formatter
 
@@ -341,9 +350,8 @@ class PipestatManager(MutableMapping):
             override=flag_file_dir,
             default=os.path.dirname(self.cfg[FILE_KEY]),
         )
-        self.cfg[STATUS_FILE_DIR] = mk_abs_via_cfg(
-            flag_file_dir, self.config_path or self.cfg[FILE_KEY]
-        )
+        self.cfg[STATUS_FILE_DIR] = mkabs(flag_file_dir, self.config_path or self.cfg[FILE_KEY])
+        make_subdirectories(self.cfg[STATUS_FILE_DIR])
 
         self.backend = FileBackend(
             self.cfg[FILE_KEY],
@@ -468,6 +476,7 @@ class PipestatManager(MutableMapping):
             col_name = CREATED_TIME
         else:
             col_name = MODIFIED_TIME
+
         results = self.select_records(
             limit=limit,
             filter_conditions=[
@@ -483,7 +492,6 @@ class PipestatManager(MutableMapping):
                 },
             ],
         )
-
         return results
 
     def process_schema(self, schema_path):
@@ -501,7 +509,7 @@ class PipestatManager(MutableMapping):
             # raise SchemaNotFoundError("PipestatManager creation failed; no schema")
         else:
             # Main schema
-            schema_to_read = mk_abs_via_cfg(self._schema_path, self.cfg["config_path"])
+            schema_to_read = mkabs(self._schema_path, self.cfg["config_path"])
             self._schema_path = schema_to_read
             parsed_schema = ParsedSchema(schema_to_read)
             self.cfg[SCHEMA_KEY] = parsed_schema
@@ -509,10 +517,8 @@ class PipestatManager(MutableMapping):
             # Status schema
             self.cfg[STATUS_SCHEMA_KEY] = parsed_schema.status_data
             if not self.cfg[STATUS_SCHEMA_KEY]:
-                (
-                    self.cfg[STATUS_SCHEMA_SOURCE_KEY],
-                    self.cfg[STATUS_SCHEMA_KEY],
-                ) = read_yaml_data(path=STATUS_SCHEMA, what="default status schema")
+                self.cfg[STATUS_SCHEMA_SOURCE_KEY] = STATUS_SCHEMA
+                self.cfg[STATUS_SCHEMA_KEY] = load_yaml(filepath=STATUS_SCHEMA)
             else:
                 self.cfg[STATUS_SCHEMA_SOURCE_KEY] = schema_to_read
 
@@ -541,13 +547,25 @@ class PipestatManager(MutableMapping):
         )
 
     @require_backend
+    def remove_record(
+        self,
+        record_identifier: Optional[str] = None,
+        rm_record: Optional[bool] = False,
+    ) -> bool:
+        return self.backend.remove_record(
+            record_identifier=record_identifier,
+            rm_record=rm_record,
+        )
+
+    @require_backend
     def report(
         self,
         values: Dict[str, Any],
         record_identifier: Optional[str] = None,
-        force_overwrite: bool = False,
+        force_overwrite: bool = True,
         result_formatter: Optional[staticmethod] = None,
         strict_type: bool = True,
+        history_enabled: bool = True,
     ) -> Union[List[str], bool]:
         """
         Report a result.
@@ -561,6 +579,7 @@ class PipestatManager(MutableMapping):
         :param bool strict_type: whether the type of the reported values should
             remain as is. Pipestat would attempt to convert to the
             schema-defined one otherwise
+        :param bool history_enabled: Should history of reported results be enabled?
         :return str reported_results: return list of formatted string
         """
 
@@ -583,6 +602,7 @@ class PipestatManager(MutableMapping):
                     value=values[r],
                     schema=self.result_schemas[r],
                     strict_type=strict_type,
+                    record_identifier=record_identifier,
                 )
 
         reported_results = self.backend.report(
@@ -590,6 +610,7 @@ class PipestatManager(MutableMapping):
             record_identifier=r_id,
             force_overwrite=force_overwrite,
             result_formatter=result_formatter,
+            history_enabled=history_enabled,
         )
 
         return reported_results
@@ -658,13 +679,10 @@ class PipestatManager(MutableMapping):
         """
         Retrieve a single record
         :param str record_identifier: single record_identifier
-        :param str result_identifier: single record_identifier
-        :return: Dict[str, any]: a mapping with filtered
-
-
-            results reported for the record
+        :param str result_identifier: single record_identifier or list of result identifiers
+        :return: Dict[str, any]: a mapping with filtered results reported for the record
         """
-        r_id = record_identifier or self.record_identifier
+        record_identifier = record_identifier or self.record_identifier
 
         filter_conditions = [
             {
@@ -692,7 +710,7 @@ class PipestatManager(MutableMapping):
                             f"Results '{columns}' for '{record_identifier}' not found"
                         )
                 try:
-                    return result[0][result_identifier]
+                    return result[0][columns[0]]
                 except IndexError:
                     raise RecordNotFoundError(
                         f"Results '{columns}' for '{record_identifier}' not found"
@@ -713,6 +731,69 @@ class PipestatManager(MutableMapping):
                     raise RecordNotFoundError(f"Record '{record_identifier}' not found")
             except IndexError:
                 raise RecordNotFoundError(f"Record '{record_identifier}' not found")
+
+    def retrieve_history(
+        self,
+        record_identifier: str = None,
+        result_identifier: Optional[Union[str, List[str]]] = None,
+    ) -> Union[Any, Dict[str, Any]]:
+        """
+        Retrieve a single record's history
+        :param str record_identifier: single record_identifier
+        :param str result_identifier: single result_identifier or list of result identifiers
+        :return: Dict[str, any]: a mapping with filtered historical results
+        """
+
+        record_identifier = record_identifier or self.record_identifier
+
+        if self.file:
+            result = self.backend.select_records(
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": record_identifier,
+                    }
+                ],
+                meta_data_bool=True,
+            )["records"][0]
+
+            if "meta" in result and "history" in result["meta"]:
+                history = {}
+                if isinstance(result_identifier, str) and result_identifier in result:
+                    history.update(
+                        {result_identifier: result["meta"]["history"][result_identifier]}
+                    )
+                elif isinstance(result_identifier, list):
+                    for r in result_identifier:
+                        if r in result["meta"]["history"]:
+                            history.update({r: result["meta"]["history"][r]})
+                else:
+                    history = result["meta"]["history"]
+            else:
+                _LOGGER.warning(f"No history available for Record: {record_identifier}")
+                return {}
+
+        else:
+            if result_identifier:
+                history = self.backend.retrieve_history_db(record_identifier, result_identifier)[
+                    "history"
+                ]
+            else:
+                history = self.backend.retrieve_history_db(record_identifier)["history"]
+
+            # DB backend returns some extra_keys that we can remove before returning them to the user.
+            extra_keys_to_delete = [
+                "id",
+                "pipestat_created_time",
+                "source_record_id",
+                "record_identifier",
+            ]
+            history = {
+                key: value for key, value in history.items() if key not in extra_keys_to_delete
+            }
+
+        return history
 
     def retrieve_many(
         self,
@@ -813,7 +894,8 @@ class PipestatManager(MutableMapping):
                 results_directory = self.cfg["unresolved_result_path"].split(
                     "{record_identifier}"
                 )[0]
-                results_directory = mk_abs_via_cfg(results_directory, self.cfg["config_path"])
+                results_directory = mkabs(results_directory, self.cfg["config_path"])
+                make_subdirectories(results_directory)
                 self.backend.aggregate_multi_results(results_directory)
 
     @require_backend

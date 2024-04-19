@@ -11,10 +11,8 @@ from pathlib import Path
 from shutil import make_archive
 from typing import Any, Dict, Optional, Tuple, Union, List
 
-from oyaml import safe_load, dump
-from ubiquerg import expandpath
-
-from zipfile import ZipFile, ZIP_DEFLATED
+from yaml import dump
+from .exceptions import SchemaValidationErrorDuringReport
 
 from .const import (
     PIPESTAT_GENERIC_CONFIG,
@@ -26,7 +24,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-def validate_type(value, schema, strict_type=False):
+def validate_type(value, schema, strict_type=False, record_identifier=None):
     """
     Validate reported result against a partial schema, in case of failure try
     to cast the value into the required class.
@@ -37,13 +35,19 @@ def validate_type(value, schema, strict_type=False):
     :param dict schema: partial jsonschema schema to validate
         against, e.g. {"type": "integer"}
     :param bool strict_type: whether the value should validate as is
+    :param str record_identifier: used for clarifying error messages
     """
 
     try:
         jsonschema.validate(value, schema)
     except jsonschema.exceptions.ValidationError as e:
         if strict_type:
-            raise
+            raise SchemaValidationErrorDuringReport(
+                msg=str(e),
+                record_identifier=record_identifier,
+                result_identifier=schema,
+                result=value,
+            )
         _LOGGER.debug(f"{str(e)}")
         if schema[SCHEMA_TYPE_KEY] != "object":
             value = CLASSES_BY_TYPE[schema[SCHEMA_TYPE_KEY]](value)
@@ -63,27 +67,6 @@ def validate_type(value, schema, strict_type=False):
         _LOGGER.debug(f"Value '{value}' validated successfully against a schema")
 
 
-def read_yaml_data(path: Union[str, Path], what: str) -> Tuple[str, Dict[str, Any]]:
-    """
-    Safely read YAML file and log message
-
-    :param str path: YAML file to read
-    :param str what: context
-    :return (str, dict): absolute path to the read file and the read data
-    """
-    if isinstance(path, Path):
-        test = lambda p: p.is_file()
-    elif isinstance(path, str):
-        path = expandpath(path)
-        test = os.path.isfile
-    else:
-        raise TypeError(f"Alleged path to YAML file to read is neither path nor string: {path}")
-    assert test(path), FileNotFoundError(f"File not found: {path}")
-    _LOGGER.debug(f"Reading {what} from '{path}'")
-    with open(path, "r") as f:
-        return path, safe_load(f)
-
-
 def mk_list_of_str(x):
     """
     Make sure the input is a list of strings
@@ -100,41 +83,14 @@ def mk_list_of_str(x):
     )
 
 
-def mk_abs_via_cfg(
-    path: Optional[str],
-    cfg_path: Optional[str],
-) -> Optional[str]:
-    """
-    Helper function to ensure a path is absolute.
+def make_subdirectories(path):
+    """Takes an absolute file path and creates subdirectories to file if they do not exist"""
 
-    Assumes a relative path is relative to cfg_path, or to current working directory if cfg_path is None.
-
-    : param str path: The path to make absolute.
-    : param str cfg_path: Relative paths will be relative the containing folder of this pat
-    """
-    if path is None:
-        return path
-    assert isinstance(path, str), TypeError("Path is expected to be a str")
-    if os.path.isabs(path):
-        return path
-    if cfg_path is None:
-        rel_to_cwd = os.path.join(os.getcwd(), path)
+    if path:
         try:
-            os.makedirs(os.path.dirname(rel_to_cwd))
+            os.makedirs(os.path.dirname(path))
         except FileExistsError:
             pass
-        if os.path.exists(rel_to_cwd) or os.access(os.path.dirname(rel_to_cwd), os.W_OK):
-            return rel_to_cwd
-        else:
-            raise OSError(f"File not found: {path}")
-    joined = os.path.join(os.path.dirname(cfg_path), path)
-    try:
-        os.makedirs(os.path.dirname(joined))
-    except FileExistsError:
-        pass
-    if os.path.isabs(joined):
-        return joined
-    raise OSError(f"Could not make this path absolute: {path}")
 
 
 def init_generic_config():

@@ -11,6 +11,7 @@ REPORT_CMD = "report"
 INSPECT_CMD = "inspect"
 REMOVE_CMD = "remove"
 RETRIEVE_CMD = "retrieve"
+HISTORY_CMD = "history"
 STATUS_CMD = "status"
 INIT_CMD = "init"
 SUMMARIZE_CMD = "summarize"
@@ -26,6 +27,7 @@ SUBPARSER_MESSAGES = {
     SUMMARIZE_CMD: "Generates HTML Report",
     LINK_CMD: "Create symlinks of reported files",
     SERVE_CMD: "Initializes pipestatreader API",
+    HISTORY_CMD: "Retrieve history of reported results for one record identifier",
 }
 
 STATUS_GET_CMD = "get"
@@ -169,7 +171,7 @@ def build_argparser(desc):
         )
 
     # remove, report and inspect
-    for cmd in [REMOVE_CMD, REPORT_CMD, INSPECT_CMD, RETRIEVE_CMD]:
+    for cmd in [REMOVE_CMD, REPORT_CMD, INSPECT_CMD, RETRIEVE_CMD, HISTORY_CMD]:
         sps[cmd].add_argument(
             "-f",
             "--results-file",
@@ -239,13 +241,21 @@ def build_argparser(desc):
             help=f"ID of the record to report the result for. {_env_txt('record_identifier')}",
         )
 
-    sps[RETRIEVE_CMD].add_argument(
-        "-r",
-        "--record-identifier",
-        type=str,
-        metavar="R",
-        help=f"ID of the record to report the result for. {_env_txt('record_identifier')}",
-    )
+    for cmd in [RETRIEVE_CMD, HISTORY_CMD]:
+        sps[cmd].add_argument(
+            "-i",
+            "--result-identifier",
+            type=str,
+            metavar="I",
+            help="ID of the result to report; needs to be defined in the schema",
+        )
+        sps[cmd].add_argument(
+            "-r",
+            "--record-identifier",
+            type=str,
+            metavar="R",
+            help=f"ID of the record to report the result for. {_env_txt('record_identifier')}",
+        )
 
     # report
     sps[REPORT_CMD].add_argument(

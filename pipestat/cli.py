@@ -18,6 +18,7 @@ from .argparser import (
     SUMMARIZE_CMD,
     SERVE_CMD,
     LINK_CMD,
+    HISTORY_CMD,
 )
 from .const import (
     SCHEMA_KEY,
@@ -121,7 +122,7 @@ def main(test_args=None):
     types_to_read_from_json = ["object"] + list(CANONICAL_TYPES.keys())
 
     # The next few commands require a record_identifier. Need to also check ENV variables for its existence.
-    if args.record_identifier is None:
+    if not hasattr(args, "record_identifier") or getattr(args, "record_identifier", None) is None:
         args.record_identifier = os.getenv("PIPESTAT_RECORD_IDENTIFIER")
 
     if args.command == REPORT_CMD:
@@ -174,5 +175,12 @@ def main(test_args=None):
                 status_identifier=args.status_identifier,
                 record_identifier=args.record_identifier,
             )
+    if args.command == HISTORY_CMD:
+        print(f"\nHistory for Record: {args.record_identifier}")
+        print(
+            psm.retrieve_history(
+                record_identifier=args.record_identifier, result_identifier=args.result_identifier
+            )
+        )
 
     sys.exit(0)

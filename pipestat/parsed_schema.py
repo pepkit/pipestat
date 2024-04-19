@@ -4,7 +4,7 @@ import copy
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Union
-
+import yacman
 from .const import (
     CANONICAL_TYPES,
     CLASSES_BY_TYPE,
@@ -15,7 +15,6 @@ from .const import (
     SCHEMA_TYPE_KEY,
 )
 from .exceptions import SchemaError
-from .helpers import read_yaml_data
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -76,7 +75,7 @@ class ParsedSchema(object):
     def __init__(self, data: Union[Dict[str, Any], Path, str]) -> None:
         # initial validation and parse
         if not isinstance(data, dict):
-            _, data = read_yaml_data(data, "schema")
+            data = yacman.load_yaml(data)
 
         # Keep a copy of the original schema
         self.original_schema = copy.deepcopy(data)
@@ -169,19 +168,34 @@ class ParsedSchema(object):
         :return str: string representation of the object
         """
         res = f"{self.__class__.__name__} ({self._pipeline_name})"
+
+        def add_props(props):
+            res = ""
+            if len(props) == 0:
+                res += "\n - None"
+            else:
+                for k, v in props:
+                    res += f"\n - {k} : {v}"
+            return res
+
         if self._project_level_data is not None:
-            res += "\n Project Level Data:"
-            for k, v in self._project_level_data.items():
-                res += f"\n -  {k} : {v}"
+            res += "\n Project-level properties:"
+            res += add_props(self._project_level_data.items())
         if self._sample_level_data is not None:
-            res += "\n Sample Level Data:"
-            for k, v in self._sample_level_data.items():
-                res += f"\n -  {k} : {v}"
+            res += "\n Sample-level properties:"
+            res += add_props(self._sample_level_data.items())
         if self._status_data is not None:
-            res += "\n Status Data:"
-            for k, v in self._status_data.items():
-                res += f"\n -  {k} : {v}"
+            res += "\n Status properties:"
+            res += add_props(self._status_data.items())
         return res
+
+    def __repr__(self):
+        """
+        Generate string representation of the object.
+
+        :return str: string representation of the object
+        """
+        return self.__str__()
 
     @property
     def pipeline_name(self):
@@ -273,35 +287,38 @@ def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:
     return s
 
 
-def replace_JSON_refs(s: Dict[str, Any], data: Dict[str, Any]) -> Dict[str, Any]:
+def replace_JSON_refs(
+    target_schema: Dict[str, Any], source_schema: Dict[str, Any]
+) -> Dict[str, Any]:
     """
-    Recursively search and replace the $refs if they exist in schema, s, and if their corresponding $defs exist in
-    source schema, data
+    Recursively search and replace the $refs if they exist in schema, target_schema, and if their corresponding $defs
+    exist in source schema, source_schema. If $defs  exist in the target schema and target_schema is the same as
+    source_schema then deepcopy should be used such that target_schema = copy.deepcopy(source_schema)
 
-    :param dict s: schema to replace types in
-    :param dict data: source schema
-    :return dict s: schema with types replaced
+    :param dict target_schema: schema to replace types in
+    :param dict source_schema: source schema
+    :return dict target_schema: schema with types replaced
     """
 
-    for k, v in list(s.items()):
+    for k, v in list(target_schema.items()):
         if isinstance(v, dict):
-            replace_JSON_refs(s[k], data)
+            replace_JSON_refs(target_schema[k], source_schema)
         if "$ref" == k:
             split_value = v.split("/")
             if len(split_value) != 3:
                 raise SchemaError(
                     msg=f"$ref exists in source schema but path,{v} ,not valid, e.g. '#/$defs/file' "
                 )
-            if split_value[1] in data and split_value[2] in data[split_value[1]]:
-                result = data[split_value[1]][split_value[2]]
+            if split_value[1] in source_schema and split_value[2] in source_schema[split_value[1]]:
+                result = source_schema[split_value[1]][split_value[2]]
             else:
                 result = None
             if result is not None:
                 for key, value in result.items():
-                    s.update({key: value})
-                del s["$ref"]
+                    target_schema.update({key: value})
+                del target_schema["$ref"]
             else:
                 raise SchemaError(
                     msg=f"Could not find {split_value[1]} and {split_value[2]} in $def"
                 )
-    return s
+    return target_schema

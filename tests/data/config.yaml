@@ -1,5 +1,5 @@
 project_name: test
-sample_name: sample1
+record_identifier: sample1
 schema_path: sample_output_schema.yaml
 database:
   dialect: postgresql

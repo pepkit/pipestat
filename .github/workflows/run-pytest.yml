@@ -39,14 +39,17 @@ jobs:
     - name: Install test dependencies
       run: if [ -f requirements/requirements-test.txt ]; then pip install -r requirements/requirements-test.txt; fi
 
+    - name: Install backend dependencies
+      run: if [ -f requirements/requirements-db-backend.txt ]; then pip install -r requirements/requirements-db-backend.txt; fi
+
     - name: Install pipestat
       run: python -m pip install .
 
     - name: Run pytest tests
       run: pytest tests -x -vv --cov=./ --cov-report=xml
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v1
-      with:
-        file: ./coverage.xml
-        name: py-${{ matrix.python-version }}-${{ matrix.os }}
+#    - name: Upload coverage to Codecov
+#      uses: codecov/codecov-action@v1
+#      with:
+#        file: ./coverage.xml
+#        name: py-${{ matrix.python-version }}-${{ matrix.os }}

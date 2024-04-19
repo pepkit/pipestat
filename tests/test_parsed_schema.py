@@ -4,22 +4,23 @@ from functools import partial
 from pathlib import Path
 from typing import *
 import pytest
-import oyaml
+import yaml
 from pipestat.const import SAMPLE_NAME, STATUS, RECORD_IDENTIFIER
-from pipestat.exceptions import SchemaError
+from pipestat.exceptions import SchemaError, SchemaValidationErrorDuringReport
 from pipestat.parsed_schema import (
     NULL_MAPPING_VALUE,
     ParsedSchema,
     SCHEMA_PIPELINE_NAME_KEY,
 )
 from .conftest import COMMON_CUSTOM_STATUS_DATA, DEFAULT_STATUS_DATA, get_data_file_path
+from pipestat.helpers import validate_type
 
 TEMP_SCHEMA_FILENAME = "schema.tmp.yaml"
 
 
 def write_yaml(data: Mapping[str, Any], path: Path) -> Path:
     with open(path, "w") as fH:
-        oyaml.dump(data, fH)
+        yaml.dump(data, fH)
     return path
 
 
@@ -30,7 +31,7 @@ def echo_data(data: Mapping[str, Any], path: Path) -> Mapping[str, Any]:
 
 def read_yaml(path: Union[str, Path]) -> Dict[str, Any]:
     with open(path, "r") as fh:
-        return oyaml.safe_load(fh)
+        return yaml.safe_load(fh)
 
 
 @pytest.fixture(scope="function", params=[lambda p: p, read_yaml])
@@ -275,3 +276,17 @@ def test_JSON_schema_resolved_original(output_schema_as_JSON_schema, output_sche
     print(schema2.original_schema)
     print(schema2.resolved_schema)
     print("done")
+
+
+def test_JSON_schema_validation_exception(output_schema_as_JSON_schema):
+    # schema with defs and refs
+    schema = ParsedSchema(output_schema_as_JSON_schema)
+    sample_level_data = schema.sample_level_data
+
+    # This should pass without exception
+    validate_type(value=5, schema=sample_level_data["number_of_things"])
+
+    with pytest.raises(SchemaValidationErrorDuringReport):
+        validate_type(
+            value="string", schema=sample_level_data["number_of_things"], strict_type=True
+        )

@@ -18,7 +18,7 @@ from typing import List, Dict, Any, Optional, Union, Literal, Callable, Tuple
 
 from ...exceptions import UnrecognizedStatusError, PipestatError
 from ...backends.abstract import PipestatBackend
-from ...const import DATE_FORMAT, PKG_NAME, CREATED_TIME, MODIFIED_TIME
+from ...const import DATE_FORMAT, PKG_NAME, CREATED_TIME, MODIFIED_TIME, META_KEY, HISTORY_KEY
 
 
 _LOGGER = getLogger(PKG_NAME)
@@ -253,11 +253,18 @@ class FileBackend(PipestatBackend):
             return False
 
         if rm_record:
+            # NOTE: THIS CURRENTLY REMOVES ALL HISTORY OF THE RECORD AS WELL
             self.remove_record(
                 record_identifier=record_identifier,
                 rm_record=rm_record,
             )
         else:
+            self._modify_history(
+                data=self._data[self.pipeline_name][self.pipeline_type][record_identifier],
+                res_id=result_identifier,
+                time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                value="",
+            )
             del self._data[self.pipeline_name][self.pipeline_type][record_identifier][
                 result_identifier
             ]
@@ -278,19 +285,9 @@ class FileBackend(PipestatBackend):
             remaining_attributes = list(
                 self._data[self.pipeline_name][self.pipeline_type][record_identifier].keys()
             )
-            if (
-                len(remaining_attributes) == 2
-                and CREATED_TIME in remaining_attributes
-                and MODIFIED_TIME in remaining_attributes
-            ):
-                _LOGGER.info(
-                    f"Last result removed for '{record_identifier}'. " f"Removing the record"
-                )
-                rm_record = True
-                self.remove_record(
-                    record_identifier=record_identifier,
-                    rm_record=rm_record,
-                )
+            if len(remaining_attributes) == 1 and META_KEY in remaining_attributes:
+                _LOGGER.info(f"Last result removed for '{record_identifier}'.")
+
             with write_lock(self._data) as locked_data:
                 locked_data.write()
         return True
@@ -311,8 +308,8 @@ class FileBackend(PipestatBackend):
             try:
                 _LOGGER.info(f"Removing '{record_identifier}' record")
                 del self._data[self.pipeline_name][self.pipeline_type][record_identifier]
-                with self._data as locked_data:
-                    locked_data.write()
+                with write_lock(self._data) as data_locked:
+                    data_locked.write()
                 return True
             except:
                 _LOGGER.warning(
@@ -320,14 +317,17 @@ class FileBackend(PipestatBackend):
                 )
                 return False
         else:
-            _LOGGER.info(f" rm_record flag False, aborting Removing '{record_identifier}' record")
+            _LOGGER.info(
+                f" rm_record flag is set to False, aborting Removing '{record_identifier}' record"
+            )
 
     def report(
         self,
         values: Dict[str, Any],
         record_identifier: Optional[str] = None,
-        force_overwrite: bool = False,
+        force_overwrite: bool = True,
         result_formatter: Optional[staticmethod] = None,
+        history_enabled: bool = True,
     ) -> Union[List[str], bool]:
         """
         Update the value of a result in a current namespace.
@@ -355,27 +355,57 @@ class FileBackend(PipestatBackend):
             self.assert_results_defined(
                 results=result_identifiers, pipeline_type=self.pipeline_type
             )
+
         existing = self.list_results(
             record_identifier=record_identifier,
             restrict_to=result_identifiers,
         )
+
         if existing:
             existing_str = ", ".join(existing)
             _LOGGER.warning(f"These results exist for '{record_identifier}': {existing_str}")
             if not force_overwrite:
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
-            values.update({MODIFIED_TIME: current_time})
+            self._data[self.pipeline_name][self.pipeline_type][record_identifier][META_KEY].update(
+                {MODIFIED_TIME: current_time}
+            )
         if not existing:
             if record_identifier in self._data[self.pipeline_name][self.pipeline_type].keys():
-                values.update({MODIFIED_TIME: current_time})
-            else:
-                values.update({CREATED_TIME: current_time})
-                values.update({MODIFIED_TIME: current_time})
+                self._data[self.pipeline_name][self.pipeline_type][record_identifier].setdefault(
+                    META_KEY, {}
+                )
+                self._data[self.pipeline_name][self.pipeline_type][record_identifier][
+                    META_KEY
+                ].update({MODIFIED_TIME: current_time})
 
-        self._data[self.pipeline_name][self.pipeline_type].setdefault(record_identifier, {})
+            else:
+                self._data[self.pipeline_name][self.pipeline_type].setdefault(
+                    record_identifier, {}
+                )
+                self._data[self.pipeline_name][self.pipeline_type][record_identifier].setdefault(
+                    META_KEY, {}
+                )
+                self._data[self.pipeline_name][self.pipeline_type][record_identifier][
+                    META_KEY
+                ].update({MODIFIED_TIME: current_time})
+                self._data[self.pipeline_name][self.pipeline_type][record_identifier][
+                    META_KEY
+                ].update({CREATED_TIME: current_time})
 
         for res_id, val in values.items():
+            if history_enabled:
+                if existing:
+                    self._modify_history(
+                        data=self._data[self.pipeline_name][self.pipeline_type][record_identifier][
+                            META_KEY
+                        ],
+                        res_id=res_id,
+                        time=current_time,
+                        value=self._data[self.pipeline_name][self.pipeline_type][
+                            record_identifier
+                        ][res_id],
+                    )
             self._data[self.pipeline_name][self.pipeline_type][record_identifier][res_id] = val
             results_formatted.append(
                 result_formatter(
@@ -429,6 +459,7 @@ class FileBackend(PipestatBackend):
         limit: Optional[int] = 1000,
         cursor: Optional[int] = None,
         bool_operator: Optional[str] = "AND",
+        meta_data_bool: Optional[bool] = False,
     ) -> Dict[str, Any]:
         """
         Select records from the FileBackend
@@ -442,6 +473,7 @@ class FileBackend(PipestatBackend):
         :param int limit: maximum number of results to retrieve per page
         :param int cursor: cursor position to begin retrieving records
         :param bool bool_operator: Perform filtering with AND or OR Logic.
+        :param bool meta_data: Should this return associated meta data with records?
         :return dict records_dict = {
             "total_size": int,
             "page_size": int,
@@ -519,7 +551,7 @@ class FileBackend(PipestatBackend):
                     if filter_condition["key"] != "record_identifier":
                         for key, value in data[record_identifier].items():
                             result = False
-                            if isinstance(value, dict):
+                            if isinstance(value, dict) and key != "meta":
                                 if key == filter_condition["key"][0]:
                                     result = get_nested_column(
                                         value,
@@ -527,12 +559,17 @@ class FileBackend(PipestatBackend):
                                         retrieved_operator,
                                     )
                             else:
-                                if filter_condition["key"] == key:
+                                if key == "meta":
                                     # Filter datetime objects
-                                    if key in CREATED_TIME or key in MODIFIED_TIME:
+                                    if (
+                                        filter_condition["key"] == CREATED_TIME
+                                        or filter_condition["key"] == MODIFIED_TIME
+                                    ):
                                         try:
                                             time_stamp = datetime.datetime.strptime(
-                                                data[record_identifier][key],
+                                                data[record_identifier][META_KEY][
+                                                    filter_condition["key"]
+                                                ],
                                                 DATE_FORMAT,
                                             )
                                             result = retrieved_operator(
@@ -540,10 +577,8 @@ class FileBackend(PipestatBackend):
                                             )
                                         except TypeError:
                                             result = False
-                                    else:
-                                        result = retrieved_operator(
-                                            value, filter_condition["value"]
-                                        )
+                                elif filter_condition["key"] == key:
+                                    result = retrieved_operator(value, filter_condition["value"])
 
                             if result:
                                 retrieved_results.append(record_identifier)
@@ -589,6 +624,8 @@ class FileBackend(PipestatBackend):
                 if record != {}:
                     record.update({"record_identifier": record_identifier})
                     records_list.append(record)
+                    if "meta" in record and not meta_data_bool:
+                        del record["meta"]
 
         records_dict = {
             "total_size": total_count,
@@ -738,3 +775,16 @@ class FileBackend(PipestatBackend):
                     f"{num_namespaces} other namespaces are already in the file: [{', '.join(namespaces_reported)}]. "
                     f"Pipestat will not report multiple namespaces to one file unless `multi_pipelines` is True."
                 )
+
+    def _modify_history(self, data, res_id, time, value):
+        """Modify File backend with each change
+
+        data is the loaded yaml results file in dict format
+        type = "report", "deletion"
+        """
+        if "history" not in data:
+            data.setdefault(HISTORY_KEY, {})
+        if res_id not in data[HISTORY_KEY]:
+            data[HISTORY_KEY].setdefault(res_id, {})
+
+        data[HISTORY_KEY][res_id].update({time: value})
