@@ -5,6 +5,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [0.9.0] - 2024-04-19
 ### Fixed
 - Bug with rm_record for filebackend
+- Bug when using record_identifier via env variable and the CLI
 ### Added
 - Added results history and history retrieval for both file and db backends via `retrieve_history` [#177](https://github.com/pepkit/pipestat/issues/177).
 - Added `remove_record` to Pipestat manager object (it is no longer only on backend classes)
