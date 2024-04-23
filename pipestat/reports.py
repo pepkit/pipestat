@@ -704,7 +704,7 @@ class HTMLReportBuilder(object):
             all_result_identifiers = input_sample_attributes + all_result_identifiers
 
         if self.prj.cfg["multi_result_files"] is True:
-            pipeline_types = ["sample", "project"]
+            pipeline_types = ["sample"]
         else:
             pipeline_types = [self.prj.backend.pipeline_type]
 
