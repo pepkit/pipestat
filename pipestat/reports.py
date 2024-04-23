@@ -731,6 +731,15 @@ class HTMLReportBuilder(object):
                     if key not in sample_stat_results.keys():
                         sample_stat_results[key] = ""
 
+                for key in self.schema.keys():
+                    if "type" in self.schema[key]:
+                        if (
+                            self.schema[key]["type"] == "file"
+                            or self.schema[key]["type"] == "image"
+                            or self.schema[key]["type"] == "object"
+                        ):
+                            del sample_stat_results[key]
+
                 # Sort to ensure alignment in the table
                 sorted_sample_stat_results = dict(sorted(sample_stat_results.items()))
 
