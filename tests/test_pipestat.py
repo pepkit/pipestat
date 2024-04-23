@@ -2514,4 +2514,3 @@ class TestRetrieveHistory:
             assert len(history_result.keys()) == 1
             assert "output_image" in history_result
             assert len(history_result["output_image"].keys()) == 2
-
