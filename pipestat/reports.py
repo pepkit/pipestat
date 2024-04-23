@@ -789,13 +789,14 @@ class HTMLReportBuilder(object):
         )
 
         project_objects = self.create_project_objects()
-        columns = ["Record Identifiers"] + list(sorted_sample_stat_results.keys())
+        columns_table = ["Record Identifiers"] + list(sorted_sample_stat_results.keys())
+        columns_stats = list(sorted_sample_stat_results.keys())
         template_vars = dict(
             navbar=navbar,
             stats_file_path=stats_file_path,
             objs_file_path=objs_file_path,
-            columns=columns,
-            columns_json=dumps(columns),
+            columns=columns_table,
+            columns_json=dumps(columns_stats),
             table_row_data=table_row_data,
             project_name=self.prj.cfg[PROJECT_NAME],
             pipeline_name=self.pipeline_name,
@@ -947,7 +948,7 @@ class HTMLReportBuilder(object):
     def _stats_to_json_str(self):
         results = {}
         if self.prj.cfg["multi_result_files"] is True:
-            pipeline_types = ["sample", "project"]
+            pipeline_types = ["sample"]
         else:
             pipeline_types = [self.prj.backend.pipeline_type]
 
