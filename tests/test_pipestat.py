@@ -356,6 +356,38 @@ class TestReporting:
             )
 
     @pytest.mark.parametrize(
+        "val",
+        [
+            {"output_file": {"path": "path_string", "title": "title_string"}},
+            {
+                "output_image": {
+                    "path": "path_string",
+                    "thumbnail_path": "thumbnail_path_string",
+                    "title": "title_string",
+                }
+            },
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["db"])
+    def test_complex_object_report_missing_fields(
+        self, val, config_file_path, recursive_schema_file_path, results_file_path, backend
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+
+            psm = SamplePipestatManager(**args)
+            del val[list(val.keys())[0]]["path"]
+            with pytest.raises(SchemaValidationErrorDuringReport):
+                psm.report(record_identifier=REC_ID, values=val, force_overwrite=True)
+
+    @pytest.mark.parametrize(
         ["rec_id", "val"],
         [
             ("sample1", {"name_of_something": "test_name"}),

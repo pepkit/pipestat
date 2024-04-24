@@ -704,7 +704,7 @@ class HTMLReportBuilder(object):
             all_result_identifiers = input_sample_attributes + all_result_identifiers
 
         if self.prj.cfg["multi_result_files"] is True:
-            pipeline_types = ["sample", "project"]
+            pipeline_types = ["sample"]
         else:
             pipeline_types = [self.prj.backend.pipeline_type]
 
@@ -730,6 +730,15 @@ class HTMLReportBuilder(object):
                 for key in all_result_identifiers:
                     if key not in sample_stat_results.keys():
                         sample_stat_results[key] = ""
+
+                for key in self.schema.keys():
+                    if "type" in self.schema[key]:
+                        if (
+                            self.schema[key]["type"] == "file"
+                            or self.schema[key]["type"] == "image"
+                            or self.schema[key]["type"] == "object"
+                        ):
+                            del sample_stat_results[key]
 
                 # Sort to ensure alignment in the table
                 sorted_sample_stat_results = dict(sorted(sample_stat_results.items()))
@@ -780,13 +789,14 @@ class HTMLReportBuilder(object):
         )
 
         project_objects = self.create_project_objects()
-        columns = ["Record Identifiers"] + list(sorted_sample_stat_results.keys())
+        columns_table = ["Record Identifiers"] + list(sorted_sample_stat_results.keys())
+        columns_stats = list(sorted_sample_stat_results.keys())
         template_vars = dict(
             navbar=navbar,
             stats_file_path=stats_file_path,
             objs_file_path=objs_file_path,
-            columns=columns,
-            columns_json=dumps(columns),
+            columns=columns_table,
+            columns_json=dumps(columns_stats),
             table_row_data=table_row_data,
             project_name=self.prj.cfg[PROJECT_NAME],
             pipeline_name=self.pipeline_name,
@@ -938,7 +948,7 @@ class HTMLReportBuilder(object):
     def _stats_to_json_str(self):
         results = {}
         if self.prj.cfg["multi_result_files"] is True:
-            pipeline_types = ["sample", "project"]
+            pipeline_types = ["sample"]
         else:
             pipeline_types = [self.prj.backend.pipeline_type]
 

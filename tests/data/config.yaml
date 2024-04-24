@@ -1,6 +1,6 @@
 project_name: test
 record_identifier: sample1
-schema_path: sample_output_schema.yaml
+schema_path: sample_output_schema_recursive.yaml
 database:
   dialect: postgresql
   driver: psycopg

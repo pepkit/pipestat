@@ -44,7 +44,6 @@ except:
     )
     DB_DEPENDENCIES = False
 
-
 # SERVICE_UNAVAILABLE = False
 # DB_DEPENDENCIES = True
 
