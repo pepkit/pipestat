@@ -7,7 +7,6 @@ from yacman import YAMLConfigManager
 import pytest
 from jsonschema import ValidationError
 
-import pipestat.exceptions
 from pipestat import SamplePipestatManager, ProjectPipestatManager, PipestatBoss, PipestatManager
 from pipestat.const import *
 from pipestat.exceptions import *
@@ -385,7 +384,7 @@ class TestReporting:
 
             psm = SamplePipestatManager(**args)
             del val[list(val.keys())[0]]["path"]
-            with pytest.raises(pipestat.exceptions.SchemaValidationErrorDuringReport):
+            with pytest.raises(SchemaValidationErrorDuringReport):
                 psm.report(record_identifier=REC_ID, values=val, force_overwrite=True)
 
     @pytest.mark.parametrize(

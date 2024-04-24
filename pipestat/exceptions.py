@@ -19,6 +19,7 @@ __all__ = [
     "InvalidTimeFormatError",
     "PipestatDependencyError",
     "ColumnNotFoundError",
+    "SchemaValidationErrorDuringReport",
 ]
 
 
