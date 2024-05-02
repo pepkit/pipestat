@@ -16,6 +16,7 @@ from pephubclient import PEPHubClient
 
 _LOGGER = getLogger(PKG_NAME)
 
+
 class PEPHUBBACKEND(PipestatBackend):
     def __init__(
         self,
@@ -44,12 +45,12 @@ class PEPHUBBACKEND(PipestatBackend):
             _LOGGER.warning("Initialize PEPHub Backend")
 
             self.pep_registry = RegistryPath(**parse_registry_path(pephub_path))
-            _LOGGER.warning(f"Registry namespace: {self.pep_registry.namespace} item: {self.pep_registry.item} tag: {self.pep_registry.tag}")
-
+            _LOGGER.warning(
+                f"Registry namespace: {self.pep_registry.namespace} item: {self.pep_registry.item} tag: {self.pep_registry.tag}"
+            )
 
         else:
             raise Exception
-
 
     def report(
         self,
@@ -109,18 +110,16 @@ class PEPHUBBACKEND(PipestatBackend):
             #     sample_dict=metadata,
             # )
 
-            try:
-                self.phc.sample.update(
-                    namespace=self.pep_registry.namespace,
-                    name="TEST_PIPESTAT",
-                    tag=self.pep_registry.tag,
-                    sample_name=record_identifier,
-                    sample_dict=values,
-
-                )
-            except ResponseError:
-                _LOGGER.warning("Login to pephubclient is required. phc login")
-
+            # try:
+            self.phc.sample.create(
+                namespace=self.pep_registry.namespace,
+                name=self.pep_registry.item,
+                tag=self.pep_registry.tag,
+                sample_name=record_identifier,
+                sample_dict=values,
+            )
+            # except ResponseError:
+            #     _LOGGER.warning("Login to pephubclient is required. phc login")
 
             # results_formatted.append(
             #     result_formatter(
@@ -130,6 +129,5 @@ class PEPHUBBACKEND(PipestatBackend):
             #         value=val,
             #     )
             # )
-
 
         return True

@@ -2514,7 +2514,8 @@ class TestRetrieveHistory:
             assert "output_image" in history_result
             assert len(history_result["output_image"].keys()) == 2
 
-#@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
+
+# @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestPEPHUBBackend:
     @pytest.mark.parametrize(

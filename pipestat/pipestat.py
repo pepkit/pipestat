@@ -386,8 +386,6 @@ class PipestatManager(MutableMapping):
             # self.cfg[STATUS_SCHEMA_KEY],
         )
 
-
-
     @check_dependencies(
         dependency_list=["DBBackend"],
         msg="Missing required dependencies for this usage, e.g. try pip install pipestat['dbbackend']",
