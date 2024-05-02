@@ -2513,3 +2513,41 @@ class TestRetrieveHistory:
             assert len(history_result.keys()) == 1
             assert "output_image" in history_result
             assert len(history_result["output_image"].keys()) == 2
+
+#@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
+@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
+class TestPEPHUBBackend:
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("test_pipestat_01", {"name_of_something": "test_name"}),
+        ],
+    )
+    @pytest.mark.parametrize("backend", ["db"])
+    def test_pephub_backend(
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        backend,
+        range_values,
+    ):
+        # with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        #     results_file_path = f.name
+        #     args = dict(schema_path=output_schema_with_index, database_only=False)
+        #     backend_data = (
+        #         {"config_file": config_file_path}
+        #         if backend == "db"
+        #         else {"results_file_path": results_file_path}
+        #     )
+        #     args.update(backend_data)
+        #     psm = SamplePipestatManager(**args)
+        pephuburl = "donaldcampbelljr/pipestat_demo:default"
+
+        psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
+
+        psm.report(record_identifier=rec_id, values=val)
+
+        print("done")

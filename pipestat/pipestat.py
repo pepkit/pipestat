@@ -76,6 +76,12 @@ except ImportError:
     # We let this pass, but if the user attempts to create DBBackend, check_dependencies raises exception.
     pass
 
+try:
+    from pipestat.backends.pephub_backend.pephubbackend import PEPHUBBACKEND
+except ImportError:
+    # Let this pass, if phc dependencies cannot be imported, raise exception
+    pass
+
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -138,6 +144,7 @@ class PipestatManager(MutableMapping):
         result_formatter: staticmethod = default_formatter,
         multi_pipelines: bool = False,
         output_dir: Optional[str] = None,
+        pephub_path: Optional[str] = None,
     ):
         """
         Initialize the PipestatManager object
@@ -238,6 +245,8 @@ class PipestatManager(MutableMapping):
         if self.cfg[FILE_KEY]:
             self.initialize_filebackend(record_identifier, results_file_path, flag_file_dir)
 
+        elif pephub_path:
+            self.initialize_pephubbackend(record_identifier, pephub_path)
         else:
             self.initialize_dbbackend(record_identifier, show_db_logs)
 
@@ -366,6 +375,18 @@ class PipestatManager(MutableMapping):
         )
 
         return
+
+    def initialize_pephubbackend(self, record_identifier, pephub_path):
+        self.backend = PEPHUBBACKEND(
+            record_identifier,
+            pephub_path,
+            self.cfg[PIPELINE_NAME],
+            self.cfg[PIPELINE_TYPE],
+            self.cfg[SCHEMA_KEY],
+            # self.cfg[STATUS_SCHEMA_KEY],
+        )
+
+
 
     @check_dependencies(
         dependency_list=["DBBackend"],
