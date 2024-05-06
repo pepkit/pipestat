@@ -169,6 +169,26 @@ class PEPHUBBACKEND(PipestatBackend):
             # TODO can we support cursor through pephubclient?
             _LOGGER.warning("Cursor not supported for PEPHubBackend, ignoring cursor")
 
+        # def get_operator(op: Literal["eq", "lt", "ge", "gt", "in"]) -> Any:
+        #     """
+        #     Get python operator for a given string
+        #
+        #     :param str op: desired operator, "eq", "lt"
+        #     :return: operator function
+        #     """
+        #
+        #     if op == "eq":
+        #         return operator.__eq__
+        #     if op == "lt":
+        #         return operator.__lt__
+        #     if op == "ge":
+        #         return operator.__ge__
+        #     if op == "gt":
+        #         return operator.__gt__
+        #     if op == "in":
+        #         return operator.contains
+        #     raise ValueError(f"Invalid filter operator: {op}")
+
         def get_operator(op: Literal["eq", "lt", "ge", "gt", "in"]) -> Any:
             """
             Get python operator for a given string
@@ -178,15 +198,15 @@ class PEPHUBBACKEND(PipestatBackend):
             """
 
             if op == "eq":
-                return operator.__eq__
+                return "=="
             if op == "lt":
-                return operator.__lt__
+                return "<"
             if op == "ge":
-                return operator.__ge__
+                return ">="
             if op == "gt":
-                return operator.__gt__
-            if op == "in":
-                return operator.contains
+                return ">"
+            # if op == "in":
+            #     return operator.contains
             raise ValueError(f"Invalid filter operator: {op}")
 
         # Can we use query_param to do cursor/limit operations if the PEP is very large?
@@ -194,7 +214,7 @@ class PEPHUBBACKEND(PipestatBackend):
         print(project)
 
         # PEPHub uses sample_name not record_identifier
-        # Just get the items from the sample table because its a dataframe and return the dict to the end user
+        # Just get the items from the sample table because it is a dataframe and return the dict to the end user
         if columns is not None:
             columns = copy.deepcopy(columns)
             for i in ["sample_name"]:  # Must add id, need it for cursor
@@ -208,14 +228,46 @@ class PEPHUBBACKEND(PipestatBackend):
 
         records_list = []
         if filter_conditions:
+            filter_expression = ""
+            all_filter_expressions = []
             for filter_condition in filter_conditions:
                 retrieved_operator = get_operator(filter_condition["operator"])
                 retrieved_results = []
+                if filter_condition["key"] == "record_identifier":
+                    filter_condition["key"] = "sample_name"
 
-        #
-        # filtered_df = df[(df['sample_type'] == 'sample_type1') & (df['genome'] == 'genome1')]
-        #
-        # df[df['sample_name'] == 'sample1']
+                key = filter_condition["key"]
+                value = filter_condition["value"]
+                # Create querry for df based on filter conditions
+
+                filter_expression = f"{key} {retrieved_operator} '{value}'"
+                all_filter_expressions.append(filter_expression)
+            # filter_expression = str(key) + ' ' + str(retrieved_operator) + ' ' + str(f'{value}')
+
+            if len(all_filter_expressions) > 1:
+
+                # This is for AND logic
+                if bool_operator == "AND":
+                    for filter in all_filter_expressions:
+                        df = df.query(filter)
+                if bool_operator == "OR":
+                    filter = f"({' | '.join(str(cond) for cond in all_filter_expressions)})"
+                    df = df.query(filter)
+
+            else:
+                df = df.query(filter_expression)
+
+            print("done")
+
+        # Once we have the dataframe (filtered or unfiltered), convert to a dict using the sample_name/record_identifier as the primary key
+
+        df2dict = df.set_index("sample_name").transpose().to_dict(orient="dict")
+
+        # Filter out columns
+        # Must do this to align output structure with that of db_backend and file_backends
+        records_list = []
+        for key, value in df2dict.items():
+            records_list.append({key: value})
 
         records_dict = {
             "total_size": total_count,
