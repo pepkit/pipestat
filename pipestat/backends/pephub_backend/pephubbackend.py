@@ -1,4 +1,6 @@
+import copy
 import datetime
+import operator
 from logging import getLogger
 
 import pephubclient
@@ -8,7 +10,7 @@ from ubiquerg import parse_registry_path
 
 from ...backends.abstract import PipestatBackend
 from ...const import PKG_NAME
-from typing import List, Dict, Any, Optional, Union, NoReturn, Tuple
+from typing import List, Dict, Any, Optional, Union, NoReturn, Tuple, Literal
 
 
 from pephubclient import PEPHubClient
@@ -36,6 +38,7 @@ class PEPHUBBACKEND(PipestatBackend):
         self.phc = PEPHubClient()
         self.pipeline_name = pipeline_name
         self.parsed_schema = parsed_schema
+        self.pephub_path = pephub_path
 
         # Test Registry Path
         _LOGGER.warning(f"Is pephub registry path? {pephubclient.is_registry_path(pephub_path)}")
@@ -117,6 +120,7 @@ class PEPHUBBACKEND(PipestatBackend):
                 tag=self.pep_registry.tag,
                 sample_name=record_identifier,
                 sample_dict=values,
+                overwrite=force_overwrite,
             )
             # except ResponseError:
             #     _LOGGER.warning("Login to pephubclient is required. phc login")
@@ -131,3 +135,93 @@ class PEPHUBBACKEND(PipestatBackend):
             # )
 
         return True
+
+    def select_records(
+        self,
+        columns: Optional[List[str]] = None,
+        filter_conditions: Optional[List[Dict[str, Any]]] = None,
+        limit: Optional[int] = 1000,
+        cursor: Optional[int] = None,
+        bool_operator: Optional[str] = "AND",
+    ) -> Dict[str, Any]:
+        """
+        Perform a `SELECT` on the table
+
+        :param list[str] columns: columns to include in the result
+        :param list[dict]  filter_conditions: e.g. [{"key": ["id"], "operator": "eq", "value": 1)], operator list:
+            - eq for ==
+            - lt for <
+            - ge for >=
+            - in for in_
+            - like for like
+        :param int limit: maximum number of results to retrieve per page
+        :param int cursor: cursor position to begin retrieving records
+        :param bool bool_operator: Perform filtering with AND or OR Logic.
+        :return dict records_dict = {
+            "total_size": int,
+            "page_size": int,
+            "next_page_token": int,
+            "records": List[Dict[{key, Any}]],
+        }
+        """
+
+        if cursor:
+            # TODO can we support cursor through pephubclient?
+            _LOGGER.warning("Cursor not supported for PEPHubBackend, ignoring cursor")
+
+        def get_operator(op: Literal["eq", "lt", "ge", "gt", "in"]) -> Any:
+            """
+            Get python operator for a given string
+
+            :param str op: desired operator, "eq", "lt"
+            :return: operator function
+            """
+
+            if op == "eq":
+                return operator.__eq__
+            if op == "lt":
+                return operator.__lt__
+            if op == "ge":
+                return operator.__ge__
+            if op == "gt":
+                return operator.__gt__
+            if op == "in":
+                return operator.contains
+            raise ValueError(f"Invalid filter operator: {op}")
+
+        # Can we use query_param to do cursor/limit operations if the PEP is very large?
+        project = self.phc.load_project(project_registry_path=self.pephub_path)
+        print(project)
+
+        # PEPHub uses sample_name not record_identifier
+        # Just get the items from the sample table because its a dataframe and return the dict to the end user
+        if columns is not None:
+            columns = copy.deepcopy(columns)
+            for i in ["sample_name"]:  # Must add id, need it for cursor
+                if i not in columns:
+                    columns.insert(0, i)
+            df = project.sample_table[columns]
+        else:
+            df = project.sample_table
+
+        total_count = len(df)
+
+        records_list = []
+        if filter_conditions:
+            for filter_condition in filter_conditions:
+                retrieved_operator = get_operator(filter_condition["operator"])
+                retrieved_results = []
+
+        #
+        # filtered_df = df[(df['sample_type'] == 'sample_type1') & (df['genome'] == 'genome1')]
+        #
+        # df[df['sample_name'] == 'sample1']
+
+        records_dict = {
+            "total_size": total_count,
+            "page_size": limit,
+            "next_page_token": 0,
+            "records": records_list,
+        }
+
+        return records_dict

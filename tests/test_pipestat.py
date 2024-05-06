@@ -2,6 +2,8 @@ import glob
 import os.path
 import time
 from collections.abc import Mapping
+
+import pephubclient.exceptions
 from yacman import YAMLConfigManager
 
 import pytest
@@ -2524,31 +2526,55 @@ class TestPEPHUBBackend:
             ("test_pipestat_01", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["db"])
-    def test_pephub_backend(
+    def test_pephub_backend_report(
         self,
         rec_id,
         val,
         config_file_path,
         schema_file_path,
         results_file_path,
-        backend,
         range_values,
     ):
-        # with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
-        #     results_file_path = f.name
-        #     args = dict(schema_path=output_schema_with_index, database_only=False)
-        #     backend_data = (
-        #         {"config_file": config_file_path}
-        #         if backend == "db"
-        #         else {"results_file_path": results_file_path}
-        #     )
-        #     args.update(backend_data)
-        #     psm = SamplePipestatManager(**args)
+
         pephuburl = "donaldcampbelljr/pipestat_demo:default"
 
         psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
 
+        # Value already exists should give an error unless forcing overwrite
+        with pytest.raises(pephubclient.exceptions.ResponseError):
+            psm.report(record_identifier=rec_id, values=val, force_overwrite=False)
+
+        # force overwrite defaults to true, so it should have no problem reporting
         psm.report(record_identifier=rec_id, values=val)
+
+        print("done")
+
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("test_pipestat_01", {"name_of_something": "test_name"}),
+        ],
+    )
+    # @pytest.mark.parametrize("backend", ["db"])
+    def test_pephub_backend_retrieve(
+        self,
+        rec_id,
+        val,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        range_values,
+    ):
+        pephuburl = "donaldcampbelljr/pipestat_demo:default"
+
+        psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
+
+        psm.retrieve_one(record_identifier=rec_id)
+        # # Value already exists should give an error unless forcing overwrite
+        # with pytest.raises(pephubclient.exceptions.ResponseError):
+        #     psm.report(record_identifier=rec_id, values=val, force_overwrite=False)
+        #
+        # # force overwrite defaults to true, so it should have no problem reporting
+        # psm.report(record_identifier=rec_id, values=val)
 
         print("done")
