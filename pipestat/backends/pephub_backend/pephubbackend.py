@@ -36,6 +36,7 @@ class PEPHUBBACKEND(PipestatBackend):
         super().__init__(pipeline_type)
 
         self.phc = PEPHubClient()
+        self.record_identifier = record_identifier
         self.pipeline_name = pipeline_name
         self.parsed_schema = parsed_schema
         self.pephub_path = pephub_path
@@ -54,6 +55,142 @@ class PEPHUBBACKEND(PipestatBackend):
 
         else:
             raise Exception
+
+    def check_record_exists(
+        self,
+        record_identifier: str,
+    ) -> bool:
+        """
+        Check if the specified record exists in the table
+
+        :param str record_identifier: record to check for
+        :return bool: whether the record exists in the table
+        """
+
+        query_hit = self.select_records(
+            filter_conditions=[
+                {
+                    "key": "record_identifier",
+                    "operator": "eq",
+                    "value": record_identifier,
+                }
+            ]
+        )
+
+        return bool(query_hit["records"])
+
+    def list_results(
+        self,
+        restrict_to: Optional[List[str]] = None,
+        record_identifier: str = None,
+    ) -> List[str]:
+        """
+        Check if the specified results exist in the table
+
+        :param List[str] restrict_to: results identifiers to check for
+        :param str record_identifier: record to check for
+        :return List[str] existing: if no result identifier specified, return all results for the record
+        :return List[str]: results identifiers that exist
+        """
+        rid = record_identifier
+        record = self.select_records(
+            filter_conditions=[
+                {
+                    "key": "record_identifier",
+                    "operator": "eq",
+                    "value": rid,
+                }
+            ]
+        )
+        try:
+            # TODO had to add rid to step deeper into data structure vs dbbackend implementation. Why are they different?
+            record = record["records"][0][rid]
+        except IndexError:
+            return []
+
+        if restrict_to is None:
+            return (
+                [
+                    key
+                    for key in self.parsed_schema.results_data.keys()
+                    if getattr(record, key, None) is not None
+                ]
+                if record
+                else []
+            )
+        else:
+            return [r for r in restrict_to if record.get(r, None) is not None] if record else []
+
+    def remove(
+        self,
+        record_identifier: Optional[str] = None,
+        result_identifier: Optional[str] = None,
+    ) -> bool:
+        """
+        Remove a result.
+
+        If no result ID specified, the entire record
+        will be removed.
+
+        :param str record_identifier: unique identifier of the record
+        :param str result_identifier: name of the result to be removed or None
+             if the record should be removed.
+        :return bool: whether the result has been removed
+        """
+
+        record_identifier = record_identifier or self.record_identifier
+
+        if not self.check_record_exists(
+            record_identifier=record_identifier,
+        ):
+            _LOGGER.error(f"Record '{record_identifier}' not found")
+            return False
+
+        if result_identifier and not self.check_result_exists(
+            result_identifier, record_identifier
+        ):
+            _LOGGER.error(f"'{result_identifier}' has not been reported for '{record_identifier}'")
+            return False
+
+        if result_identifier:
+            values = {result_identifier: ""}
+            self.phc.sample.update(
+                namespace=self.pep_registry.namespace,
+                name=self.pep_registry.item,
+                tag=self.pep_registry.tag,
+                sample_name=record_identifier,
+                sample_dict=values,
+            )
+            return True
+        else:
+            self.remove_record(
+                record_identifier=record_identifier,
+                rm_record=True,
+            )
+            return True
+
+    def remove_record(
+        self,
+        record_identifier: Optional[str] = None,
+        rm_record: Optional[bool] = False,
+    ) -> NoReturn:
+        """
+        Remove a record, requires rm_record to be True
+
+        :param str record_identifier: unique identifier of the record
+        :param bool rm_record: bool for removing record.
+        :return bool: whether the result has been removed
+        :raises RecordNotFoundError: if record not found
+        """
+        if rm_record:
+            self.phc.sample.remove(
+                namespace=self.pep_registry.namespace,
+                name=self.pep_registry.item,
+                tag=self.pep_registry.tag,
+                sample_name=record_identifier,
+            )
+        else:
+            _LOGGER.info(f" rm_record flag False, aborting Removing '{record_identifier}' record")
 
     def report(
         self,

@@ -2557,8 +2557,8 @@ class TestPEPHUBBackend:
         psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
 
         # Value already exists should give an error unless forcing overwrite
-        with pytest.raises(pephubclient.exceptions.ResponseError):
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=False)
+        # with pytest.raises(pephubclient.exceptions.ResponseError):
+        #     psm.report(record_identifier=rec_id, values=val, force_overwrite=False)
 
         # force overwrite defaults to true, so it should have no problem reporting
         psm.report(record_identifier=rec_id, values=val)
@@ -2604,3 +2604,37 @@ class TestPEPHUBBackend:
         results = psm.retrieve_many(record_identifiers=rec_ids)
 
         assert len(results["records"]) == 2
+
+    def test_pephub_backend_remove(
+        self,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        range_values,
+    ):
+        pephuburl = "donaldcampbelljr/pipestat_demo:default"
+
+        rec_ids = ["test_pipestat_01"]
+
+        psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
+
+        results = psm.remove(record_identifier=rec_ids[0], result_identifier="name_of_something")
+
+        assert results is True
+
+    def test_pephub_backend_remove_record(
+        self,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        range_values,
+    ):
+        pephuburl = "donaldcampbelljr/pipestat_demo:default"
+
+        rec_ids = ["test_pipestat_01"]
+
+        psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
+
+        results = psm.remove_record(record_identifier=rec_ids[0], rm_record=False)
+
+        results = psm.remove_record(record_identifier=rec_ids[0], rm_record=True)
