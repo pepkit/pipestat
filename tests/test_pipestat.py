@@ -2557,8 +2557,6 @@ class TestPEPHUBBackend:
         psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
 
         # Value already exists should give an error unless forcing overwrite
-        # with pytest.raises(pephubclient.exceptions.ResponseError):
-        #     psm.report(record_identifier=rec_id, values=val, force_overwrite=False)
 
         # force overwrite defaults to true, so it should have no problem reporting
         psm.report(record_identifier=rec_id, values=val)
