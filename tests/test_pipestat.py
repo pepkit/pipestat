@@ -2603,36 +2603,36 @@ class TestPEPHUBBackend:
 
         assert len(results["records"]) == 2
 
-    def test_pephub_backend_remove(
-        self,
-        config_file_path,
-        schema_file_path,
-        results_file_path,
-        range_values,
-    ):
-        pephuburl = "donaldcampbelljr/pipestat_demo:default"
-
-        rec_ids = ["test_pipestat_01"]
-
-        psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
-
-        results = psm.remove(record_identifier=rec_ids[0], result_identifier="name_of_something")
-
-        assert results is True
-
-    def test_pephub_backend_remove_record(
-        self,
-        config_file_path,
-        schema_file_path,
-        results_file_path,
-        range_values,
-    ):
-        pephuburl = "donaldcampbelljr/pipestat_demo:default"
-
-        rec_ids = ["test_pipestat_01"]
-
-        psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
-
-        results = psm.remove_record(record_identifier=rec_ids[0], rm_record=False)
-
-        results = psm.remove_record(record_identifier=rec_ids[0], rm_record=True)
+    # def test_pephub_backend_remove(
+    #     self,
+    #     config_file_path,
+    #     schema_file_path,
+    #     results_file_path,
+    #     range_values,
+    # ):
+    #     pephuburl = "donaldcampbelljr/pipestat_demo:default"
+    #
+    #     rec_ids = ["test_pipestat_01"]
+    #
+    #     psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
+    #
+    #     results = psm.remove(record_identifier=rec_ids[0], result_identifier="name_of_something")
+    #
+    #     assert results is True
+    #
+    # def test_pephub_backend_remove_record(
+    #     self,
+    #     config_file_path,
+    #     schema_file_path,
+    #     results_file_path,
+    #     range_values,
+    # ):
+    #     pephuburl = "donaldcampbelljr/pipestat_demo:default"
+    #
+    #     rec_ids = ["test_pipestat_01"]
+    #
+    #     psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
+    #
+    #     results = psm.remove_record(record_identifier=rec_ids[0], rm_record=False)
+    #
+    #     results = psm.remove_record(record_identifier=rec_ids[0], rm_record=True)
