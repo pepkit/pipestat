@@ -205,8 +205,8 @@ class PEPHUBBACKEND(PipestatBackend):
                 return ">="
             if op == "gt":
                 return ">"
-            # if op == "in":
-            #     return operator.contains
+            if op == "in":
+                return "in"
             raise ValueError(f"Invalid filter operator: {op}")
 
         # Can we use query_param to do cursor/limit operations if the PEP is very large?
@@ -240,7 +240,10 @@ class PEPHUBBACKEND(PipestatBackend):
                 value = filter_condition["value"]
                 # Create querry for df based on filter conditions
 
-                filter_expression = f"{key} {retrieved_operator} '{value}'"
+                if isinstance(value, list):
+                    filter_expression = f"{key} {retrieved_operator} {value}"
+                else:
+                    filter_expression = f"{key} {retrieved_operator} '{value}'"
                 all_filter_expressions.append(filter_expression)
             # filter_expression = str(key) + ' ' + str(retrieved_operator) + ' ' + str(f'{value}')
 

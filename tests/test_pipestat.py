@@ -2517,13 +2517,29 @@ class TestRetrieveHistory:
             assert len(history_result["output_image"].keys()) == 2
 
 
-# @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestPEPHUBBackend:
     @pytest.mark.parametrize(
         ["rec_id", "val"],
         [
-            ("test_pipestat_01", {"name_of_something": "test_name"}),
+            (
+                "test_pipestat_01",
+                {
+                    "name_of_something": "test_name",
+                    "number_of_things": 42,
+                    "md5sum": "example_md5sum",
+                    "percentage_of_things": 10,
+                },
+            ),
+            (
+                "test_pipestat_02",
+                {
+                    "name_of_something": "test_name_02",
+                    "number_of_things": 52,
+                    "md5sum": "example_md5sum_02",
+                    "percentage_of_things": 30,
+                },
+            ),
         ],
     )
     def test_pephub_backend_report(
@@ -2555,8 +2571,7 @@ class TestPEPHUBBackend:
             ("test_pipestat_01", {"name_of_something": "test_name"}),
         ],
     )
-    # @pytest.mark.parametrize("backend", ["db"])
-    def test_pephub_backend_retrieve(
+    def test_pephub_backend_retrieve_one(
         self,
         rec_id,
         val,
@@ -2569,12 +2584,23 @@ class TestPEPHUBBackend:
 
         psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
 
-        psm.retrieve_one(record_identifier=rec_id)
-        # # Value already exists should give an error unless forcing overwrite
-        # with pytest.raises(pephubclient.exceptions.ResponseError):
-        #     psm.report(record_identifier=rec_id, values=val, force_overwrite=False)
-        #
-        # # force overwrite defaults to true, so it should have no problem reporting
-        # psm.report(record_identifier=rec_id, values=val)
+        result = psm.retrieve_one(record_identifier=rec_id)
 
-        print("done")
+        assert len(result.keys()) == 1
+
+    def test_pephub_backend_retrieve_many(
+        self,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        range_values,
+    ):
+        pephuburl = "donaldcampbelljr/pipestat_demo:default"
+
+        rec_ids = ["test_pipestat_01", "test_pipestat_02"]
+
+        psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
+
+        results = psm.retrieve_many(record_identifiers=rec_ids)
+
+        assert len(results["records"]) == 2
