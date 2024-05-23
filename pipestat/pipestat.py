@@ -194,13 +194,9 @@ class PipestatManager(MutableMapping):
         )
 
         self.cfg[PIPELINE_NAME] = (
-            self.cfg[SCHEMA_KEY].pipeline_name
-            if self.cfg[SCHEMA_KEY] is not None
-            else pipeline_name
-        )
-
-        self.cfg[PIPELINE_NAME] = (
-            pipeline_name or self.cfg[SCHEMA_KEY].pipeline_name
+            pipeline_name
+            or self.cfg[CONFIG_KEY].get(PIPELINE_NAME)
+            or self.cfg[SCHEMA_KEY].pipeline_name
             if self.cfg[SCHEMA_KEY] is not None
             else DEFAULT_PIPELINE_NAME
         )
