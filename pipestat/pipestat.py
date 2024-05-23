@@ -134,7 +134,7 @@ class PipestatManager(MutableMapping):
         flag_file_dir: Optional[str] = None,
         show_db_logs: bool = False,
         pipeline_type: Optional[str] = None,
-        pipeline_name: Optional[str] = DEFAULT_PIPELINE_NAME,
+        pipeline_name: Optional[str] = None,
         result_formatter: staticmethod = default_formatter,
         multi_pipelines: bool = False,
         output_dir: Optional[str] = None,
@@ -197,6 +197,12 @@ class PipestatManager(MutableMapping):
             self.cfg[SCHEMA_KEY].pipeline_name
             if self.cfg[SCHEMA_KEY] is not None
             else pipeline_name
+        )
+
+        self.cfg[PIPELINE_NAME] = (
+            pipeline_name or self.cfg[SCHEMA_KEY].pipeline_name
+            if self.cfg[SCHEMA_KEY] is not None
+            else DEFAULT_PIPELINE_NAME
         )
 
         self.cfg[PROJECT_NAME] = self.cfg[CONFIG_KEY].priority_get(
