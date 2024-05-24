@@ -193,6 +193,8 @@ class PipestatManager(MutableMapping):
             "record_identifier", env_var=ENV_VARS["record_identifier"], override=record_identifier
         )
 
+        # TODO this is a work around for Looper ~ https://github.com/pepkit/looper/issues/492, sharing pipeline names
+        # In the future, we should get piepline name only from output schema.
         self.cfg[PIPELINE_NAME] = (
             pipeline_name
             or self.cfg[CONFIG_KEY].get(PIPELINE_NAME)
