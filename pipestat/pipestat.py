@@ -229,7 +229,12 @@ class PipestatManager(MutableMapping):
             ),
             self.cfg["config_path"],
         )
-        make_subdirectories(self.cfg[FILE_KEY])
+
+        if "{record_identifier}" in str(self.cfg[FILE_KEY]):
+            # In the special case where the user wants to use {record_identifier} in file path
+            pass
+        else:
+            make_subdirectories(self.cfg[FILE_KEY])
 
         self.cfg[RESULT_FORMATTER] = result_formatter
 
@@ -330,12 +335,19 @@ class PipestatManager(MutableMapping):
         # Save for later when assessing if there may be multiple result files
         if results_file_path:
             assert isinstance(results_file_path, str), TypeError("Path is expected to be a str")
-            if not self.record_identifier and "{record_identifier}" in results_file_path:
-                raise NotImplementedError(
-                    f"Must provide record identifier during PipestatManager creation for this results_file_path: {results_file_path}"
-                )
-            self.cfg["unresolved_result_path"] = results_file_path
-            return results_file_path.format(record_identifier=self.record_identifier)
+            if self.record_identifier:
+                try:
+                    self.cfg["unresolved_result_path"] = results_file_path
+                    results_file_path = results_file_path.format(
+                        record_identifier=self.record_identifier
+                    )
+                    return results_file_path
+                except AttributeError:
+                    self.cfg["unresolved_result_path"] = results_file_path
+                    return results_file_path
+            else:
+                self.cfg["unresolved_result_path"] = results_file_path
+                return results_file_path
         return results_file_path
 
     def initialize_filebackend(self, record_identifier, results_file_path, flag_file_dir):
