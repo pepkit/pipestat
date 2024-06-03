@@ -51,7 +51,7 @@ class DBBackend(PipestatBackend):
         """
 
         super().__init__(pipeline_type)
-        _LOGGER.warning(f"Initializing DBBackend for pipeline '{pipeline_name}'")
+        _LOGGER.debug(f"Initializing DBBackend for pipeline '{pipeline_name}'")
         self.pipeline_name = pipeline_name
         self.pipeline_type = pipeline_type or "sample"
         self.record_identifier = record_identifier

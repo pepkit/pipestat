@@ -54,7 +54,7 @@ class FileBackend(PipestatBackend):
 
         """
         super().__init__(pipeline_type)
-        _LOGGER.warning("Initialize FileBackend")
+        _LOGGER.debug("Initialize FileBackend")
 
         self.results_file_path = results_file_path
         self.pipeline_name = pipeline_name
