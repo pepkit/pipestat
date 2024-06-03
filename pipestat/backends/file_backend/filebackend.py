@@ -54,7 +54,7 @@ class FileBackend(PipestatBackend):
 
         """
         super().__init__(pipeline_type)
-        _LOGGER.warning("Initialize FileBackend")
+        _LOGGER.debug("Initialize FileBackend")
 
         self.results_file_path = results_file_path
         self.pipeline_name = pipeline_name
@@ -66,21 +66,26 @@ class FileBackend(PipestatBackend):
         self.result_formatter = result_formatter
         self.multi_pipelines = multi_pipelines
 
-        self.determine_results_file(self.results_file_path)
+        self.determine_results_file()
 
-    def determine_results_file(self, results_file_path: str) -> None:
+    def determine_results_file(self) -> None:
         """Initialize or load results_file from given path
         :param str results_file_path: YAML file to report into, if file is
         used as the object back-end
         """
-        if not os.path.exists(self.results_file_path):
-            _LOGGER.debug(
-                f"Results file doesn't yet exist. Initializing: {self.results_file_path}"
-            )
-            self._init_results_file()
+
+        if "{record_identifier}" in self.results_file_path:
+            # In the special case where the user wants to use {record_identifier} in file path
+            pass
         else:
-            _LOGGER.debug(f"Loading results file: {self.results_file_path}")
-            self._load_results_file()
+            if not os.path.exists(self.results_file_path):
+                _LOGGER.debug(
+                    f"Results file doesn't yet exist. Initializing: {self.results_file_path}"
+                )
+                self._init_results_file()
+            else:
+                _LOGGER.debug(f"Loading results file: {self.results_file_path}")
+                self._load_results_file()
 
     def check_record_exists(
         self,
