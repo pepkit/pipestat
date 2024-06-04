@@ -134,3 +134,21 @@ class TestDatabaseOnly:
             result = psm.select_records(cursor=offset, limit=limit)
             print(result)
             assert len(result["records"]) == min(max((psm.record_count - offset), 0), limit)
+
+
+@pytest.mark.skip(reason="only works for local testing")
+class TestSQLLITE:
+    def test_manager_can_be_built_without_exception(
+        self, config_file_path_sqllite, schema_file_path_sqlite
+    ):
+        # with ContextManagerDBTesting(DB_URL):
+        try:
+            SamplePipestatManager(
+                schema_path=schema_file_path_sqlite,
+                record_identifier="irrelevant",
+                database_only=True,
+                config_file=config_file_path_sqllite,
+            )
+            print("done")
+        except Exception as e:
+            pytest.fail(f"Pipestat manager construction failed: {e})")
