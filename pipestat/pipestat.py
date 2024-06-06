@@ -903,8 +903,9 @@ class PipestatManager(MutableMapping):
 
     def check_multi_results(self):
         # Check to see if the user used a path with "{record-identifier}"
-        if self.file and self.cfg["unresolved_result_path"] != self.file:
-            if "{record_identifier}" in self.cfg["unresolved_result_path"]:
+        if self.file:
+            #TODO this needs rework: remove  self.cfg["unresolved_result_path"] and just use self.file
+            if "{record_identifier}" in self.file or self.cfg["unresolved_result_path"] != self.file:
                 # assume there are multiple result files in sub-directories
                 self.cfg["multi_result_files"] = True
                 results_directory = self.cfg["unresolved_result_path"].split(

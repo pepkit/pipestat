@@ -1420,7 +1420,10 @@ def _create_stats_objs_summaries(prj, pipeline_name: str) -> List[str]:
                         if k in all_result_identifiers:
                             all_result_identifiers.remove(k)
                         if v is not "None reported":
-                            sample_reported_objects = {k: dict(v)}
+                            if isinstance(v, list):
+                                sample_reported_objects = {k: v}
+                            else:
+                                sample_reported_objects = {k: dict(v)}
                         else:
                             sample_reported_objects = {k: "None reported"}
                         if record_name in reported_objects:
