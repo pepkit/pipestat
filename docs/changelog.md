@@ -2,7 +2,12 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
-## [0.9.2] - 2024-06-24
+## [0.9.3] - 2024-06-06
+### Fixed
+- fixed regression with summarizing or creating a table via aggregate_results.yaml and "{record_identifier}" in the results file path
+- fix creating object summary when object is an array/list
+
+## [0.9.2] - 2024-06-03
 ### Changed
 - User can override pipeline name via parameter or config file, otherwise look at output_schema, then fall back on default as last resort.
 - Allow pipestat to proceed without creating a results file backend IF using "{record_identifier}" in the file path, helps address [Looper #471](https://github.com/pepkit/looper/issues/471)
