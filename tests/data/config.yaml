@@ -5,7 +5,7 @@ database:
   dialect: postgresql
   driver: psycopg
   name: pipestat-test
-  user: postgres
-  password: pipestat-password
+  user: pipestatuser
+  password: shgfty^8922138$^!
   host: 127.0.0.1
   port: 5432
