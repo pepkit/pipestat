@@ -22,6 +22,9 @@ docker run --rm -it --name pipestat_test_db \
 """
 STANDARD_TEST_PIPE_ID = "default_pipeline_name"
 
+PEPHUB_URL = "donaldcampbelljr/pipestat_demo:default"
+# PEPHUB_URL ="donaldcampbelljr/pipestat_demo_2:default"
+
 try:
     subprocess.check_output(
         "docker inspect pipestat_test_db --format '{{.State.Status}}'", shell=True

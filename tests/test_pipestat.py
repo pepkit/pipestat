@@ -26,6 +26,7 @@ from .conftest import (
     DB_URL,
     REC_ID,
     DB_DEPENDENCIES,
+    PEPHUB_URL,
 )
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
@@ -2559,9 +2560,7 @@ class TestPEPHUBBackend:
         range_values,
     ):
 
-        pephuburl = "donaldcampbelljr/pipestat_demo:default"
-
-        psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
+        psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
 
         # Value already exists should give an error unless forcing overwrite
 
@@ -2585,9 +2584,8 @@ class TestPEPHUBBackend:
         results_file_path,
         range_values,
     ):
-        pephuburl = "donaldcampbelljr/pipestat_demo:default"
 
-        psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
+        psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
 
         result = psm.retrieve_one(record_identifier=rec_id)
 
@@ -2600,11 +2598,10 @@ class TestPEPHUBBackend:
         results_file_path,
         range_values,
     ):
-        pephuburl = "donaldcampbelljr/pipestat_demo:default"
 
         rec_ids = ["test_pipestat_01", "test_pipestat_02"]
 
-        psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
+        psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
 
         results = psm.retrieve_many(record_identifiers=rec_ids)
 
@@ -2617,11 +2614,10 @@ class TestPEPHUBBackend:
         results_file_path,
         range_values,
     ):
-        pephuburl = "donaldcampbelljr/pipestat_demo:default"
 
         rec_ids = ["test_pipestat_01"]
 
-        psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
+        psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
 
         results = psm.remove(record_identifier=rec_ids[0], result_identifier="name_of_something")
 
@@ -2634,11 +2630,10 @@ class TestPEPHUBBackend:
         results_file_path,
         range_values,
     ):
-        pephuburl = "donaldcampbelljr/pipestat_demo:default"
 
         rec_ids = ["test_pipestat_01"]
 
-        psm = PipestatManager(pephub_path=pephuburl, schema_path=schema_file_path)
+        psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
 
         results = psm.remove_record(record_identifier=rec_ids[0], rm_record=False)
 
