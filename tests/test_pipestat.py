@@ -2247,8 +2247,8 @@ class TestMultiResultFiles:
             backend_data = {"results_file_path": results_file_path}
             args.update(backend_data)
 
-            with pytest.raises(NotImplementedError):
-                psm = SamplePipestatManager(**args)
+            # with pytest.raises(NotImplementedError):
+            psm = SamplePipestatManager(**args)
 
     @pytest.mark.parametrize("backend", ["file"])
     def test_multi_results_basic(

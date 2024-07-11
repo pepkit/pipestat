@@ -140,7 +140,7 @@ class PipestatManager(MutableMapping):
         flag_file_dir: Optional[str] = None,
         show_db_logs: bool = False,
         pipeline_type: Optional[str] = None,
-        pipeline_name: Optional[str] = DEFAULT_PIPELINE_NAME,
+        pipeline_name: Optional[str] = None,
         result_formatter: staticmethod = default_formatter,
         multi_pipelines: bool = False,
         output_dir: Optional[str] = None,
@@ -200,10 +200,14 @@ class PipestatManager(MutableMapping):
             "record_identifier", env_var=ENV_VARS["record_identifier"], override=record_identifier
         )
 
+        # TODO this is a work around for Looper ~ https://github.com/pepkit/looper/issues/492, sharing pipeline names
+        # In the future, we should get piepline name only from output schema.
         self.cfg[PIPELINE_NAME] = (
-            self.cfg[SCHEMA_KEY].pipeline_name
+            pipeline_name
+            or self.cfg[CONFIG_KEY].get(PIPELINE_NAME)
+            or self.cfg[SCHEMA_KEY].pipeline_name
             if self.cfg[SCHEMA_KEY] is not None
-            else pipeline_name
+            else DEFAULT_PIPELINE_NAME
         )
 
         self.cfg[PROJECT_NAME] = self.cfg[CONFIG_KEY].priority_get(
@@ -232,7 +236,12 @@ class PipestatManager(MutableMapping):
             ),
             self.cfg["config_path"],
         )
-        make_subdirectories(self.cfg[FILE_KEY])
+
+        if "{record_identifier}" in str(self.cfg[FILE_KEY]):
+            # In the special case where the user wants to use {record_identifier} in file path
+            pass
+        else:
+            make_subdirectories(self.cfg[FILE_KEY])
 
         self.cfg[RESULT_FORMATTER] = result_formatter
 
@@ -335,12 +344,19 @@ class PipestatManager(MutableMapping):
         # Save for later when assessing if there may be multiple result files
         if results_file_path:
             assert isinstance(results_file_path, str), TypeError("Path is expected to be a str")
-            if not self.record_identifier and "{record_identifier}" in results_file_path:
-                raise NotImplementedError(
-                    f"Must provide record identifier during PipestatManager creation for this results_file_path: {results_file_path}"
-                )
-            self.cfg["unresolved_result_path"] = results_file_path
-            return results_file_path.format(record_identifier=self.record_identifier)
+            if self.record_identifier:
+                try:
+                    self.cfg["unresolved_result_path"] = results_file_path
+                    results_file_path = results_file_path.format(
+                        record_identifier=self.record_identifier
+                    )
+                    return results_file_path
+                except AttributeError:
+                    self.cfg["unresolved_result_path"] = results_file_path
+                    return results_file_path
+            else:
+                self.cfg["unresolved_result_path"] = results_file_path
+                return results_file_path
         return results_file_path
 
     def initialize_filebackend(self, record_identifier, results_file_path, flag_file_dir):
@@ -906,8 +922,12 @@ class PipestatManager(MutableMapping):
 
     def check_multi_results(self):
         # Check to see if the user used a path with "{record-identifier}"
-        if self.file and self.cfg["unresolved_result_path"] != self.file:
-            if "{record_identifier}" in self.cfg["unresolved_result_path"]:
+        if self.file:
+            # TODO this needs rework: remove  self.cfg["unresolved_result_path"] and just use self.file
+            if (
+                "{record_identifier}" in self.file
+                or self.cfg["unresolved_result_path"] != self.file
+            ):
                 # assume there are multiple result files in sub-directories
                 self.cfg["multi_result_files"] = True
                 results_directory = self.cfg["unresolved_result_path"].split(
