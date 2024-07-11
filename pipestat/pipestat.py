@@ -399,7 +399,8 @@ class PipestatManager(MutableMapping):
             self.cfg[PIPELINE_NAME],
             self.cfg[PIPELINE_TYPE],
             self.cfg[SCHEMA_KEY],
-            # self.cfg[STATUS_SCHEMA_KEY],
+            self.cfg[STATUS_SCHEMA_KEY],
+            self.cfg[RESULT_FORMATTER],
         )
 
     @check_dependencies(

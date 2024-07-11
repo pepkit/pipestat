@@ -9,12 +9,13 @@ from pephubclient.exceptions import ResponseError
 from ubiquerg import parse_registry_path
 
 from ...backends.abstract import PipestatBackend
-from ...const import PKG_NAME
+from ...const import PKG_NAME, STATUS
 from typing import List, Dict, Any, Optional, Union, NoReturn, Tuple, Literal
 
 
 from pephubclient import PEPHubClient
 
+from ...exceptions import UnrecognizedStatusError, RecordNotFoundError, ColumnNotFoundError
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -28,6 +29,7 @@ class PEPHUBBACKEND(PipestatBackend):
         pipeline_type: Optional[str] = None,
         parsed_schema: Optional[str] = None,
         status_schema: Optional[str] = None,
+        result_formatter: Optional[staticmethod] = None,
     ):
         """
         ADD DOCSTRINGS!
@@ -37,9 +39,11 @@ class PEPHUBBACKEND(PipestatBackend):
 
         self.phc = PEPHubClient()
         self.record_identifier = record_identifier
+        self.pephub_path = pephub_path
         self.pipeline_name = pipeline_name
         self.parsed_schema = parsed_schema
-        self.pephub_path = pephub_path
+        self.status_schema = status_schema
+        self.result_formatter = result_formatter
 
         # Test Registry Path
         _LOGGER.warning(f"Is pephub registry path? {pephubclient.is_registry_path(pephub_path)}")
@@ -214,7 +218,7 @@ class PEPHUBBACKEND(PipestatBackend):
         :return bool | list[str] results_formatted: return list of formatted string
         """
 
-        # record_identifier = record_identifier or self.record_identifier
+        record_identifier = record_identifier or self.record_identifier
         record_identifier = record_identifier
 
         result_formatter = result_formatter or self.result_formatter
@@ -228,27 +232,12 @@ class PEPHUBBACKEND(PipestatBackend):
                 results=result_identifiers, pipeline_type=self.pipeline_type
             )
 
-        # existing = self.list_results(
-        #     record_identifier=record_identifier,
-        #     restrict_to=result_identifiers,
-        # )
-        existing = False
-
-        if existing:
-            existing_str = ", ".join(existing)
-            _LOGGER.warning(f"These results exist for '{record_identifier}': {existing_str}")
-            if not force_overwrite:
-                return False
-            _LOGGER.info(f"Overwriting existing results: {existing_str}")
+        existing = self.list_results(
+            record_identifier=record_identifier,
+            restrict_to=result_identifiers,
+        )
 
         if not existing:
-            # self._config.phc.sample.update(
-            #     namespace=self._config.config.phc.namespace,
-            #     name=self._config.config.phc.name,
-            #     tag=self._config.config.phc.tag,
-            #     sample_name=identifier,
-            #     sample_dict=metadata,
-            # )
 
             # try:
             self.phc.sample.create(
@@ -259,8 +248,21 @@ class PEPHUBBACKEND(PipestatBackend):
                 sample_dict=values,
                 overwrite=force_overwrite,
             )
-            # except ResponseError:
-            #     _LOGGER.warning("Login to pephubclient is required. phc login")
+
+        elif existing:
+            existing_str = ", ".join(existing)
+            _LOGGER.warning(f"These results exist for '{record_identifier}': {existing_str}")
+            if not force_overwrite:
+                return False
+            _LOGGER.info(f"Overwriting existing results: {existing_str}")
+
+            self.phc.sample.update(
+                namespace=self.pep_registry.namespace,
+                name=self.pep_registry.item,
+                tag=self.pep_registry.tag,
+                sample_name=record_identifier,
+                sample_dict=values,
+            )
 
             # results_formatted.append(
             #     result_formatter(
@@ -272,6 +274,74 @@ class PEPHUBBACKEND(PipestatBackend):
             # )
 
         return True
+
+    def set_status(
+        self,
+        status_identifier: str,
+        record_identifier: str = None,
+    ) -> None:
+        """
+        Set pipeline run status.
+
+        The status identifier needs to match one of identifiers specified in
+        the status schema. A basic, ready to use, status schema is shipped with
+        this package.
+
+        :param str status_identifier: status to set, one of statuses defined
+            in the status schema
+        :param str record_identifier: record identifier to set the
+            pipeline status for
+        """
+
+        record_identifier = record_identifier or self.record_identifier
+        known_status_identifiers = self.status_schema.keys()
+        if status_identifier not in known_status_identifiers:
+            raise UnrecognizedStatusError(
+                f"'{status_identifier}' is not a defined status identifier. "
+                f"These are allowed: {known_status_identifiers}"
+            )
+        prev_status = self.get_status(record_identifier)
+        try:
+            self.report(
+                values={STATUS: status_identifier},
+                record_identifier=record_identifier,
+            )
+        except Exception as e:
+            _LOGGER.error(
+                f"Could not insert into the status table ('{self.table_name}'). Exception: {e}"
+            )
+            raise
+        if prev_status:
+            _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
+
+    def get_status(self, record_identifier: str) -> Optional[str]:
+        """
+        Get pipeline status
+
+        :param str record_identifier: record identifier to set the
+            pipeline status for
+        :return str status
+        """
+
+        try:
+            result = self.select_records(
+                columns=[STATUS],
+                filter_conditions=[
+                    {
+                        "key": "record_identifier",
+                        "operator": "eq",
+                        "value": record_identifier,
+                    }
+                ],
+            )
+        except RecordNotFoundError:
+            return None
+        try:
+            status = result["records"][0][record_identifier]["status"]
+        except IndexError or KeyError:
+            status = None
+
+        return status
 
     def select_records(
         self,
@@ -357,7 +427,17 @@ class PEPHUBBACKEND(PipestatBackend):
             for i in ["sample_name"]:  # Must add id, need it for cursor
                 if i not in columns:
                     columns.insert(0, i)
-            df = project.sample_table[columns]
+            try:
+                df = project.sample_table[columns]
+            except KeyError:
+                records_dict = {
+                    "total_size": 0,
+                    "page_size": limit,
+                    "next_page_token": 0,
+                    "records": [],
+                }
+                return records_dict
+
         else:
             df = project.sample_table
 
