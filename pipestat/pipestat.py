@@ -176,7 +176,7 @@ class PipestatManager(MutableMapping):
 
         # Load and validate database configuration
         # If results_file_path exists, backend is a file else backend is database.
-
+        self.cfg["pephub_path"] = pephub_path
         self.cfg["config_path"] = select_config(config_file, ENV_VARS["config"])
 
         if config_dict is not None:
@@ -810,6 +810,9 @@ class PipestatManager(MutableMapping):
                 _LOGGER.warning(f"No history available for Record: {record_identifier}")
                 return {}
 
+        elif self.cfg["pephub_path"]:
+            _LOGGER.warning(f"Retrieving history not supported for PEPHub backend")
+            return None
         else:
             if result_identifier:
                 history = self.backend.retrieve_history_db(record_identifier, result_identifier)[

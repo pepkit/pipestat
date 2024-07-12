@@ -2671,3 +2671,19 @@ class TestPEPHUBBackend:
         results = psm.remove_record(record_identifier=rec_ids[0], rm_record=False)
 
         results = psm.remove_record(record_identifier=rec_ids[0], rm_record=True)
+
+    def test_pephub_unsupported_funcs(
+        self,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        range_values,
+    ):
+
+        rec_ids = ["test_pipestat_01"]
+
+        psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
+
+        results = psm.retrieve_history(record_identifier=rec_ids[0])
+
+        assert results is None
