@@ -2689,3 +2689,5 @@ class TestPEPHUBBackend:
         assert results is None
 
         psm.link("somedir")
+        psm.list_recent_results()
+        psm.summarize()

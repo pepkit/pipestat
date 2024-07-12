@@ -491,6 +491,9 @@ class PipestatManager(MutableMapping):
         :return dict results: a dict containing start, end, num of records, and list of retrieved records
         """
 
+        if self.cfg["pephub_path"]:
+            _LOGGER.warning(f"List recent results not supported for PEPHub backend")
+            return {}
         date_format = "%Y-%m-%d %H:%M:%S"
         if start is None:
             start = datetime.datetime.now()
@@ -904,7 +907,7 @@ class PipestatManager(MutableMapping):
         looper_samples: Optional[list] = None,
         amendment: Optional[str] = None,
         portable: Optional[bool] = False,
-    ) -> None:
+    ) -> Union[str, None]:
         """
         Builds a browsable html report for reported results.
         :param Iterable[str] looper_samples: list of looper Samples from PEP
@@ -913,6 +916,11 @@ class PipestatManager(MutableMapping):
         :return str: report_path
 
         """
+        if self.cfg["pephub_path"]:
+            _LOGGER.warning(
+                f"Summarize not supported for PEPHub backend. Please generate report via PEPHub website."
+            )
+            return None
 
         self.check_multi_results()
 
