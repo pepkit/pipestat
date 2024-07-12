@@ -2607,21 +2607,6 @@ class TestPEPHUBBackend:
 
         assert len(results["records"]) == 2
 
-    def test_get_status_pephub_backend(
-        self,
-        config_file_path,
-        schema_file_path,
-        results_file_path,
-        range_values,
-    ):
-        rec_ids = ["test_pipestat_01"]
-
-        psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
-
-        result = psm.get_status(record_identifier=rec_ids[0])
-
-        assert result is None
-
     def test_set_status_pephub_backend(
         self,
         config_file_path,
@@ -2636,6 +2621,25 @@ class TestPEPHUBBackend:
         result = psm.set_status(record_identifier=rec_ids[0], status_identifier="completed")
 
         assert result is None
+
+    def test_get_status_pephub_backend(
+        self,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        range_values,
+    ):
+        rec_ids = ["sample1", "test_pipestat_01"]
+
+        psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
+
+        result = psm.get_status(record_identifier=rec_ids[0])
+
+        assert result is None
+
+        result = psm.get_status(record_identifier=rec_ids[1])
+
+        assert result == "completed"
 
     def test_pephub_backend_remove(
         self,

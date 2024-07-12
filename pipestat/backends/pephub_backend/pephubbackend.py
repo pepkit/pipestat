@@ -341,6 +341,8 @@ class PEPHUBBACKEND(PipestatBackend):
         except IndexError or KeyError:
             status = None
 
+        if status == "":  # PEPhub returns '' for empty cell
+            status = None
         return status
 
     def select_records(
