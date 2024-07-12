@@ -202,7 +202,7 @@ class PEPHUBBACKEND(PipestatBackend):
         record_identifier: Optional[str] = None,
         force_overwrite: bool = True,
         result_formatter: Optional[staticmethod] = None,
-        history_enabled: bool = True,
+        history_enabled: Optional[bool] = False,
     ) -> Union[List[str], bool]:
         """
         Update the value of a result in a current namespace.
@@ -210,6 +210,7 @@ class PEPHUBBACKEND(PipestatBackend):
         This method overwrites any existing data and creates the required
          hierarchical mapping structure if needed.
 
+        :param history_enabled: this parameter is currently ignored as PEPHub
         :param Dict[str, Any] values: dict of results identifiers and values
             to be reported
         :param str record_identifier: unique identifier of the record
@@ -217,13 +218,16 @@ class PEPHUBBACKEND(PipestatBackend):
         :param str result_formatter: function for formatting result
         :return bool | list[str] results_formatted: return list of formatted string
         """
+        if history_enabled:
+            _LOGGER.warning(
+                msg="history_enabled set to true but this feature is handled by PEPHub and not Pipestat"
+            )
 
         record_identifier = record_identifier or self.record_identifier
         record_identifier = record_identifier
 
         result_formatter = result_formatter or self.result_formatter
         results_formatted = []
-        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         result_identifiers = list(values.keys())
 
