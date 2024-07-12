@@ -264,16 +264,16 @@ class PEPHUBBACKEND(PipestatBackend):
                 sample_dict=values,
             )
 
-            # results_formatted.append(
-            #     result_formatter(
-            #         pipeline_name=self.pipeline_name,
-            #         record_identifier=record_identifier,
-            #         res_id=res_id,
-            #         value=val,
-            #     )
-            # )
-
-        return True
+        for res_id, val in values.items():
+            results_formatted.append(
+                result_formatter(
+                    pipeline_name=self.pipeline_name,
+                    record_identifier=record_identifier,
+                    res_id=res_id,
+                    value=val,
+                )
+            )
+        return results_formatted
 
     def set_status(
         self,
