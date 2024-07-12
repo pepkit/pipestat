@@ -2687,3 +2687,5 @@ class TestPEPHUBBackend:
         results = psm.retrieve_history(record_identifier=rec_ids[0])
 
         assert results is None
+
+        psm.link("somedir")

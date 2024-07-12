@@ -883,12 +883,16 @@ class PipestatManager(MutableMapping):
         self.backend.set_status(status_identifier, r_id)
 
     @require_backend
-    def link(self, link_dir) -> str:
+    def link(self, link_dir) -> Union[str, None]:
         """
         This function creates a link structure such that results are organized by type.
         :param str link_dir: path to desired symlink output directory
-        :return str linked_results_path: path to symlink directory
+        :return str | None linked_results_path: path to symlink directory or None
         """
+        if self.cfg["pephub_path"]:
+            _LOGGER.warning(f"Linking results is not supported for PEPHub backend.")
+            return None
+
         self.check_multi_results()
         linked_results_path = self.backend.link(link_dir=link_dir)
 
