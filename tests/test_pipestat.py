@@ -2518,8 +2518,7 @@ class TestRetrieveHistory:
             assert len(history_result["output_image"].keys()) == 2
 
 
-@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
-@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
+@pytest.mark.skip(reason="requires pephub login to function")
 class TestPEPHUBBackend:
     """
     THESE TESTS WILL FAIL IF YOU ARE NOT SIGNED IN TO PEPHUB

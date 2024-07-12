@@ -378,26 +378,6 @@ class PEPHUBBACKEND(PipestatBackend):
             # TODO can we support cursor through pephubclient?
             _LOGGER.warning("Cursor not supported for PEPHubBackend, ignoring cursor")
 
-        # def get_operator(op: Literal["eq", "lt", "ge", "gt", "in"]) -> Any:
-        #     """
-        #     Get python operator for a given string
-        #
-        #     :param str op: desired operator, "eq", "lt"
-        #     :return: operator function
-        #     """
-        #
-        #     if op == "eq":
-        #         return operator.__eq__
-        #     if op == "lt":
-        #         return operator.__lt__
-        #     if op == "ge":
-        #         return operator.__ge__
-        #     if op == "gt":
-        #         return operator.__gt__
-        #     if op == "in":
-        #         return operator.contains
-        #     raise ValueError(f"Invalid filter operator: {op}")
-
         def get_operator(op: Literal["eq", "lt", "ge", "gt", "in"]) -> Any:
             """
             Get python operator for a given string
@@ -445,13 +425,11 @@ class PEPHUBBACKEND(PipestatBackend):
 
         total_count = len(df)
 
-        records_list = []
         if filter_conditions:
             filter_expression = ""
             all_filter_expressions = []
             for filter_condition in filter_conditions:
                 retrieved_operator = get_operator(filter_condition["operator"])
-                retrieved_results = []
                 if filter_condition["key"] == "record_identifier":
                     filter_condition["key"] = "sample_name"
 
@@ -464,7 +442,6 @@ class PEPHUBBACKEND(PipestatBackend):
                 else:
                     filter_expression = f"{key} {retrieved_operator} '{value}'"
                 all_filter_expressions.append(filter_expression)
-            # filter_expression = str(key) + ' ' + str(retrieved_operator) + ' ' + str(f'{value}')
 
             if len(all_filter_expressions) > 1:
 
@@ -482,7 +459,6 @@ class PEPHUBBACKEND(PipestatBackend):
             print("done")
 
         # Once we have the dataframe (filtered or unfiltered), convert to a dict using the sample_name/record_identifier as the primary key
-
         df2dict = df.set_index("sample_name").transpose().to_dict(orient="dict")
 
         # Filter out columns
