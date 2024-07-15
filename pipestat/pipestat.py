@@ -359,7 +359,19 @@ class PipestatManager(MutableMapping):
                 return results_file_path
         return results_file_path
 
-    def initialize_filebackend(self, record_identifier, results_file_path, flag_file_dir):
+    def initialize_filebackend(
+        self,
+        record_identifier: str = None,
+        results_file_path: str = None,
+        flag_file_dir: str = None,
+    ):
+        """
+        Initializes the file backend
+        :param str record_identifier: the record identifier
+        :param str results_file_path: the path to the results file used for the backend
+        :param str flag_file_dir: the path to the flag file directory
+        """
+
         # Check if there will be multiple results_file_paths
         _LOGGER.debug(f"Determined file as backend: {results_file_path}")
 
@@ -392,7 +404,12 @@ class PipestatManager(MutableMapping):
 
         return
 
-    def initialize_pephubbackend(self, record_identifier, pephub_path):
+    def initialize_pephubbackend(self, record_identifier: str = None, pephub_path: str = None):
+        """
+        Initializes the pephub backend
+        :param str record_identifier: the record identifier
+        :param str pephub_path: the path to the pephub registry
+        """
         self.backend = PEPHUBBACKEND(
             record_identifier,
             pephub_path,
@@ -407,7 +424,12 @@ class PipestatManager(MutableMapping):
         dependency_list=["DBBackend"],
         msg="Missing required dependencies for this usage, e.g. try pip install pipestat['dbbackend']",
     )
-    def initialize_dbbackend(self, record_identifier, show_db_logs):
+    def initialize_dbbackend(self, record_identifier: str = None, show_db_logs: bool = False):
+        """
+        Initializes the database backend
+        :param str record_identifier: the record identifier
+        :param bool show_db_logs: boolean to show_db_logs
+        """
         _LOGGER.debug("Determined database as backend")
         if self.cfg[SCHEMA_KEY] is None:
             raise SchemaNotFoundError("Output schema must be supplied for DB backends.")
