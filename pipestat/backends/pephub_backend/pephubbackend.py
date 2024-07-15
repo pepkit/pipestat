@@ -51,11 +51,13 @@ class PEPHUBBACKEND(PipestatBackend):
         self.result_formatter = result_formatter
 
         if pephubclient.is_registry_path(pephub_path):
-            # Deconstruct registry path so that phc can use it to create/update/delete samples
+
             _LOGGER.debug("Initialize PEPHub Backend")
 
+            # Deconstruct registry path so that phc can use it to create/update/delete samples
             self.pep_registry = RegistryPath(**parse_registry_path(pephub_path))
-            _LOGGER.warning(
+
+            _LOGGER.debug(
                 f"Registry namespace: {self.pep_registry.namespace} item: {self.pep_registry.item} tag: {self.pep_registry.tag}"
             )
 
