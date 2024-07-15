@@ -128,6 +128,7 @@ CLASSES_BY_TYPE = {
     "string": str,
     "path": Path,
     "boolean": bool,
+    "bool": bool,
     "file": str,
     "image": str,
     "link": str,
