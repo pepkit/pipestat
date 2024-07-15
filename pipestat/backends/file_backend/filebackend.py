@@ -46,7 +46,7 @@ class FileBackend(PipestatBackend):
             this object method calls
         :param str pipeline_name: name of pipeline associated with result
         :param str pipeline_type: "sample" or "project"
-        :param str parsed_schema: results output schema. Used to construct DB columns.
+        :param str parsed_schema: results output schema.
         :param str status_schema: schema containing pipeline statuses e.g. 'running'
         :param str status_file_dir: directory for placing status flags
         :param str result_formatter: function for formatting result

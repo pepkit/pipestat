@@ -29,8 +29,16 @@ class PEPHUBBACKEND(PipestatBackend):
         result_formatter: Optional[staticmethod] = None,
     ):
         """
-        ADD DOCSTRINGS!
-
+        Class representing a PEPHub backend
+        :param str record_identifier: record identifier to report for. This
+            creates a weak bound to the record, which can be overridden in
+            this object method calls
+        :param str pephub_path: registry path to PEP
+        :param str pipeline_name: name of pipeline associated with result
+        :param str pipeline_type: "sample" or "project"
+        :param str parsed_schema: results output schema.
+        :param str status_schema: schema containing pipeline statuses e.g. 'running'
+        :param str result_formatter: function for formatting result
         """
         super().__init__(pipeline_type)
 
