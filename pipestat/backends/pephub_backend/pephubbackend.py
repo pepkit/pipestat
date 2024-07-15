@@ -213,7 +213,7 @@ class PEPHUBBACKEND(PipestatBackend):
         This method overwrites any existing data and creates the required
          hierarchical mapping structure if needed.
 
-        :param history_enabled: this parameter is currently ignored as PEPHub
+        :param history_enabled: this parameter is currently ignored as PEPHub does not support this
         :param Dict[str, Any] values: dict of results identifiers and values
             to be reported
         :param str record_identifier: unique identifier of the record
@@ -227,7 +227,6 @@ class PEPHUBBACKEND(PipestatBackend):
             )
 
         record_identifier = record_identifier or self.record_identifier
-        record_identifier = record_identifier
 
         result_formatter = result_formatter or self.result_formatter
         results_formatted = []
