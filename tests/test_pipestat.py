@@ -2691,3 +2691,13 @@ class TestPEPHUBBackend:
         psm.link("somedir")
         psm.list_recent_results()
         psm.summarize()
+
+    def test_pephub_unsupported_funcs(
+        self,
+        config_file_path,
+        schema_file_path,
+        results_file_path,
+        range_values,
+    ):
+        with pytest.raises(PipestatPEPHubError):
+            psm = PipestatManager(pephub_path="bogus_path", schema_path=schema_file_path)

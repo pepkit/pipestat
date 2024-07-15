@@ -1,21 +1,18 @@
 import copy
-import datetime
-import operator
 from logging import getLogger
 
 import pephubclient
 from pephubclient.constants import RegistryPath
-from pephubclient.exceptions import ResponseError
 from ubiquerg import parse_registry_path
 
 from ...backends.abstract import PipestatBackend
 from ...const import PKG_NAME, STATUS
-from typing import List, Dict, Any, Optional, Union, NoReturn, Tuple, Literal
+from typing import List, Dict, Any, Optional, Union, NoReturn, Literal
 
 
 from pephubclient import PEPHubClient
 
-from ...exceptions import UnrecognizedStatusError, RecordNotFoundError, ColumnNotFoundError
+from ...exceptions import UnrecognizedStatusError, RecordNotFoundError, PipestatPEPHubError
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -58,7 +55,7 @@ class PEPHUBBACKEND(PipestatBackend):
             )
 
         else:
-            raise Exception
+            raise PipestatPEPHubError(msg=f"Registry path to PEP is invalid: {pephub_path}")
 
     def check_record_exists(
         self,

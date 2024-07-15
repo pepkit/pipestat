@@ -20,6 +20,7 @@ __all__ = [
     "PipestatDependencyError",
     "ColumnNotFoundError",
     "SchemaValidationErrorDuringReport",
+    "PipestatPEPHubError",
 ]
 
 
@@ -121,6 +122,13 @@ class PipestatDatabaseError(PipestatError):
 
     def __init__(self, msg):
         super(PipestatDatabaseError, self).__init__(msg)
+
+
+class PipestatPEPHubError(PipestatError):
+    """PEPHub backend error"""
+
+    def __init__(self, msg):
+        super(PipestatPEPHubError, self).__init__(msg)
 
 
 class InvalidTypeError(PipestatError):
