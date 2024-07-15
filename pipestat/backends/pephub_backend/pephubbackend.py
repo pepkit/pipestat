@@ -111,7 +111,6 @@ class PEPHUBBACKEND(PipestatBackend):
             ]
         )
         try:
-            # TODO had to add rid to step deeper into data structure vs dbbackend implementation. Why are they different?
             record = record["records"][0][rid]
         except IndexError:
             return []
@@ -383,7 +382,6 @@ class PEPHUBBACKEND(PipestatBackend):
         """
 
         if cursor:
-            # TODO can we support cursor through pephubclient?
             _LOGGER.warning("Cursor not supported for PEPHubBackend, ignoring cursor")
 
         def get_operator(op: Literal["eq", "lt", "ge", "gt", "in"]) -> Any:
