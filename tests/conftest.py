@@ -100,11 +100,6 @@ def config_file_path():
 
 
 @pytest.fixture
-def config_file_path_sqllite():
-    return get_data_file_path("config_sqllite.yaml")
-
-
-@pytest.fixture
 def config_no_schema_file_path():
     return get_data_file_path("config_no_schema.yaml")
 
