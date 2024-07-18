@@ -35,6 +35,31 @@ class ContextManagerDBTesting:
 
 
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
+class TestSQLLITE:
+    def test_manager_can_be_built_without_exception(self, schema_file_path_sqlite):
+
+        with NamedTemporaryFile() as f:
+            sqllite_url = f"sqlite:///{f.name}"
+            config_dict = {
+                "project_name": "test",
+                "record_identifier": "sample1",
+                "schema_path": schema_file_path_sqlite,
+                "database": {"sqlite_url": f.name},
+            }
+
+            with ContextManagerDBTesting(sqllite_url):
+                try:
+                    SamplePipestatManager(
+                        schema_path=schema_file_path_sqlite,
+                        record_identifier="irrelevant",
+                        database_only=True,
+                        config_dict=config_dict,
+                    )
+                except Exception as e:
+                    pytest.fail(f"Pipestat manager construction failed: {e})")
+
+
+@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestDatabaseOnly:
     # TODO: parameterize this against different schemas.
@@ -134,27 +159,3 @@ class TestDatabaseOnly:
             result = psm.select_records(cursor=offset, limit=limit)
             print(result)
             assert len(result["records"]) == min(max((psm.record_count - offset), 0), limit)
-
-
-class TestSQLLITE:
-    def test_manager_can_be_built_without_exception(self, schema_file_path_sqlite):
-
-        with NamedTemporaryFile() as f:
-            sqllite_url = f"sqlite:///{f.name}"
-            config_dict = {
-                "project_name": "test",
-                "record_identifier": "sample1",
-                "schema_path": "sample_output_schema_sqlite.yaml",
-                "database": {"sqlite_url": f.name},
-            }
-
-            with ContextManagerDBTesting(sqllite_url):
-                try:
-                    SamplePipestatManager(
-                        schema_path=schema_file_path_sqlite,
-                        record_identifier="irrelevant",
-                        database_only=True,
-                        config_dict=config_dict,
-                    )
-                except Exception as e:
-                    pytest.fail(f"Pipestat manager construction failed: {e})")
