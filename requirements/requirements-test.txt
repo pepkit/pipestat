@@ -17,5 +17,6 @@ uvicorn
 fastapi
 coverage
 smokeshow
+pephubclient
 
 

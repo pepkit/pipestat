@@ -4,7 +4,9 @@ import copy
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Union
+
 import yacman
+
 from .const import (
     CANONICAL_TYPES,
     CLASSES_BY_TYPE,
@@ -15,7 +17,6 @@ from .const import (
     SCHEMA_TYPE_KEY,
 )
 from .exceptions import SchemaError
-
 
 _LOGGER = logging.getLogger(__name__)
 

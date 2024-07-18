@@ -6,7 +6,7 @@ from pathlib import Path
 
 # Can be removed when 3.8 is deprecated
 if int(sys.version.split(".")[1]) < 9:
-    from typing import List, Dict
+    from typing import Dict, List
 
     list_of_dicts = List[Dict]
 else:
@@ -128,6 +128,7 @@ CLASSES_BY_TYPE = {
     "string": str,
     "path": Path,
     "boolean": bool,
+    "bool": bool,
     "file": str,
     "image": str,
     "link": str,

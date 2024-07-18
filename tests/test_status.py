@@ -1,22 +1,22 @@
 """Tests for pipestat's status checking/management functionality"""
 
 import os
+from tempfile import NamedTemporaryFile
+
 import pytest
 
 from pipestat import SamplePipestatManager
+from pipestat.const import FILE_KEY, STATUS_FILE_DIR
+from pipestat.exceptions import UnrecognizedStatusError
 
-from pipestat.const import STATUS_FILE_DIR, FILE_KEY
 from .conftest import (
     BACKEND_KEY_DB,
     BACKEND_KEY_FILE,
+    DB_DEPENDENCIES,
     DB_URL,
     SERVICE_UNAVAILABLE,
-    DB_DEPENDENCIES,
 )
-
 from .test_db_only_mode import ContextManagerDBTesting
-from pipestat.exceptions import UnrecognizedStatusError
-from tempfile import NamedTemporaryFile
 
 
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")

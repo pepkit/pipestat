@@ -1,17 +1,16 @@
-from tempfile import mkdtemp
+import os
+from tempfile import NamedTemporaryFile, TemporaryDirectory, mkdtemp
 
 import pytest
-import os
 from yaml import dump
 
-from pipestat import PipestatManager, SamplePipestatManager, ProjectPipestatManager
-from pipestat.exceptions import *
-from pipestat.parsed_schema import SCHEMA_PIPELINE_NAME_KEY
-from tempfile import NamedTemporaryFile, TemporaryDirectory
-from .conftest import STANDARD_TEST_PIPE_ID, DB_DEPENDENCIES
-from .conftest import SERVICE_UNAVAILABLE
-from pipestat.helpers import init_generic_config
+from pipestat import PipestatManager, ProjectPipestatManager, SamplePipestatManager
 from pipestat.const import PIPESTAT_GENERIC_CONFIG, SCHEMA_KEY
+from pipestat.exceptions import *
+from pipestat.helpers import init_generic_config
+from pipestat.parsed_schema import SCHEMA_PIPELINE_NAME_KEY
+
+from .conftest import DB_DEPENDENCIES, SERVICE_UNAVAILABLE, STANDARD_TEST_PIPE_ID
 
 
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")

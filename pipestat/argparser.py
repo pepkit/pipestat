@@ -2,9 +2,10 @@
 
 import argparse
 import os
-from ubiquerg import VersionInHelpParser
-from ._version import __version__
 
+from ubiquerg import VersionInHelpParser
+
+from ._version import __version__
 from .const import ENV_VARS, PKG_NAME, STATUS_SCHEMA
 
 REPORT_CMD = "report"
