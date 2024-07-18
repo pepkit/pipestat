@@ -1,23 +1,24 @@
 import copy
 import datetime
-from logging import getLogger
 from contextlib import contextmanager
-from typing import List, Dict, Any, Optional, Union, NoReturn, Tuple
+from logging import getLogger
+from typing import Any, Dict, List, NoReturn, Optional, Tuple, Union
 
-from sqlmodel import SQLModel, Session, create_engine, select as sql_select
+from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import select as sql_select
 
-from pipestat.backends.db_backend.db_helpers import selection_filter
 from pipestat.backends.abstract import PipestatBackend
+from pipestat.backends.db_backend.db_helpers import selection_filter
+
+from ...const import CREATED_TIME, MODIFIED_TIME, PKG_NAME, RECORD_IDENTIFIER, STATUS
 from ...exceptions import (
+    ColumnNotFoundError,
     PipestatDatabaseError,
     RecordNotFoundError,
     SchemaError,
-    ColumnNotFoundError,
-    UnrecognizedStatusError,
     SchemaNotFoundError,
+    UnrecognizedStatusError,
 )
-from ...const import PKG_NAME, STATUS, RECORD_IDENTIFIER, CREATED_TIME, MODIFIED_TIME
-
 
 _LOGGER = getLogger(PKG_NAME)
 

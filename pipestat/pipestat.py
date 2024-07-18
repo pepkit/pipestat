@@ -1,79 +1,75 @@
-import os
 import datetime
-from logging import getLogger
-from copy import deepcopy
-
+import os
 from abc import ABC
 from collections.abc import MutableMapping
+from copy import deepcopy
+from logging import getLogger
+from typing import Any, Dict, Iterator, List, Optional, Union
 
 from jsonschema import validate
-from yacman import FutureYAMLConfigManager as YAMLConfigManager
-from yacman.yacman_future import select_config
 from ubiquerg import mkabs
+from yacman import FutureYAMLConfigManager as YAMLConfigManager
 from yacman import load_yaml
+from yacman.yacman_future import select_config
 
-
-from typing import Optional, Union, Dict, Any, List, Iterator
-
-
-from .exceptions import (
-    ColumnNotFoundError,
-    NoBackendSpecifiedError,
-    InvalidTimeFormatError,
-    PipestatDependencyError,
-    PipestatDatabaseError,
-    RecordNotFoundError,
-    SchemaNotFoundError,
-)
 from pipestat.backends.file_backend.filebackend import FileBackend
-from .reports import HTMLReportBuilder, _create_stats_objs_summaries
-from .helpers import (
-    validate_type,
-    default_formatter,
-    zip_report,
-    make_subdirectories,
-)
+
 from .const import (
-    PKG_NAME,
-    DEFAULT_PIPELINE_NAME,
-    ENV_VARS,
     CFG_DATABASE_KEY,
-    SCHEMA_PATH,
-    STATUS_SCHEMA,
-    STATUS_SCHEMA_SOURCE_KEY,
-    STATUS_SCHEMA_KEY,
-    STATUS_FILE_DIR,
-    FILE_KEY,
+    CFG_SCHEMA,
+    CONFIG_KEY,
+    CREATED_TIME,
+    DATA_KEY,
     DB_ONLY_KEY,
     DB_URL,
+    DEFAULT_PIPELINE_NAME,
+    ENV_VARS,
+    FILE_KEY,
+    MODIFIED_TIME,
+    MULTI_PIPELINE,
+    OUTPUT_DIR,
     PIPELINE_NAME,
     PIPELINE_TYPE,
+    PKG_NAME,
     PROJECT_NAME,
     RECORD_IDENTIFIER,
     RESULT_FORMATTER,
-    MULTI_PIPELINE,
-    OUTPUT_DIR,
-    CREATED_TIME,
-    MODIFIED_TIME,
-    CFG_SCHEMA,
-    CONFIG_KEY,
-    SCHEMA_KEY,
     SAMPLE_NAME_ID_KEY,
-    DATA_KEY,
+    SCHEMA_KEY,
+    SCHEMA_PATH,
+    STATUS_FILE_DIR,
+    STATUS_SCHEMA,
+    STATUS_SCHEMA_KEY,
+    STATUS_SCHEMA_SOURCE_KEY,
 )
+from .exceptions import (
+    ColumnNotFoundError,
+    InvalidTimeFormatError,
+    NoBackendSpecifiedError,
+    PipestatDatabaseError,
+    PipestatDependencyError,
+    RecordNotFoundError,
+    SchemaNotFoundError,
+)
+from .helpers import default_formatter, make_subdirectories, validate_type, zip_report
+from .reports import HTMLReportBuilder, _create_stats_objs_summaries
 
 try:
-    from pipestat.backends.db_backend.db_parsed_schema import (
-        ParsedSchemaDB as ParsedSchema,
-    )
+    from pipestat.backends.db_backend.db_parsed_schema import ParsedSchemaDB as ParsedSchema
 except ImportError:
     from .parsed_schema import ParsedSchema
 
 try:
-    from pipestat.backends.db_backend.dbbackend import DBBackend
     from pipestat.backends.db_backend.db_helpers import construct_db_url
+    from pipestat.backends.db_backend.dbbackend import DBBackend
 except ImportError:
     # We let this pass, but if the user attempts to create DBBackend, check_dependencies raises exception.
+    pass
+
+try:
+    from pipestat.backends.pephub_backend.pephubbackend import PEPHUBBACKEND
+except ImportError:
+    # Let this pass, if phc dependencies cannot be imported, raise exception
     pass
 
 
@@ -138,6 +134,7 @@ class PipestatManager(MutableMapping):
         result_formatter: staticmethod = default_formatter,
         multi_pipelines: bool = False,
         output_dir: Optional[str] = None,
+        pephub_path: Optional[str] = None,
     ):
         """
         Initialize the PipestatManager object
@@ -169,7 +166,7 @@ class PipestatManager(MutableMapping):
 
         # Load and validate database configuration
         # If results_file_path exists, backend is a file else backend is database.
-
+        self.cfg["pephub_path"] = pephub_path
         self.cfg["config_path"] = select_config(config_file, ENV_VARS["config"])
 
         if config_dict is not None:
@@ -247,6 +244,8 @@ class PipestatManager(MutableMapping):
         if self.cfg[FILE_KEY]:
             self.initialize_filebackend(record_identifier, results_file_path, flag_file_dir)
 
+        elif pephub_path:
+            self.initialize_pephubbackend(record_identifier, pephub_path)
         else:
             self.initialize_dbbackend(record_identifier, show_db_logs)
 
@@ -350,7 +349,19 @@ class PipestatManager(MutableMapping):
                 return results_file_path
         return results_file_path
 
-    def initialize_filebackend(self, record_identifier, results_file_path, flag_file_dir):
+    def initialize_filebackend(
+        self,
+        record_identifier: str = None,
+        results_file_path: str = None,
+        flag_file_dir: str = None,
+    ):
+        """
+        Initializes the file backend
+        :param str record_identifier: the record identifier
+        :param str results_file_path: the path to the results file used for the backend
+        :param str flag_file_dir: the path to the flag file directory
+        """
+
         # Check if there will be multiple results_file_paths
         _LOGGER.debug(f"Determined file as backend: {results_file_path}")
 
@@ -383,11 +394,32 @@ class PipestatManager(MutableMapping):
 
         return
 
+    def initialize_pephubbackend(self, record_identifier: str = None, pephub_path: str = None):
+        """
+        Initializes the pephub backend
+        :param str record_identifier: the record identifier
+        :param str pephub_path: the path to the pephub registry
+        """
+        self.backend = PEPHUBBACKEND(
+            record_identifier,
+            pephub_path,
+            self.cfg[PIPELINE_NAME],
+            self.cfg[PIPELINE_TYPE],
+            self.cfg[SCHEMA_KEY],
+            self.cfg[STATUS_SCHEMA_KEY],
+            self.cfg[RESULT_FORMATTER],
+        )
+
     @check_dependencies(
         dependency_list=["DBBackend"],
         msg="Missing required dependencies for this usage, e.g. try pip install pipestat['dbbackend']",
     )
-    def initialize_dbbackend(self, record_identifier, show_db_logs):
+    def initialize_dbbackend(self, record_identifier: str = None, show_db_logs: bool = False):
+        """
+        Initializes the database backend
+        :param str record_identifier: the record identifier
+        :param bool show_db_logs: boolean to show_db_logs
+        """
         _LOGGER.debug("Determined database as backend")
         if self.cfg[SCHEMA_KEY] is None:
             raise SchemaNotFoundError("Output schema must be supplied for DB backends.")
@@ -397,7 +429,11 @@ class PipestatManager(MutableMapping):
             dbconf = self.cfg[CONFIG_KEY].exp[
                 CFG_DATABASE_KEY
             ]  # the .exp expands the paths before url construction
-            self.cfg[DB_URL] = construct_db_url(dbconf)
+            if "sqlite_url" in dbconf:
+                sqlite_url = f"sqlite:///{dbconf['sqlite_url']}"
+                self.cfg[DB_URL] = sqlite_url
+            else:
+                self.cfg[DB_URL] = construct_db_url(dbconf)
         except KeyError:
             raise PipestatDatabaseError(f"No database section ('{CFG_DATABASE_KEY}') in config")
         self._show_db_logs = show_db_logs
@@ -471,6 +507,9 @@ class PipestatManager(MutableMapping):
         :return dict results: a dict containing start, end, num of records, and list of retrieved records
         """
 
+        if self.cfg["pephub_path"]:
+            _LOGGER.warning(f"List recent results not supported for PEPHub backend")
+            return {}
         date_format = "%Y-%m-%d %H:%M:%S"
         if start is None:
             start = datetime.datetime.now()
@@ -790,6 +829,9 @@ class PipestatManager(MutableMapping):
                 _LOGGER.warning(f"No history available for Record: {record_identifier}")
                 return {}
 
+        elif self.cfg["pephub_path"]:
+            _LOGGER.warning(f"Retrieving history not supported for PEPHub backend")
+            return None
         else:
             if result_identifier:
                 history = self.backend.retrieve_history_db(record_identifier, result_identifier)[
@@ -860,12 +902,16 @@ class PipestatManager(MutableMapping):
         self.backend.set_status(status_identifier, r_id)
 
     @require_backend
-    def link(self, link_dir) -> str:
+    def link(self, link_dir) -> Union[str, None]:
         """
         This function creates a link structure such that results are organized by type.
         :param str link_dir: path to desired symlink output directory
-        :return str linked_results_path: path to symlink directory
+        :return str | None linked_results_path: path to symlink directory or None
         """
+        if self.cfg["pephub_path"]:
+            _LOGGER.warning(f"Linking results is not supported for PEPHub backend.")
+            return None
+
         self.check_multi_results()
         linked_results_path = self.backend.link(link_dir=link_dir)
 
@@ -877,7 +923,7 @@ class PipestatManager(MutableMapping):
         looper_samples: Optional[list] = None,
         amendment: Optional[str] = None,
         portable: Optional[bool] = False,
-    ) -> None:
+    ) -> Union[str, None]:
         """
         Builds a browsable html report for reported results.
         :param Iterable[str] looper_samples: list of looper Samples from PEP
@@ -886,6 +932,11 @@ class PipestatManager(MutableMapping):
         :return str: report_path
 
         """
+        if self.cfg["pephub_path"]:
+            _LOGGER.warning(
+                f"Summarize not supported for PEPHub backend. Please generate report via PEPHub website."
+            )
+            return None
 
         self.check_multi_results()
 
@@ -904,11 +955,7 @@ class PipestatManager(MutableMapping):
     def check_multi_results(self):
         # Check to see if the user used a path with "{record-identifier}"
         if self.file:
-            # TODO this needs rework: remove  self.cfg["unresolved_result_path"] and just use self.file
-            if (
-                "{record_identifier}" in self.file
-                or self.cfg["unresolved_result_path"] != self.file
-            ):
+            if "{record_identifier}" in self.cfg["unresolved_result_path"]:
                 # assume there are multiple result files in sub-directories
                 self.cfg["multi_result_files"] = True
                 results_directory = self.cfg["unresolved_result_path"].split(

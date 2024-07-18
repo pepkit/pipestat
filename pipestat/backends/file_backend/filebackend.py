@@ -1,25 +1,21 @@
 import datetime
-import os.path
 import operator
+import os.path
 from copy import deepcopy
 from functools import reduce
-from itertools import chain
-from ...helpers import get_all_result_files
-
-
 from glob import glob
+from itertools import chain
 from logging import getLogger
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+
+from ubiquerg import create_lock, remove_lock
 from yacman import FutureYAMLConfigManager as YAMLConfigManager
 from yacman import read_lock, write_lock
 
-from ubiquerg import create_lock, remove_lock
-
-from typing import List, Dict, Any, Optional, Union, Literal, Callable, Tuple
-
-from ...exceptions import UnrecognizedStatusError, PipestatError
 from ...backends.abstract import PipestatBackend
-from ...const import DATE_FORMAT, PKG_NAME, CREATED_TIME, MODIFIED_TIME, META_KEY, HISTORY_KEY
-
+from ...const import CREATED_TIME, DATE_FORMAT, HISTORY_KEY, META_KEY, MODIFIED_TIME, PKG_NAME
+from ...exceptions import PipestatError, UnrecognizedStatusError
+from ...helpers import get_all_result_files
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -46,7 +42,7 @@ class FileBackend(PipestatBackend):
             this object method calls
         :param str pipeline_name: name of pipeline associated with result
         :param str pipeline_type: "sample" or "project"
-        :param str parsed_schema: results output schema. Used to construct DB columns.
+        :param str parsed_schema: results output schema.
         :param str status_schema: schema containing pipeline statuses e.g. 'running'
         :param str status_file_dir: directory for placing status flags
         :param str result_formatter: function for formatting result

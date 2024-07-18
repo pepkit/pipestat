@@ -3,17 +3,16 @@
 from functools import partial
 from pathlib import Path
 from typing import *
+
 import pytest
 import yaml
-from pipestat.const import SAMPLE_NAME, STATUS, RECORD_IDENTIFIER
+
+from pipestat.const import RECORD_IDENTIFIER, SAMPLE_NAME, STATUS
 from pipestat.exceptions import SchemaError, SchemaValidationErrorDuringReport
-from pipestat.parsed_schema import (
-    NULL_MAPPING_VALUE,
-    ParsedSchema,
-    SCHEMA_PIPELINE_NAME_KEY,
-)
-from .conftest import COMMON_CUSTOM_STATUS_DATA, DEFAULT_STATUS_DATA, get_data_file_path
 from pipestat.helpers import validate_type
+from pipestat.parsed_schema import NULL_MAPPING_VALUE, SCHEMA_PIPELINE_NAME_KEY, ParsedSchema
+
+from .conftest import COMMON_CUSTOM_STATUS_DATA, DEFAULT_STATUS_DATA, get_data_file_path
 
 TEMP_SCHEMA_FILENAME = "schema.tmp.yaml"
 

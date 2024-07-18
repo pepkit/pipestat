@@ -1,39 +1,37 @@
 """ Generate HTML reports """
 
-import shutil
-
-import jinja2
-import os
-import pandas as _pd
-import sys
 import csv
-import yaml
 import glob
-
+import os
+import shutil
+import sys
+from copy import deepcopy
 from datetime import timedelta
-from eido import read_schema
 from json import dumps
 from logging import getLogger
-from peppy.const import AMENDMENTS_KEY
 from typing import List
-from copy import deepcopy
 
+import jinja2
+import pandas as _pd
+import yaml
+from eido import read_schema
+from peppy.const import AMENDMENTS_KEY
 from ubiquerg import mkabs
 
 from ._version import __version__
 from .const import (
-    PIPELINE_NAME,
-    PKG_NAME,
-    OUTPUT_DIR,
-    OBJECT_TYPES,
     BUTTON_APPEARANCE_BY_FLAG,
-    NO_DATA_PLACEHOLDER,
-    PIPELINE_TYPE,
-    PROJECT_NAME,
-    TEMPLATES_DIRNAME,
-    PROFILE_COLNAMES,
-    STATUS_FILE_DIR,
     FILE_KEY,
+    NO_DATA_PLACEHOLDER,
+    OBJECT_TYPES,
+    OUTPUT_DIR,
+    PIPELINE_NAME,
+    PIPELINE_TYPE,
+    PKG_NAME,
+    PROFILE_COLNAMES,
+    PROJECT_NAME,
+    STATUS_FILE_DIR,
+    TEMPLATES_DIRNAME,
 )
 from .helpers import make_subdirectories
 
@@ -113,6 +111,12 @@ class HTMLReportBuilder(object):
         )
         self.create_index_html(navbar, self.create_footer())
         return self.index_html_path
+
+    def _reset_pipeline_type(self):
+        """
+        The report logic will set the pipeline type when multi results is used. It must be reset or it causes issues.
+        """
+        self.prj.backend.pipeline_type = self.prj.pipeline_type
 
     def _create_copy_for_porting(self, parent_path: str, record_identifier: str) -> str:
         """
@@ -212,6 +216,7 @@ class HTMLReportBuilder(object):
                     pages.append(page_relpath)
                     labels.append(sample_name)
 
+        self._reset_pipeline_type()
         template_vars = dict(
             navbar=navbar,
             footer=footer,
@@ -481,6 +486,7 @@ class HTMLReportBuilder(object):
                         html_page_path,
                         render_jinja_template("object.html", self.jinja_env, args=template_vars),
                     )
+        self._reset_pipeline_type()
 
     def create_glossary_html(self, glossary_table, navbar, footer):
         template_vars = dict(
@@ -755,7 +761,7 @@ class HTMLReportBuilder(object):
                 table_cell_data = [[rel_sample_html, sample_name]]
                 table_cell_data += list(sorted_sample_stat_results.values())
                 table_row_data.append(table_cell_data)
-
+        self._reset_pipeline_type()
         # Create parent samples page with links to each sample
         save_html(
             path=os.path.join(self.pipeline_reports, "records.html"),
@@ -921,7 +927,7 @@ class HTMLReportBuilder(object):
                         if "description" in self.prj.result_schemas[image_result]
                         else "No description in schema"
                     )
-
+        self._reset_pipeline_type()
         template_vars = dict(figures=figures, links=links)
         return render_jinja_template("project_object.html", self.jinja_env, template_vars)
 
@@ -962,6 +968,7 @@ class HTMLReportBuilder(object):
                     inclusion_fun=lambda x: x not in OBJECT_TYPES,
                     casting_fun=str,
                 )
+        self._reset_pipeline_type()
         return dumps(results)
 
     def _get_navbar_dropdown_data_objects(self, objs, wd, context):
@@ -995,7 +1002,7 @@ class HTMLReportBuilder(object):
                 )
                 relpaths.append(_make_relpath(page_name, wd, context))
                 sample_names.append(sample_name)
-
+        self._reset_pipeline_type()
         return relpaths, sample_names
 
 
@@ -1282,6 +1289,8 @@ def create_status_table(report_obj, project, pipeline_reports_dir: str, portable
                 times.append(NO_DATA_PLACEHOLDER)
                 mems.append(NO_DATA_PLACEHOLDER)
 
+    project.backend.pipeline_type = project.pipeline_type
+
     template_vars = dict(
         sample_names=sample_names,
         log_paths=log_paths,
@@ -1439,7 +1448,7 @@ def _create_stats_objs_summaries(prj, pipeline_name: str) -> List[str]:
                         reported_stats.append(v)
 
             stats.append(reported_stats)
-
+    prj.backend.pipeline_type = prj.pipeline_type
     # Stats File
     tsv_outfile_path = get_file_for_table(prj, pipeline_name, "stats_summary.tsv")
     stats.insert(0, columns)

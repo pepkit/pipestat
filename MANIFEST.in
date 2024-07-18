@@ -4,5 +4,6 @@ include pipestat/schemas/*
 include pipestat/backends/*
 include pipestat/backends/file_backend/*
 include pipestat/backends/db_backend/*
+include pipestat/backends/pephub_backend/*
 include pipestat/pipestatreader/*
 include pipestat/jinja_templates/*

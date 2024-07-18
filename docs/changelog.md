@@ -2,6 +2,16 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.10.0] - 2024-07-18
+### Fixed
+- allow for bool or boolean in schema [#189](https://github.com/pepkit/pipestat/issues/189)
+- fix pipestat summarize bugs re: inaccurate paths [#190](https://github.com/pepkit/pipestat/issues/190)
+- add support for sqlite dbbackend [#192](https://github.com/pepkit/pipestat/issues/192)
+
+## Added
+- pephub backend [#125](https://github.com/pepkit/pipestat/issues/125)
+
+
 ## [0.9.3] - 2024-06-06
 ### Fixed
 - fixed regression with summarizing or creating a table via aggregate_results.yaml and "{record_identifier}" in the results file path

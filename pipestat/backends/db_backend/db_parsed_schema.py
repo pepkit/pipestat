@@ -7,11 +7,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional
 
 from pydantic import ConfigDict, create_model
-
-
 from sqlalchemy import Column, null
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
+
 from pipestat.const import (
     CANONICAL_TYPES,
     CLASSES_BY_TYPE,
@@ -22,13 +21,13 @@ from pipestat.const import (
     PROJECT_NAME,
     RECORD_IDENTIFIER,
     SAMPLE_NAME,
-    STATUS,
     SCHEMA_DESC_KEY,
     SCHEMA_ITEMS_KEY,
     SCHEMA_PROP_KEY,
     SCHEMA_TYPE_KEY,
+    STATUS,
 )
-from pipestat.exceptions import SchemaError, PipestatError
+from pipestat.exceptions import PipestatError, SchemaError
 from pipestat.parsed_schema import ParsedSchema
 
 _LOGGER = logging.getLogger(__name__)

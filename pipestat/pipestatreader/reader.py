@@ -1,14 +1,14 @@
-import fastapi
-import os
 import logging
+import os
+from typing import List, Optional, Tuple, Union
+
+import fastapi
 import uvicorn
-from typing import Optional, List, Union, Tuple
+from pydantic import BaseModel
 
 from pipestat import SamplePipestatManager
 from pipestat.exceptions import RecordNotFoundError
 from pipestat.reports import fetch_pipeline_results
-from pydantic import BaseModel
-
 
 _LOGGER = logging.getLogger(__name__)
 
