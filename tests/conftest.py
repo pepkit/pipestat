@@ -83,6 +83,11 @@ def schema_file_path():
 
 
 @pytest.fixture
+def schema_file_path_sqlite():
+    return get_data_file_path("sample_output_schema_sqlite.yaml")
+
+
+@pytest.fixture
 def highlight_schema_file_path():
     return get_data_file_path("sample_output_schema_highlight.yaml")
 
