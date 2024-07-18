@@ -22,7 +22,7 @@ docker run --rm -it --name pipestat_test_db \
 """
 STANDARD_TEST_PIPE_ID = "default_pipeline_name"
 
-PEPHUB_URL = "donaldcampbelljr/pipestat_demo:default"
+PEPHUB_URL = "databio/pipestat_demo:default"
 
 try:
     subprocess.check_output(

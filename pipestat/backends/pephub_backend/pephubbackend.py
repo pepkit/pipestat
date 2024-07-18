@@ -91,14 +91,14 @@ class PEPHUBBACKEND(PipestatBackend):
         self,
         restrict_to: Optional[List[str]] = None,
         record_identifier: str = None,
-    ) -> List[str]:
+    ) -> Union[List[str], List[None]]:
         """
         Check if the specified results exist in the table
 
         :param List[str] restrict_to: results identifiers to check for
         :param str record_identifier: record to check for
         :return List[str] existing: if no result identifier specified, return all results for the record
-        :return List[str]: results identifiers that exist
+        :return List[str]: results identifiers that exist or an empty list if nothing was found
         """
         rid = record_identifier
         record = self.select_records(

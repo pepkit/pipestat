@@ -1,1 +1,1 @@
-pephubclient
+pephubclient>=0.4.2
