@@ -1,12 +1,13 @@
 """Test fixtures and helpers to make widely available in the package"""
 
 import os
-import pytest
 import subprocess
+from atexit import register
+
+import pytest
+from yacman import load_yaml
 
 from pipestat.const import STATUS_SCHEMA
-from yacman import load_yaml
-from atexit import register
 
 REC_ID = "constant_record_id"
 BACKEND_KEY_DB = "db"

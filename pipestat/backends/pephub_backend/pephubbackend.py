@@ -1,18 +1,15 @@
 import copy
 from logging import getLogger
+from typing import Any, Dict, List, Literal, NoReturn, Optional, Union
 
 import pephubclient
+from pephubclient import PEPHubClient
 from pephubclient.constants import RegistryPath
 from ubiquerg import parse_registry_path
 
 from ...backends.abstract import PipestatBackend
 from ...const import PKG_NAME, STATUS
-from typing import List, Dict, Any, Optional, Union, NoReturn, Literal
-
-
-from pephubclient import PEPHubClient
-
-from ...exceptions import UnrecognizedStatusError, RecordNotFoundError, PipestatPEPHubError
+from ...exceptions import PipestatPEPHubError, RecordNotFoundError, UnrecognizedStatusError
 
 _LOGGER = getLogger(PKG_NAME)
 

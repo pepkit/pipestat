@@ -3,15 +3,9 @@
 import logmuse
 
 from ._version import __version__
-from .exceptions import PipestatError
 from .const import PKG_NAME
-from .pipestat import (
-    PipestatManager,
-    SamplePipestatManager,
-    ProjectPipestatManager,
-    PipestatBoss,
-)
-
+from .exceptions import PipestatError
+from .pipestat import PipestatBoss, PipestatManager, ProjectPipestatManager, SamplePipestatManager
 
 __all__ = [
     "PipestatError",

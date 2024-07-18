@@ -1,25 +1,19 @@
 """Assorted project utilities"""
 
-import logging
-import glob
-import os
 import errno
-
-import jsonschema
+import glob
+import logging
+import os
 from json import dumps
 from pathlib import Path
 from shutil import make_archive
-from typing import Any, Dict, Optional, Tuple, Union, List
+from typing import Any, Dict, List, Optional, Tuple, Union
 
+import jsonschema
 from yaml import dump
-from .exceptions import SchemaValidationErrorDuringReport
 
-from .const import (
-    PIPESTAT_GENERIC_CONFIG,
-    SCHEMA_PROP_KEY,
-    SCHEMA_TYPE_KEY,
-    CLASSES_BY_TYPE,
-)
+from .const import CLASSES_BY_TYPE, PIPESTAT_GENERIC_CONFIG, SCHEMA_PROP_KEY, SCHEMA_TYPE_KEY
+from .exceptions import SchemaValidationErrorDuringReport
 
 _LOGGER = logging.getLogger(__name__)
 

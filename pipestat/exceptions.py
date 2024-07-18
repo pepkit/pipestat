@@ -1,6 +1,7 @@
 """ Package exception types """
 
 from typing import Iterable, Optional
+
 from .const import CLASSES_BY_TYPE, ENV_VARS
 
 __all__ = [

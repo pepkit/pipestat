@@ -1,77 +1,67 @@
-import os
 import datetime
-from logging import getLogger
-from copy import deepcopy
-
+import os
 from abc import ABC
 from collections.abc import MutableMapping
+from copy import deepcopy
+from logging import getLogger
+from typing import Any, Dict, Iterator, List, Optional, Union
 
 from jsonschema import validate
-from yacman import FutureYAMLConfigManager as YAMLConfigManager
-from yacman.yacman_future import select_config
 from ubiquerg import mkabs
+from yacman import FutureYAMLConfigManager as YAMLConfigManager
 from yacman import load_yaml
+from yacman.yacman_future import select_config
 
-
-from typing import Optional, Union, Dict, Any, List, Iterator
-
-
-from .exceptions import (
-    ColumnNotFoundError,
-    NoBackendSpecifiedError,
-    InvalidTimeFormatError,
-    PipestatDependencyError,
-    PipestatDatabaseError,
-    RecordNotFoundError,
-    SchemaNotFoundError,
-)
 from pipestat.backends.file_backend.filebackend import FileBackend
-from .reports import HTMLReportBuilder, _create_stats_objs_summaries
-from .helpers import (
-    validate_type,
-    default_formatter,
-    zip_report,
-    make_subdirectories,
-)
+
 from .const import (
-    PKG_NAME,
-    DEFAULT_PIPELINE_NAME,
-    ENV_VARS,
     CFG_DATABASE_KEY,
-    SCHEMA_PATH,
-    STATUS_SCHEMA,
-    STATUS_SCHEMA_SOURCE_KEY,
-    STATUS_SCHEMA_KEY,
-    STATUS_FILE_DIR,
-    FILE_KEY,
+    CFG_SCHEMA,
+    CONFIG_KEY,
+    CREATED_TIME,
+    DATA_KEY,
     DB_ONLY_KEY,
     DB_URL,
+    DEFAULT_PIPELINE_NAME,
+    ENV_VARS,
+    FILE_KEY,
+    MODIFIED_TIME,
+    MULTI_PIPELINE,
+    OUTPUT_DIR,
     PIPELINE_NAME,
     PIPELINE_TYPE,
+    PKG_NAME,
     PROJECT_NAME,
     RECORD_IDENTIFIER,
     RESULT_FORMATTER,
-    MULTI_PIPELINE,
-    OUTPUT_DIR,
-    CREATED_TIME,
-    MODIFIED_TIME,
-    CFG_SCHEMA,
-    CONFIG_KEY,
-    SCHEMA_KEY,
     SAMPLE_NAME_ID_KEY,
-    DATA_KEY,
+    SCHEMA_KEY,
+    SCHEMA_PATH,
+    STATUS_FILE_DIR,
+    STATUS_SCHEMA,
+    STATUS_SCHEMA_KEY,
+    STATUS_SCHEMA_SOURCE_KEY,
 )
+from .exceptions import (
+    ColumnNotFoundError,
+    InvalidTimeFormatError,
+    NoBackendSpecifiedError,
+    PipestatDatabaseError,
+    PipestatDependencyError,
+    RecordNotFoundError,
+    SchemaNotFoundError,
+)
+from .helpers import default_formatter, make_subdirectories, validate_type, zip_report
+from .reports import HTMLReportBuilder, _create_stats_objs_summaries
 
 try:
-    from pipestat.backends.db_backend.db_parsed_schema import (
-        ParsedSchemaDB as ParsedSchema,
-    )
+    from pipestat.backends.db_backend.db_parsed_schema import ParsedSchemaDB as ParsedSchema
 except ImportError:
     from .parsed_schema import ParsedSchema
 
 try:
-    from pipestat.backends.db_backend.dbbackend import DBBackend
     from pipestat.backends.db_backend.db_helpers import construct_db_url
+    from pipestat.backends.db_backend.dbbackend import DBBackend
 except ImportError:
     # We let this pass, but if the user attempts to create DBBackend, check_dependencies raises exception.
     pass

@@ -2,9 +2,7 @@
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import quote_plus
 
-
-from sqlmodel import and_, or_, Integer, Float, String, Boolean
-
+from sqlmodel import Boolean, Float, Integer, String, and_, or_
 
 from pipestat.exceptions import MissingConfigDataError
 

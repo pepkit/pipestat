@@ -1,39 +1,37 @@
 """ Generate HTML reports """
 
-import shutil
-
-import jinja2
-import os
-import pandas as _pd
-import sys
 import csv
-import yaml
 import glob
-
+import os
+import shutil
+import sys
+from copy import deepcopy
 from datetime import timedelta
-from eido import read_schema
 from json import dumps
 from logging import getLogger
-from peppy.const import AMENDMENTS_KEY
 from typing import List
-from copy import deepcopy
 
+import jinja2
+import pandas as _pd
+import yaml
+from eido import read_schema
+from peppy.const import AMENDMENTS_KEY
 from ubiquerg import mkabs
 
 from ._version import __version__
 from .const import (
-    PIPELINE_NAME,
-    PKG_NAME,
-    OUTPUT_DIR,
-    OBJECT_TYPES,
     BUTTON_APPEARANCE_BY_FLAG,
-    NO_DATA_PLACEHOLDER,
-    PIPELINE_TYPE,
-    PROJECT_NAME,
-    TEMPLATES_DIRNAME,
-    PROFILE_COLNAMES,
-    STATUS_FILE_DIR,
     FILE_KEY,
+    NO_DATA_PLACEHOLDER,
+    OBJECT_TYPES,
+    OUTPUT_DIR,
+    PIPELINE_NAME,
+    PIPELINE_TYPE,
+    PKG_NAME,
+    PROFILE_COLNAMES,
+    PROJECT_NAME,
+    STATUS_FILE_DIR,
+    TEMPLATES_DIRNAME,
 )
 from .helpers import make_subdirectories
 

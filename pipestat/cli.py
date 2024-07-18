@@ -1,37 +1,29 @@
-import sys
 import os
+import sys
 from logging import getLogger
 
 import logmuse
 from ubiquerg import expandpath
 
 from .argparser import (
-    build_argparser,
-    REPORT_CMD,
+    HISTORY_CMD,
+    INIT_CMD,
     INSPECT_CMD,
+    LINK_CMD,
     REMOVE_CMD,
+    REPORT_CMD,
     RETRIEVE_CMD,
+    SERVE_CMD,
     STATUS_CMD,
     STATUS_GET_CMD,
     STATUS_SET_CMD,
-    INIT_CMD,
     SUMMARIZE_CMD,
-    SERVE_CMD,
-    LINK_CMD,
-    HISTORY_CMD,
+    build_argparser,
 )
-from .const import (
-    SCHEMA_KEY,
-    SCHEMA_TYPE_KEY,
-    CANONICAL_TYPES,
-    PKG_NAME,
-)
-from .exceptions import (
-    SchemaNotFoundError,
-    PipestatStartupError,
-)
-from .pipestat import PipestatManager, check_dependencies
+from .const import CANONICAL_TYPES, PKG_NAME, SCHEMA_KEY, SCHEMA_TYPE_KEY
+from .exceptions import PipestatStartupError, SchemaNotFoundError
 from .helpers import init_generic_config
+from .pipestat import PipestatManager, check_dependencies
 
 try:
     from pipestat.pipestatreader.reader import main as readermain
