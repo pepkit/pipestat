@@ -429,7 +429,11 @@ class PipestatManager(MutableMapping):
             dbconf = self.cfg[CONFIG_KEY].exp[
                 CFG_DATABASE_KEY
             ]  # the .exp expands the paths before url construction
-            self.cfg[DB_URL] = construct_db_url(dbconf)
+            if "sqlite_url" in dbconf:
+                sqlite_url = f"sqlite:///{dbconf['sqlite_url']}"
+                self.cfg[DB_URL] = sqlite_url
+            else:
+                self.cfg[DB_URL] = construct_db_url(dbconf)
         except KeyError:
             raise PipestatDatabaseError(f"No database section ('{CFG_DATABASE_KEY}') in config")
         self._show_db_logs = show_db_logs
