@@ -1,3 +1,5 @@
+from tempfile import NamedTemporaryFile
+
 import pytest
 
 from pipestat import SamplePipestatManager
@@ -136,19 +138,25 @@ class TestDatabaseOnly:
             assert len(result["records"]) == min(max((psm.record_count - offset), 0), limit)
 
 
-@pytest.mark.skip(reason="only works for local testing")
 class TestSQLLITE:
-    def test_manager_can_be_built_without_exception(
-        self, config_file_path_sqllite, schema_file_path_sqlite
-    ):
-        # with ContextManagerDBTesting(DB_URL):
-        try:
-            SamplePipestatManager(
-                schema_path=schema_file_path_sqlite,
-                record_identifier="irrelevant",
-                database_only=True,
-                config_file=config_file_path_sqllite,
-            )
-            print("done")
-        except Exception as e:
-            pytest.fail(f"Pipestat manager construction failed: {e})")
+    def test_manager_can_be_built_without_exception(self, schema_file_path_sqlite):
+
+        with NamedTemporaryFile() as f:
+            sqllite_url = f"sqlite:///{f.name}"
+            config_dict = {
+                "project_name": "test",
+                "record_identifier": "sample1",
+                "schema_path": "sample_output_schema_sqlite.yaml",
+                "database": {"sqlite_url": f.name},
+            }
+
+            with ContextManagerDBTesting(sqllite_url):
+                try:
+                    SamplePipestatManager(
+                        schema_path=schema_file_path_sqlite,
+                        record_identifier="irrelevant",
+                        database_only=True,
+                        config_dict=config_dict,
+                    )
+                except Exception as e:
+                    pytest.fail(f"Pipestat manager construction failed: {e})")

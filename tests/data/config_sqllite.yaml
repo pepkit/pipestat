@@ -1,5 +1,0 @@
-project_name: test
-record_identifier: sample1
-schema_path: sample_output_schema_sqlite.yaml
-database:
-  sqlite_url: /home/drc/sqlite_databases/pipestattest
