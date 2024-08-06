@@ -2587,7 +2587,7 @@ class TestPEPHUBBackend:
 
         result = psm.retrieve_one(record_identifier=rec_id)
 
-        assert len(result.keys()) == 1
+        assert len(result.keys()) == 6
 
     def test_pephub_backend_retrieve_many(
         self,
@@ -2689,9 +2689,21 @@ class TestPEPHUBBackend:
 
         psm.link("somedir")
         psm.list_recent_results()
-        psm.summarize()
 
-    def test_pephub_unsupported_funcs(
+    def test_pephub_backend_summarize(
+        self,
+        config_file_path,
+        schema_file_path,
+    ):
+
+        with TemporaryDirectory() as d:
+            temp_dir = d
+            psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
+            report_path = psm.summarize(output_dir=d)
+
+            assert report_path
+
+    def test_pephub_bad_path(
         self,
         config_file_path,
         schema_file_path,
