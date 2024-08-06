@@ -908,9 +908,6 @@ class PipestatManager(MutableMapping):
         :param str link_dir: path to desired symlink output directory
         :return str | None linked_results_path: path to symlink directory or None
         """
-        if self.cfg["pephub_path"]:
-            _LOGGER.warning(f"Linking results is not supported for PEPHub backend.")
-            return None
 
         self.check_multi_results()
         linked_results_path = self.backend.link(link_dir=link_dir)

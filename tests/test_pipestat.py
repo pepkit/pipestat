@@ -2687,7 +2687,6 @@ class TestPEPHUBBackend:
 
         assert results is None
 
-        psm.link("somedir")
         psm.list_recent_results()
 
     def test_pephub_backend_summarize(
@@ -2700,6 +2699,19 @@ class TestPEPHUBBackend:
             temp_dir = d
             psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
             report_path = psm.summarize(output_dir=d)
+
+            assert report_path
+
+    def test_pephub_backend_link(
+        self,
+        config_file_path,
+        schema_file_path,
+    ):
+
+        with TemporaryDirectory() as d:
+            temp_dir = d
+            psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
+            report_path = psm.link(link_dir=d)
 
             assert report_path
 
