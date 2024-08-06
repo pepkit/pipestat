@@ -56,9 +56,14 @@ class HTMLReportBuilder(object):
 
         results_file_path = getattr(self.prj.backend, "results_file_path", None)
         config_path = self.prj.cfg.get("config_path", None)
-        output_dir = getattr(self.prj.cfg[OUTPUT_DIR], "output_dir", None)
+        output_dir = self.prj.cfg.get(OUTPUT_DIR, None)
         self.output_dir = output_dir or results_file_path or config_path
-        self.output_dir = os.path.dirname(self.output_dir)
+
+        if os.path.isdir(self.output_dir):
+            pass
+        else:
+            self.output_dir = os.path.dirname(self.output_dir)
+
         if not self.portable:
             self.reports_dir = os.path.join(self.output_dir, "reports")
         else:
@@ -1367,7 +1372,7 @@ def get_file_for_table(prj, pipeline_name: str, appendix=None, directory=None) -
     # TODO make determining the output_dir its own small function since we use the same code in HTML report building.
     results_file_path = getattr(prj.backend, "results_file_path", None)
     config_path = prj.cfg.get("config_path", None)
-    output_dir = prj.cfg.get("output_dir", None)
+    output_dir = prj.cfg.get(OUTPUT_DIR, None)
     table_dir = output_dir or results_file_path or config_path
     if not os.path.isdir(table_dir):
         table_dir = os.path.dirname(table_dir)

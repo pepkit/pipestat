@@ -908,9 +908,6 @@ class PipestatManager(MutableMapping):
         :param str link_dir: path to desired symlink output directory
         :return str | None linked_results_path: path to symlink directory or None
         """
-        if self.cfg["pephub_path"]:
-            _LOGGER.warning(f"Linking results is not supported for PEPHub backend.")
-            return None
 
         self.check_multi_results()
         linked_results_path = self.backend.link(link_dir=link_dir)
@@ -923,20 +920,25 @@ class PipestatManager(MutableMapping):
         looper_samples: Optional[list] = None,
         amendment: Optional[str] = None,
         portable: Optional[bool] = False,
+        output_dir: Optional[str] = None,
     ) -> Union[str, None]:
         """
         Builds a browsable html report for reported results.
         :param Iterable[str] looper_samples: list of looper Samples from PEP
         :param Iterable[str] amendment: name indicating amendment to use, optional
         :param bool portable: moves figures and report files to directory for easy sharing
+        :param str output_dir: overrides output_dir set during pipestatManager creation.
         :return str: report_path
 
         """
+
+        if output_dir:
+            self.cfg[OUTPUT_DIR] = output_dir
+
         if self.cfg["pephub_path"]:
-            _LOGGER.warning(
-                f"Summarize not supported for PEPHub backend. Please generate report via PEPHub website."
-            )
-            return None
+            if OUTPUT_DIR not in self.cfg:
+                _LOGGER.warning(f"Output directory is required for pipestat summarize.")
+                return None
 
         self.check_multi_results()
 
