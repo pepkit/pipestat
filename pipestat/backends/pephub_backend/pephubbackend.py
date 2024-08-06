@@ -84,6 +84,15 @@ class PEPHUBBACKEND(PipestatBackend):
 
         return bool(query_hit["records"])
 
+    def count_records(self):
+        """
+        Count rows in a selected table
+        :return int: number of records
+        """
+
+        count = self.select_records()["total_size"]
+        return count
+
     def list_results(
         self,
         restrict_to: Optional[List[str]] = None,
@@ -108,7 +117,7 @@ class PEPHUBBACKEND(PipestatBackend):
             ]
         )
         try:
-            record = record["records"][0][rid]
+            record = record["records"][0]
         except IndexError:
             return []
 
@@ -339,7 +348,7 @@ class PEPHUBBACKEND(PipestatBackend):
         except RecordNotFoundError:
             return None
         try:
-            status = result["records"][0][record_identifier]["status"]
+            status = result["records"][0]["status"]
         except IndexError or KeyError:
             status = None
 
@@ -433,7 +442,7 @@ class PEPHUBBACKEND(PipestatBackend):
                 key = filter_condition["key"]
                 value = filter_condition["value"]
 
-                # Create querry for df based on filter conditions
+                # Create query for df based on filter conditions
                 if isinstance(value, list):
                     filter_expression = f"{key} {retrieved_operator} {value}"
                 else:
@@ -451,15 +460,9 @@ class PEPHUBBACKEND(PipestatBackend):
             else:
                 df = df.query(filter_expression)
 
-            print("done")
+        df.rename(columns={"sample_name": "record_identifier"}, inplace=True)
 
-        # Once we have the dataframe (filtered or unfiltered), convert to a dict using the sample_name/record_identifier as the primary key
-        df2dict = df.set_index("sample_name").transpose().to_dict(orient="dict")
-
-        # Must do this to align output structure with that of db_backend and file_backends
-        records_list = []
-        for key, value in df2dict.items():
-            records_list.append({key: value})
+        records_list = df.to_dict("records")
 
         records_dict = {
             "total_size": total_count,

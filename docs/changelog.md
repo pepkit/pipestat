@@ -2,6 +2,11 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.10.1] - 2024-08-06
+### Fixed
+- add pipestat summarize and link for pephub backend
+
+
 ## [0.10.0] - 2024-07-18
 ### Fixed
 - allow for bool or boolean in schema [#189](https://github.com/pepkit/pipestat/issues/189)
