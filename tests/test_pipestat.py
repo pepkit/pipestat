@@ -2589,6 +2589,27 @@ class TestPEPHUBBackend:
 
         assert len(result.keys()) == 6
 
+    @pytest.mark.parametrize(
+        ["rec_id", "val"],
+        [
+            ("test_pipestat_01", {"name_of_something": "test_name"}),
+        ],
+    )
+    def test_pephub_backend_config_file(
+        self,
+        rec_id,
+        val,
+        config_file_path_pephub,
+        schema_file_path,
+    ):
+
+        # Can pipestat obtain pephub url from config file AND successfully retrieve values?
+        psm = PipestatManager(config_file=config_file_path_pephub, schema_path=schema_file_path)
+
+        result = psm.retrieve_one(record_identifier=rec_id)
+
+        assert len(result.keys()) == 6
+
     def test_pephub_backend_retrieve_many(
         self,
         config_file_path,

@@ -166,7 +166,7 @@ class PipestatManager(MutableMapping):
 
         # Load and validate database configuration
         # If results_file_path exists, backend is a file else backend is database.
-        self.cfg["pephub_path"] = pephub_path
+
         self.cfg["config_path"] = select_config(config_file, ENV_VARS["config"])
 
         if config_dict is not None:
@@ -180,6 +180,10 @@ class PipestatManager(MutableMapping):
 
         cfg_schema = load_yaml(CFG_SCHEMA)
         validate(self.cfg[CONFIG_KEY].exp, cfg_schema)
+
+        self.cfg["pephub_path"] = self.cfg[CONFIG_KEY].priority_get(
+            "pephub_path", override=pephub_path
+        )
 
         self.cfg[SCHEMA_PATH] = self.cfg[CONFIG_KEY].priority_get(
             "schema_path", env_var=ENV_VARS["schema"], override=schema_path
@@ -244,8 +248,8 @@ class PipestatManager(MutableMapping):
         if self.cfg[FILE_KEY]:
             self.initialize_filebackend(record_identifier, results_file_path, flag_file_dir)
 
-        elif pephub_path:
-            self.initialize_pephubbackend(record_identifier, pephub_path)
+        elif self.cfg["pephub_path"]:
+            self.initialize_pephubbackend(record_identifier, self.cfg["pephub_path"])
         else:
             self.initialize_dbbackend(record_identifier, show_db_logs)
 

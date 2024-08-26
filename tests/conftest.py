@@ -103,6 +103,11 @@ def config_file_path():
 
 
 @pytest.fixture
+def config_file_path_pephub():
+    return get_data_file_path("config_pephub_url.yaml")
+
+
+@pytest.fixture
 def config_no_schema_file_path():
     return get_data_file_path("config_no_schema.yaml")
 
