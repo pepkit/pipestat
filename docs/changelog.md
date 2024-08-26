@@ -2,6 +2,10 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.10.2] - 2024-08-26
+### Fixed
+- add obtaining pephub_path from config file, [#202](https://github.com/pepkit/pipestat/issues/202)
+
 ## [0.10.1] - 2024-08-06
 ### Fixed
 - add pipestat summarize and link for pephub backend
