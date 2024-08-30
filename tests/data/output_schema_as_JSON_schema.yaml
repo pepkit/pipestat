@@ -4,54 +4,56 @@ type: object
 properties:
   pipeline_name: "default_pipeline_name"
   samples:
-    type: object
-    properties:
-        number_of_things:
-          type: integer
-          description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
-        output_image:
-          $ref: "#/$defs/image"
-          description: "This an output image"
-        output_file:
-          $ref: "#/$defs/file"
-          description: "This a path to the output image"
-        collection_of_images:
-          type: array
-          description: A collection of images.
-          items:
+    type: array
+    items:
+      type: object
+      properties:
+          number_of_things:
+            type: integer
+            description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+          output_image:
+            $ref: "#/$defs/image"
+            description: "This an output image"
+          output_file:
+            $ref: "#/$defs/file"
+            description: "This a path to the output image"
+          collection_of_images:
+            type: array
+            description: A collection of images.
+            items:
+              type: object
+              properties:
+                prop1:
+                  $ref: "#/$defs/file"
+                  description: An example file.
+          nested_object:
             type: object
+            description: An object containing output file and image.
             properties:
-              prop1:
+              example_property_1:
                 $ref: "#/$defs/file"
                 description: An example file.
-        nested_object:
-          type: object
-          description: An object containing output file and image.
-          properties:
-            example_property_1:
-              $ref: "#/$defs/file"
-              description: An example file.
-            example_property_2:
-              $ref: "#/$defs/image"
-              description: An example image.
-        output_file_nested_object:
-          type: object
-          description: First Level
-          properties:
-            example_property_1:
-              type: object
-              description: Second Level
-              properties:
-                third_level_property_1:
-                  $ref: "#/$defs/file"
-                  description: Third Level
-            example_property_2:
-              type: object
-              description: Second Level
-              properties:
-                third_level_property_1:
-                  $ref: "#/$defs/file"
-                  description: Third Level
+              example_property_2:
+                $ref: "#/$defs/image"
+                description: An example image.
+          output_file_nested_object:
+            type: object
+            description: First Level
+            properties:
+              example_property_1:
+                type: object
+                description: Second Level
+                properties:
+                  third_level_property_1:
+                    $ref: "#/$defs/file"
+                    description: Third Level
+              example_property_2:
+                type: object
+                description: Second Level
+                properties:
+                  third_level_property_1:
+                    $ref: "#/$defs/file"
+                    description: Third Level
 $defs:
   image:
     type: object

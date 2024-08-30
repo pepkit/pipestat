@@ -19,26 +19,28 @@ properties:
         type: boolean
         description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras pharetra."
   samples:
-    type: object
-    properties:
-      smooth_bw:
-        path: "aligned_{genome}/{sample_name}_smooth.bw"
-        type: string
-        description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce nec cursus nulla."
-      aligned_bam:
-        path: "aligned_{genome}/{sample_name}_sort.bam"
-        type: string
-        description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus ipsum erat, porta in condimentum viverra, pellentesque in nisl. Nulla rhoncus nibh est, quis malesuada diam suscipit at. In ut diam."
-      peaks_bed:
-        path: "peak_calling_{genome}/{sample_name}_peaks.bed"
-        type: string
-        description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce nec cursus nulla."
-      output_file:
-        $ref: "#/$defs/file"
-        description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce nec cursus nulla."
-      output_image:
-        $ref: "#/$defs/image"
-        description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras pharetra."
+    type: array
+    items:
+      type: object
+      properties:
+        smooth_bw:
+          path: "aligned_{genome}/{sample_name}_smooth.bw"
+          type: string
+          description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce nec cursus nulla."
+        aligned_bam:
+          path: "aligned_{genome}/{sample_name}_sort.bam"
+          type: string
+          description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus ipsum erat, porta in condimentum viverra, pellentesque in nisl. Nulla rhoncus nibh est, quis malesuada diam suscipit at. In ut diam."
+        peaks_bed:
+          path: "peak_calling_{genome}/{sample_name}_peaks.bed"
+          type: string
+          description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce nec cursus nulla."
+        output_file:
+          $ref: "#/$defs/file"
+          description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce nec cursus nulla."
+        output_image:
+          $ref: "#/$defs/image"
+          description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras pharetra."
 $defs:
   image:
     type: object
