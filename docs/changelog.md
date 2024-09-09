@@ -2,6 +2,10 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.11.0] - 2024-XX
+### Fixed
+- for output schema, make samples an array type and nest under items [#204](https://github.com/pepkit/pipestat/issues/204)
+
 ## [0.10.2] - 2024-08-26
 ### Fixed
 - add obtaining pephub_path from config file, [#202](https://github.com/pepkit/pipestat/issues/202)
