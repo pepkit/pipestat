@@ -195,14 +195,15 @@ class PipestatManager(MutableMapping):
         )
 
         # TODO this is a work around for Looper ~ https://github.com/pepkit/looper/issues/492, sharing pipeline names
-        # In the future, we should get piepline name only from output schema.
-        self.cfg[PIPELINE_NAME] = (
-            pipeline_name
-            or self.cfg[CONFIG_KEY].get(PIPELINE_NAME)
-            or self.cfg[SCHEMA_KEY].pipeline_name
-            if self.cfg[SCHEMA_KEY] is not None
-            else DEFAULT_PIPELINE_NAME
-        )
+        # In the future, we should get pipeline name only from output schema.
+        if pipeline_name:
+            self.cfg[PIPELINE_NAME] = pipeline_name
+        elif self.cfg[CONFIG_KEY].get(PIPELINE_NAME):
+            self.cfg[PIPELINE_NAME] = self.cfg[CONFIG_KEY].get(PIPELINE_NAME)
+        elif self.cfg[SCHEMA_KEY] and self.cfg[SCHEMA_KEY].pipeline_name:
+            self.cfg[PIPELINE_NAME] = self.cfg[SCHEMA_KEY].pipeline_name
+        else:
+            self.cfg[PIPELINE_NAME] = DEFAULT_PIPELINE_NAME
 
         self.cfg[PROJECT_NAME] = self.cfg[CONFIG_KEY].priority_get(
             "project_name", env_var=ENV_VARS["project_name"], override=project_name

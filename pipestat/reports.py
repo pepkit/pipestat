@@ -366,10 +366,7 @@ class HTMLReportBuilder(object):
             links = []
             html_page_path = os.path.join(self.pipeline_reports, f"{file_result}.html".lower())
 
-            if self.prj.cfg["multi_result_files"] is True:
-                pipeline_types = ["sample", "project"]
-            else:
-                pipeline_types = [self.prj.backend.pipeline_type]
+            pipeline_types = ["sample", "project"]
 
             for pipeline_type in pipeline_types:
                 self.prj.backend.pipeline_type = pipeline_type
@@ -425,10 +422,7 @@ class HTMLReportBuilder(object):
             html_page_path = os.path.join(self.pipeline_reports, f"{image_result}.html".lower())
             figures = []
 
-            if self.prj.cfg["multi_result_files"] is True:
-                pipeline_types = ["sample", "project"]
-            else:
-                pipeline_types = [self.prj.backend.pipeline_type]
+            pipeline_types = ["sample", "project"]
 
             for pipeline_type in pipeline_types:
                 self.prj.backend.pipeline_type = pipeline_type

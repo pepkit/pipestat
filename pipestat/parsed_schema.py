@@ -95,9 +95,15 @@ class ParsedSchema(object):
 
             self._pipeline_name = data["properties"].pop(SCHEMA_PIPELINE_NAME_KEY, None)
 
+            # Two passes for sample-data as it is now nested under items per #204
             sample_data = _safe_pop_one_mapping(
                 subkeys=["samples"],
                 data=data["properties"],
+                info_name="sample-level",
+                mappingkey="items",
+            )
+            sample_data = _safe_pop_one_mapping(
+                data=sample_data,
                 info_name="sample-level",
                 mappingkey="properties",
             )

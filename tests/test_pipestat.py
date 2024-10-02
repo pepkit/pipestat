@@ -2587,7 +2587,7 @@ class TestPEPHUBBackend:
 
         result = psm.retrieve_one(record_identifier=rec_id)
 
-        assert len(result.keys()) == 6
+        assert len(result.keys()) == 5
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -2608,7 +2608,7 @@ class TestPEPHUBBackend:
 
         result = psm.retrieve_one(record_identifier=rec_id)
 
-        assert len(result.keys()) == 6
+        assert len(result.keys()) == 5
 
     def test_pephub_backend_retrieve_many(
         self,

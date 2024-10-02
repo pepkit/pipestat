@@ -2,6 +2,12 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.11.0] - 2024-10-02
+### Fixed
+- for output schema, make samples an array type and nest under items [#204](https://github.com/pepkit/pipestat/issues/204)
+- pipeline_name not setting correctly [#207](https://github.com/pepkit/pipestat/issues/207)
+- bug with objects populating html report
+
 ## [0.10.2] - 2024-08-26
 ### Fixed
 - add obtaining pephub_path from config file, [#202](https://github.com/pepkit/pipestat/issues/202)
@@ -9,7 +15,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [0.10.1] - 2024-08-06
 ### Fixed
 - add pipestat summarize and link for pephub backend
-
 
 ## [0.10.0] - 2024-07-18
 ### Fixed
@@ -19,7 +24,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Added
 - pephub backend [#125](https://github.com/pepkit/pipestat/issues/125)
-
 
 ## [0.9.3] - 2024-06-06
 ### Fixed
