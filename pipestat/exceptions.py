@@ -22,6 +22,7 @@ __all__ = [
     "ColumnNotFoundError",
     "SchemaValidationErrorDuringReport",
     "PipestatPEPHubError",
+    "PipestatSummarizeError"
 ]
 
 
