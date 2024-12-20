@@ -184,7 +184,7 @@ def get_all_result_files(results_file_path: str) -> List:
     return files
 
 
-def zip_report(report_dir_name: str):
+def zip_report(report_dir_name: str) -> Union[str, None]:
     """
 
     Walks through files and attempts to zip them into a Zip object using default compression.
@@ -203,5 +203,7 @@ def zip_report(report_dir_name: str):
 
     if os.path.exists(zip_file_name + ".zip"):
         _LOGGER.info(f"Report zip file successfully created: {zip_file_name}.zip")
+        return f"{zip_file_name}.zip"
     else:
         _LOGGER.warning("Report zip file not created.")
+        return None

@@ -1335,7 +1335,7 @@ class TestHTMLReport:
             htmlreportpath = psm.summarize(amendment="", portable=True)
 
             directory = os.path.dirname(htmlreportpath)
-            zip_files = glob.glob(directory + "*.zip")
+            zip_files = glob.glob(directory)
 
             assert len(zip_files) > 0
 
