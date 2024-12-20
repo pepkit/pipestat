@@ -944,7 +944,7 @@ class PipestatManager(MutableMapping):
             if len(current_results["records"]) <1:
                 raise PipestatSummarizeError(f"No results found at specified backend")
         except Exception as e:
-            raise PipestatSummarizeError(f"No results found at specified backend due to error: {e}")
+            raise PipestatSummarizeError(f"PipestatSummarizeError due to exception: {e}")
 
 
         if output_dir:
