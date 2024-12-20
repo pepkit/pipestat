@@ -202,6 +202,6 @@ def zip_report(report_dir_name: str):
         _LOGGER.warning("Report zip file not created! \n {e}")
 
     if os.path.exists(zip_file_name + ".zip"):
-        _LOGGER.info(f"Report zip file successfully created: {zip_file_name}")
+        _LOGGER.info(f"Report zip file successfully created: {zip_file_name}.zip")
     else:
         _LOGGER.warning("Report zip file not created.")
