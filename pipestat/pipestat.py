@@ -50,6 +50,7 @@ from .exceptions import (
     PipestatDependencyError,
     RecordNotFoundError,
     SchemaNotFoundError,
+    PipestatSummarizeError
 )
 from .helpers import default_formatter, make_subdirectories, validate_type, zip_report
 from .reports import HTMLReportBuilder, _create_stats_objs_summaries
@@ -936,6 +937,15 @@ class PipestatManager(MutableMapping):
         :return str: report_path
 
         """
+
+        # Before proceeding check if there are any results at the specified backend
+        try:
+            current_results = self.select_records()
+            if len(current_results["records"]) <1:
+                raise PipestatSummarizeError(f"No results found at specified backend")
+        except Exception as e:
+            raise PipestatSummarizeError(f"No results found at specified backend due to error: {e}")
+
 
         if output_dir:
             self.cfg[OUTPUT_DIR] = output_dir

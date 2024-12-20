@@ -445,7 +445,13 @@ class DBBackend(PipestatBackend):
         ORM = self.get_model(table_name=self.table_name)
 
         with self.session as s:
-            total_count = len(s.exec(sql_select(ORM)).all())
+
+            try:
+                total_count = len(s.exec(sql_select(ORM)).all())
+            except Exception as e:
+                raise PipestatDatabaseError(
+                    msg=f"Could not get total_count. Is the database empty? Original Error Message: {e}"
+                )
 
             if columns is not None:
                 columns = copy.deepcopy(columns)

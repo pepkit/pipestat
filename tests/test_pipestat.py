@@ -13,6 +13,7 @@ from pipestat import PipestatBoss, PipestatManager, ProjectPipestatManager, Samp
 from pipestat.cli import main
 from pipestat.const import *
 from pipestat.exceptions import *
+from pipestat.exceptions import PipestatSummarizeError
 from pipestat.helpers import default_formatter, markdown_formatter
 from pipestat.parsed_schema import ParsedSchema
 
@@ -1211,6 +1212,29 @@ class TestHTMLReport:
 
             htmlreportpath = psm.summarize(amendment="")
             assert htmlreportpath is not None
+
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_exception_samples_html_report(
+            self,
+            config_file_path,
+            output_schema_html_report,
+            results_file_path,
+            backend,
+            values_sample,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=output_schema_html_report, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            psm = SamplePipestatManager(**args)
+
+            with pytest.raises(PipestatSummarizeError):
+                _ = psm.summarize(amendment="")
 
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_basics_project_html_report(
