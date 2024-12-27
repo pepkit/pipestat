@@ -1339,6 +1339,54 @@ class TestHTMLReport:
 
             assert len(zip_files) > 0
 
+    @pytest.mark.parametrize("backend", ["file", "db"])
+    def test_report_spaces_in_record_identifiers(
+        self,
+        config_file_path,
+        output_schema_html_report,
+        results_file_path,
+        backend,
+        values_project,
+    ):
+        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+            results_file_path = f.name
+            args = dict(schema_path=output_schema_html_report, database_only=False)
+            backend_data = (
+                {"config_file": config_file_path}
+                if backend == "db"
+                else {"results_file_path": results_file_path}
+            )
+            args.update(backend_data)
+            # project level
+            psm = ProjectPipestatManager(**args)
+
+            for i in values_project:
+                for r, v in i.items():
+                    psm.report(
+                        record_identifier=r,
+                        values=v,
+                        force_overwrite=True,
+                    )
+                    psm.set_status(record_identifier=r, status_identifier="running")
+
+            # Add record with sspace in name
+            r = "SAMPLE Three WITH SPACES"
+            psm.report( record_identifier=r,
+                        values={'name_of_something': 'name of something string'},
+                        force_overwrite=True,)
+            psm.set_status(record_identifier=r, status_identifier="completed")
+            r = "SAMPLE FOUR WITH Spaces"
+            psm.report( record_identifier=r,
+                        values={'output file with spaces': {"path":"here is path", "title":"here is a title"}},
+                        force_overwrite=True,)
+
+            htmlreportpath = psm.summarize(amendment="")
+
+            directory_path = os.path.dirname(htmlreportpath)
+            all_files = os.listdir(directory_path)
+
+            assert "sample_three_with_spaces.html" in all_files
+            assert "output_file_with_spaces.html" in all_files
 
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")

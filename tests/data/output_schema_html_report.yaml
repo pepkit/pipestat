@@ -18,6 +18,9 @@ properties:
       switch_value:
         type: boolean
         description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras pharetra."
+      output file with spaces:
+        $ref: "#/$defs/file"
+        description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce nec cursus nulla."
   samples:
     type: array
     items:
