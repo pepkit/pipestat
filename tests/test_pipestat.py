@@ -1215,12 +1215,12 @@ class TestHTMLReport:
 
     @pytest.mark.parametrize("backend", ["file", "db"])
     def test_exception_samples_html_report(
-            self,
-            config_file_path,
-            output_schema_html_report,
-            results_file_path,
-            backend,
-            values_sample,
+        self,
+        config_file_path,
+        output_schema_html_report,
+        results_file_path,
+        backend,
+        values_sample,
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
@@ -1371,14 +1371,20 @@ class TestHTMLReport:
 
             # Add record with sspace in name
             r = "SAMPLE Three WITH SPACES"
-            psm.report( record_identifier=r,
-                        values={'name_of_something': 'name of something string'},
-                        force_overwrite=True,)
+            psm.report(
+                record_identifier=r,
+                values={"name_of_something": "name of something string"},
+                force_overwrite=True,
+            )
             psm.set_status(record_identifier=r, status_identifier="completed")
             r = "SAMPLE FOUR WITH Spaces"
-            psm.report( record_identifier=r,
-                        values={'output file with spaces': {"path":"here is path", "title":"here is a title"}},
-                        force_overwrite=True,)
+            psm.report(
+                record_identifier=r,
+                values={
+                    "output file with spaces": {"path": "here is path", "title": "here is a title"}
+                },
+                force_overwrite=True,
+            )
 
             htmlreportpath = psm.summarize(amendment="")
 
@@ -1387,6 +1393,7 @@ class TestHTMLReport:
 
             assert "sample_three_with_spaces.html" in all_files
             assert "output_file_with_spaces.html" in all_files
+
 
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")

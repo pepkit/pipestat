@@ -173,7 +173,9 @@ class HTMLReportBuilder(object):
                 else ""
             )
             labels.append(f"<b>{key.replace('_', ' ')}</b>: {desc}")
-            page_path = os.path.join(self.pipeline_reports, f"{key}.html".replace(" ", "_").lower())
+            page_path = os.path.join(
+                self.pipeline_reports, f"{key}.html".replace(" ", "_").lower()
+            )
             pages.append(os.path.relpath(page_path, self.pipeline_reports))
 
         template_vars = dict(
@@ -364,7 +366,9 @@ class HTMLReportBuilder(object):
             os.makedirs(self.pipeline_reports)
         for file_result in file_results:
             links = []
-            html_page_path = os.path.join(self.pipeline_reports, f"{file_result}.html".replace(" ", "_").lower())
+            html_page_path = os.path.join(
+                self.pipeline_reports, f"{file_result}.html".replace(" ", "_").lower()
+            )
 
             pipeline_types = ["sample", "project"]
 
@@ -511,7 +515,9 @@ class HTMLReportBuilder(object):
         """
         if not os.path.exists(self.pipeline_reports):
             os.makedirs(self.pipeline_reports)
-        html_page = os.path.join(self.pipeline_reports, f"{sample_name}.html".replace(" ", "_").lower())
+        html_page = os.path.join(
+            self.pipeline_reports, f"{sample_name}.html".replace(" ", "_").lower()
+        )
         if self.prj.cfg["multi_result_files"] is True:
             self.prj.cfg["record_identifier"] = sample_name
             temp_result_file_path = mkabs(

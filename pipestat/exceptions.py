@@ -22,7 +22,7 @@ __all__ = [
     "ColumnNotFoundError",
     "SchemaValidationErrorDuringReport",
     "PipestatPEPHubError",
-    "PipestatSummarizeError"
+    "PipestatSummarizeError",
 ]
 
 
@@ -103,6 +103,7 @@ class PipestatDataError(PipestatError):
 
     def __init__(self, msg):
         super(PipestatDataError, self).__init__(msg)
+
 
 class PipestatSummarizeError(PipestatError):
     """Error for pipestat summarize"""
