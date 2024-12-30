@@ -984,12 +984,16 @@ class PipestatManager(MutableMapping):
     @require_backend
     def table(
         self,
+        output_dir: Optional[str] = None,
     ) -> List[str]:
         """
         Generates stats (.tsv) and object (.yaml) files.
+        :param str output_dir: overrides output_dir set during pipestatManager creation.
         :return list[str] table_path_list: list containing output file paths of stats and objects
 
         """
+        if output_dir:
+            self.cfg[OUTPUT_DIR] = output_dir
 
         self.check_multi_results()
         pipeline_name = self.cfg[PIPELINE_NAME]
