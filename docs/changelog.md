@@ -2,11 +2,12 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
-## [0.11.1a1] - 2024-12-XX
+## [0.12.0a1] - 2024-12-XX
 ### Fixed
 - portable report now has proper file extension in messaging.
 - add exception to pipestat summarize if there are no results to report [#210](https://github.com/pepkit/pipestat/issues/210)
 - fix spaces in html files [#211](https://github.com/pepkit/pipestat/issues/211)
+- add output_dir parameter to psm.table
 
 ## [0.11.0] - 2024-10-02
 ### Fixed
