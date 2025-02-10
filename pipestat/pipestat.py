@@ -938,14 +938,6 @@ class PipestatManager(MutableMapping):
 
         """
 
-        # Before proceeding check if there are any results at the specified backend
-        try:
-            current_results = self.select_records()
-            if len(current_results["records"]) < 1:
-                raise PipestatSummarizeError(f"No results found at specified backend")
-        except Exception as e:
-            raise PipestatSummarizeError(f"PipestatSummarizeError due to exception: {e}")
-
         if output_dir:
             self.cfg[OUTPUT_DIR] = output_dir
 
@@ -955,6 +947,14 @@ class PipestatManager(MutableMapping):
                 return None
 
         self.check_multi_results()
+
+        # Before proceeding check if there are any results at the specified backend
+        try:
+            current_results = self.select_records()
+            if len(current_results["records"]) < 1:
+                raise PipestatSummarizeError(f"No results found at specified backend")
+        except Exception as e:
+            raise PipestatSummarizeError(f"PipestatSummarizeError due to exception: {e}")
 
         html_report_builder = HTMLReportBuilder(prj=self, portable=portable)
         report_path = html_report_builder(
