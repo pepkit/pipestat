@@ -1,4 +1,4 @@
-""" Generate HTML reports """
+"""Generate HTML reports"""
 
 import csv
 import glob
