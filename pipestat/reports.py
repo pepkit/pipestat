@@ -1,4 +1,4 @@
-""" Generate HTML reports """
+"""Generate HTML reports"""
 
 import csv
 import glob
@@ -1432,7 +1432,7 @@ def _create_stats_objs_summaries(prj, pipeline_name: str) -> List[str]:
                     if k in prj.result_schemas and prj.result_schemas[k]["type"] in OBJECT_TYPES:
                         if k in all_result_identifiers:
                             all_result_identifiers.remove(k)
-                        if v is not "None reported":
+                        if v != "None reported":
                             if isinstance(v, list):
                                 sample_reported_objects = {k: v}
                             else:

@@ -416,7 +416,7 @@ class PEPHUBBACKEND(PipestatBackend):
                 if i not in columns:
                     columns.insert(0, i)
             try:
-                df = project.sample_table[columns]
+                df = project.sample_table[columns].copy()
             except KeyError:
                 records_dict = {
                     "total_size": 0,
@@ -427,7 +427,7 @@ class PEPHUBBACKEND(PipestatBackend):
                 return records_dict
 
         else:
-            df = project.sample_table
+            df = project.sample_table.copy()
 
         total_count = len(df)
 
@@ -460,7 +460,7 @@ class PEPHUBBACKEND(PipestatBackend):
             else:
                 df = df.query(filter_expression)
 
-        df.rename(columns={"sample_name": "record_identifier"}, inplace=True)
+        df = df.rename(columns={"sample_name": "record_identifier"})
 
         records_list = df.to_dict("records")
 
