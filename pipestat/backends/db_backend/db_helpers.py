@@ -8,7 +8,17 @@ from pipestat.exceptions import MissingConfigDataError
 
 
 def construct_db_url(dbconf):
-    """Builds database URL from config settings"""
+    """Builds database URL from config settings.
+
+    Args:
+        dbconf (dict): Database configuration dictionary.
+
+    Returns:
+        str: Database URL.
+
+    Raises:
+        MissingConfigDataError: If required configuration data is missing.
+    """
     try:
         creds = dict(
             name=dbconf["name"],
@@ -31,23 +41,22 @@ def selection_filter(
     filter_conditions: Optional[List[Dict[str, Union[str, List[str]]]]] = None,
     bool_operator: Optional[str] = "AND",
 ) -> Any:
-    """
-    Return filtered query based on condition.
+    """Return filtered query based on condition.
 
-    :param sqlalchemy.orm.DeclarativeMeta ORM: sqlalchemy ORM object
-    :param sqlalchemy.orm.Query statement: sqlalchemy select statement (e.g. select([ORM])
-    :param list filter_conditions:
-            [{key: key,
-            operator: operator,
-            value: value}]
-    filter_conditions:
-        - eq for ==
-        - lt for <
-        - ge for >=
-        - in for in_
-    :param bool bool_operator:
+    Args:
+        ORM (sqlalchemy.orm.DeclarativeMeta): Sqlalchemy ORM object.
+        statement (sqlalchemy.orm.Query): Sqlalchemy select statement (e.g. select([ORM]).
+        filter_conditions (list): List of filter conditions with structure:
+            [{key: key, operator: operator, value: value}]
+            Supported operators:
+            - eq for ==
+            - lt for <
+            - ge for >=
+            - in for in_
+        bool_operator (str): Boolean operator for combining filter conditions.
 
-    :return: query statement
+    Returns:
+        Any: Query statement.
     """
 
     if bool_operator.lower() == "or":
@@ -108,12 +117,14 @@ def selection_filter(
 
 
 def get_nested_column(ORM_column, key_list):
-    """
-    Create statement for nested column in the database, column with json content inside
+    """Create statement for nested column in the database, column with json content inside.
 
-    :param sqlalchemy.orm.DeclarativeMeta ORM_column: column attribute on the current ORM
-    :param key_list: list of keys, e.g. if the column contains a complex object
-    :return sqlalchemy.orm.DeclarativeMeta ORM: column attribute of ORM.
+    Args:
+        ORM_column (sqlalchemy.orm.DeclarativeMeta): Column attribute on the current ORM.
+        key_list (list): List of keys, e.g. if the column contains a complex object.
+
+    Returns:
+        sqlalchemy.orm.DeclarativeMeta: Column attribute of ORM.
     """
     if len(key_list) == 1:
         return ORM_column[key_list[0]]
@@ -122,11 +133,13 @@ def get_nested_column(ORM_column, key_list):
 
 
 def define_sqlalchemy_type(value: Any) -> Any:
-    """
-    Determine the type of the column (record) and return the corresponding sqlalchemy type.
+    """Determine the type of the column (record) and return the corresponding sqlalchemy type.
 
-    :param value: value of the column
-    :return: sqlalchemy type
+    Args:
+        value (Any): Value of the column.
+
+    Returns:
+        Any: Sqlalchemy type.
     """
     if isinstance(value, (list, tuple)):
         value = value[0]

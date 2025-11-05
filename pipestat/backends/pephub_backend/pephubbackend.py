@@ -26,16 +26,17 @@ class PEPHUBBACKEND(PipestatBackend):
         result_formatter: Optional[staticmethod] = None,
     ):
         """
-        Class representing a PEPHub backend
-        :param str record_identifier: record identifier to report for. This
-            creates a weak bound to the record, which can be overridden in
-            this object method calls
-        :param str pephub_path: registry path to PEP
-        :param str pipeline_name: name of pipeline associated with result
-        :param str pipeline_type: "sample" or "project"
-        :param str parsed_schema: results output schema.
-        :param str status_schema: schema containing pipeline statuses e.g. 'running'
-        :param str result_formatter: function for formatting result
+        Class representing a PEPHub backend.
+
+        Args:
+            record_identifier (str): Record identifier to report for. This creates a weak bound
+                to the record, which can be overridden in this object method calls.
+            pephub_path (str): Registry path to PEP.
+            pipeline_name (str): Name of pipeline associated with result.
+            pipeline_type (str): "sample" or "project".
+            parsed_schema (str): Results output schema.
+            status_schema (str): Schema containing pipeline statuses e.g. 'running'.
+            result_formatter (staticmethod): Function for formatting result.
         """
         super().__init__(pipeline_type)
 
@@ -66,10 +67,13 @@ class PEPHUBBACKEND(PipestatBackend):
         record_identifier: str,
     ) -> bool:
         """
-        Check if the specified record exists in the table
+        Check if the specified record exists in the table.
 
-        :param str record_identifier: record to check for
-        :return bool: whether the record exists in the table
+        Args:
+            record_identifier (str): Record to check for.
+
+        Returns:
+            bool: Whether the record exists in the table.
         """
 
         query_hit = self.select_records(
@@ -86,8 +90,10 @@ class PEPHUBBACKEND(PipestatBackend):
 
     def count_records(self):
         """
-        Count rows in a selected table
-        :return int: number of records
+        Count rows in a selected table.
+
+        Returns:
+            int: Number of records.
         """
 
         count = self.select_records()["total_size"]
@@ -99,12 +105,15 @@ class PEPHUBBACKEND(PipestatBackend):
         record_identifier: str = None,
     ) -> Union[List[str], List[None]]:
         """
-        Check if the specified results exist in the table
+        Check if the specified results exist in the table.
 
-        :param List[str] restrict_to: results identifiers to check for
-        :param str record_identifier: record to check for
-        :return List[str] existing: if no result identifier specified, return all results for the record
-        :return List[str]: results identifiers that exist or an empty list if nothing was found
+        Args:
+            restrict_to (List[str]): Results identifiers to check for.
+            record_identifier (str): Record to check for.
+
+        Returns:
+            List[str]: If no result identifier specified, return all results for the record.
+                Results identifiers that exist or an empty list if nothing was found.
         """
         rid = record_identifier
         record = self.select_records(
@@ -142,13 +151,15 @@ class PEPHUBBACKEND(PipestatBackend):
         """
         Remove a result.
 
-        If no result ID specified, the entire record
-        will be removed.
+        If no result ID specified, the entire record will be removed.
 
-        :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to be removed or None
-             if the record should be removed.
-        :return bool: whether the result has been removed
+        Args:
+            record_identifier (str): Unique identifier of the record.
+            result_identifier (str): Name of the result to be removed or None
+                if the record should be removed.
+
+        Returns:
+            bool: Whether the result has been removed.
         """
 
         record_identifier = record_identifier or self.record_identifier
@@ -188,12 +199,17 @@ class PEPHUBBACKEND(PipestatBackend):
         rm_record: Optional[bool] = False,
     ) -> NoReturn:
         """
-        Remove a record, requires rm_record to be True
+        Remove a record, requires rm_record to be True.
 
-        :param str record_identifier: unique identifier of the record
-        :param bool rm_record: bool for removing record.
-        :return bool: whether the result has been removed
-        :raises RecordNotFoundError: if record not found
+        Args:
+            record_identifier (str): Unique identifier of the record.
+            rm_record (bool): Bool for removing record.
+
+        Returns:
+            bool: Whether the result has been removed.
+
+        Raises:
+            RecordNotFoundError: If record not found.
         """
         if rm_record:
             self.phc.sample.remove(
@@ -217,15 +233,17 @@ class PEPHUBBACKEND(PipestatBackend):
         Update the value of a result in a current namespace.
 
         This method overwrites any existing data and creates the required
-         hierarchical mapping structure if needed.
+        hierarchical mapping structure if needed.
 
-        :param history_enabled: this parameter is currently ignored as PEPHub does not support this
-        :param Dict[str, Any] values: dict of results identifiers and values
-            to be reported
-        :param str record_identifier: unique identifier of the record
-        :param bool force_overwrite: Toggles force overwriting results, defaults to False
-        :param str result_formatter: function for formatting result
-        :return bool | list[str] results_formatted: return list of formatted string
+        Args:
+            values (Dict[str, Any]): Dict of results identifiers and values to be reported.
+            record_identifier (str): Unique identifier of the record.
+            force_overwrite (bool): Toggles force overwriting results, defaults to False.
+            result_formatter (staticmethod): Function for formatting result.
+            history_enabled (bool): This parameter is currently ignored as PEPHub does not support this.
+
+        Returns:
+            bool | list[str]: Return list of formatted string or False.
         """
         if history_enabled:
             _LOGGER.warning(
@@ -298,10 +316,9 @@ class PEPHUBBACKEND(PipestatBackend):
         the status schema. A basic, ready to use, status schema is shipped with
         this package.
 
-        :param str status_identifier: status to set, one of statuses defined
-            in the status schema
-        :param str record_identifier: record identifier to set the
-            pipeline status for
+        Args:
+            status_identifier (str): Status to set, one of statuses defined in the status schema.
+            record_identifier (str): Record identifier to set the pipeline status for.
         """
 
         record_identifier = record_identifier or self.record_identifier
@@ -327,11 +344,13 @@ class PEPHUBBACKEND(PipestatBackend):
 
     def get_status(self, record_identifier: str) -> Optional[str]:
         """
-        Get pipeline status
+        Get pipeline status.
 
-        :param str record_identifier: record identifier to set the
-            pipeline status for
-        :return str status
+        Args:
+            record_identifier (str): Record identifier to set the pipeline status for.
+
+        Returns:
+            str: Status.
         """
 
         try:
@@ -365,24 +384,27 @@ class PEPHUBBACKEND(PipestatBackend):
         bool_operator: Optional[str] = "AND",
     ) -> Dict[str, Any]:
         """
-        Perform a `SELECT` on the table
+        Perform a `SELECT` on the table.
 
-        :param list[str] columns: columns to include in the result
-        :param list[dict]  filter_conditions: e.g. [{"key": ["id"], "operator": "eq", "value": 1)], operator list:
-            - eq for ==
-            - lt for <
-            - ge for >=
-            - in for in_
-            - like for like
-        :param int limit: maximum number of results to retrieve per page
-        :param int cursor: cursor position to begin retrieving records
-        :param bool bool_operator: Perform filtering with AND or OR Logic.
-        :return dict records_dict = {
-            "total_size": int,
-            "page_size": int,
-            "next_page_token": int,
-            "records": List[Dict[{key, Any}]],
-        }
+        Args:
+            columns (list[str]): Columns to include in the result.
+            filter_conditions (list[dict]): e.g. [{"key": ["id"], "operator": "eq", "value": 1)], operator list:
+                - eq for ==
+                - lt for <
+                - ge for >=
+                - in for in_
+                - like for like
+            limit (int): Maximum number of results to retrieve per page.
+            cursor (int): Cursor position to begin retrieving records.
+            bool_operator (str): Perform filtering with AND or OR Logic.
+
+        Returns:
+            dict: Records dict with structure: {
+                "total_size": int,
+                "page_size": int,
+                "next_page_token": int,
+                "records": List[Dict[{key, Any}]],
+            }
         """
 
         if cursor:
@@ -390,10 +412,13 @@ class PEPHUBBACKEND(PipestatBackend):
 
         def get_operator(op: Literal["eq", "lt", "ge", "gt", "in"]) -> Any:
             """
-            Get python operator for a given string
+            Get python operator for a given string.
 
-            :param str op: desired operator, "eq", "lt"
-            :return: operator function
+            Args:
+                op (str): Desired operator, "eq", "lt".
+
+            Returns:
+                str: Operator function.
             """
 
             if op == "eq":

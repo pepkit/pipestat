@@ -45,8 +45,9 @@ class HTMLReportBuilder(object):
         """
         The Project defines the instance.
 
-        :param PipestatManager prj: Project with which to work/operate on
-        :param bool portable: moves figures and report files to directory for easy sharing
+        Args:
+            prj (PipestatManager): Project with which to work/operate on.
+            portable (bool): Moves figures and report files to directory for easy sharing.
         """
 
         self.prj = prj
@@ -78,9 +79,14 @@ class HTMLReportBuilder(object):
         """
         Generate HTML report.
 
-        :param str pipeline_name: ID of the pipeline to generate the report for
-        :param Iterable[str] amendment: name indicating amendment to use, optional
-        :return str: path to the index page of the generated HTML report
+        Args:
+            pipeline_name (str): ID of the pipeline to generate the report for.
+            project_index_html: Path to project index HTML.
+            amendment (Iterable[str]): Name indicating amendment to use, optional.
+            looper_samples: Looper samples.
+
+        Returns:
+            str: Path to the index page of the generated HTML report.
         """
         # Generate HTML report
         self.pipeline_name = pipeline_name
@@ -125,13 +131,17 @@ class HTMLReportBuilder(object):
 
     def _create_copy_for_porting(self, parent_path: str, record_identifier: str) -> str:
         """
-        Helper function that assists with copying images (pdfs)
+        Helper function that assists with copying images (pdfs).
+
         Original images stay in their original location.
         This does NOT move the original data.
 
-        :param str parentpath: path of existing file
-        :param str newpath: desired destination
-        :return str newpath if successful else returns parentpath
+        Args:
+            parent_path (str): Path of existing file.
+            record_identifier (str): Record identifier.
+
+        Returns:
+            str: New path if successful else returns parent path.
         """
         destination_dir = os.path.join(self.pipeline_reports, "resources")
         full_name = os.path.basename(parent_path)
@@ -153,12 +163,14 @@ class HTMLReportBuilder(object):
 
     def create_object_parent_html(self, navbar, footer):
         """
-        Generates a page listing all the project objects with links
-        to individual object pages
+        Generates a page listing all the project objects with links to individual object pages.
 
-        :param str navbar: HTML to be included as the navbar in the main summary page
-        :param str footer: HTML to be included as the footer
-        :return str: Rendered parent objects HTML file
+        Args:
+            navbar (str): HTML to be included as the navbar in the main summary page.
+            footer (str): HTML to be included as the footer.
+
+        Returns:
+            str: Rendered parent objects HTML file.
         """
         if not os.path.exists(self.pipeline_reports):
             os.makedirs(self.pipeline_reports)
@@ -191,11 +203,14 @@ class HTMLReportBuilder(object):
 
     def create_sample_parent_html(self, navbar, footer):
         """
-        Generates a page listing all the project samples with links
-        to individual sample pages
-        :param str navbar: HTML to be included as the navbar in the main summary page
-        :param str footer: HTML to be included as the footer
-        :return str: Rendered parent samples HTML file
+        Generates a page listing all the project samples with links to individual sample pages.
+
+        Args:
+            navbar (str): HTML to be included as the navbar in the main summary page.
+            footer (str): HTML to be included as the footer.
+
+        Returns:
+            str: Rendered parent samples HTML file.
         """
         if not os.path.exists(self.pipeline_reports):
             os.makedirs(self.pipeline_reports)
@@ -237,19 +252,24 @@ class HTMLReportBuilder(object):
 
     def create_navbar(self, navbar_links, index_html_relpath):
         """
-        Creates the navbar using the provided links
+        Creates the navbar using the provided links.
 
-        :param str navbar_links: HTML list of links to be inserted into a navbar
-        :return str: navbar HTML
+        Args:
+            navbar_links (str): HTML list of links to be inserted into a navbar.
+            index_html_relpath (str): Relative path to index HTML.
+
+        Returns:
+            str: Navbar HTML.
         """
         template_vars = dict(navbar_links=navbar_links, index_html=index_html_relpath)
         return render_jinja_template("navbar.html", self.jinja_env, template_vars)
 
     def create_footer(self):
         """
-        Renders the footer from the templates directory
+        Renders the footer from the templates directory.
 
-        :return str: footer HTML
+        Returns:
+            str: Footer HTML.
         """
         return render_jinja_template("footer.html", self.jinja_env, dict(version=__version__))
 
@@ -258,14 +278,17 @@ class HTMLReportBuilder(object):
         Return a string containing the navbar prebuilt html.
 
         Generates links to each page relative to the directory of interest
-        (wd arg) or uses the provided context to create the paths (context arg)
+        (wd arg) or uses the provided context to create the paths (context arg).
 
-        :param path wd: the working directory of the current HTML page being
-            generated, enables navbar links relative to page
-        :param list[str] context: the context the links will be used in.
-            The sequence of directories to be prepended to the HTML file in
-            the resulting navbar
-        :return str: navbar links as HTML-formatted string
+        Args:
+            wd (path): The working directory of the current HTML page being generated,
+                enables navbar links relative to page.
+            context (list[str]): The context the links will be used in. The sequence of
+                directories to be prepended to the HTML file in the resulting navbar.
+            project_index_html_relpath (str): Relative path to project index HTML.
+
+        Returns:
+            str: Navbar links as HTML-formatted string.
         """
         # determine paths
         if wd is None and context is None:
@@ -353,11 +376,11 @@ class HTMLReportBuilder(object):
 
     def create_object_htmls(self, navbar, footer):
         """
-        Generates a page for an individual object type with all of its
-        plots from each sample
+        Generates a page for an individual object type with all of its plots from each sample.
 
-        :param str navbar: HTML to be included as the navbar in the main summary page
-        :param str footer: HTML to be included as the footer
+        Args:
+            navbar (str): HTML to be included as the navbar in the main summary page.
+            footer (str): HTML to be included as the footer.
         """
         file_results = self.get_nonhighlighted_results(["file"])
         image_results = self.get_nonhighlighted_results(["image"])
@@ -503,15 +526,16 @@ class HTMLReportBuilder(object):
 
     def create_sample_html(self, sample_stats, navbar, footer, sample_name):
         """
-        Produce an HTML page containing all of a sample's objects
-        and the sample summary statistics
+        Produce an HTML page containing all of a sample's objects and the sample summary statistics.
 
-        :param str sample_name: the name of the current sample
-        :param dict sample_stats: pipeline run statistics for the current sample
-        :param str navbar: HTML to be included as the navbar in the main summary page
-        :param str footer: HTML to be included as the footer
-        :param str pipeline_type: pipeline_type, 'project' or 'sample'
-        :return str: path to the produced HTML page
+        Args:
+            sample_stats (dict): Pipeline run statistics for the current sample.
+            navbar (str): HTML to be included as the navbar in the main summary page.
+            footer (str): HTML to be included as the footer.
+            sample_name (str): The name of the current sample.
+
+        Returns:
+            str: Path to the produced HTML page.
         """
         if not os.path.exists(self.pipeline_reports):
             os.makedirs(self.pipeline_reports)
@@ -638,12 +662,15 @@ class HTMLReportBuilder(object):
 
     def create_status_html(self, status_table, navbar, footer):
         """
-        Generates a page listing all the samples, their run status, their
-        log file, and the total runtime if completed.
+        Generates a page listing all the samples, their run status, their log file, and the total runtime if completed.
 
-        :param str navbar: HTML to be included as the navbar in the main summary page
-        :param str footer: HTML to be included as the footer
-        :return str: rendered status HTML file
+        Args:
+            status_table (str): Status table HTML.
+            navbar (str): HTML to be included as the navbar in the main summary page.
+            footer (str): HTML to be included as the footer.
+
+        Returns:
+            str: Rendered status HTML file.
         """
         _LOGGER.debug("Building status page...")
         template_vars = dict(
@@ -657,12 +684,11 @@ class HTMLReportBuilder(object):
 
     def create_index_html(self, navbar, footer):
         """
-        Generate an index.html style project home page w/ sample summary
-        statistics
+        Generate an index.html style project home page w/ sample summary statistics.
 
-        :param str navbar: HTML to be included as the navbar in the main
-            summary page
-        :param str footer: HTML to be included as the footer
+        Args:
+            navbar (str): HTML to be included as the navbar in the main summary page.
+            footer (str): HTML to be included as the footer.
         """
         # set default encoding when running in python2
         if sys.version[0] == "2":
@@ -937,11 +963,13 @@ class HTMLReportBuilder(object):
 
     def get_nonhighlighted_results(self, types):
         """
-        Get a list of non-highlighted results in the schema
+        Get a list of non-highlighted results in the schema.
 
-        :param list[str] types: types to narrow down the results
-        :return list[str]: result ID that are of the requested type and
-            are not highlighted
+        Args:
+            types (list[str]): Types to narrow down the results.
+
+        Returns:
+            list[str]: Result ID that are of the requested type and are not highlighted.
         """
         results = []
 
@@ -1012,13 +1040,16 @@ class HTMLReportBuilder(object):
 
 def render_jinja_template(name, jinja_env, args=dict()):
     """
-    Render template in the specified jinja environment using the provided args
+    Render template in the specified jinja environment using the provided args.
 
-    :param str name: name of the template
-    :param dict args: arguments to pass to the template
-    :param jinja2.Environment jinja_env: the initialized environment to use in
-        this the looper HTML reports context
-    :return str: rendered template
+    Args:
+        name (str): Name of the template.
+        jinja_env (jinja2.Environment): The initialized environment to use in this
+            the looper HTML reports context.
+        args (dict): Arguments to pass to the template.
+
+    Returns:
+        str: Rendered template.
     """
     assert isinstance(args, dict), "args has to be a dict"
     template = jinja_env.get_template(name)
@@ -1027,10 +1058,11 @@ def render_jinja_template(name, jinja_env, args=dict()):
 
 def save_html(path, template):
     """
-    Save rendered template as an HTML file
+    Save rendered template as an HTML file.
 
-    :param str path: the desired location for the file to be produced
-    :param str template: the template or just string
+    Args:
+        path (str): The desired location for the file to be produced.
+        template (str): The template or just string.
     """
     if not os.path.exists(os.path.dirname(path)):
         os.makedirs(os.path.dirname(path))
@@ -1043,10 +1075,13 @@ def save_html(path, template):
 
 def get_jinja_env(templates_dirname=None):
     """
-    Create jinja environment with the provided path to the templates directory
+    Create jinja environment with the provided path to the templates directory.
 
-    :param str templates_dirname: path to the templates directory
-    :return jinja2.Environment: jinja environment
+    Args:
+        templates_dirname (str): Path to the templates directory.
+
+    Returns:
+        jinja2.Environment: Jinja environment.
     """
     if templates_dirname is None:
         file_dir = os.path.dirname(os.path.realpath(__file__))
@@ -1057,14 +1092,17 @@ def get_jinja_env(templates_dirname=None):
 
 def _get_file_for_sample(prj, sample_name, appendix, pipeline_name=None, basename=False):
     """
-    Safely looks for files matching the appendix in the specified
-    location for the sample
+    Safely looks for files matching the appendix in the specified location for the sample.
 
-    :param str sample_name: name of the sample that the file name
-        should be found for
-    :param str appendix: the ending pecific for the file
-    :param bool basename: whether to return basename only
-    :return str: the name of the matched file
+    Args:
+        prj: Project object.
+        sample_name (str): Name of the sample that the file name should be found for.
+        appendix (str): The ending specific for the file.
+        pipeline_name (str): Pipeline name.
+        basename (bool): Whether to return basename only.
+
+    Returns:
+        str: The name of the matched file.
     """
     fp = os.path.join(prj.results_folder, sample_name)
     prepend_name = ""
@@ -1081,14 +1119,16 @@ def _get_file_for_sample(prj, sample_name, appendix, pipeline_name=None, basenam
 
 def _get_relpath_to_file(file_name, sample_name, location, relative_to):
     """
-    Safely gets the relative path for the file for the specified sample
+    Safely gets the relative path for the file for the specified sample.
 
-    :param str file_name: name of the file
-    :param str sample_name: name of the sample that the file path
-        should be found for
-    :param str location: where to look for the file
-    :param str relative_to: path the result path should be relative to
-    :return str: a path to the file
+    Args:
+        file_name (str): Name of the file.
+        sample_name (str): Name of the sample that the file path should be found for.
+        location (str): Where to look for the file.
+        relative_to (str): Path the result path should be relative to.
+
+    Returns:
+        str: A path to the file.
     """
     abs_file_path = os.path.join(location, sample_name, file_name)
     rel_file_path = os.path.relpath(abs_file_path, relative_to)
@@ -1099,16 +1139,19 @@ def _get_relpath_to_file(file_name, sample_name, location, relative_to):
 
 def _make_relpath(file_name, wd, context=None):
     """
-    Create a path relative to the context. This function introduces the
-    flexibility to the navbar links creation, which the can be used outside
-    of the native looper summary pages.
+    Create a path relative to the context.
 
-    :param str file_name: the path to make relative
-    :param str wd: the dir the path should be relative to
-    :param list[str] context: the context the links will be used in. The
-        sequence of directories to be prepended to the HTML
-        file in the resulting navbar
-    :return str: relative path
+    This function introduces the flexibility to the navbar links creation,
+    which the can be used outside of the native looper summary pages.
+
+    Args:
+        file_name (str): The path to make relative.
+        wd (str): The dir the path should be relative to.
+        context (list[str]): The context the links will be used in. The sequence of
+            directories to be prepended to the HTML file in the resulting navbar.
+
+    Returns:
+        str: Relative path.
     """
     relpath = os.path.relpath(file_name, wd)
     return relpath if not context else os.path.join(os.path.join(*context), relpath)
@@ -1116,10 +1159,12 @@ def _make_relpath(file_name, wd, context=None):
 
 def _read_csv_encodings(path, encodings=["utf-8", "ascii"], **kwargs):
     """
-    Try to read file with the provided encodings
+    Try to read file with the provided encodings.
 
-    :param str path: path to file
-    :param list encodings: list of encodings to try
+    Args:
+        path (str): Path to file.
+        encodings (list): List of encodings to try.
+        **kwargs: Additional keyword arguments.
     """
     idx = 0
     while idx < len(encodings):
@@ -1135,10 +1180,13 @@ def _read_csv_encodings(path, encodings=["utf-8", "ascii"], **kwargs):
 
 def _read_tsv_to_json(path):
     """
-    Read a tsv file to a JSON formatted string
+    Read a tsv file to a JSON formatted string.
 
-    :param path: to file path
-    :return str: JSON formatted string
+    Args:
+        path (str): To file path.
+
+    Returns:
+        str: JSON formatted string.
     """
     assert os.path.exists(path), "The file '{}' does not exist".format(path)
     _LOGGER.debug("Reading TSV from '{}'".format(path))
@@ -1154,18 +1202,20 @@ def fetch_pipeline_results(
     highlighted=False,
 ):
     """
-    Get the specific pipeline results for sample based on inclusion function
+    Get the specific pipeline results for sample based on inclusion function.
 
-    :param looper.Project project: project to get the results for
-    :param str sample_name: sample ID
-    :param callable(str) inclusion_fun: a function that determines whether the
-        result should be returned based on it's type. Example input that the
-        function will be fed with is: 'image' or 'integer'
-    :param callable(str) casting_fun: a function that will be used to cast the
-        each of the results to a proper type before returning, e.g int, str
-    :param bool highlighted: return the highlighted or regular results
-    :param str pipeline_type: pipeline_type, 'project' or 'sample'
-    :return dict: selected pipeline results
+    Args:
+        project (looper.Project): Project to get the results for.
+        sample_name (str): Sample ID.
+        inclusion_fun (callable): A function that determines whether the result should
+            be returned based on it's type. Example input that the function will be
+            fed with is: 'image' or 'integer'.
+        casting_fun (callable): A function that will be used to cast the each of the
+            results to a proper type before returning, e.g int, str.
+        highlighted (bool): Return the highlighted or regular results.
+
+    Returns:
+        dict: Selected pipeline results.
     """
 
     def pass_all_fun(x):
@@ -1199,11 +1249,14 @@ def create_status_table(report_obj, project, pipeline_reports_dir: str, portable
     """
     Creates status table, the core of the status page.
 
-    :param report_obj: The HTML builder object
-    :param PipestatManager project: project to get the results for
-    :param str pipeline_reports_dir: path to the pipeline reports directory
-    :param bool portable: is the report to be portable?
-    :return str: rendered status HTML file
+    Args:
+        report_obj: The HTML builder object.
+        project (PipestatManager): Project to get the results for.
+        pipeline_reports_dir (str): Path to the pipeline reports directory.
+        portable (bool): Is the report to be portable?
+
+    Returns:
+        str: Rendered status HTML file.
     """
 
     def _rgb2hex(r, g, b):
@@ -1329,23 +1382,28 @@ def create_glossary_table(project):
 
 def _get_maxmem(profile: _pd.DataFrame) -> str:
     """
-    Get current peak memory
+    Get current peak memory.
 
-    :param pandas.DataFrame profile: a data frame representing
-        the current profile.tsv for a sample
-    :return str: max memory
+    Args:
+        profile (pandas.DataFrame): A data frame representing the current profile.tsv
+            for a sample.
+
+    Returns:
+        str: Max memory.
     """
     return f"{str(max(profile['mem']) if not profile['mem'].empty else 0)} GB"
 
 
 def _get_runtime(profile_df: _pd.DataFrame) -> str:
     """
-    Collect the unique and last duplicated runtimes, sum them and then
-    return in str format
+    Collect the unique and last duplicated runtimes, sum them and then return in str format.
 
-    :param pandas.DataFrame profile_df: a data frame representing
-        the current profile.tsv for a sample
-    :return str: sum of runtimes
+    Args:
+        profile_df (pandas.DataFrame): A data frame representing the current profile.tsv
+            for a sample.
+
+    Returns:
+        str: Sum of runtimes.
     """
     unique_df = profile_df[~profile_df.duplicated("cid", keep="last").values]
     return str(
@@ -1356,17 +1414,20 @@ def _get_runtime(profile_df: _pd.DataFrame) -> str:
 def get_file_for_table(prj, pipeline_name: str, appendix=None, directory=None) -> str:
     """
     Create a path to the file for the current project.
-    Takes the possibility of amendment being activated at the time
 
+    Takes the possibility of amendment being activated at the time.
     Format of the output path:
     {output_dir}/{directory}/{p.name}_{pipeline_name}_{active_amendments}_{appendix}
 
-    :param pipestat manager object prj: project object
-    :param str pipeline_name: name of the pipeline to get the file for
-    :param str appendix: the appendix of the file to create the path for,
-        like 'objs_summary.tsv' for objects summary file
-    :param directory: subdirectory (if desired)
-    :return str fp: path to the file
+    Args:
+        prj: Pipestat manager object, project object.
+        pipeline_name (str): Name of the pipeline to get the file for.
+        appendix (str): The appendix of the file to create the path for,
+            like 'objs_summary.tsv' for objects summary file.
+        directory (str): Subdirectory (if desired).
+
+    Returns:
+        str: Path to the file.
     """
     # TODO make determining the output_dir its own small function since we use the same code in HTML report building.
     results_file_path = getattr(prj.backend, "results_file_path", None)
@@ -1387,9 +1448,12 @@ def _create_stats_objs_summaries(prj, pipeline_name: str) -> List[str]:
     """
     Create stats spreadsheet and objects summary.
 
-    :param pipestat.PipestatManager prj: pipestat object used to create table
-    :param str pipeline_name: name of the pipeline to tabulate results for
-    :return List[str] [tsv_outfile_path, objs_yaml_path]: list of paths to tsv_outfile_path, objs_yaml_path
+    Args:
+        prj (pipestat.PipestatManager): Pipestat object used to create table.
+        pipeline_name (str): Name of the pipeline to tabulate results for.
+
+    Returns:
+        List[str]: List of paths to tsv_outfile_path, objs_yaml_path.
     """
 
     _LOGGER.info("Creating objects summary")

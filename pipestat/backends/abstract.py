@@ -13,20 +13,21 @@ _LOGGER = getLogger(PKG_NAME)
 
 
 class PipestatBackend(ABC):
-    """Abstract class representing a pipestat backend"""
+    """Abstract class representing a pipestat backend."""
 
     def __init__(self, pipeline_type):
         _LOGGER.debug("Initialize PipestatBackend")
         self.pipeline_type = pipeline_type
 
     def assert_results_defined(self, results: List[str], pipeline_type: str) -> None:
-        """
-        Assert provided list of results is defined in the schema
+        """Assert provided list of results is defined in the schema.
 
-        :param List[str] results: list of results to
-            check for existence in the schema
-        :param str pipeline_type: "sample" or "project"
-        :raises SchemaError: if any of the results is not defined in the schema
+        Args:
+            results (List[str]): List of results to check for existence in the schema.
+            pipeline_type (str): "sample" or "project".
+
+        Raises:
+            SchemaError: If any of the results is not defined in the schema.
         """
 
         # take project level input and look for keys in the specific schema.
@@ -50,12 +51,14 @@ class PipestatBackend(ABC):
         result_identifier: str,
         record_identifier: Optional[str] = None,
     ) -> bool:
-        """
-        Check if the result has been reported
-        :param str result_identifier: name of the result to check
-        :param str record_identifier: unique identifier of the record
-        :return bool: whether the specified result has been reported for the
-            indicated record in current namespace
+        """Check if the result has been reported.
+
+        Args:
+            result_identifier (str): Name of the result to check.
+            record_identifier (str, optional): Unique identifier of the record. Defaults to None.
+
+        Returns:
+            bool: Whether the specified result has been reported for the indicated record in current namespace.
         """
         record_identifier = record_identifier or self.record_identifier
 
@@ -81,14 +84,25 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
 
     def link(self, link_dir) -> str:
-        """
-        This function creates a link structure such that results are organized by type.
-        :param str link_dir: path to desired symlink output directory (does not have to be absolute)
-        :return str link_dir: returns absolute path to symlink directory
+        """This function creates a link structure such that results are organized by type.
+
+        Args:
+            link_dir (str): Path to desired symlink output directory (does not have to be absolute).
+
+        Returns:
+            str: Absolute path to symlink directory.
         """
 
         def get_all_paths(parent_key, result_identifier_value):
-            """If the result identifier is a complex object which contains nested paths"""
+            """If the result identifier is a complex object which contains nested paths.
+
+            Args:
+                parent_key: Parent key name.
+                result_identifier_value: Result identifier value to extract paths from.
+
+            Returns:
+                list: List of (key, path) tuples.
+            """
 
             key_value_pairs = []
 
@@ -135,6 +149,15 @@ class PipestatBackend(ABC):
     def clear_status(
         self, record_identifier: str = None, flag_names: List[str] = None
     ) -> List[Union[str, None]]:
+        """Clear status flags (not implemented in abstract backend).
+
+        Args:
+            record_identifier (str, optional): Record identifier. Defaults to None.
+            flag_names (List[str], optional): Names of flags to clear. Defaults to None.
+
+        Returns:
+            List[Union[str, None]]: Collection of cleared flag names.
+        """
         _LOGGER.warning("Not implemented yet for this backend")
 
     def set_status(
@@ -142,9 +165,20 @@ class PipestatBackend(ABC):
         status_identifier: str,
         record_identifier: Optional[str] = None,
     ) -> None:
+        """Set pipeline status (not implemented in abstract backend).
+
+        Args:
+            status_identifier (str): Status identifier to set.
+            record_identifier (str, optional): Record identifier. Defaults to None.
+        """
         _LOGGER.warning("Not implemented yet for this backend")
 
     def list_results(self) -> List[str]:
+        """List results (not implemented in abstract backend).
+
+        Returns:
+            List[str]: List of result identifiers.
+        """
         _LOGGER.warning("Not implemented yet for this backend")
 
     def report(
@@ -155,12 +189,32 @@ class PipestatBackend(ABC):
         result_formatter: Optional[staticmethod] = None,
         history_enabled: bool = True,
     ) -> str:
+        """Report results (not implemented in abstract backend).
+
+        Args:
+            values (Dict[str, Any]): Dictionary of result-value pairs.
+            record_identifier (str): Record identifier.
+            force_overwrite (bool, optional): Whether to overwrite existing results. Defaults to False.
+            result_formatter (staticmethod, optional): Function for formatting results. Defaults to None.
+            history_enabled (bool, optional): Should history be enabled. Defaults to True.
+
+        Returns:
+            str: Formatted report string.
+        """
         _LOGGER.warning("Not implemented yet for this backend")
 
     def retrieve_distinct(
         self,
         columns: Optional[List[str]] = None,
     ) -> List[Any]:
+        """Retrieve distinct values (not implemented in abstract backend).
+
+        Args:
+            columns (List[str], optional): Columns to retrieve distinct values for. Defaults to None.
+
+        Returns:
+            List[Any]: List of distinct values.
+        """
         _LOGGER.warning("Not implemented yet for this backend")
 
     def remove(
@@ -168,6 +222,15 @@ class PipestatBackend(ABC):
         record_identifier: Optional[str] = None,
         result_identifier: Optional[str] = None,
     ) -> bool:
+        """Remove results (not implemented in abstract backend).
+
+        Args:
+            record_identifier (str, optional): Record identifier. Defaults to None.
+            result_identifier (str, optional): Result identifier. Defaults to None.
+
+        Returns:
+            bool: Whether removal was successful.
+        """
         _LOGGER.warning("Not implemented yet for this backend")
 
     def remove_record(
@@ -175,6 +238,15 @@ class PipestatBackend(ABC):
         record_identifier: Optional[str] = None,
         rm_record: Optional[bool] = False,
     ) -> bool:
+        """Remove record (not implemented in abstract backend).
+
+        Args:
+            record_identifier (str, optional): Record identifier. Defaults to None.
+            rm_record (bool, optional): Whether to remove record. Defaults to False.
+
+        Returns:
+            bool: Whether removal was successful.
+        """
         _LOGGER.warning("Not implemented yet for this backend")
 
 
@@ -186,6 +258,18 @@ def select_records(
     cursor: Optional[int] = None,
     bool_operator: Optional[str] = "AND",
 ) -> Dict[str, Any]:
+    """Select records (not implemented in abstract backend).
+
+    Args:
+        columns (List[str], optional): Columns to select. Defaults to None.
+        filter_conditions (List[Dict[str, Any]], optional): Filter conditions. Defaults to None.
+        limit (int, optional): Maximum number of records to return. Defaults to 1000.
+        cursor (int, optional): Cursor for pagination. Defaults to None.
+        bool_operator (str, optional): Boolean operator for filters. Defaults to "AND".
+
+    Returns:
+        Dict[str, Any]: Dictionary containing selected records.
+    """
     _LOGGER.warning("Not implemented yet for this backend")
 
 
@@ -193,4 +277,12 @@ def select_distinct(
     self,
     columns,
 ) -> List[Tuple]:
+    """Select distinct values (not implemented in abstract backend).
+
+    Args:
+        columns: Columns to select distinct values from.
+
+    Returns:
+        List[Tuple]: List of tuples containing distinct values.
+    """
     _LOGGER.warning("Not implemented yet for this backend")

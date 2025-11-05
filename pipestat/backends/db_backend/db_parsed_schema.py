@@ -196,9 +196,13 @@ class ParsedSchemaDB(ParsedSchema):
         return self._table_name("files")
 
     def build_history_model(self, pipeline_type):
-        """Creates model for history ORM
-        :param str pipeline_type: project or sample-level pipeline
-        :return model: (model, table_name)
+        """Creates model for history ORM.
+
+        Args:
+            pipeline_type (str): Project or sample-level pipeline.
+
+        Returns:
+            tuple: (model, table_name)
         """
         if pipeline_type == "project":
             history_table_name = self.project_table_name + "_history"
@@ -381,11 +385,13 @@ def _create_model(table_name: str, **kwargs):
 
 
 def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Replace the custom types in pipestat schema with canonical types
+    """Replace the custom types in pipestat schema with canonical types.
 
-    :param dict s: schema to replace types in
-    :return dict: schema with types replaced
+    Args:
+        s (dict): Schema to replace types in.
+
+    Returns:
+        dict: Schema with types replaced.
     """
     for k, v in s.items():
         missing_req_keys = [req for req in [SCHEMA_TYPE_KEY, SCHEMA_DESC_KEY] if req not in v]

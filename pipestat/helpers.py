@@ -19,17 +19,15 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def validate_type(value, schema, strict_type=False, record_identifier=None):
-    """
-    Validate reported result against a partial schema, in case of failure try
-    to cast the value into the required class.
+    """Validate reported result against a partial schema, in case of failure try to cast the value.
 
     Does not support objects of objects.
 
-    :param any value: reported value
-    :param dict schema: partial jsonschema schema to validate
-        against, e.g. {"type": "integer"}
-    :param bool strict_type: whether the value should validate as is
-    :param str record_identifier: used for clarifying error messages
+    Args:
+        value (any): Reported value.
+        schema (dict): Partial jsonschema schema to validate against, e.g. {"type": "integer"}.
+        strict_type (bool, optional): Whether the value should validate as is. Defaults to False.
+        record_identifier (str, optional): Used for clarifying error messages. Defaults to None.
     """
 
     try:
@@ -62,11 +60,16 @@ def validate_type(value, schema, strict_type=False, record_identifier=None):
 
 
 def mk_list_of_str(x):
-    """
-    Make sure the input is a list of strings
-    :param str | list[str] | falsy x: input to covert
-    :return list[str]: converted input
-    :raise TypeError: if the argument cannot be converted
+    """Make sure the input is a list of strings.
+
+    Args:
+        x (str | list[str] | falsy): Input to convert.
+
+    Returns:
+        list[str]: Converted input.
+
+    Raises:
+        TypeError: If the argument cannot be converted.
     """
     if not x or isinstance(x, list):
         return x
@@ -78,7 +81,11 @@ def mk_list_of_str(x):
 
 
 def make_subdirectories(path):
-    """Takes an absolute file path and creates subdirectories to file if they do not exist"""
+    """Takes an absolute file path and creates subdirectories to file if they do not exist.
+
+    Args:
+        path: File path for which to create subdirectories.
+    """
 
     if path:
         try:
@@ -88,8 +95,10 @@ def make_subdirectories(path):
 
 
 def init_generic_config():
-    """
-    Create generic config file for DB Backend
+    """Create generic config file for DB Backend.
+
+    Returns:
+        bool: True if successful.
     """
     try:
         os.makedirs("config")
@@ -126,8 +135,16 @@ def init_generic_config():
 
 
 def markdown_formatter(pipeline_name, record_identifier, res_id, value) -> str:
-    """
-    Returns Markdown formatted value as string
+    """Returns Markdown formatted value as string.
+
+    Args:
+        pipeline_name: Name of the pipeline.
+        record_identifier: Identifier of the record.
+        res_id: Result identifier.
+        value: Value to format.
+
+    Returns:
+        str: Markdown formatted result.
     """
     if not isinstance(value, dict):
         nl = "\n"
@@ -147,8 +164,16 @@ def markdown_formatter(pipeline_name, record_identifier, res_id, value) -> str:
 
 
 def default_formatter(pipeline_name, record_identifier, res_id, value) -> str:
-    """
-    Returns formatted value as string
+    """Returns formatted value as string.
+
+    Args:
+        pipeline_name: Name of the pipeline.
+        record_identifier: Identifier of the record.
+        res_id: Result identifier.
+        value: Value to format.
+
+    Returns:
+        str: Formatted result.
     """
     # Assume default method desired
     nl = "\n"
@@ -161,7 +186,12 @@ def default_formatter(pipeline_name, record_identifier, res_id, value) -> str:
 
 
 def force_symlink(file1, file2):
-    """Create a symlink between two files."""
+    """Create a symlink between two files.
+
+    Args:
+        file1: Source file path.
+        file2: Target file path for the symlink.
+    """
     try:
         os.symlink(file1, file2)
     except OSError as e:
@@ -174,10 +204,13 @@ def force_symlink(file1, file2):
 
 
 def get_all_result_files(results_file_path: str) -> List:
-    """
-    Collects any yaml result files relative to the CURRENT results_file_path
-    :param str results_file_path: path to the pipestamanager's current result_file
-    :return: list
+    """Collects any yaml result files relative to the CURRENT results_file_path.
+
+    Args:
+        results_file_path (str): Path to the pipestatmanager's current result_file.
+
+    Returns:
+        list: List of yaml result file paths.
     """
     files = glob.glob(results_file_path + "**/*.yaml")
 
@@ -185,13 +218,15 @@ def get_all_result_files(results_file_path: str) -> List:
 
 
 def zip_report(report_dir_name: str) -> Union[str, None]:
-    """
+    """Walks through files and attempts to zip them into a Zip object using default compression.
 
-    Walks through files and attempts to zip them into a Zip object using default compression.
     Gracefully fails and informs user if compression library is not available.
 
-    :param report_dir_name: directory name of report directory
-    :return: None
+    Args:
+        report_dir_name (str): Directory name of report directory.
+
+    Returns:
+        str | None: Path to the zip file if successful, None otherwise.
     """
 
     zip_file_name = f"{report_dir_name}_report_portable"

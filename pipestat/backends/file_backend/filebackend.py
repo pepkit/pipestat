@@ -34,20 +34,18 @@ class FileBackend(PipestatBackend):
         multi_pipelines: Optional[bool] = None,
     ):
         """
-        Class representing a File backend
-        :param str results_file_path: YAML file to report into, if file is
-            used as the object back-end
-        :param str record_identifier: record identifier to report for. This
-            creates a weak bound to the record, which can be overridden in
-            this object method calls
-        :param str pipeline_name: name of pipeline associated with result
-        :param str pipeline_type: "sample" or "project"
-        :param str parsed_schema: results output schema.
-        :param str status_schema: schema containing pipeline statuses e.g. 'running'
-        :param str status_file_dir: directory for placing status flags
-        :param str result_formatter: function for formatting result
-        :param bool multi_pipelines: allows for running multiple pipelines for one file backend
+        Class representing a File backend.
 
+        Args:
+            results_file_path (str): YAML file to report into, if file is used as the object back-end.
+            record_identifier (str, optional): Record identifier to report for. This creates a weak bound to the record, which can be overridden in this object method calls.
+            pipeline_name (str, optional): Name of pipeline associated with result.
+            pipeline_type (str, optional): "sample" or "project".
+            parsed_schema (str, optional): Results output schema.
+            status_schema (str, optional): Schema containing pipeline statuses e.g. 'running'.
+            status_file_dir (str, optional): Directory for placing status flags.
+            result_formatter (staticmethod, optional): Function for formatting result.
+            multi_pipelines (bool, optional): Allows for running multiple pipelines for one file backend.
         """
         super().__init__(pipeline_type)
         _LOGGER.debug("Initialize FileBackend")
@@ -65,9 +63,8 @@ class FileBackend(PipestatBackend):
         self.determine_results_file()
 
     def determine_results_file(self) -> None:
-        """Initialize or load results_file from given path
-        :param str results_file_path: YAML file to report into, if file is
-        used as the object back-end
+        """
+        Initialize or load results_file from given path.
         """
 
         if "{record_identifier}" in self.results_file_path:
@@ -88,10 +85,13 @@ class FileBackend(PipestatBackend):
         record_identifier: str,
     ) -> bool:
         """
-        Check if the specified record exists in self._data
+        Check if the specified record exists in self._data.
 
-        :param str record_identifier: record to check for
-        :return bool: whether the record exists in the table
+        Args:
+            record_identifier (str): Record to check for.
+
+        Returns:
+            bool: Whether the record exists in the table.
         """
 
         return (
@@ -103,12 +103,14 @@ class FileBackend(PipestatBackend):
         self, record_identifier: str = None, flag_names: List[str] = None
     ) -> List[Union[str, None]]:
         """
-        Remove status flags
+        Remove status flags.
 
-        :param str record_identifier: name of the record to remove flags for
-        :param Iterable[str] flag_names: Names of flags to remove, optional; if
-            unspecified, all schema-defined flag names will be used.
-        :return List[str]: Collection of names of flags removed
+        Args:
+            record_identifier (str, optional): Name of the record to remove flags for.
+            flag_names (List[str], optional): Names of flags to remove; if unspecified, all schema-defined flag names will be used.
+
+        Returns:
+            List[str]: Collection of names of flags removed.
         """
 
         flag_names = flag_names or list(self.status_schema.keys())
@@ -130,18 +132,23 @@ class FileBackend(PipestatBackend):
 
     def count_records(self):
         """
-        Count records
-        :return int: number of records
+        Count records.
+
+        Returns:
+            int: Number of records.
         """
 
         return len(self._data[self.pipeline_name])
 
     def get_flag_file(self, record_identifier: str = None) -> Union[str, List[str], None]:
         """
-        Get path to the status flag file for the specified record
+        Get path to the status flag file for the specified record.
 
-        :param str record_identifier: unique record identifier
-        :return str | list[str] | None: path to the status flag file
+        Args:
+            record_identifier (str, optional): Unique record identifier.
+
+        Returns:
+            str | list[str] | None: Path to the status flag file.
         """
 
         r_id = record_identifier
@@ -159,11 +166,13 @@ class FileBackend(PipestatBackend):
 
     def get_status(self, record_identifier: str) -> Optional[str]:
         """
-        Get the current pipeline status
+        Get the current pipeline status.
 
-        :param str record_identifier: record identifier to set the
-            pipeline status for
-        :return str: status identifier, e.g. 'running'
+        Args:
+            record_identifier (str): Record identifier to set the pipeline status for.
+
+        Returns:
+            str: Status identifier, e.g. 'running'.
         """
         r_id = record_identifier or self.record_identifier
         flag_file = self.get_flag_file(record_identifier=record_identifier)
@@ -182,12 +191,14 @@ class FileBackend(PipestatBackend):
 
     def get_status_flag_path(self, status_identifier: str, record_identifier=None) -> str:
         """
-        Get the path to the status file flag
+        Get the path to the status file flag.
 
-        :param str status_identifier: one of the defined status IDs in schema
-        :param str record_identifier: unique record ID
-        :return str: absolute path to the flag file or None if object is
-            backed by a DB
+        Args:
+            status_identifier (str): One of the defined status IDs in schema.
+            record_identifier (str, optional): Unique record ID.
+
+        Returns:
+            str: Absolute path to the flag file or None if object is backed by a DB.
         """
 
         r_id = record_identifier
@@ -202,11 +213,14 @@ class FileBackend(PipestatBackend):
         record_identifier: Optional[str] = None,
     ) -> List[str]:
         """
-        Lists all, or a selected set of, reported results
+        Lists all, or a selected set of, reported results.
 
-        :param List[str] restrict_to: selected subset of names of results to list
-        :param str record_identifier: unique identifier of the record
-        :return List[str]: names of results which exist
+        Args:
+            restrict_to (List[str], optional): Selected subset of names of results to list.
+            record_identifier (str, optional): Unique identifier of the record.
+
+        Returns:
+            List[str]: Names of results which exist.
         """
         record_identifier = record_identifier or self.record_identifier
 
@@ -231,10 +245,12 @@ class FileBackend(PipestatBackend):
         If no result ID specified or last result is removed, the entire record
         will be removed.
 
-        :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to be removed or None
-             if the record should be removed.
-        :return bool: whether the result has been removed
+        Args:
+            record_identifier (str, optional): Unique identifier of the record.
+            result_identifier (str, optional): Name of the result to be removed or None if the record should be removed.
+
+        Returns:
+            bool: Whether the result has been removed.
         """
 
         record_identifier = record_identifier or self.record_identifier
@@ -299,11 +315,14 @@ class FileBackend(PipestatBackend):
         rm_record: Optional[bool] = False,
     ) -> bool:
         """
-        Remove a record, requires rm_record to be True
+        Remove a record, requires rm_record to be True.
 
-        :param str record_identifier: unique identifier of the record
-        :param bool rm_record: bool for removing record.
-        :return bool: whether the result has been removed
+        Args:
+            record_identifier (str, optional): Unique identifier of the record.
+            rm_record (bool, optional): Bool for removing record.
+
+        Returns:
+            bool: Whether the result has been removed.
         """
         if rm_record:
             try:
@@ -334,14 +353,17 @@ class FileBackend(PipestatBackend):
         Update the value of a result in a current namespace.
 
         This method overwrites any existing data and creates the required
-         hierarchical mapping structure if needed.
+        hierarchical mapping structure if needed.
 
-        :param Dict[str, Any] values: dict of results identifiers and values
-            to be reported
-        :param str record_identifier: unique identifier of the record
-        :param bool force_overwrite: Toggles force overwriting results, defaults to False
-        :param str result_formatter: function for formatting result
-        :return bool | list[str] results_formatted: return list of formatted string
+        Args:
+            values (Dict[str, Any]): Dict of results identifiers and values to be reported.
+            record_identifier (str, optional): Unique identifier of the record.
+            force_overwrite (bool): Toggles force overwriting results, defaults to False.
+            result_formatter (staticmethod, optional): Function for formatting result.
+            history_enabled (bool): Enable history tracking.
+
+        Returns:
+            bool | list[str]: Return list of formatted string.
         """
 
         # record_identifier = record_identifier or self.record_identifier
@@ -424,10 +446,13 @@ class FileBackend(PipestatBackend):
 
     def select_distinct(self, columns: Union[str, List[str]]) -> List[Tuple]:
         """
-        Retrieve distinct results given a list of columns
+        Retrieve distinct results given a list of columns.
 
-        :param str | List[str] columns: column columns to include in the result
-        :return List[Tuple]: returns distinct values.
+        Args:
+            columns (str | List[str]): Column columns to include in the result.
+
+        Returns:
+            List[Tuple]: Returns distinct values.
         """
         if isinstance(columns, str):
             columns = [columns]
@@ -463,34 +488,40 @@ class FileBackend(PipestatBackend):
         meta_data_bool: Optional[bool] = False,
     ) -> Dict[str, Any]:
         """
-        Select records from the FileBackend
+        Select records from the FileBackend.
 
-        :param list[str] columns: columns to include in the result
-        :param list[dict]  filter_conditions: e.g. [{"key": ["id"], "operator": "eq", "value": 1)], operator list:
-            - eq for ==
-            - lt for <
-            - ge for >=
-            - in for in_
-        :param int limit: maximum number of results to retrieve per page
-        :param int cursor: cursor position to begin retrieving records
-        :param bool bool_operator: Perform filtering with AND or OR Logic.
-        :param bool meta_data: Should this return associated meta data with records?
-        :return dict records_dict = {
-            "total_size": int,
-            "page_size": int,
-            "next_page_token": int,
-            "records": List[Dict[{key, Any}]],
-        }
+        Args:
+            columns (list[str], optional): Columns to include in the result.
+            filter_conditions (list[dict], optional): e.g. [{"key": ["id"], "operator": "eq", "value": 1)], operator list:
+                - eq for ==
+                - lt for <
+                - ge for >=
+                - in for in_
+            limit (int, optional): Maximum number of results to retrieve per page.
+            cursor (int, optional): Cursor position to begin retrieving records.
+            bool_operator (str, optional): Perform filtering with AND or OR Logic.
+            meta_data_bool (bool, optional): Should this return associated meta data with records?
+
+        Returns:
+            dict: records_dict = {
+                "total_size": int,
+                "page_size": int,
+                "next_page_token": int,
+                "records": List[Dict[{key, Any}]],
+            }
         """
         if cursor:
             _LOGGER.warning("Cursor not supported for FileBackend, ignoring cursor")
 
         def get_operator(op: Literal["eq", "lt", "ge", "gt", "in"]) -> Any:
             """
-            Get python operator for a given string
+            Get python operator for a given string.
 
-            :param str op: desired operator, "eq", "lt"
-            :return: operator function
+            Args:
+                op (str): Desired operator, "eq", "lt".
+
+            Returns:
+                Operator function.
             """
 
             if op == "eq":
@@ -507,12 +538,15 @@ class FileBackend(PipestatBackend):
 
         def get_nested_column(result_value: dict, key_list: list, retrieved_operator: Callable):
             """
-            Recursive function that evaluates a nested list of keys vs a value dict
+            Recursive function that evaluates a nested list of keys vs a value dict.
 
-            :param dict result_value: nested dictionary
-            :param key_list: list of keys, e.g. keys that may be in the nested dictionary e.g. ['id', 'name']
-            :param retrieved_operator: operator function (ge, gt...)
-            :return bool:
+            Args:
+                result_value (dict): Nested dictionary.
+                key_list: List of keys, e.g. keys that may be in the nested dictionary e.g. ['id', 'name'].
+                retrieved_operator: Operator function (ge, gt...).
+
+            Returns:
+                bool:
             """
             if len(key_list) == 1:
                 if result_value.get(key_list[0], None):
@@ -649,10 +683,9 @@ class FileBackend(PipestatBackend):
         the status schema. A basic, ready to use, status schema is shipped with
         this package.
 
-        :param str status_identifier: status to set, one of statuses defined
-            in the status schema
-        :param str record_identifier: record identifier to set the
-            pipeline status for
+        Args:
+            status_identifier (str): Status to set, one of statuses defined in the status schema.
+            record_identifier (str, optional): Record identifier to set the pipeline status for.
         """
         r_id = record_identifier or self.record_identifier
         if self.status_schema is not None:
@@ -678,7 +711,7 @@ class FileBackend(PipestatBackend):
 
     def _htmlreportbuilder(self):
         """
-        build html report based on all reported results
+        Build html report based on all reported results.
         """
 
         # build new folder for the report
@@ -688,9 +721,11 @@ class FileBackend(PipestatBackend):
     def _init_results_file(self) -> None:
         """
         Initialize YAML results file if it does not exist.
+
         Read the data stored in the existing file into the memory otherwise.
 
-        :return bool: whether the file has been created
+        Returns:
+            bool: Whether the file has been created.
         """
         _LOGGER.info(f"Initializing results file '{self.results_file_path}'")
 
@@ -714,9 +749,13 @@ class FileBackend(PipestatBackend):
 
     def aggregate_multi_results(self, results_directory) -> None:
         """
-        Collects single results files and aggregates them into a new aggregate_results.yaml file
-        :param str results_directory: directory containing subdirectories containing results.yaml files
-        :return: None
+        Collects single results files and aggregates them into a new aggregate_results.yaml file.
+
+        Args:
+            results_directory (str): Directory containing subdirectories containing results.yaml files.
+
+        Returns:
+            None
         """
         all_result_files = get_all_result_files(results_directory)
         if len(all_result_files) == 0:
@@ -778,10 +817,17 @@ class FileBackend(PipestatBackend):
                 )
 
     def _modify_history(self, data, res_id, time, value):
-        """Modify File backend with each change
+        """
+        Modify File backend with each change.
 
         data is the loaded yaml results file in dict format
         type = "report", "deletion"
+
+        Args:
+            data: The loaded yaml results file in dict format.
+            res_id: Result identifier.
+            time: Timestamp.
+            value: Value to record.
         """
         if "history" not in data:
             data.setdefault(HISTORY_KEY, {})
