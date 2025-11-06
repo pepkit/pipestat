@@ -5,9 +5,8 @@ import glob
 import logging
 import os
 from json import dumps
-from pathlib import Path
 from shutil import make_archive
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 import jsonschema
 from yaml import dump
@@ -139,9 +138,7 @@ def init_generic_config() -> bool:
     return True
 
 
-def markdown_formatter(
-    pipeline_name: str, record_identifier: str, res_id: str, value: Any
-) -> str:
+def markdown_formatter(pipeline_name: str, record_identifier: str, res_id: str, value: Any) -> str:
     """Returns Markdown formatted value as string.
 
     Args:
@@ -170,9 +167,7 @@ def markdown_formatter(
     return formatted_result
 
 
-def default_formatter(
-    pipeline_name: str, record_identifier: str, res_id: str, value: Any
-) -> str:
+def default_formatter(pipeline_name: str, record_identifier: str, res_id: str, value: Any) -> str:
     """Returns formatted value as string.
 
     Args:
@@ -242,7 +237,7 @@ def zip_report(report_dir_name: str) -> Optional[str]:
 
     try:
         make_archive(zip_file_name, "zip", report_dir_name)
-    except RuntimeError as e:
+    except RuntimeError:
         _LOGGER.warning("Report zip file not created! \n {e}")
 
     if os.path.exists(zip_file_name + ".zip"):

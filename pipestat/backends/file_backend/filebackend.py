@@ -10,7 +10,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 from ubiquerg import create_lock, remove_lock
 from yacman import FutureYAMLConfigManager as YAMLConfigManager
-from yacman import read_lock, write_lock
+from yacman import write_lock
 
 from ...backends.abstract import PipestatBackend
 from ...const import CREATED_TIME, DATE_FORMAT, HISTORY_KEY, META_KEY, MODIFIED_TIME, PKG_NAME
@@ -123,7 +123,7 @@ class FileBackend(PipestatBackend):
             )
             try:
                 os.remove(path_flag_file)
-            except:
+            except FileNotFoundError:
                 pass
             else:
                 _LOGGER.info(f"Removed existing flag: {path_flag_file}")
@@ -140,7 +140,9 @@ class FileBackend(PipestatBackend):
 
         return len(self._data[self.pipeline_name])
 
-    def get_flag_file(self, record_identifier: Optional[str] = None) -> Union[str, List[str], None]:
+    def get_flag_file(
+        self, record_identifier: Optional[str] = None
+    ) -> Union[str, List[str], None]:
         """
         Get path to the status flag file for the specified record.
 
@@ -189,7 +191,9 @@ class FileBackend(PipestatBackend):
         )
         return None
 
-    def get_status_flag_path(self, status_identifier: str, record_identifier: Optional[str] = None) -> str:
+    def get_status_flag_path(
+        self, status_identifier: str, record_identifier: Optional[str] = None
+    ) -> str:
         """
         Get the path to the status file flag.
 
@@ -331,9 +335,9 @@ class FileBackend(PipestatBackend):
                 with write_lock(self._data) as data_locked:
                     data_locked.write()
                 return True
-            except:
+            except Exception as e:
                 _LOGGER.warning(
-                    f" Unable to remove record, aborting Removing '{record_identifier}' record"
+                    f" Unable to remove record, aborting Removing '{record_identifier}' record: {e}"
                 )
                 return False
         else:
@@ -536,7 +540,9 @@ class FileBackend(PipestatBackend):
                 return operator.contains
             raise ValueError(f"Invalid filter operator: {op}")
 
-        def get_nested_column(result_value: dict, key_list: list, retrieved_operator: Callable) -> bool:
+        def get_nested_column(
+            result_value: dict, key_list: list, retrieved_operator: Callable
+        ) -> bool:
             """
             Recursive function that evaluates a nested list of keys vs a value dict.
 

@@ -93,7 +93,9 @@ class PipestatBackend(ABC):
             str: Absolute path to symlink directory.
         """
 
-        def get_all_paths(parent_key: str, result_identifier_value: Dict[str, Any]) -> List[Tuple[str, str]]:
+        def get_all_paths(
+            parent_key: str, result_identifier_value: Dict[str, Any]
+        ) -> List[Tuple[str, str]]:
             """If the result identifier is a complex object which contains nested paths.
 
             Args:
@@ -131,7 +133,7 @@ class PipestatBackend(ABC):
                             unique_result_identifiers.append((k, sub_dir_for_type))
                             try:
                                 os.mkdir(sub_dir_for_type)
-                            except:
+                            except FileExistsError:
                                 pass
                         for subdir in unique_result_identifiers:
                             if k == subdir[0]:

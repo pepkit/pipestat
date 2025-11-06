@@ -14,23 +14,19 @@ from typing import List
 import jinja2
 import pandas as _pd
 import yaml
-from eido import read_schema
 from peppy.const import AMENDMENTS_KEY
 from ubiquerg import mkabs
 
 from ._version import __version__
 from .const import (
     BUTTON_APPEARANCE_BY_FLAG,
-    FILE_KEY,
     NO_DATA_PLACEHOLDER,
     OBJECT_TYPES,
     OUTPUT_DIR,
-    PIPELINE_NAME,
     PIPELINE_TYPE,
     PKG_NAME,
     PROFILE_COLNAMES,
     PROJECT_NAME,
-    STATUS_FILE_DIR,
     TEMPLATES_DIRNAME,
 )
 from .helpers import make_subdirectories
@@ -491,7 +487,7 @@ class HTMLReportBuilder(object):
                                     ),
                                 ]
                             )
-                        except:
+                        except Exception:
                             figures.append(["FigurePathNotFound"])
                 else:
                     img_desc = (
@@ -855,7 +851,7 @@ class HTMLReportBuilder(object):
         _LOGGER.debug("Building project objects section...")
         figures = []
         links = []
-        warnings = []
+        _warnings = []
 
         file_results = self.get_nonhighlighted_results(["file"])
         image_results = self.get_nonhighlighted_results(["image"])
@@ -863,7 +859,7 @@ class HTMLReportBuilder(object):
         if not os.path.exists(self.pipeline_reports):
             os.makedirs(self.pipeline_reports)
         for file_result in file_results:
-            html_page_path = os.path.join(self.pipeline_reports, f"{file_result}.html".lower())
+            _html_page_path = os.path.join(self.pipeline_reports, f"{file_result}.html".lower())
 
             pipeline_types = ["project"]
 
@@ -898,14 +894,14 @@ class HTMLReportBuilder(object):
                         except Exception:
                             links.append(["LinkPathNotFound"])
                 else:
-                    link_desc = (
+                    _link_desc = (
                         self.prj.result_schemas[file_result]["description"]
                         if "description" in self.prj.result_schemas[file_result]
                         else "No description in schema"
                     )
 
         for image_result in image_results:
-            html_page_path = os.path.join(self.pipeline_reports, f"{image_result}.html".lower())
+            _html_page_path2 = os.path.join(self.pipeline_reports, f"{image_result}.html".lower())
 
             pipeline_types = ["project"]
 
@@ -949,14 +945,8 @@ class HTMLReportBuilder(object):
                                     ),
                                 ]
                             )
-                        except:
+                        except Exception:
                             figures.append(["FigurePathNotFound"])
-                else:
-                    img_desc = (
-                        self.prj.result_schemas[image_result]["description"]
-                        if "description" in self.prj.result_schemas[image_result]
-                        else "No description in schema"
-                    )
         self._reset_pipeline_type()
         template_vars = dict(figures=figures, links=links)
         return render_jinja_template("project_object.html", self.jinja_env, template_vars)

@@ -19,7 +19,6 @@ from .const import (
     CFG_SCHEMA,
     CONFIG_KEY,
     CREATED_TIME,
-    DATA_KEY,
     DB_ONLY_KEY,
     DB_URL,
     DEFAULT_PIPELINE_NAME,
@@ -77,7 +76,9 @@ except ImportError:
 _LOGGER = getLogger(PKG_NAME)
 
 
-def check_dependencies(dependency_list: Optional[list] = None, msg: Optional[str] = None) -> Callable:
+def check_dependencies(
+    dependency_list: Optional[list] = None, msg: Optional[str] = None
+) -> Callable:
     """Decorator to check that the dependency list has successfully been imported.
 
     Args:
@@ -425,7 +426,9 @@ class PipestatManager(MutableMapping):
 
         return
 
-    def initialize_pephubbackend(self, record_identifier: Optional[str] = None, pephub_path: Optional[str] = None) -> None:
+    def initialize_pephubbackend(
+        self, record_identifier: Optional[str] = None, pephub_path: Optional[str] = None
+    ) -> None:
         """Initializes the pephub backend.
 
         Args:
@@ -446,7 +449,9 @@ class PipestatManager(MutableMapping):
         dependency_list=["DBBackend"],
         msg="Missing required dependencies for this usage, e.g. try pip install pipestat['dbbackend']",
     )
-    def initialize_dbbackend(self, record_identifier: Optional[str] = None, show_db_logs: bool = False) -> None:
+    def initialize_dbbackend(
+        self, record_identifier: Optional[str] = None, show_db_logs: bool = False
+    ) -> None:
         """Initializes the database backend.
 
         Args:
@@ -560,7 +565,7 @@ class PipestatManager(MutableMapping):
         """
 
         if self.cfg["pephub_path"]:
-            _LOGGER.warning(f"List recent results not supported for PEPHub backend")
+            _LOGGER.warning("List recent results not supported for PEPHub backend")
             return {}
         date_format = "%Y-%m-%d %H:%M:%S"
         if start is None:
@@ -907,7 +912,7 @@ class PipestatManager(MutableMapping):
                 return {}
 
         elif self.cfg["pephub_path"]:
-            _LOGGER.warning(f"Retrieving history not supported for PEPHub backend")
+            _LOGGER.warning("Retrieving history not supported for PEPHub backend")
             return None
         else:
             if result_identifier:
@@ -1022,7 +1027,7 @@ class PipestatManager(MutableMapping):
 
         if self.cfg["pephub_path"]:
             if OUTPUT_DIR not in self.cfg:
-                _LOGGER.warning(f"Output directory is required for pipestat summarize.")
+                _LOGGER.warning("Output directory is required for pipestat summarize.")
                 return None
 
         self.check_multi_results()
@@ -1031,7 +1036,7 @@ class PipestatManager(MutableMapping):
         try:
             current_results = self.select_records()
             if len(current_results["records"]) < 1:
-                raise PipestatSummarizeError(f"No results found at specified backend")
+                raise PipestatSummarizeError("No results found at specified backend")
         except Exception as e:
             raise PipestatSummarizeError(f"PipestatSummarizeError due to exception: {e}")
 
