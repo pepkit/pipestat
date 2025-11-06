@@ -47,7 +47,13 @@ __all__ = (
 
 def _env_txt(arg_name):
     """
-    Check if env var set and produce text
+    Check if env var set and produce text.
+
+    Args:
+        arg_name (str): Argument name.
+
+    Returns:
+        str: Text describing environment variable status.
     """
     arg_val = os.environ.get(ENV_VARS[arg_name])
     txt = f"If not provided '{ENV_VARS[arg_name]}' env var will be used. "
@@ -57,8 +63,12 @@ def _env_txt(arg_name):
 def build_argparser(desc):
     """
     Builds argument parser.
-    :param str desc: additional description to print in help
-    :return argparse.ArgumentParser
+
+    Args:
+        desc (str): Additional description to print in help.
+
+    Returns:
+        argparse.ArgumentParser: Argument parser.
     """
     banner = "%(prog)s - report pipeline results"
     additional_description = desc

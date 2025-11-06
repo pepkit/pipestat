@@ -35,9 +35,18 @@ def _safe_pop_one_mapping(
     info_name: str,
     subkeys: Optional[List[str]] = None,
 ) -> Any:
-    """
-    mapping key: the dict key where the sample, project or status values are stored, e.g. data["mappingkey"]
-    subkeys: if using JSON schema, the dict is nested further, e.g. data["properties"]["samples"]["mappingkey"]
+    """Pop a mapping from nested dictionary data.
+
+    Args:
+        mappingkey (str): The dict key where the sample, project or status values are stored,
+            e.g. data["mappingkey"].
+        data (Dict[str, Any]): Source dictionary.
+        info_name (str): Name for error messages.
+        subkeys (List[str], optional): If using JSON schema, the dict is nested further,
+            e.g. data["properties"]["samples"]["mappingkey"]. Defaults to None.
+
+    Returns:
+        Any: The extracted mapping value.
     """
     if subkeys:
         try:
@@ -169,10 +178,10 @@ class ParsedSchema(object):
             )
 
     def __str__(self):
-        """
-        Generate string representation of the object.
+        """Generate string representation of the object.
 
-        :return str: string representation of the object
+        Returns:
+            str: String representation of the object.
         """
         res = f"{self.__class__.__name__} ({self._pipeline_name})"
 
@@ -197,10 +206,10 @@ class ParsedSchema(object):
         return res
 
     def __repr__(self):
-        """
-        Generate string representation of the object.
+        """Generate string representation of the object.
 
-        :return str: string representation of the object
+        Returns:
+            str: String representation of the object.
         """
         return self.__str__()
 
@@ -230,27 +239,31 @@ class ParsedSchema(object):
         return copy.deepcopy(self._status_data)
 
     @property
-    def project_table_name(self):
+    def project_table_name(self) -> str:
         """Return the name of the database table for project-level information."""
         return self._table_name("project")
 
     @property
-    def sample_table_name(self):
+    def sample_table_name(self) -> str:
         """Return the name of the database table for sample-level information."""
         return self._table_name("sample")
 
     @staticmethod
-    def _get_data_type(type_name):
+    def _get_data_type(type_name: str) -> type:
         t = CLASSES_BY_TYPE[type_name]
         # return ARRAY if t == list else t
         return t
 
     @property
-    def file_like_table_name(self):
+    def file_like_table_name(self) -> str:
         return self._table_name("files")
 
     def to_dict(self) -> Dict[str, Any]:
-        """Create simple dictionary representation of this instance."""
+        """Create simple dictionary representation of this instance.
+
+        Returns:
+            Dict[str, Any]: Dictionary representation of the parsed schema.
+        """
         data = {SCHEMA_PIPELINE_NAME_KEY: self.pipeline_name}
         for key, values in [
             (self._PROJECT_KEY, self.project_level_data),
@@ -266,11 +279,13 @@ class ParsedSchema(object):
 
 
 def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Replace the custom types in pipestat schema with canonical types
+    """Replace the custom types in pipestat schema with canonical types.
 
-    :param dict s: schema to replace types in
-    :return dict: schema with types replaced
+    Args:
+        s (dict): Schema to replace types in.
+
+    Returns:
+        dict: Schema with types replaced.
     """
     for k, v in s.items():
         missing_req_keys = [req for req in [SCHEMA_TYPE_KEY, SCHEMA_DESC_KEY] if req not in v]
@@ -297,14 +312,18 @@ def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:
 def replace_JSON_refs(
     target_schema: Dict[str, Any], source_schema: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """
-    Recursively search and replace the $refs if they exist in schema, target_schema, and if their corresponding $defs
-    exist in source schema, source_schema. If $defs  exist in the target schema and target_schema is the same as
-    source_schema then deepcopy should be used such that target_schema = copy.deepcopy(source_schema)
+    """Recursively search and replace the $refs if they exist in schema.
 
-    :param dict target_schema: schema to replace types in
-    :param dict source_schema: source schema
-    :return dict target_schema: schema with types replaced
+    If their corresponding $defs exist in source schema, source_schema. If $defs exist in the target
+    schema and target_schema is the same as source_schema then deepcopy should be used such that
+    target_schema = copy.deepcopy(source_schema).
+
+    Args:
+        target_schema (dict): Schema to replace types in.
+        source_schema (dict): Source schema containing $defs.
+
+    Returns:
+        dict: Schema with $refs replaced.
     """
 
     for k, v in list(target_schema.items()):

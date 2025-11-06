@@ -4,7 +4,7 @@ from abc import ABC
 from collections.abc import MutableMapping
 from copy import deepcopy
 from logging import getLogger
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Union
 
 from jsonschema import validate
 from ubiquerg import mkabs
@@ -19,7 +19,6 @@ from .const import (
     CFG_SCHEMA,
     CONFIG_KEY,
     CREATED_TIME,
-    DATA_KEY,
     DB_ONLY_KEY,
     DB_URL,
     DEFAULT_PIPELINE_NAME,
@@ -77,11 +76,24 @@ except ImportError:
 _LOGGER = getLogger(PKG_NAME)
 
 
-def check_dependencies(dependency_list: list = None, msg: str = None):
-    """Decorator to check that the dependency list has successfully been imported."""
+def check_dependencies(
+    dependency_list: Optional[list] = None, msg: Optional[str] = None
+) -> Callable:
+    """Decorator to check that the dependency list has successfully been imported.
 
-    def wrapper(func):
-        def inner(*args, **kwargs):
+    Args:
+        dependency_list (list, optional): List of dependencies to check for import.
+        msg (str, optional): Error message to display if dependencies are not satisfied.
+
+    Returns:
+        function: Decorated function that checks dependencies before execution.
+
+    Raises:
+        PipestatDependencyError: If any required dependencies are missing.
+    """
+
+    def wrapper(func: Callable) -> Callable:
+        def inner(*args, **kwargs) -> Any:
             dependencies_satisfied = True
             if dependency_list is not None:
                 for i in dependency_list:
@@ -97,10 +109,20 @@ def check_dependencies(dependency_list: list = None, msg: str = None):
     return wrapper
 
 
-def require_backend(func):
-    """Decorator to ensure a backend exists for functions that require one"""
+def require_backend(func: Callable) -> Callable:
+    """Decorator to ensure a backend exists for functions that require one.
 
-    def inner(self, *args, **kwargs):
+    Args:
+        func (function): Function that requires a backend.
+
+    Returns:
+        function: Decorated function that checks for backend existence.
+
+    Raises:
+        NoBackendSpecifiedError: If no backend is configured.
+    """
+
+    def inner(self, *args, **kwargs) -> Any:
         if not self.backend:
             raise NoBackendSpecifiedError
         return func(self, *args, **kwargs)
@@ -109,14 +131,13 @@ def require_backend(func):
 
 
 class PipestatManager(MutableMapping):
-    """
-    Pipestat standardizes reporting of pipeline results and
-    pipeline status management. It formalizes a way for pipeline developers
-    and downstream tools developers to communicate -- results produced by a
-    pipeline can easily and reliably become an input for downstream analyses.
-    A PipestatManager object exposes an API for interacting with the results and
-    pipeline status and can be backed by either a YAML-formatted file
-    or a database.
+    """Pipestat standardizes reporting of pipeline results and pipeline status management.
+
+    It formalizes a way for pipeline developers and downstream tools developers to
+    communicate -- results produced by a pipeline can easily and reliably become an
+    input for downstream analyses. A PipestatManager object exposes an API for
+    interacting with the results and pipeline status and can be backed by either
+    a YAML-formatted file or a database.
     """
 
     def __init__(
@@ -132,32 +153,30 @@ class PipestatManager(MutableMapping):
         show_db_logs: bool = False,
         pipeline_type: Optional[str] = None,
         pipeline_name: Optional[str] = None,
-        result_formatter: staticmethod = default_formatter,
+        result_formatter: Callable = default_formatter,
         multi_pipelines: bool = False,
         output_dir: Optional[str] = None,
         pephub_path: Optional[str] = None,
-    ):
-        """
-        Initialize the PipestatManager object
+    ) -> None:
+        """Initialize the PipestatManager object.
 
-        :param str record_identifier: record identifier to report for. This
-            creates a weak bound to the record, which can be overridden in
-            this object method calls
-        :param str schema_path: path to the output schema that formalizes
-            the results structure
-        :param str results_file_path: YAML file to report into, if file is
-            used as the object back-end
-        :param bool database_only: whether the reported data should not be
-            stored in the memory, but only in the database
-        :param str config_file: path to the configuration file
-        :param dict config_dict:  a mapping with the config file content
-        :param str flag_file_dir: path to directory containing flag files
-        :param bool show_db_logs: Defaults to False, toggles showing database logs
-        :param str pipeline_type: "sample" or "project"
-        :param str pipeline_name: name of the current pipeline, defaults to
-        :param str result_formatter: function for formatting result
-        :param bool multi_pipelines: allows for running multiple pipelines for one file backend
-        :param str output_dir: target directory for report generation via summarize and table generation via table.
+        Args:
+            project_name (str, optional): Name of the project.
+            record_identifier (str, optional): Record identifier to report for. This creates
+                a weak bound to the record, which can be overridden in object method calls.
+            schema_path (str, optional): Path to the output schema that formalizes the results structure.
+            results_file_path (str, optional): YAML file to report into, if file is used as the object back-end.
+            database_only (bool, optional): Whether the reported data should not be stored in memory, but only in the database. Defaults to True.
+            config_file (str, optional): Path to the configuration file.
+            config_dict (dict, optional): A mapping with the config file content.
+            flag_file_dir (str, optional): Path to directory containing flag files.
+            show_db_logs (bool, optional): Toggles showing database logs. Defaults to False.
+            pipeline_type (str, optional): "sample" or "project".
+            pipeline_name (str, optional): Name of the current pipeline.
+            result_formatter (staticmethod, optional): Function for formatting result. Defaults to default_formatter.
+            multi_pipelines (bool, optional): Allows for running multiple pipelines for one file backend. Defaults to False.
+            output_dir (str, optional): Target directory for report generation via summarize and table generation via table.
+            pephub_path (str, optional): Path to PEPHub registry.
         """
 
         super(PipestatManager, self).__init__()
@@ -256,10 +275,10 @@ class PipestatManager(MutableMapping):
             self.initialize_dbbackend(record_identifier, show_db_logs)
 
     def __str__(self):
-        """
-        Generate string representation of the object
+        """Generate string representation of the object.
 
-        :return str: string representation of the object
+        Returns:
+            str: String representation of the object.
         """
         res = f"{self.__class__.__name__} ({self.cfg[PIPELINE_NAME]})"
         res += "\nBackend: {}".format(
@@ -296,17 +315,17 @@ class PipestatManager(MutableMapping):
             res += f"\nHighlighted results: {', '.join(high_res)}"
         return res
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         # This is a wrapper for the retrieve function:
         result = self.retrieve_one(record_identifier=key)
         return result
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any) -> Union[List[str], bool]:
         # This is a wrapper for the report function:
         result = self.report(record_identifier=key, values=value)
         return result
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> bool:
         # This is a wrapper for the remove function; it removes the entire record:
         result = self.remove(record_identifier=key)
         return result
@@ -316,12 +335,14 @@ class PipestatManager(MutableMapping):
         limit: Optional[int] = 1000,
         cursor: Optional[int] = None,
     ) -> Iterator:
-        """
-        This is a wrapper around select_records that creates an iterator of records
+        """Wrapper around select_records that creates an iterator of records.
 
-        :param int limit: maximum number of results to retrieve per page
-        :param int cursor: cursor position to begin retrieving records
-        :return: Iterator
+        Args:
+            limit (int, optional): Maximum number of results to retrieve per page. Defaults to 1000.
+            cursor (int, optional): Cursor position to begin retrieving records.
+
+        Returns:
+            Iterator: Iterator over records.
         """
         if self.file:
             # File backend does not support cursor-based paging
@@ -329,13 +350,17 @@ class PipestatManager(MutableMapping):
         else:
             return iter(self.select_records(limit=limit, cursor=cursor)["records"])
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.cfg)
 
-    def resolve_results_file_path(self, results_file_path):
+    def resolve_results_file_path(self, results_file_path: Optional[str]) -> Optional[str]:
         """Replace {record_identifier} in results_file_path if it exists.
-        :param str results_file_path: YAML file to report into, if file is
-        used as the object back-end
+
+        Args:
+            results_file_path (str): YAML file to report into, if file is used as the object back-end.
+
+        Returns:
+            str: Resolved file path with record_identifier substituted if applicable.
         """
         # Save for later when assessing if there may be multiple result files
         if results_file_path:
@@ -357,15 +382,16 @@ class PipestatManager(MutableMapping):
 
     def initialize_filebackend(
         self,
-        record_identifier: str = None,
-        results_file_path: str = None,
-        flag_file_dir: str = None,
-    ):
-        """
-        Initializes the file backend
-        :param str record_identifier: the record identifier
-        :param str results_file_path: the path to the results file used for the backend
-        :param str flag_file_dir: the path to the flag file directory
+        record_identifier: Optional[str] = None,
+        results_file_path: Optional[str] = None,
+        flag_file_dir: Optional[str] = None,
+    ) -> None:
+        """Initializes the file backend.
+
+        Args:
+            record_identifier (str, optional): The record identifier.
+            results_file_path (str, optional): The path to the results file used for the backend.
+            flag_file_dir (str, optional): The path to the flag file directory.
         """
 
         # Check if there will be multiple results_file_paths
@@ -400,11 +426,14 @@ class PipestatManager(MutableMapping):
 
         return
 
-    def initialize_pephubbackend(self, record_identifier: str = None, pephub_path: str = None):
-        """
-        Initializes the pephub backend
-        :param str record_identifier: the record identifier
-        :param str pephub_path: the path to the pephub registry
+    def initialize_pephubbackend(
+        self, record_identifier: Optional[str] = None, pephub_path: Optional[str] = None
+    ) -> None:
+        """Initializes the pephub backend.
+
+        Args:
+            record_identifier (str, optional): The record identifier.
+            pephub_path (str, optional): The path to the pephub registry.
         """
         self.backend = PEPHUBBACKEND(
             record_identifier,
@@ -420,11 +449,19 @@ class PipestatManager(MutableMapping):
         dependency_list=["DBBackend"],
         msg="Missing required dependencies for this usage, e.g. try pip install pipestat['dbbackend']",
     )
-    def initialize_dbbackend(self, record_identifier: str = None, show_db_logs: bool = False):
-        """
-        Initializes the database backend
-        :param str record_identifier: the record identifier
-        :param bool show_db_logs: boolean to show_db_logs
+    def initialize_dbbackend(
+        self, record_identifier: Optional[str] = None, show_db_logs: bool = False
+    ) -> None:
+        """Initializes the database backend.
+
+        Args:
+            record_identifier (str, optional): The record identifier.
+            show_db_logs (bool, optional): Boolean to show database logs. Defaults to False.
+
+        Raises:
+            SchemaNotFoundError: If output schema is not supplied for DB backends.
+            NoBackendSpecifiedError: If database configuration is missing.
+            PipestatDatabaseError: If database configuration is invalid.
         """
         _LOGGER.debug("Determined database as backend")
         if self.cfg[SCHEMA_KEY] is None:
@@ -462,13 +499,15 @@ class PipestatManager(MutableMapping):
         record_identifier: str = None,
         flag_names: List[str] = None,
     ) -> List[Union[str, None]]:
-        """
-        Remove status flags
+        """Remove status flags.
 
-        :param str record_identifier: name of the sample_level record to remove flags for
-        :param Iterable[str] flag_names: Names of flags to remove, optional; if
-            unspecified, all schema-defined flag names will be used.
-        :return List[Union[str,None]]: Collection of names of flags removed
+        Args:
+            record_identifier (str, optional): Name of the sample_level record to remove flags for.
+            flag_names (List[str], optional): Names of flags to remove; if unspecified,
+                all schema-defined flag names will be used.
+
+        Returns:
+            List[Union[str, None]]: Collection of names of flags removed.
         """
 
         r_id = record_identifier or self.record_identifier
@@ -476,9 +515,10 @@ class PipestatManager(MutableMapping):
 
     @require_backend
     def count_records(self) -> int:
-        """
-        Count records
-        :return int: number of records
+        """Count records.
+
+        Returns:
+            int: Number of records.
         """
         return self.backend.count_records()
 
@@ -487,11 +527,13 @@ class PipestatManager(MutableMapping):
         self,
         record_identifier: str = None,
     ) -> Optional[str]:
-        """
-        Get the current pipeline status
-        :param str record_identifier: name of the sample_level record
-        :return str: status identifier, e.g. 'running'
+        """Get the current pipeline status.
 
+        Args:
+            record_identifier (str, optional): Name of the sample_level record.
+
+        Returns:
+            str: Status identifier, e.g. 'running'.
         """
 
         r_id = record_identifier or self.record_identifier
@@ -505,16 +547,25 @@ class PipestatManager(MutableMapping):
         end: Optional[str] = None,
         time_column: Optional[str] = "modified",
     ) -> dict:
-        """
-        :param int  limit: limit number of results returned
-        :param str start: most recent result to filter on, defaults to now, e.g. 2023-10-16 13:03:04.680400
-        :param str end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
-        :param str time_column: created or modified column/attribute to filter on
-        :return dict results: a dict containing start, end, num of records, and list of retrieved records
+        """List recent results within a time range.
+
+        Args:
+            limit (int, optional): Limit number of results returned. Defaults to 1000.
+            start (str, optional): Most recent result to filter on, defaults to now.
+                Format: YYYY-MM-DD HH:MM:SS, e.g. 2023-10-16 13:03:04.
+            end (str, optional): Oldest result to filter on.
+                Format: YYYY-MM-DD HH:MM:SS, e.g. 1970-10-16 13:03:04.
+            time_column (str, optional): Created or modified column/attribute to filter on. Defaults to "modified".
+
+        Returns:
+            dict: A dict containing start, end, num of records, and list of retrieved records.
+
+        Raises:
+            InvalidTimeFormatError: If start or end time format is incorrect.
         """
 
         if self.cfg["pephub_path"]:
-            _LOGGER.warning(f"List recent results not supported for PEPHub backend")
+            _LOGGER.warning("List recent results not supported for PEPHub backend")
             return {}
         date_format = "%Y-%m-%d %H:%M:%S"
         if start is None:
@@ -555,7 +606,7 @@ class PipestatManager(MutableMapping):
         )
         return results
 
-    def process_schema(self, schema_path):
+    def process_schema(self, schema_path: Optional[str]) -> None:
         # Load pipestat schema in two parts: 1) main and 2) status
         self._schema_path = self.cfg[CONFIG_KEY].priority_get(
             "schema_path", env_var=ENV_VARS["schema"], override=schema_path
@@ -589,16 +640,17 @@ class PipestatManager(MutableMapping):
         record_identifier: str = None,
         result_identifier: str = None,
     ) -> bool:
-        """
-        Remove a result.
+        """Remove a result.
 
-        If no result ID specified or last result is removed, the entire record
-        will be removed.
+        If no result ID specified or last result is removed, the entire record will be removed.
 
-        :param str record_identifier: name of the sample_level record
-        :param str result_identifier: name of the result to be removed or None
-             if the record should be removed.
-        :return bool: whether the result has been removed
+        Args:
+            record_identifier (str, optional): Name of the sample_level record.
+            result_identifier (str, optional): Name of the result to be removed or None
+                if the record should be removed.
+
+        Returns:
+            bool: Whether the result has been removed.
         """
 
         r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
@@ -624,24 +676,28 @@ class PipestatManager(MutableMapping):
         values: Dict[str, Any],
         record_identifier: Optional[str] = None,
         force_overwrite: bool = True,
-        result_formatter: Optional[staticmethod] = None,
+        result_formatter: Optional[Callable] = None,
         strict_type: bool = True,
         history_enabled: bool = True,
     ) -> Union[List[str], bool]:
-        """
-        Report a result.
+        """Report a result.
 
-        :param Dict[str, any] values: dictionary of result-value pairs
-        :param str record_identifier: unique identifier of the record, value
-            in 'record_identifier' column to look for to determine if the record
-            already exists
-        :param bool force_overwrite: whether to overwrite the existing record
-        :param str result_formatter: function for formatting result
-        :param bool strict_type: whether the type of the reported values should
-            remain as is. Pipestat would attempt to convert to the
-            schema-defined one otherwise
-        :param bool history_enabled: Should history of reported results be enabled?
-        :return str reported_results: return list of formatted string
+        Args:
+            values (Dict[str, Any]): Dictionary of result-value pairs.
+            record_identifier (str, optional): Unique identifier of the record, value in
+                'record_identifier' column to look for to determine if the record already exists.
+            force_overwrite (bool, optional): Whether to overwrite the existing record. Defaults to True.
+            result_formatter (staticmethod, optional): Function for formatting result.
+            strict_type (bool, optional): Whether the type of the reported values should remain as is.
+                Pipestat would attempt to convert to the schema-defined one otherwise. Defaults to True.
+            history_enabled (bool, optional): Should history of reported results be enabled? Defaults to True.
+
+        Returns:
+            Union[List[str], bool]: List of formatted strings for reported results.
+
+        Raises:
+            NotImplementedError: If no record identifier is supplied.
+            ColumnNotFoundError: If a result attribute is not defined in the output schema.
         """
 
         result_formatter = result_formatter or self.cfg[RESULT_FORMATTER]
@@ -681,11 +737,16 @@ class PipestatManager(MutableMapping):
         self,
         columns: Optional[Union[str, List[str]]] = None,
     ) -> List[Any]:
-        """
-        Retrieves unique results for a list of attributes.
+        """Retrieves unique results for a list of attributes.
 
-        :param List[str] columns: columns to include in the result
-        :return list[any] result: this is a list of distinct results
+        Args:
+            columns (Union[str, List[str]], optional): Columns to include in the result.
+
+        Returns:
+            List[Any]: List of distinct results.
+
+        Raises:
+            ValueError: If columns is not a list of strings or string.
         """
         if not isinstance(columns, list) and not isinstance(columns, str):
             raise ValueError(
@@ -704,23 +765,28 @@ class PipestatManager(MutableMapping):
         cursor: Optional[int] = None,
         bool_operator: Optional[str] = "AND",
     ) -> Dict[str, Any]:
-        """
-        :param list[str] columns: columns to include in the result
-        :param list[dict]  filter_conditions: e.g. [{"key": ["id"], "operator": "eq", "value": 1)], operator list:
-            - eq for ==
-            - lt for <
-            - ge for >=
-            - in for in_
-            - like for like
-        :param int limit: maximum number of results to retrieve per page
-        :param int cursor: cursor position to begin retrieving records
-        :param bool bool_operator: Perform filtering with AND or OR Logic.
-        :return dict records_dict = {
-            "total_size": int,
-            "page_size": int,
-            "next_page_token": int,
-            "records": List[Dict[{key, Any}]],
-        }
+        """Select records with optional filtering and pagination.
+
+        Args:
+            columns (List[str], optional): Columns to include in the result.
+            filter_conditions (List[Dict[str, Any]], optional): Filter conditions.
+                Format: [{"key": "id", "operator": "eq", "value": 1}].
+                Supported operators:
+                - eq for ==
+                - lt for <
+                - ge for >=
+                - in for in_
+                - like for like
+            limit (int, optional): Maximum number of results to retrieve per page. Defaults to 1000.
+            cursor (int, optional): Cursor position to begin retrieving records.
+            bool_operator (str, optional): Perform filtering with AND or OR logic. Defaults to "AND".
+
+        Returns:
+            Dict[str, Any]: Dictionary containing:
+                - total_size (int): Total number of records
+                - page_size (int): Number of records in current page
+                - next_page_token (int): Cursor for next page
+                - records (List[Dict]): List of record dictionaries
         """
 
         return self.backend.select_records(
@@ -737,11 +803,18 @@ class PipestatManager(MutableMapping):
         record_identifier: str = None,
         result_identifier: Optional[Union[str, List[str]]] = None,
     ) -> Union[Any, Dict[str, Any]]:
-        """
-        Retrieve a single record
-        :param str record_identifier: single record_identifier
-        :param str result_identifier: single record_identifier or list of result identifiers
-        :return: Dict[str, any]: a mapping with filtered results reported for the record
+        """Retrieve a single record.
+
+        Args:
+            record_identifier (str, optional): Single record_identifier.
+            result_identifier (Union[str, List[str]], optional): Single result_identifier or list of result identifiers.
+
+        Returns:
+            Union[Any, Dict[str, Any]]: A mapping with filtered results reported for the record.
+
+        Raises:
+            RecordNotFoundError: If the record or results are not found.
+            ValueError: If result_identifier is not a str or list[str].
         """
         record_identifier = record_identifier or self.record_identifier
 
@@ -798,11 +871,14 @@ class PipestatManager(MutableMapping):
         record_identifier: str = None,
         result_identifier: Optional[Union[str, List[str]]] = None,
     ) -> Union[Any, Dict[str, Any]]:
-        """
-        Retrieve a single record's history
-        :param str record_identifier: single record_identifier
-        :param str result_identifier: single result_identifier or list of result identifiers
-        :return: Dict[str, any]: a mapping with filtered historical results
+        """Retrieve a single record's history.
+
+        Args:
+            record_identifier (str, optional): Single record_identifier.
+            result_identifier (Union[str, List[str]], optional): Single result_identifier or list of result identifiers.
+
+        Returns:
+            Dict[str, Any]: A mapping with filtered historical results.
         """
 
         record_identifier = record_identifier or self.record_identifier
@@ -836,7 +912,7 @@ class PipestatManager(MutableMapping):
                 return {}
 
         elif self.cfg["pephub_path"]:
-            _LOGGER.warning(f"Retrieving history not supported for PEPHub backend")
+            _LOGGER.warning("Retrieving history not supported for PEPHub backend")
             return None
         else:
             if result_identifier:
@@ -864,11 +940,14 @@ class PipestatManager(MutableMapping):
         record_identifiers: List[str],
         result_identifier: Optional[str] = None,
     ) -> Union[Any, Dict[str, Any]]:
-        """
-        :param record_identifiers: list of record identifiers
-        :param str result_identifier: single record_identifier
-        :return: Dict[str, any]: a mapping with filtered
-            results reported for the record
+        """Retrieve multiple records.
+
+        Args:
+            record_identifiers (List[str]): List of record identifiers.
+            result_identifier (str, optional): Single result_identifier to filter results.
+
+        Returns:
+            Dict[str, Any]: A mapping with filtered results reported for the records.
         """
 
         filter = {
@@ -892,27 +971,27 @@ class PipestatManager(MutableMapping):
         status_identifier: str,
         record_identifier: str = None,
     ) -> None:
-        """
-        Set pipeline run status.
+        """Set pipeline run status.
 
-        The status identifier needs to match one of identifiers specified in
-        the status schema. A basic, ready to use, status schema is shipped with
-        this package.
+        The status identifier needs to match one of identifiers specified in the status schema.
+        A basic, ready to use, status schema is shipped with this package.
 
-        :param str status_identifier: status to set, one of statuses defined
-            in the status schema
-        :param str record_identifier: sample_level record identifier to set the
-            pipeline status for
+        Args:
+            status_identifier (str): Status to set, one of statuses defined in the status schema.
+            record_identifier (str, optional): Sample_level record identifier to set the pipeline status for.
         """
         r_id = record_identifier or self.record_identifier
         self.backend.set_status(status_identifier, r_id)
 
     @require_backend
-    def link(self, link_dir) -> Union[str, None]:
-        """
-        This function creates a link structure such that results are organized by type.
-        :param str link_dir: path to desired symlink output directory
-        :return str | None linked_results_path: path to symlink directory or None
+    def link(self, link_dir: str) -> Optional[str]:
+        """Create a link structure such that results are organized by type.
+
+        Args:
+            link_dir (str): Path to desired symlink output directory.
+
+        Returns:
+            Union[str, None]: Path to symlink directory or None.
         """
 
         self.check_multi_results()
@@ -927,15 +1006,20 @@ class PipestatManager(MutableMapping):
         amendment: Optional[str] = None,
         portable: Optional[bool] = False,
         output_dir: Optional[str] = None,
-    ) -> Union[str, None]:
-        """
-        Builds a browsable html report for reported results.
-        :param Iterable[str] looper_samples: list of looper Samples from PEP
-        :param Iterable[str] amendment: name indicating amendment to use, optional
-        :param bool portable: moves figures and report files to directory for easy sharing
-        :param str output_dir: overrides output_dir set during pipestatManager creation.
-        :return str: report_path
+    ) -> Optional[str]:
+        """Build a browsable HTML report for reported results.
 
+        Args:
+            looper_samples (list, optional): List of looper Samples from PEP.
+            amendment (str, optional): Name indicating amendment to use.
+            portable (bool, optional): Moves figures and report files to directory for easy sharing. Defaults to False.
+            output_dir (str, optional): Overrides output_dir set during pipestatManager creation.
+
+        Returns:
+            Union[str, None]: Path to the generated report or None.
+
+        Raises:
+            PipestatSummarizeError: If no results are found at the specified backend.
         """
 
         if output_dir:
@@ -943,7 +1027,7 @@ class PipestatManager(MutableMapping):
 
         if self.cfg["pephub_path"]:
             if OUTPUT_DIR not in self.cfg:
-                _LOGGER.warning(f"Output directory is required for pipestat summarize.")
+                _LOGGER.warning("Output directory is required for pipestat summarize.")
                 return None
 
         self.check_multi_results()
@@ -952,7 +1036,7 @@ class PipestatManager(MutableMapping):
         try:
             current_results = self.select_records()
             if len(current_results["records"]) < 1:
-                raise PipestatSummarizeError(f"No results found at specified backend")
+                raise PipestatSummarizeError("No results found at specified backend")
         except Exception as e:
             raise PipestatSummarizeError(f"PipestatSummarizeError due to exception: {e}")
 
@@ -968,7 +1052,7 @@ class PipestatManager(MutableMapping):
 
         return report_path
 
-    def check_multi_results(self):
+    def check_multi_results(self) -> None:
         # Check to see if the user used a path with "{record-identifier}"
         if self.file:
             if "{record_identifier}" in self.cfg["unresolved_result_path"]:
@@ -986,11 +1070,13 @@ class PipestatManager(MutableMapping):
         self,
         output_dir: Optional[str] = None,
     ) -> List[str]:
-        """
-        Generates stats (.tsv) and object (.yaml) files.
-        :param str output_dir: overrides output_dir set during pipestatManager creation.
-        :return list[str] table_path_list: list containing output file paths of stats and objects
+        """Generate stats (.tsv) and object (.yaml) files.
 
+        Args:
+            output_dir (str, optional): Overrides output_dir set during pipestatManager creation.
+
+        Returns:
+            List[str]: List containing output file paths of stats and objects.
         """
         if output_dir:
             self.cfg[OUTPUT_DIR] = output_dir
@@ -1002,122 +1088,126 @@ class PipestatManager(MutableMapping):
         return table_path_list
 
     def _get_attr(self, attr: str) -> Any:
-        """
-        Safely get the name of the selected attribute of this object
+        """Safely get the name of the selected attribute of this object.
 
-        :param str attr: attr to select
-        :return:
+        Args:
+            attr (str): Attribute to select.
+
+        Returns:
+            Any: The value of the attribute.
         """
         return self.get(attr)
 
     @property
     def config_path(self) -> str:
-        """
-        Config path. None if the config was not provided or if provided
-        as a mapping of the config contents
+        """Config path.
 
-        :return str: path to the provided config
+        Returns None if the config was not provided or if provided as a mapping of the config contents.
+
+        Returns:
+            str: Path to the provided config.
         """
         return self.cfg.get("config_path", None)
 
     @property
     def data(self) -> YAMLConfigManager:
-        """
-        Data object
+        """Data object.
 
-        :return yacman.YAMLConfigManager: the object that stores the reported data
+        Returns:
+            yacman.YAMLConfigManager: The object that stores the reported data.
         """
         return self.backend._data
 
     @property
     def db_url(self) -> str:
-        """
-        Database URL, generated based on config credentials
+        """Database URL, generated based on config credentials.
 
-        :return str: database URL
-        :raise PipestatDatabaseError: if the object is not backed by a database
+        Returns:
+            str: Database URL.
+
+        Raises:
+            PipestatDatabaseError: If the object is not backed by a database.
         """
         return self.cfg[DB_URL]
 
     @property
     def file(self) -> str:
-        """
-        File path that the object is reporting the results into
+        """File path that the object is reporting the results into.
 
-        :return str: file path that the object is reporting the results into
+        Returns:
+            str: File path that the object is reporting the results into.
         """
         return self.cfg[FILE_KEY]
 
     @property
     def highlighted_results(self) -> List[str]:
-        """
-        Highlighted results
+        """Highlighted results.
 
-        :return List[str]: a collection of highlighted results
+        Returns:
+            List[str]: A collection of highlighted results.
         """
         return [k for k, v in self.result_schemas.items() if v.get("highlight") is True]
 
     @property
     def output_dir(self) -> str:
-        """
-        Output directory for report and stats generation
+        """Output directory for report and stats generation.
 
-        :return str: path to output_dir
+        Returns:
+            str: Path to output_dir.
         """
         return self.cfg[OUTPUT_DIR]
 
     @property
     def pipeline_name(self) -> str:
-        """
-        Pipeline name
+        """Pipeline name.
 
-        :return str: Pipeline name
+        Returns:
+            str: Pipeline name.
         """
         return self.cfg[PIPELINE_NAME]
 
     @property
     def project_name(self) -> str:
-        """
-        Project name the object writes the results to
+        """Project name the object writes the results to.
 
-        :return str: project name the object writes the results to
+        Returns:
+            str: Project name the object writes the results to.
         """
         return self.cfg[PROJECT_NAME]
 
     @property
     def pipeline_type(self) -> str:
-        """
-        Pipeline type: "sample" or "project"
+        """Pipeline type: "sample" or "project".
 
-        :return str: pipeline type
+        Returns:
+            str: Pipeline type.
         """
         return self.cfg[PIPELINE_TYPE]
 
     @property
     def record_identifier(self) -> str:
-        """
-        Pipeline type: "sample" or "project"
+        """Record identifier.
 
-        :return str: pipeline type
+        Returns:
+            str: Record identifier.
         """
         return self.cfg[RECORD_IDENTIFIER]
 
     @property
     def record_count(self) -> int:
-        """
-        Number of records reported
+        """Number of records reported.
 
-        :return int: number of records reported
+        Returns:
+            int: Number of records reported.
         """
         return self.count_records()
 
     @property
     def result_schemas(self) -> Dict[str, Any]:
-        """
-        Result schema mappings
+        """Result schema mappings.
 
-        :return dict: schemas that formalize the structure of each result
-            in a canonical jsonschema way
+        Returns:
+            Dict[str, Any]: Schemas that formalize the structure of each result in a canonical jsonschema way.
         """
         return {
             **self.cfg[SCHEMA_KEY].project_level_data,
@@ -1126,78 +1216,73 @@ class PipestatManager(MutableMapping):
 
     @property
     def schema(self) -> ParsedSchema:
-        """
-        Schema mapping
+        """Schema mapping.
 
-        :return ParsedSchema: schema object that formalizes the results structure
+        Returns:
+            ParsedSchema: Schema object that formalizes the results structure.
         """
         return self.cfg["_schema"]
 
     @property
     def schema_path(self) -> str:
-        """
-        Schema path
+        """Schema path.
 
-        :return str: path to the provided schema
+        Returns:
+            str: Path to the provided schema.
         """
         return self.cfg[SCHEMA_PATH]
 
     @property
     def status_schema(self) -> Dict:
-        """
-        Status schema mapping
+        """Status schema mapping.
 
-        :return dict: schema that formalizes the pipeline status structure
+        Returns:
+            Dict: Schema that formalizes the pipeline status structure.
         """
         return self.cfg[STATUS_SCHEMA_KEY]
 
     @property
     def status_schema_source(self) -> Dict:
-        """
-        Status schema source
+        """Status schema source.
 
-        :return dict: source of the schema that formalizes
-            the pipeline status structure
+        Returns:
+            Dict: Source of the schema that formalizes the pipeline status structure.
         """
         return self.cfg[STATUS_SCHEMA_SOURCE_KEY]
 
 
 class SamplePipestatManager(PipestatManager):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         PipestatManager.__init__(self, pipeline_type="sample", **kwargs)
         _LOGGER.warning("Initialize PipestatMgrSample")
 
 
 class ProjectPipestatManager(PipestatManager):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         PipestatManager.__init__(self, pipeline_type="project", **kwargs)
         _LOGGER.warning("Initialize PipestatMgrProject")
 
 
 class PipestatBoss(ABC):
-    """
-    PipestatBoss simply holds Sample or Project Managers that are child classes of PipestatManager.
-        :param list[str] pipeline_list: list that holds pipeline types, e.g. ['sample','project']
-        :param str record_identifier: record identifier to report for. This
-            creates a weak bound to the record, which can be overridden in
-            this object method calls
-        :param str schema_path: path to the output schema that formalizes
-            the results structure
-        :param str results_file_path: YAML file to report into, if file is
-            used as the object back-end
-        :param bool database_only: whether the reported data should not be
-            stored in the memory, but only in the database
-        :param str | dict config: path to the configuration file or a mapping
-            with the config file content
-        :param str flag_file_dir: path to directory containing flag files
-        :param bool show_db_logs: Defaults to False, toggles showing database logs
-        :param str pipeline_type: "sample" or "project"
-        :param str result_formatter: function for formatting result
-        :param bool multi_pipelines: allows for running multiple pipelines for one file backend
-        :param str output_dir: target directory for report generation via summarize and table generation via table.
+    """PipestatBoss simply holds Sample or Project Managers that are child classes of PipestatManager.
+
+    Args:
+        pipeline_list (List[str], optional): List that holds pipeline types, e.g. ['sample','project'].
+        record_identifier (str, optional): Record identifier to report for. This creates
+            a weak bound to the record, which can be overridden in object method calls.
+        schema_path (str, optional): Path to the output schema that formalizes the results structure.
+        results_file_path (str, optional): YAML file to report into, if file is used as the object back-end.
+        database_only (bool, optional): Whether the reported data should not be stored in memory, but only in the database.
+        config (Union[str, dict], optional): Path to the configuration file or a mapping with the config file content.
+        flag_file_dir (str, optional): Path to directory containing flag files.
+        show_db_logs (bool, optional): Toggles showing database logs. Defaults to False.
+        pipeline_type (str, optional): "sample" or "project".
+        result_formatter (function, optional): Function for formatting result.
+        multi_pipelines (bool, optional): Allows for running multiple pipelines for one file backend.
+        output_dir (str, optional): Target directory for report generation via summarize and table generation via table.
     """
 
-    def __init__(self, pipeline_list: Optional[list] = None, **kwargs):
+    def __init__(self, pipeline_list: Optional[list] = None, **kwargs) -> None:
         _LOGGER.warning("Initialize PipestatBoss")
         if len(pipeline_list) > 3:
             _LOGGER.warning(
@@ -1211,8 +1296,8 @@ class PipestatBoss(ABC):
             else:
                 _LOGGER.warning(f"This pipeline type is not supported. Pipeline supplied: {i}")
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         return getattr(self, key)
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any) -> None:
         setattr(self, key, value)

@@ -2,7 +2,7 @@ import copy
 import datetime
 from contextlib import contextmanager
 from logging import getLogger
-from typing import Any, Dict, List, NoReturn, Optional, Tuple, Union
+from typing import Any, Dict, Generator, List, NoReturn, Optional, Tuple, Union
 
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel import select as sql_select
@@ -36,19 +36,19 @@ class DBBackend(PipestatBackend):
         status_schema_source: Optional[dict] = None,
         result_formatter: Optional[staticmethod] = None,
     ):
-        """
-        Class representing a Database backend
-        :param str record_identifier: record identifier to report for. This
-            creates a weak bound to the record, which can be overridden in
-            this object method calls
-        :param str pipeline_name: name of pipeline associated with result
-        :param str show_db_logs: Defaults to False, toggles showing database logs
-        :param str pipeline_type: "sample" or "project"
-        :param str parsed_schema: results output schema. Used to construct DB columns.
-        :param str status_schema: schema containing pipeline statuses e.g. 'running'
-        :param str db_url: url used for connection to Postgres DB
-        :param dict status_schema_source: filepath of status schema
-        :param str result_formatter: function for formatting result
+        """Class representing a Database backend.
+
+        Args:
+            record_identifier (str): Record identifier to report for. This creates a weak bound to the record,
+                which can be overridden in this object method calls.
+            pipeline_name (str): Name of pipeline associated with result.
+            show_db_logs (bool): Defaults to False, toggles showing database logs.
+            pipeline_type (str): "sample" or "project".
+            parsed_schema (str): Results output schema. Used to construct DB columns.
+            status_schema (str): Schema containing pipeline statuses e.g. 'running'.
+            db_url (str): URL used for connection to Postgres DB.
+            status_schema_source (dict): Filepath of status schema.
+            result_formatter (staticmethod): Function for formatting result.
         """
 
         super().__init__(pipeline_type)
@@ -73,11 +73,13 @@ class DBBackend(PipestatBackend):
         self,
         record_identifier: str,
     ) -> bool:
-        """
-        Check if the specified record exists in the table
+        """Check if the specified record exists in the table.
 
-        :param str record_identifier: record to check for
-        :return bool: whether the record exists in the table
+        Args:
+            record_identifier (str): Record to check for.
+
+        Returns:
+            bool: Whether the record exists in the table.
         """
 
         query_hit = self.select_records(
@@ -92,10 +94,11 @@ class DBBackend(PipestatBackend):
 
         return bool(query_hit["records"])
 
-    def count_records(self):
-        """
-        Count rows in a selected table
-        :return int: number of records
+    def count_records(self) -> int:
+        """Count rows in a selected table.
+
+        Returns:
+            int: Number of records.
         """
 
         mod = self.get_model(table_name=self.table_name)
@@ -104,11 +107,14 @@ class DBBackend(PipestatBackend):
             records = s.exec(stmt).all()
             return len(records)
 
-    def get_model(self, table_name: str):
-        """
-        Get model based on table_name
-        :param str table_name: pipelinename__sample or pipelinename__project
-        :return mod: model/orm associated with the table name
+    def get_model(self, table_name: str) -> Any:
+        """Get model based on table_name.
+
+        Args:
+            table_name (str): pipelinename__sample or pipelinename__project.
+
+        Returns:
+            mod: Model/orm associated with the table name.
         """
         if self.orms is None:
             raise PipestatDatabaseError("Object relational mapper classes not defined.")
@@ -123,12 +129,13 @@ class DBBackend(PipestatBackend):
         return mod
 
     def get_status(self, record_identifier: str) -> Optional[str]:
-        """
-        Get pipeline status
+        """Get pipeline status.
 
-        :param str record_identifier: record identifier to set the
-            pipeline status for
-        :return str status
+        Args:
+            record_identifier (str): Record identifier to set the pipeline status for.
+
+        Returns:
+            str: Status.
         """
 
         try:
@@ -154,15 +161,17 @@ class DBBackend(PipestatBackend):
     def list_results(
         self,
         restrict_to: Optional[List[str]] = None,
-        record_identifier: str = None,
+        record_identifier: Optional[str] = None,
     ) -> List[str]:
-        """
-        Check if the specified results exist in the table
+        """Check if the specified results exist in the table.
 
-        :param List[str] restrict_to: results identifiers to check for
-        :param str record_identifier: record to check for
-        :return List[str] existing: if no result identifier specified, return all results for the record
-        :return List[str]: results identifiers that exist
+        Args:
+            restrict_to (List[str]): Results identifiers to check for.
+            record_identifier (str): Record to check for.
+
+        Returns:
+            List[str]: If no result identifier specified, return all results for the record.
+                Otherwise, return results identifiers that exist.
         """
 
         rid = record_identifier
@@ -198,16 +207,16 @@ class DBBackend(PipestatBackend):
         record_identifier: Optional[str] = None,
         result_identifier: Optional[str] = None,
     ) -> bool:
-        """
-        Remove a result.
+        """Remove a result.
 
-        If no result ID specified, the entire record
-        will be removed.
+        If no result ID specified, the entire record will be removed.
 
-        :param str record_identifier: unique identifier of the record
-        :param str result_identifier: name of the result to be removed or None
-             if the record should be removed.
-        :return bool: whether the result has been removed
+        Args:
+            record_identifier (str): Unique identifier of the record.
+            result_identifier (str): Name of the result to be removed or None if the record should be removed.
+
+        Returns:
+            bool: Whether the result has been removed.
         """
 
         # TODO removing last result identifier (apart from created, modified time should remove record)
@@ -265,13 +274,17 @@ class DBBackend(PipestatBackend):
         record_identifier: Optional[str] = None,
         rm_record: Optional[bool] = False,
     ) -> NoReturn:
-        """
-        Remove a record, requires rm_record to be True
+        """Remove a record, requires rm_record to be True.
 
-        :param str record_identifier: unique identifier of the record
-        :param bool rm_record: bool for removing record.
-        :return bool: whether the result has been removed
-        :raises RecordNotFoundError: if record not found
+        Args:
+            record_identifier (str): Unique identifier of the record.
+            rm_record (bool): Bool for removing record.
+
+        Returns:
+            bool: Whether the result has been removed.
+
+        Raises:
+            RecordNotFoundError: If record not found.
         """
 
         record_identifier = record_identifier or self.record_identifier
@@ -324,18 +337,19 @@ class DBBackend(PipestatBackend):
         result_formatter: Optional[staticmethod] = None,
         history_enabled: bool = True,
     ) -> Union[List[str], bool]:
-        """
-        Update the value of a result in a current namespace.
+        """Update the value of a result in a current namespace.
 
         This method overwrites any existing data and creates the required
-         hierarchical mapping structure if needed.
+        hierarchical mapping structure if needed.
 
-        :param Dict[str, Any] values: dict of results identifiers and values
-            to be reported
-        :param str record_identifier: unique identifier of the record
-        :param bool force_overwrite: force overwriting of results, defaults to False.
-        :param str result_formatter: function for formatting result
-        :return list[str] list results_formatted | bool: return list of formatted string
+        Args:
+            values (Dict[str, Any]): Dict of results identifiers and values to be reported.
+            record_identifier (str): Unique identifier of the record.
+            force_overwrite (bool): Force overwriting of results, defaults to False.
+            result_formatter (staticmethod): Function for formatting result.
+
+        Returns:
+            Union[List[str], bool]: Return list of formatted string or bool.
         """
 
         record_identifier = record_identifier or self.record_identifier
@@ -421,25 +435,29 @@ class DBBackend(PipestatBackend):
         cursor: Optional[int] = None,
         bool_operator: Optional[str] = "AND",
     ) -> Dict[str, Any]:
-        """
-        Perform a `SELECT` on the table
+        """Perform a `SELECT` on the table.
 
-        :param list[str] columns: columns to include in the result
-        :param list[dict]  filter_conditions: e.g. [{"key": ["id"], "operator": "eq", "value": 1)], operator list:
-            - eq for ==
-            - lt for <
-            - ge for >=
-            - in for in_
-            - like for like
-        :param int limit: maximum number of results to retrieve per page
-        :param int cursor: cursor position to begin retrieving records
-        :param bool bool_operator: Perform filtering with AND or OR Logic.
-        :return dict records_dict = {
-            "total_size": int,
-            "page_size": int,
-            "next_page_token": int,
-            "records": List[Dict[{key, Any}]],
-        }
+        Args:
+            columns (List[str]): Columns to include in the result.
+            filter_conditions (List[dict]): e.g. [{"key": ["id"], "operator": "eq", "value": 1)],
+                operator list:
+                - eq for ==
+                - lt for <
+                - ge for >=
+                - in for in_
+                - like for like
+            limit (int): Maximum number of results to retrieve per page.
+            cursor (int): Cursor position to begin retrieving records.
+            bool_operator (str): Perform filtering with AND or OR Logic.
+
+        Returns:
+            dict: Records dict with structure:
+                {
+                    "total_size": int,
+                    "page_size": int,
+                    "next_page_token": int,
+                    "records": List[Dict[{key, Any}]],
+                }
         """
 
         ORM = self.get_model(table_name=self.table_name)
@@ -516,13 +534,17 @@ class DBBackend(PipestatBackend):
         record_identifier: str,
         result_identifier: Optional[Union[str, List[str]]] = None,
     ) -> Dict[str, Any]:
-        """
+        """Retrieve history from the database.
 
-        :param record_identifier: single record_identifier
-        :param result_identifier: single or list of result identifiers
-        :return: dict records_dict = {
-            "history": List[Dict[{key, Any}]],
-        }
+        Args:
+            record_identifier (str): Single record_identifier.
+            result_identifier (Union[str, List[str]]): Single or list of result identifiers.
+
+        Returns:
+            dict: Records dict with structure:
+                {
+                    "history": List[Dict[{key, Any}]],
+                }
         """
 
         record_identifier = record_identifier or self.record_identifier
@@ -614,11 +636,13 @@ class DBBackend(PipestatBackend):
         self,
         columns: Union[str, List[str]],
     ) -> List[Tuple]:
-        """
-        Perform a `SELECT DISTINCT` on given table and column
+        """Perform a `SELECT DISTINCT` on given table and column.
 
-        :param str | List[str] columns: columns to include in the result
-        :return List[Tuple]: returns distinct values.
+        Args:
+            columns (Union[str, List[str]]): Columns to include in the result.
+
+        Returns:
+            List[Tuple]: Returns distinct values.
         """
         if isinstance(columns, str):
             columns = [columns]
@@ -633,19 +657,17 @@ class DBBackend(PipestatBackend):
     def set_status(
         self,
         status_identifier: str,
-        record_identifier: str = None,
+        record_identifier: Optional[str] = None,
     ) -> None:
-        """
-        Set pipeline run status.
+        """Set pipeline run status.
 
         The status identifier needs to match one of identifiers specified in
         the status schema. A basic, ready to use, status schema is shipped with
         this package.
 
-        :param str status_identifier: status to set, one of statuses defined
-            in the status schema
-        :param str record_identifier: record identifier to set the
-            pipeline status for
+        Args:
+            status_identifier (str): Status to set, one of statuses defined in the status schema.
+            record_identifier (str): Record identifier to set the pipeline status for.
         """
 
         record_identifier = record_identifier or self.record_identifier
@@ -669,10 +691,14 @@ class DBBackend(PipestatBackend):
         if prev_status:
             _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
 
-    def _create_orms(self, pipeline_type):
+    def _create_orms(self, pipeline_type: str) -> Dict[str, Any]:
         """Create ORMs.
-        :param str pipeline_type: project or sample-level pipeline
-        :return dict: {table_name: model}
+
+        Args:
+            pipeline_type (str): Project or sample-level pipeline.
+
+        Returns:
+            dict: {table_name: model}
         """
         _LOGGER.debug(f"Creating models for '{self.pipeline_name}' table in '{PKG_NAME}' database")
         model = self.parsed_schema.build_model(pipeline_type=pipeline_type)
@@ -685,10 +711,14 @@ class DBBackend(PipestatBackend):
                 f"Neither project nor samples model could be built from schema source: {self.status_schema_source}"
             )
 
-    def _create_history_orms(self, pipeline_type):
-        """Creates the additional ORMs for auditing result modifications
-        :param str pipeline_type: project or sample-level pipeline
-        :return dict: {table_name: model}
+    def _create_history_orms(self, pipeline_type: str) -> Dict[str, Any]:
+        """Creates the additional ORMs for auditing result modifications.
+
+        Args:
+            pipeline_type (str): Project or sample-level pipeline.
+
+        Returns:
+            dict: {table_name: model}
         """
         model, table_name = self.parsed_schema.build_history_model(pipeline_type=pipeline_type)
         if model:
@@ -699,7 +729,7 @@ class DBBackend(PipestatBackend):
             )
 
     @property
-    def _engine(self):
+    def _engine(self) -> Any:
         """Access the database engine backing this manager."""
         try:
             return self.db_engine_key
@@ -712,11 +742,8 @@ class DBBackend(PipestatBackend):
 
     @property
     @contextmanager
-    def session(self):
-        """
-        Provide a transactional scope around a series of query
-        operations.
-        """
+    def session(self) -> Generator[Session, None, None]:
+        """Provide a transactional scope around a series of query operations."""
         session = Session(self._engine)
         _LOGGER.debug("Created session")
         try:

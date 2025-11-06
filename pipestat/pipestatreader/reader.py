@@ -27,7 +27,10 @@ class FilterQuery(BaseModel):
 @app.get("/")
 async def home():
     """
-    Display the home page
+    Display the home page.
+
+    Returns:
+        dict: Home page message.
     """
     return {"Home": "Welcome"}
 
@@ -35,7 +38,13 @@ async def home():
 @app.get("/data/{record_identifier}")
 async def retrieve_results_one_record(record_identifier: str):
     """
-    Get all the results for one record
+    Get all the results for one record.
+
+    Args:
+        record_identifier (str): Record identifier.
+
+    Returns:
+        dict: Result data for the record.
     """
     try:
         result = psm.retrieve(record_identifier=record_identifier)
@@ -47,7 +56,10 @@ async def retrieve_results_one_record(record_identifier: str):
 @app.get("/data/")
 async def retrieve_all_records():
     """
-    Get all reported records
+    Get all reported records.
+
+    Returns:
+        dict: All reported records.
     """
     try:
         result = psm.get_records()
@@ -59,7 +71,14 @@ async def retrieve_all_records():
 @app.get("/data/{record_identifier}/{result_identifier}")
 async def retrieve_results(record_identifier: str, result_identifier: str):
     """
-    Get specific result given a record identifier and a result identifier
+    Get specific result given a record identifier and a result identifier.
+
+    Args:
+        record_identifier (str): Record identifier.
+        result_identifier (str): Result identifier.
+
+    Returns:
+        dict: Specific result data.
     """
     try:
         result = psm.retrieve(
@@ -75,6 +94,12 @@ async def retrieve_results(record_identifier: str, result_identifier: str):
 async def retrieve_output_schema(pipeline_type: Optional[str] = None):
     """
     Get the output_schema used by the PipestatManager.
+
+    Args:
+        pipeline_type (str): Pipeline type ('sample' or 'project').
+
+    Returns:
+        dict: Output schema.
     """
 
     if pipeline_type == "sample":
@@ -90,7 +115,10 @@ async def retrieve_output_schema(pipeline_type: Optional[str] = None):
 @app.get("/all_table_contents/")
 async def retrieve_table_contents():
     """
-    Get all table contents
+    Get all table contents.
+
+    Returns:
+        dict: All table contents.
     """
     # Add skip and limit here as well.
     results = psm.backend.select()
@@ -100,7 +128,13 @@ async def retrieve_table_contents():
 @app.get("/{file_type}/")
 async def retrieve_filetype(file_type: str):
     """
-    Get all records by filetype
+    Get all records by filetype.
+
+    Args:
+        file_type (str): File type to filter by.
+
+    Returns:
+        dict: Records filtered by file type.
     """
     records_by_filetype = []
     all_records = psm.get_records()["records"]
@@ -117,8 +151,9 @@ async def retrieve_filetype(file_type: str):
 @app.post("/filtered_table_contents/")
 async def retrieve_filtered_table_contents(query_filter: Optional[FilterQuery] = None):
     """
-        Get column contents for specific column names and/or filter conditions
+    Get column contents for specific column names and/or filter conditions.
 
+    Example query:
     {
       "column_names": [
         "md5sum", "status"
@@ -126,6 +161,11 @@ async def retrieve_filtered_table_contents(query_filter: Optional[FilterQuery] =
       "filter_conditions": [["record_identifier", "eq", "random_sample_id2"]]
     }
 
+    Args:
+        query_filter (FilterQuery): Optional filter query with column names and filter conditions.
+
+    Returns:
+        dict: Filtered table contents.
     """
     try:
         results = psm.backend.select(
@@ -139,7 +179,10 @@ async def retrieve_filtered_table_contents(query_filter: Optional[FilterQuery] =
 
 def create_global_pipestatmanager(pipestatcfg):
     """
-    build a global pipestatmanager to be used by the endpoints
+    Build a global pipestatmanager to be used by the endpoints.
+
+    Args:
+        pipestatcfg (str): Path to pipestat config file.
     """
     global psm
     psm = SamplePipestatManager(config_file=pipestatcfg)
@@ -160,12 +203,14 @@ def main(
     port: Optional[int] = None,
 ):
     """
-    passes relevant info to create a global pipestat manager and then utilizes uvicorn to run at the host address and
-    port. These parameters are passed during `pipestat serve` cli usage.
-    param: str configfile: a path to a pipestat configfile
-    param: str host: host address for uvicorn server
-    param: str port: port number for uvicorn server
+    Passes relevant info to create a global pipestat manager and then utilizes uvicorn to run at the host address and port.
 
+    These parameters are passed during `pipestat serve` cli usage.
+
+    Args:
+        configfile (str): A path to a pipestat configfile.
+        host (str): Host address for uvicorn server.
+        port (int): Port number for uvicorn server.
     """
     pipestatcfg = configfile or os.environ.get("PIPESTAT_CONFIG")
     if pipestatcfg is None:

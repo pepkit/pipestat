@@ -5,9 +5,8 @@ import glob
 import logging
 import os
 from json import dumps
-from pathlib import Path
 from shutil import make_archive
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 import jsonschema
 from yaml import dump
@@ -18,18 +17,21 @@ from .exceptions import SchemaValidationErrorDuringReport
 _LOGGER = logging.getLogger(__name__)
 
 
-def validate_type(value, schema, strict_type=False, record_identifier=None):
-    """
-    Validate reported result against a partial schema, in case of failure try
-    to cast the value into the required class.
+def validate_type(
+    value: Any,
+    schema: Dict[str, Any],
+    strict_type: bool = False,
+    record_identifier: Optional[str] = None,
+) -> None:
+    """Validate reported result against a partial schema, in case of failure try to cast the value.
 
     Does not support objects of objects.
 
-    :param any value: reported value
-    :param dict schema: partial jsonschema schema to validate
-        against, e.g. {"type": "integer"}
-    :param bool strict_type: whether the value should validate as is
-    :param str record_identifier: used for clarifying error messages
+    Args:
+        value (any): Reported value.
+        schema (dict): Partial jsonschema schema to validate against, e.g. {"type": "integer"}.
+        strict_type (bool, optional): Whether the value should validate as is. Defaults to False.
+        record_identifier (str, optional): Used for clarifying error messages. Defaults to None.
     """
 
     try:
@@ -61,12 +63,17 @@ def validate_type(value, schema, strict_type=False, record_identifier=None):
         _LOGGER.debug(f"Value '{value}' validated successfully against a schema")
 
 
-def mk_list_of_str(x):
-    """
-    Make sure the input is a list of strings
-    :param str | list[str] | falsy x: input to covert
-    :return list[str]: converted input
-    :raise TypeError: if the argument cannot be converted
+def mk_list_of_str(x: Union[str, List[str], None]) -> Optional[List[str]]:
+    """Make sure the input is a list of strings.
+
+    Args:
+        x (str | list[str] | falsy): Input to convert.
+
+    Returns:
+        list[str]: Converted input.
+
+    Raises:
+        TypeError: If the argument cannot be converted.
     """
     if not x or isinstance(x, list):
         return x
@@ -77,8 +84,12 @@ def mk_list_of_str(x):
     )
 
 
-def make_subdirectories(path):
-    """Takes an absolute file path and creates subdirectories to file if they do not exist"""
+def make_subdirectories(path: Optional[str]) -> None:
+    """Takes an absolute file path and creates subdirectories to file if they do not exist.
+
+    Args:
+        path: File path for which to create subdirectories.
+    """
 
     if path:
         try:
@@ -87,9 +98,11 @@ def make_subdirectories(path):
             pass
 
 
-def init_generic_config():
-    """
-    Create generic config file for DB Backend
+def init_generic_config() -> bool:
+    """Create generic config file for DB Backend.
+
+    Returns:
+        bool: True if successful.
     """
     try:
         os.makedirs("config")
@@ -125,9 +138,17 @@ def init_generic_config():
     return True
 
 
-def markdown_formatter(pipeline_name, record_identifier, res_id, value) -> str:
-    """
-    Returns Markdown formatted value as string
+def markdown_formatter(pipeline_name: str, record_identifier: str, res_id: str, value: Any) -> str:
+    """Returns Markdown formatted value as string.
+
+    Args:
+        pipeline_name: Name of the pipeline.
+        record_identifier: Identifier of the record.
+        res_id: Result identifier.
+        value: Value to format.
+
+    Returns:
+        str: Markdown formatted result.
     """
     if not isinstance(value, dict):
         nl = "\n"
@@ -146,9 +167,17 @@ def markdown_formatter(pipeline_name, record_identifier, res_id, value) -> str:
     return formatted_result
 
 
-def default_formatter(pipeline_name, record_identifier, res_id, value) -> str:
-    """
-    Returns formatted value as string
+def default_formatter(pipeline_name: str, record_identifier: str, res_id: str, value: Any) -> str:
+    """Returns formatted value as string.
+
+    Args:
+        pipeline_name: Name of the pipeline.
+        record_identifier: Identifier of the record.
+        res_id: Result identifier.
+        value: Value to format.
+
+    Returns:
+        str: Formatted result.
     """
     # Assume default method desired
     nl = "\n"
@@ -160,8 +189,13 @@ def default_formatter(pipeline_name, record_identifier, res_id, value) -> str:
     return formatted_result
 
 
-def force_symlink(file1, file2):
-    """Create a symlink between two files."""
+def force_symlink(file1: str, file2: str) -> None:
+    """Create a symlink between two files.
+
+    Args:
+        file1: Source file path.
+        file2: Target file path for the symlink.
+    """
     try:
         os.symlink(file1, file2)
     except OSError as e:
@@ -173,32 +207,37 @@ def force_symlink(file1, file2):
             os.symlink(file1, file2)
 
 
-def get_all_result_files(results_file_path: str) -> List:
-    """
-    Collects any yaml result files relative to the CURRENT results_file_path
-    :param str results_file_path: path to the pipestamanager's current result_file
-    :return: list
+def get_all_result_files(results_file_path: str) -> List[str]:
+    """Collects any yaml result files relative to the CURRENT results_file_path.
+
+    Args:
+        results_file_path (str): Path to the pipestatmanager's current result_file.
+
+    Returns:
+        list: List of yaml result file paths.
     """
     files = glob.glob(results_file_path + "**/*.yaml")
 
     return files
 
 
-def zip_report(report_dir_name: str) -> Union[str, None]:
-    """
+def zip_report(report_dir_name: str) -> Optional[str]:
+    """Walks through files and attempts to zip them into a Zip object using default compression.
 
-    Walks through files and attempts to zip them into a Zip object using default compression.
     Gracefully fails and informs user if compression library is not available.
 
-    :param report_dir_name: directory name of report directory
-    :return: None
+    Args:
+        report_dir_name (str): Directory name of report directory.
+
+    Returns:
+        str | None: Path to the zip file if successful, None otherwise.
     """
 
     zip_file_name = f"{report_dir_name}_report_portable"
 
     try:
         make_archive(zip_file_name, "zip", report_dir_name)
-    except RuntimeError as e:
+    except RuntimeError:
         _LOGGER.warning("Report zip file not created! \n {e}")
 
     if os.path.exists(zip_file_name + ".zip"):
