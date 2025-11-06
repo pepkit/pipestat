@@ -4,7 +4,7 @@ from abc import ABC
 from collections.abc import MutableMapping
 from copy import deepcopy
 from logging import getLogger
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Union
 
 from jsonschema import validate
 from ubiquerg import mkabs
@@ -77,7 +77,7 @@ except ImportError:
 _LOGGER = getLogger(PKG_NAME)
 
 
-def check_dependencies(dependency_list: list = None, msg: str = None):
+def check_dependencies(dependency_list: Optional[list] = None, msg: Optional[str] = None) -> Callable:
     """Decorator to check that the dependency list has successfully been imported.
 
     Args:
@@ -91,8 +91,8 @@ def check_dependencies(dependency_list: list = None, msg: str = None):
         PipestatDependencyError: If any required dependencies are missing.
     """
 
-    def wrapper(func):
-        def inner(*args, **kwargs):
+    def wrapper(func: Callable) -> Callable:
+        def inner(*args, **kwargs) -> Any:
             dependencies_satisfied = True
             if dependency_list is not None:
                 for i in dependency_list:
@@ -108,7 +108,7 @@ def check_dependencies(dependency_list: list = None, msg: str = None):
     return wrapper
 
 
-def require_backend(func):
+def require_backend(func: Callable) -> Callable:
     """Decorator to ensure a backend exists for functions that require one.
 
     Args:
@@ -121,7 +121,7 @@ def require_backend(func):
         NoBackendSpecifiedError: If no backend is configured.
     """
 
-    def inner(self, *args, **kwargs):
+    def inner(self, *args, **kwargs) -> Any:
         if not self.backend:
             raise NoBackendSpecifiedError
         return func(self, *args, **kwargs)
@@ -152,11 +152,11 @@ class PipestatManager(MutableMapping):
         show_db_logs: bool = False,
         pipeline_type: Optional[str] = None,
         pipeline_name: Optional[str] = None,
-        result_formatter: staticmethod = default_formatter,
+        result_formatter: Callable = default_formatter,
         multi_pipelines: bool = False,
         output_dir: Optional[str] = None,
         pephub_path: Optional[str] = None,
-    ):
+    ) -> None:
         """Initialize the PipestatManager object.
 
         Args:
@@ -314,17 +314,17 @@ class PipestatManager(MutableMapping):
             res += f"\nHighlighted results: {', '.join(high_res)}"
         return res
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         # This is a wrapper for the retrieve function:
         result = self.retrieve_one(record_identifier=key)
         return result
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any) -> Union[List[str], bool]:
         # This is a wrapper for the report function:
         result = self.report(record_identifier=key, values=value)
         return result
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> bool:
         # This is a wrapper for the remove function; it removes the entire record:
         result = self.remove(record_identifier=key)
         return result
@@ -349,10 +349,10 @@ class PipestatManager(MutableMapping):
         else:
             return iter(self.select_records(limit=limit, cursor=cursor)["records"])
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.cfg)
 
-    def resolve_results_file_path(self, results_file_path):
+    def resolve_results_file_path(self, results_file_path: Optional[str]) -> Optional[str]:
         """Replace {record_identifier} in results_file_path if it exists.
 
         Args:
@@ -381,10 +381,10 @@ class PipestatManager(MutableMapping):
 
     def initialize_filebackend(
         self,
-        record_identifier: str = None,
-        results_file_path: str = None,
-        flag_file_dir: str = None,
-    ):
+        record_identifier: Optional[str] = None,
+        results_file_path: Optional[str] = None,
+        flag_file_dir: Optional[str] = None,
+    ) -> None:
         """Initializes the file backend.
 
         Args:
@@ -425,7 +425,7 @@ class PipestatManager(MutableMapping):
 
         return
 
-    def initialize_pephubbackend(self, record_identifier: str = None, pephub_path: str = None):
+    def initialize_pephubbackend(self, record_identifier: Optional[str] = None, pephub_path: Optional[str] = None) -> None:
         """Initializes the pephub backend.
 
         Args:
@@ -446,7 +446,7 @@ class PipestatManager(MutableMapping):
         dependency_list=["DBBackend"],
         msg="Missing required dependencies for this usage, e.g. try pip install pipestat['dbbackend']",
     )
-    def initialize_dbbackend(self, record_identifier: str = None, show_db_logs: bool = False):
+    def initialize_dbbackend(self, record_identifier: Optional[str] = None, show_db_logs: bool = False) -> None:
         """Initializes the database backend.
 
         Args:
@@ -601,7 +601,7 @@ class PipestatManager(MutableMapping):
         )
         return results
 
-    def process_schema(self, schema_path):
+    def process_schema(self, schema_path: Optional[str]) -> None:
         # Load pipestat schema in two parts: 1) main and 2) status
         self._schema_path = self.cfg[CONFIG_KEY].priority_get(
             "schema_path", env_var=ENV_VARS["schema"], override=schema_path
@@ -671,7 +671,7 @@ class PipestatManager(MutableMapping):
         values: Dict[str, Any],
         record_identifier: Optional[str] = None,
         force_overwrite: bool = True,
-        result_formatter: Optional[staticmethod] = None,
+        result_formatter: Optional[Callable] = None,
         strict_type: bool = True,
         history_enabled: bool = True,
     ) -> Union[List[str], bool]:
@@ -979,7 +979,7 @@ class PipestatManager(MutableMapping):
         self.backend.set_status(status_identifier, r_id)
 
     @require_backend
-    def link(self, link_dir) -> Union[str, None]:
+    def link(self, link_dir: str) -> Optional[str]:
         """Create a link structure such that results are organized by type.
 
         Args:
@@ -1001,7 +1001,7 @@ class PipestatManager(MutableMapping):
         amendment: Optional[str] = None,
         portable: Optional[bool] = False,
         output_dir: Optional[str] = None,
-    ) -> Union[str, None]:
+    ) -> Optional[str]:
         """Build a browsable HTML report for reported results.
 
         Args:
@@ -1047,7 +1047,7 @@ class PipestatManager(MutableMapping):
 
         return report_path
 
-    def check_multi_results(self):
+    def check_multi_results(self) -> None:
         # Check to see if the user used a path with "{record-identifier}"
         if self.file:
             if "{record_identifier}" in self.cfg["unresolved_result_path"]:
@@ -1247,13 +1247,13 @@ class PipestatManager(MutableMapping):
 
 
 class SamplePipestatManager(PipestatManager):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         PipestatManager.__init__(self, pipeline_type="sample", **kwargs)
         _LOGGER.warning("Initialize PipestatMgrSample")
 
 
 class ProjectPipestatManager(PipestatManager):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         PipestatManager.__init__(self, pipeline_type="project", **kwargs)
         _LOGGER.warning("Initialize PipestatMgrProject")
 
@@ -1277,7 +1277,7 @@ class PipestatBoss(ABC):
         output_dir (str, optional): Target directory for report generation via summarize and table generation via table.
     """
 
-    def __init__(self, pipeline_list: Optional[list] = None, **kwargs):
+    def __init__(self, pipeline_list: Optional[list] = None, **kwargs) -> None:
         _LOGGER.warning("Initialize PipestatBoss")
         if len(pipeline_list) > 3:
             _LOGGER.warning(
@@ -1291,8 +1291,8 @@ class PipestatBoss(ABC):
             else:
                 _LOGGER.warning(f"This pipeline type is not supported. Pipeline supplied: {i}")
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         return getattr(self, key)
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any) -> None:
         setattr(self, key, value)

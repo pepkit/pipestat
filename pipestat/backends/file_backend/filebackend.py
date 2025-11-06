@@ -100,7 +100,7 @@ class FileBackend(PipestatBackend):
         )
 
     def clear_status(
-        self, record_identifier: str = None, flag_names: List[str] = None
+        self, record_identifier: Optional[str] = None, flag_names: Optional[List[str]] = None
     ) -> List[Union[str, None]]:
         """
         Remove status flags.
@@ -130,7 +130,7 @@ class FileBackend(PipestatBackend):
                 removed.append(f)
         return removed
 
-    def count_records(self):
+    def count_records(self) -> int:
         """
         Count records.
 
@@ -140,7 +140,7 @@ class FileBackend(PipestatBackend):
 
         return len(self._data[self.pipeline_name])
 
-    def get_flag_file(self, record_identifier: str = None) -> Union[str, List[str], None]:
+    def get_flag_file(self, record_identifier: Optional[str] = None) -> Union[str, List[str], None]:
         """
         Get path to the status flag file for the specified record.
 
@@ -189,7 +189,7 @@ class FileBackend(PipestatBackend):
         )
         return None
 
-    def get_status_flag_path(self, status_identifier: str, record_identifier=None) -> str:
+    def get_status_flag_path(self, status_identifier: str, record_identifier: Optional[str] = None) -> str:
         """
         Get the path to the status file flag.
 
@@ -513,7 +513,7 @@ class FileBackend(PipestatBackend):
         if cursor:
             _LOGGER.warning("Cursor not supported for FileBackend, ignoring cursor")
 
-        def get_operator(op: Literal["eq", "lt", "ge", "gt", "in"]) -> Any:
+        def get_operator(op: Literal["eq", "lt", "ge", "gt", "in"]) -> Callable:
             """
             Get python operator for a given string.
 
@@ -536,7 +536,7 @@ class FileBackend(PipestatBackend):
                 return operator.contains
             raise ValueError(f"Invalid filter operator: {op}")
 
-        def get_nested_column(result_value: dict, key_list: list, retrieved_operator: Callable):
+        def get_nested_column(result_value: dict, key_list: list, retrieved_operator: Callable) -> bool:
             """
             Recursive function that evaluates a nested list of keys vs a value dict.
 
@@ -674,7 +674,7 @@ class FileBackend(PipestatBackend):
     def set_status(
         self,
         status_identifier: str,
-        record_identifier: str = None,
+        record_identifier: Optional[str] = None,
     ) -> None:
         """
         Set pipeline run status.
@@ -709,7 +709,7 @@ class FileBackend(PipestatBackend):
         if prev_status:
             _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
 
-    def _htmlreportbuilder(self):
+    def _htmlreportbuilder(self) -> None:
         """
         Build html report based on all reported results.
         """
@@ -747,7 +747,7 @@ class FileBackend(PipestatBackend):
         with write_lock(self._data) as data_locked:
             data_locked.write()
 
-    def aggregate_multi_results(self, results_directory) -> None:
+    def aggregate_multi_results(self, results_directory: str) -> None:
         """
         Collects single results files and aggregates them into a new aggregate_results.yaml file.
 
@@ -816,7 +816,7 @@ class FileBackend(PipestatBackend):
                     f"Pipestat will not report multiple namespaces to one file unless `multi_pipelines` is True."
                 )
 
-    def _modify_history(self, data, res_id, time, value):
+    def _modify_history(self, data: Dict[str, Any], res_id: str, time: str, value: Any) -> None:
         """
         Modify File backend with each change.
 

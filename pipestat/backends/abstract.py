@@ -15,7 +15,7 @@ _LOGGER = getLogger(PKG_NAME)
 class PipestatBackend(ABC):
     """Abstract class representing a pipestat backend."""
 
-    def __init__(self, pipeline_type):
+    def __init__(self, pipeline_type: str) -> None:
         _LOGGER.debug("Initialize PipestatBackend")
         self.pipeline_type = pipeline_type
 
@@ -76,14 +76,14 @@ class PipestatBackend(ABC):
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
-    def count_records(self):
+    def count_records(self) -> int:
         _LOGGER.warning("Not implemented yet for this backend")
         pass
 
     def get_status(self, record_identifier: str) -> Optional[str]:
         _LOGGER.warning("Not implemented yet for this backend")
 
-    def link(self, link_dir) -> str:
+    def link(self, link_dir: str) -> str:
         """This function creates a link structure such that results are organized by type.
 
         Args:
@@ -93,7 +93,7 @@ class PipestatBackend(ABC):
             str: Absolute path to symlink directory.
         """
 
-        def get_all_paths(parent_key, result_identifier_value):
+        def get_all_paths(parent_key: str, result_identifier_value: Dict[str, Any]) -> List[Tuple[str, str]]:
             """If the result identifier is a complex object which contains nested paths.
 
             Args:
@@ -147,7 +147,7 @@ class PipestatBackend(ABC):
         return link_dir
 
     def clear_status(
-        self, record_identifier: str = None, flag_names: List[str] = None
+        self, record_identifier: Optional[str] = None, flag_names: Optional[List[str]] = None
     ) -> List[Union[str, None]]:
         """Clear status flags (not implemented in abstract backend).
 
@@ -275,7 +275,7 @@ def select_records(
 
 def select_distinct(
     self,
-    columns,
+    columns: Union[str, List[str]],
 ) -> List[Tuple]:
     """Select distinct values (not implemented in abstract backend).
 

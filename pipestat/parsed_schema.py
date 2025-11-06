@@ -239,23 +239,23 @@ class ParsedSchema(object):
         return copy.deepcopy(self._status_data)
 
     @property
-    def project_table_name(self):
+    def project_table_name(self) -> str:
         """Return the name of the database table for project-level information."""
         return self._table_name("project")
 
     @property
-    def sample_table_name(self):
+    def sample_table_name(self) -> str:
         """Return the name of the database table for sample-level information."""
         return self._table_name("sample")
 
     @staticmethod
-    def _get_data_type(type_name):
+    def _get_data_type(type_name: str) -> type:
         t = CLASSES_BY_TYPE[type_name]
         # return ARRAY if t == list else t
         return t
 
     @property
-    def file_like_table_name(self):
+    def file_like_table_name(self) -> str:
         return self._table_name("files")
 
     def to_dict(self) -> Dict[str, Any]:

@@ -2,7 +2,7 @@ import copy
 import datetime
 from contextlib import contextmanager
 from logging import getLogger
-from typing import Any, Dict, List, NoReturn, Optional, Tuple, Union
+from typing import Any, Dict, Generator, List, NoReturn, Optional, Tuple, Union
 
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel import select as sql_select
@@ -94,7 +94,7 @@ class DBBackend(PipestatBackend):
 
         return bool(query_hit["records"])
 
-    def count_records(self):
+    def count_records(self) -> int:
         """Count rows in a selected table.
 
         Returns:
@@ -107,7 +107,7 @@ class DBBackend(PipestatBackend):
             records = s.exec(stmt).all()
             return len(records)
 
-    def get_model(self, table_name: str):
+    def get_model(self, table_name: str) -> Any:
         """Get model based on table_name.
 
         Args:
@@ -161,7 +161,7 @@ class DBBackend(PipestatBackend):
     def list_results(
         self,
         restrict_to: Optional[List[str]] = None,
-        record_identifier: str = None,
+        record_identifier: Optional[str] = None,
     ) -> List[str]:
         """Check if the specified results exist in the table.
 
@@ -657,7 +657,7 @@ class DBBackend(PipestatBackend):
     def set_status(
         self,
         status_identifier: str,
-        record_identifier: str = None,
+        record_identifier: Optional[str] = None,
     ) -> None:
         """Set pipeline run status.
 
@@ -691,7 +691,7 @@ class DBBackend(PipestatBackend):
         if prev_status:
             _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
 
-    def _create_orms(self, pipeline_type):
+    def _create_orms(self, pipeline_type: str) -> Dict[str, Any]:
         """Create ORMs.
 
         Args:
@@ -711,7 +711,7 @@ class DBBackend(PipestatBackend):
                 f"Neither project nor samples model could be built from schema source: {self.status_schema_source}"
             )
 
-    def _create_history_orms(self, pipeline_type):
+    def _create_history_orms(self, pipeline_type: str) -> Dict[str, Any]:
         """Creates the additional ORMs for auditing result modifications.
 
         Args:
@@ -729,7 +729,7 @@ class DBBackend(PipestatBackend):
             )
 
     @property
-    def _engine(self):
+    def _engine(self) -> Any:
         """Access the database engine backing this manager."""
         try:
             return self.db_engine_key
@@ -742,7 +742,7 @@ class DBBackend(PipestatBackend):
 
     @property
     @contextmanager
-    def session(self):
+    def session(self) -> Generator[Session, None, None]:
         """Provide a transactional scope around a series of query operations."""
         session = Session(self._engine)
         _LOGGER.debug("Created session")

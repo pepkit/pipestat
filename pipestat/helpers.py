@@ -18,7 +18,12 @@ from .exceptions import SchemaValidationErrorDuringReport
 _LOGGER = logging.getLogger(__name__)
 
 
-def validate_type(value, schema, strict_type=False, record_identifier=None):
+def validate_type(
+    value: Any,
+    schema: Dict[str, Any],
+    strict_type: bool = False,
+    record_identifier: Optional[str] = None,
+) -> None:
     """Validate reported result against a partial schema, in case of failure try to cast the value.
 
     Does not support objects of objects.
@@ -59,7 +64,7 @@ def validate_type(value, schema, strict_type=False, record_identifier=None):
         _LOGGER.debug(f"Value '{value}' validated successfully against a schema")
 
 
-def mk_list_of_str(x):
+def mk_list_of_str(x: Union[str, List[str], None]) -> Optional[List[str]]:
     """Make sure the input is a list of strings.
 
     Args:
@@ -80,7 +85,7 @@ def mk_list_of_str(x):
     )
 
 
-def make_subdirectories(path):
+def make_subdirectories(path: Optional[str]) -> None:
     """Takes an absolute file path and creates subdirectories to file if they do not exist.
 
     Args:
@@ -94,7 +99,7 @@ def make_subdirectories(path):
             pass
 
 
-def init_generic_config():
+def init_generic_config() -> bool:
     """Create generic config file for DB Backend.
 
     Returns:
@@ -134,7 +139,9 @@ def init_generic_config():
     return True
 
 
-def markdown_formatter(pipeline_name, record_identifier, res_id, value) -> str:
+def markdown_formatter(
+    pipeline_name: str, record_identifier: str, res_id: str, value: Any
+) -> str:
     """Returns Markdown formatted value as string.
 
     Args:
@@ -163,7 +170,9 @@ def markdown_formatter(pipeline_name, record_identifier, res_id, value) -> str:
     return formatted_result
 
 
-def default_formatter(pipeline_name, record_identifier, res_id, value) -> str:
+def default_formatter(
+    pipeline_name: str, record_identifier: str, res_id: str, value: Any
+) -> str:
     """Returns formatted value as string.
 
     Args:
@@ -185,7 +194,7 @@ def default_formatter(pipeline_name, record_identifier, res_id, value) -> str:
     return formatted_result
 
 
-def force_symlink(file1, file2):
+def force_symlink(file1: str, file2: str) -> None:
     """Create a symlink between two files.
 
     Args:
@@ -203,7 +212,7 @@ def force_symlink(file1, file2):
             os.symlink(file1, file2)
 
 
-def get_all_result_files(results_file_path: str) -> List:
+def get_all_result_files(results_file_path: str) -> List[str]:
     """Collects any yaml result files relative to the CURRENT results_file_path.
 
     Args:
@@ -217,7 +226,7 @@ def get_all_result_files(results_file_path: str) -> List:
     return files
 
 
-def zip_report(report_dir_name: str) -> Union[str, None]:
+def zip_report(report_dir_name: str) -> Optional[str]:
     """Walks through files and attempts to zip them into a Zip object using default compression.
 
     Gracefully fails and informs user if compression library is not available.

@@ -88,7 +88,7 @@ class PEPHUBBACKEND(PipestatBackend):
 
         return bool(query_hit["records"])
 
-    def count_records(self):
+    def count_records(self) -> int:
         """
         Count rows in a selected table.
 
@@ -102,7 +102,7 @@ class PEPHUBBACKEND(PipestatBackend):
     def list_results(
         self,
         restrict_to: Optional[List[str]] = None,
-        record_identifier: str = None,
+        record_identifier: Optional[str] = None,
     ) -> Union[List[str], List[None]]:
         """
         Check if the specified results exist in the table.
@@ -307,7 +307,7 @@ class PEPHUBBACKEND(PipestatBackend):
     def set_status(
         self,
         status_identifier: str,
-        record_identifier: str = None,
+        record_identifier: Optional[str] = None,
     ) -> None:
         """
         Set pipeline run status.
@@ -410,7 +410,7 @@ class PEPHUBBACKEND(PipestatBackend):
         if cursor:
             _LOGGER.warning("Cursor not supported for PEPHubBackend, ignoring cursor")
 
-        def get_operator(op: Literal["eq", "lt", "ge", "gt", "in"]) -> Any:
+        def get_operator(op: Literal["eq", "lt", "ge", "gt", "in"]) -> str:
             """
             Get python operator for a given string.
 
