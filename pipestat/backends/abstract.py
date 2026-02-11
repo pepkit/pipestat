@@ -30,21 +30,31 @@ class PipestatBackend(ABC):
             SchemaError: If any of the results is not defined in the schema.
         """
 
-        # take project level input and look for keys in the specific schema.
-        # warn if you are trying to report a sample to a project level and vice versa.
-
         if pipeline_type == "sample":
             known_results = self.parsed_schema.sample_level_data.keys()
-        if pipeline_type == "project":
+            other_level = "project"
+            other_results = self.parsed_schema.project_level_data.keys()
+        elif pipeline_type == "project":
             known_results = self.parsed_schema.project_level_data.keys()
+            other_level = "sample"
+            other_results = self.parsed_schema.sample_level_data.keys()
+
         if STATUS in results:
             known_results = [STATUS]
 
         for r in results:
-            assert r in known_results, SchemaError(
-                f"'{r}' is not a known result. Results defined in the "
-                f"schema are: {list(known_results)}."
-            )
+            if r not in known_results:
+                hint = ""
+                if r in other_results:
+                    hint = (
+                        f" However, '{r}' IS defined at the {other_level} level. "
+                        f"If this pipeline needs to report '{r}', add it to the "
+                        f"'{pipeline_type}' section of your output schema."
+                    )
+                raise SchemaError(
+                    f"'{r}' is not a known {pipeline_type}-level result. "
+                    f"Known {pipeline_type}-level results are: {list(known_results)}.{hint}"
+                )
 
     def check_result_exists(
         self,

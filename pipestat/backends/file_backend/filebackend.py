@@ -9,7 +9,7 @@ from logging import getLogger
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 from ubiquerg import create_lock, remove_lock
-from yacman import FutureYAMLConfigManager as YAMLConfigManager
+from yacman import YAMLConfigManager
 from yacman import write_lock
 
 from ...backends.abstract import PipestatBackend

@@ -2381,7 +2381,7 @@ class TestMultiResultFiles:
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
             psm.summarize()
-            data = YAMLConfigManager(filepath=os.path.join(temp_dir, "aggregate_results.yaml"))
+            data = YAMLConfigManager.from_yaml_file(os.path.join(temp_dir, "aggregate_results.yaml"))
             assert r_id in data[psm.pipeline_name][psm.pipeline_type].keys()
 
 

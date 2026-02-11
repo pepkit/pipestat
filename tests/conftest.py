@@ -12,43 +12,57 @@ from pipestat.const import STATUS_SCHEMA
 REC_ID = "constant_record_id"
 BACKEND_KEY_DB = "db"
 BACKEND_KEY_FILE = "file"
-DB_URL = "postgresql+psycopg://pipestatuser:shgfty^8922138$^!@127.0.0.1:5432/pipestat-test"
-DB_CMD = """
-docker run --rm -it --name pipestat_test_db \
-    -e POSTGRES_USER=pipestatuser \
-    -e POSTGRES_PASSWORD=shgfty^8922138$^! \
-    -e POSTGRES_DB=pipestat-test \
-    -p 127.0.0.1:5432:5432 \
-    postgres
-"""
+DB_PORT = os.environ.get("PIPESTAT_TEST_DB_PORT", "5432")
+DB_URL = f"postgresql+psycopg://pipestatuser:shgfty^8922138$^!@127.0.0.1:{DB_PORT}/pipestat-test"
 STANDARD_TEST_PIPE_ID = "default_pipeline_name"
 
 PEPHUB_URL = "databio/pipestat_demo:default"
 
-try:
-    subprocess.check_output(
-        "docker inspect pipestat_test_db --format '{{.State.Status}}'", shell=True
-    )
-    SERVICE_UNAVAILABLE = False
-except:
-    register(print, f"Some tests require a test database. To initiate it, run:\n{DB_CMD}")
-    SERVICE_UNAVAILABLE = True
 
-try:
-    result = subprocess.check_output(
-        "pipestat report --c 'tests/data/config.yaml' -i 'name_of_something' -v 'test_value' -r 'dependency_value'",
-        shell=True,
-    )
-    DB_DEPENDENCIES = True
-except:
+def _detect_postgres_container():
+    """Check if a pipestat test PostgreSQL container is running."""
+    container = os.environ.get("PIPESTAT_TEST_CONTAINER")
+    if container:
+        # Explicit container name from test-integration.sh
+        try:
+            subprocess.check_output(
+                f"docker inspect {container} --format '{{{{.State.Status}}}}'", shell=True,
+                stderr=subprocess.DEVNULL,
+            )
+            return True
+        except subprocess.CalledProcessError:
+            return False
+    # Fallback: check for any pipestat test container
+    for name in ["pipestat_test_db", "pipestat-db-test"]:
+        try:
+            result = subprocess.check_output(
+                f"docker ps --filter 'name={name}' --format '{{{{.Names}}}}'", shell=True,
+                stderr=subprocess.DEVNULL,
+            ).decode().strip()
+            if result:
+                return True
+        except subprocess.CalledProcessError:
+            pass
+    return False
+
+
+SERVICE_UNAVAILABLE = not _detect_postgres_container()
+if SERVICE_UNAVAILABLE:
     register(
         print,
-        f"Warning: you must install dependencies with pip install pipestat['dbbackend'] to run database tests.",
+        "Some tests require a test database. Run: ./tests/scripts/test-integration.sh\n"
+        "Or start manually: ./tests/scripts/services.sh start",
+    )
+
+try:
+    from pipestat.backends.db_backend.dbbackend import DBBackend  # noqa: F401
+    DB_DEPENDENCIES = True
+except ImportError:
+    register(
+        print,
+        "Warning: install DB dependencies with: pip install 'pipestat[dbbackend]'",
     )
     DB_DEPENDENCIES = False
-
-# SERVICE_UNAVAILABLE = False
-# DB_DEPENDENCIES = True
 
 
 def get_data_file_path(filename: str) -> str:

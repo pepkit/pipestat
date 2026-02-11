@@ -174,7 +174,10 @@ class ParsedSchema(object):
         project_sample_overlap = set(self.project_level_data) & set(self.sample_level_data)
         if project_sample_overlap:
             raise SchemaError(
-                f"Overlap between project- and sample-level keys: {', '.join(project_sample_overlap)}"
+                f"Overlap between project- and sample-level keys: {', '.join(project_sample_overlap)}. "
+                f"Pipestat requires unique key names across schema levels. "
+                f"Use different names for project vs sample results, or remove "
+                f"the duplicates from one section."
             )
 
     def __str__(self):

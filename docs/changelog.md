@@ -2,6 +2,11 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.13.0] - Unknown
+### Changed
+- Migrate from `FutureYAMLConfigManager` to canonical `YAMLConfigManager` imports for yacman v1 compatibility
+- Bump yacman requirement to >=0.9.5
+
 ## [0.12.2] - 2025-09-25
 ### Fixed
 - Fix setting with copy warning for pephub backend [#206](https://github.com/pepkit/pipestat/issues/206)

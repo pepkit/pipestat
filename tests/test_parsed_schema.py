@@ -255,8 +255,8 @@ def test_sample_project_data_item_name_overlap__raises_expected_error_and_messag
     with pytest.raises(SchemaError) as err_ctx:
         ParsedSchema(schema_data)
     obs_msg = str(err_ctx.value)
-    exp_msg = f"Overlap between project- and sample-level keys: {common_key}"
-    assert obs_msg == exp_msg
+    assert f"Overlap between project- and sample-level keys: {common_key}" in obs_msg
+    assert "unique key names across schema levels" in obs_msg
 
 
 def test_JSON_schema_validation(output_schema_as_JSON_schema):

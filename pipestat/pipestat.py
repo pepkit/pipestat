@@ -8,9 +8,9 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Union
 
 from jsonschema import validate
 from ubiquerg import mkabs
-from yacman import FutureYAMLConfigManager as YAMLConfigManager
+from yacman import YAMLConfigManager
 from yacman import load_yaml
-from yacman.yacman_future import select_config
+from yacman import select_config
 
 from pipestat.backends.file_backend.filebackend import FileBackend
 
@@ -209,6 +209,12 @@ class PipestatManager(MutableMapping):
             "schema_path", env_var=ENV_VARS["schema"], override=schema_path
         )
         self.process_schema(schema_path)
+
+        if self.cfg.get(SCHEMA_KEY):
+            _LOGGER.debug(
+                f"Schema loaded: {len(self.cfg[SCHEMA_KEY].sample_level_data)} sample-level keys, "
+                f"{len(self.cfg[SCHEMA_KEY].project_level_data)} project-level keys"
+            )
 
         self.cfg[RECORD_IDENTIFIER] = self.cfg[CONFIG_KEY].priority_get(
             "record_identifier", env_var=ENV_VARS["record_identifier"], override=record_identifier
