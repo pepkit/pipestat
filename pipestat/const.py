@@ -98,7 +98,7 @@ CANONICAL_TYPES = {
             "thumbnail_path": {"type": "string"},
             "title": {"type": "string"},
         },
-        "required": ["path", "thumbnail_path", "title"],
+        "required": ["path", "title"],  # thumbnail_path optional; falls back to path
     },
     "file": {
         "type": "object",

@@ -32,6 +32,7 @@ class FileBackend(PipestatBackend):
         status_file_dir: Optional[str] = None,
         result_formatter: Optional[staticmethod] = None,
         multi_pipelines: Optional[bool] = None,
+        lenient: Optional[bool] = False,
     ):
         """
         Class representing a File backend.
@@ -46,6 +47,7 @@ class FileBackend(PipestatBackend):
             status_file_dir (str, optional): Directory for placing status flags.
             result_formatter (staticmethod, optional): Function for formatting result.
             multi_pipelines (bool, optional): Allows for running multiple pipelines for one file backend.
+            lenient (bool, optional): Allow results not defined in schema.
         """
         super().__init__(pipeline_type)
         _LOGGER.debug("Initialize FileBackend")
@@ -59,6 +61,7 @@ class FileBackend(PipestatBackend):
         self.status_file_dir = status_file_dir
         self.result_formatter = result_formatter
         self.multi_pipelines = multi_pipelines
+        self.lenient = lenient
 
         self.determine_results_file()
 
@@ -378,7 +381,7 @@ class FileBackend(PipestatBackend):
         current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         result_identifiers = list(values.keys())
-        if self.parsed_schema is not None:
+        if self.parsed_schema is not None and not self.lenient:
             self.assert_results_defined(
                 results=result_identifiers, pipeline_type=self.pipeline_type
             )

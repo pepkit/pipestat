@@ -62,7 +62,7 @@ class SchemaNotFoundError(SchemaError):
     """Schema not found error"""
 
     def __init__(self, msg, cli=False):
-        txt = f"Results schema not found. The schema is required to {msg}. "
+        txt = f"Results schema not found. {msg}. "
         txt += (
             "It needs to be supplied as an CLI argument"
             if cli

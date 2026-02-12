@@ -18,6 +18,7 @@ INIT_CMD = "init"
 SUMMARIZE_CMD = "summarize"
 LINK_CMD = "link"
 SERVE_CMD = "serve"
+INFER_SCHEMA_CMD = "infer-schema"
 SUBPARSER_MESSAGES = {
     REPORT_CMD: "Report a result.",
     INSPECT_CMD: "Inspect a database.",
@@ -29,6 +30,7 @@ SUBPARSER_MESSAGES = {
     LINK_CMD: "Create symlinks of reported files",
     SERVE_CMD: "Initializes pipestatreader API",
     HISTORY_CMD: "Retrieve history of reported results for one record identifier",
+    INFER_SCHEMA_CMD: "Infer schema from results file",
 }
 
 STATUS_GET_CMD = "get"
@@ -360,6 +362,14 @@ def build_argparser(desc):
             action="store_true",
             help="Makes html report portable.",
         )
+        sps[cmd].add_argument(
+            "--mode",
+            type=str,
+            choices=["table", "gallery"],
+            default="table",
+            metavar="M",
+            help="Report mode: 'table' (default) for data tables, 'gallery' for image-centric view.",
+        )
 
     # LINK
     for cmd in [LINK_CMD]:
@@ -391,5 +401,41 @@ def build_argparser(desc):
             type=str,
             help="Path to symlink directory ",
         )
+
+    # INFER-SCHEMA
+    sps[INFER_SCHEMA_CMD].add_argument(
+        "-f",
+        "--results-file",
+        type=str,
+        required=True,
+        metavar="F",
+        help="Path to the YAML results file to infer schema from.",
+    )
+    sps[INFER_SCHEMA_CMD].add_argument(
+        "-o",
+        "--output",
+        type=str,
+        metavar="O",
+        help="Path to write the inferred schema (stdout if omitted).",
+    )
+    sps[INFER_SCHEMA_CMD].add_argument(
+        "--level",
+        type=str,
+        choices=["sample", "project"],
+        default=None,
+        metavar="L",
+        help="Schema level to generate (auto-detects from data if omitted).",
+    )
+    sps[INFER_SCHEMA_CMD].add_argument(
+        "--strict",
+        action="store_true",
+        help="Error on type conflicts instead of using most common type.",
+    )
+    sps[INFER_SCHEMA_CMD].add_argument(
+        "--pipeline-name",
+        type=str,
+        metavar="P",
+        help="Override pipeline name in generated schema.",
+    )
 
     return parser

@@ -7,6 +7,7 @@ from ubiquerg import expandpath
 
 from .argparser import (
     HISTORY_CMD,
+    INFER_SCHEMA_CMD,
     INIT_CMD,
     INSPECT_CMD,
     LINK_CMD,
@@ -51,6 +52,19 @@ def main(test_args=None):
     _LOGGER.debug("Args namespace:\n{}".format(args))
     if args.command == INIT_CMD:
         sys.exit(int(not init_generic_config()))
+
+    if args.command == INFER_SCHEMA_CMD:
+        from .infer import infer_schema
+
+        infer_schema(
+            results_file=args.results_file,
+            output_file=args.output,
+            level=args.level,
+            strict=args.strict,
+            pipeline_name=getattr(args, "pipeline_name", None),
+        )
+        sys.exit(0)
+
     # if args.config and not args.schema and args.command != STATUS_CMD:
     #     parser.error("the following arguments are required: -s/--schema")
     if not args.config and not args.results_file:
@@ -76,7 +90,8 @@ def main(test_args=None):
         )
         results_path = args.config or args.results_file
         portable = args.portable or False
-        html_report_path = psm.summarize(portable=portable)
+        mode = getattr(args, "mode", "table") or "table"
+        html_report_path = psm.summarize(portable=portable, mode=mode)
         _LOGGER.info(f"\nGenerating HTML Report from {results_path} at: {html_report_path}\n")
 
         sys.exit(0)
@@ -120,7 +135,7 @@ def main(test_args=None):
     if args.command == REPORT_CMD:
         value = args.value
         if psm.cfg[SCHEMA_KEY] is None:
-            raise SchemaNotFoundError(msg="report", cli=True)
+            raise SchemaNotFoundError(msg="The schema is required to report results", cli=True)
         result_metadata = psm.result_schemas[args.result_identifier]
         if result_metadata[SCHEMA_TYPE_KEY] in types_to_read_from_json:
             path_to_read = expandpath(value)

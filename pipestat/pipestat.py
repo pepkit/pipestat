@@ -157,6 +157,7 @@ class PipestatManager(MutableMapping):
         multi_pipelines: bool = False,
         output_dir: Optional[str] = None,
         pephub_path: Optional[str] = None,
+        lenient: bool = False,
     ) -> None:
         """Initialize the PipestatManager object.
 
@@ -177,12 +178,14 @@ class PipestatManager(MutableMapping):
             multi_pipelines (bool, optional): Allows for running multiple pipelines for one file backend. Defaults to False.
             output_dir (str, optional): Target directory for report generation via summarize and table generation via table.
             pephub_path (str, optional): Path to PEPHub registry.
+            lenient (bool, optional): Allow reporting results without schema validation. Requires file backend. Defaults to False.
         """
 
         super(PipestatManager, self).__init__()
 
         # Initialize the cfg dict as an attribute that holds all configuration data
         self.cfg = {}
+        self.cfg["lenient"] = lenient
 
         # Load and validate database configuration
         # If results_file_path exists, backend is a file else backend is database.
@@ -271,6 +274,15 @@ class PipestatManager(MutableMapping):
         self.cfg["multi_result_files"] = None
 
         self.cfg[OUTPUT_DIR] = self.cfg[CONFIG_KEY].priority_get("output_dir", override=output_dir)
+
+        # Validate lenient mode requirements
+        if self.cfg["lenient"]:
+            if not self.cfg[FILE_KEY]:
+                raise PipestatDatabaseError(
+                    "Lenient mode requires file backend. "
+                    "Use 'pipestat infer-schema' to generate a schema from your results, "
+                    "then switch to database backend with the generated schema."
+                )
 
         if self.cfg[FILE_KEY]:
             self.initialize_filebackend(record_identifier, results_file_path, flag_file_dir)
@@ -428,6 +440,7 @@ class PipestatManager(MutableMapping):
             self.cfg[STATUS_FILE_DIR],
             self.cfg[RESULT_FORMATTER],
             self.cfg[MULTI_PIPELINE],
+            self.cfg.get("lenient", False),
         )
 
         return
@@ -713,10 +726,21 @@ class PipestatManager(MutableMapping):
             raise NotImplementedError("You must supply a record identifier to report results")
 
         result_identifiers = list(values.keys())
+
+        # Handle lenient mode: auto-wrap file paths and skip validation for unknown keys
+        if self.cfg.get("lenient"):
+            for r in result_identifiers:
+                values[r] = self._infer_and_wrap(r, values[r])
+
         if self.cfg[SCHEMA_KEY] is not None:
             for r in result_identifiers:
                 # First confirm this property is defined in the schema
                 if r not in self.result_schemas:
+                    if self.cfg.get("lenient"):
+                        _LOGGER.warning(
+                            f"Result '{r}' not in schema; storing as-is (lenient mode)"
+                        )
+                        continue  # skip validation, store raw
                     raise ColumnNotFoundError(
                         f"Can't report a result for attribute '{r}'; it is not defined in the output schema."
                     )
@@ -727,6 +751,9 @@ class PipestatManager(MutableMapping):
                     strict_type=strict_type,
                     record_identifier=record_identifier,
                 )
+        elif not self.cfg.get("lenient"):
+            raise SchemaNotFoundError("No schema provided and lenient mode is disabled")
+        # else: lenient mode with no schema - store everything as-is
 
         reported_results = self.backend.report(
             values=values,
@@ -1012,6 +1039,7 @@ class PipestatManager(MutableMapping):
         amendment: Optional[str] = None,
         portable: Optional[bool] = False,
         output_dir: Optional[str] = None,
+        mode: str = "table",
     ) -> Optional[str]:
         """Build a browsable HTML report for reported results.
 
@@ -1020,6 +1048,7 @@ class PipestatManager(MutableMapping):
             amendment (str, optional): Name indicating amendment to use.
             portable (bool, optional): Moves figures and report files to directory for easy sharing. Defaults to False.
             output_dir (str, optional): Overrides output_dir set during pipestatManager creation.
+            mode (str, optional): Report mode - "table" (default) or "gallery" for image-centric view.
 
         Returns:
             Union[str, None]: Path to the generated report or None.
@@ -1046,7 +1075,7 @@ class PipestatManager(MutableMapping):
         except Exception as e:
             raise PipestatSummarizeError(f"PipestatSummarizeError due to exception: {e}")
 
-        html_report_builder = HTMLReportBuilder(prj=self, portable=portable)
+        html_report_builder = HTMLReportBuilder(prj=self, portable=portable, mode=mode)
         report_path = html_report_builder(
             pipeline_name=self.cfg[PIPELINE_NAME],
             amendment=amendment,
@@ -1092,6 +1121,28 @@ class PipestatManager(MutableMapping):
         table_path_list = _create_stats_objs_summaries(self, pipeline_name)
 
         return table_path_list
+
+    # File extensions for lenient mode auto-wrapping
+    _IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".svg", ".gif", ".webp"}
+    _FILE_EXTENSIONS = {".csv", ".tsv", ".json", ".pdf", ".txt", ".html", ".bed", ".bam"}
+
+    def _infer_and_wrap(self, key: str, value: Any) -> Any:
+        """In lenient mode, auto-wrap file paths as file/image objects.
+
+        Args:
+            key (str): Result key name (used as title).
+            value (Any): The value to potentially wrap.
+
+        Returns:
+            Any: Original value or wrapped file/image object.
+        """
+        if isinstance(value, str):
+            ext = os.path.splitext(value)[1].lower()
+            if ext in self._IMAGE_EXTENSIONS:
+                return {"path": value, "title": key}
+            if ext in self._FILE_EXTENSIONS:
+                return {"path": value, "title": key}
+        return value
 
     def _get_attr(self, attr: str) -> Any:
         """Safely get the name of the selected attribute of this object.
@@ -1144,6 +1195,15 @@ class PipestatManager(MutableMapping):
             str: File path that the object is reporting the results into.
         """
         return self.cfg[FILE_KEY]
+
+    @property
+    def lenient(self) -> bool:
+        """Whether lenient mode is enabled.
+
+        Returns:
+            bool: True if lenient mode allows reporting without schema validation.
+        """
+        return self.cfg.get("lenient", False)
 
     @property
     def highlighted_results(self) -> List[str]:
@@ -1217,7 +1277,10 @@ class PipestatManager(MutableMapping):
 
         Returns:
             Dict[str, Any]: Schemas that formalize the structure of each result.
+                Empty dict if no schema (lenient mode).
         """
+        if self.cfg[SCHEMA_KEY] is None:
+            return {}
         if self.pipeline_type == "project":
             return self.cfg[SCHEMA_KEY].project_level_data
         return self.cfg[SCHEMA_KEY].sample_level_data
@@ -1228,7 +1291,10 @@ class PipestatManager(MutableMapping):
 
         Returns:
             Dict with 'sample' and 'project' keys, each containing that level's schemas.
+                Empty dicts if no schema (lenient mode).
         """
+        if self.cfg[SCHEMA_KEY] is None:
+            return {"sample": {}, "project": {}}
         return {
             "sample": self.cfg[SCHEMA_KEY].sample_level_data,
             "project": self.cfg[SCHEMA_KEY].project_level_data,

@@ -37,19 +37,21 @@ _LOGGER = getLogger(PKG_NAME)
 class HTMLReportBuilder(object):
     """Generate HTML summary report for project/samples"""
 
-    def __init__(self, prj, portable=False):
+    def __init__(self, prj, portable=False, mode="table"):
         """
         The Project defines the instance.
 
         Args:
             prj (PipestatManager): Project with which to work/operate on.
             portable (bool): Moves figures and report files to directory for easy sharing.
+            mode (str): Report mode - "table" (default) or "gallery" for image-centric view.
         """
 
         self.prj = prj
         self.jinja_env = get_jinja_env()
 
         self.portable = portable
+        self.mode = mode
 
         results_file_path = getattr(self.prj.backend, "results_file_path", None)
         config_path = self.prj.cfg.get("config_path", None)
@@ -116,7 +118,12 @@ class HTMLReportBuilder(object):
             ),
             index_html_relpath=os.path.relpath(self.index_html_path, self.pipeline_reports),
         )
-        self.create_index_html(navbar, self.create_footer())
+
+        # Generate report based on mode
+        if self.mode == "gallery":
+            self.create_gallery_html(navbar, self.create_footer())
+        else:
+            self.create_index_html(navbar, self.create_footer())
         return self.index_html_path
 
     def _reset_pipeline_type(self):
@@ -467,13 +474,21 @@ class HTMLReportBuilder(object):
 
                                 sample_result[image_result]["path"] = new_image_path
 
+                                # thumbnail_path is optional; fall back to path
+                                thumbnail_src = sample_result[image_result].get(
+                                    "thumbnail_path", sample_result[image_result]["path"]
+                                )
                                 new_thumbnail_path = self._create_copy_for_porting(
-                                    parent_path=sample_result[image_result]["thumbnail_path"],
+                                    parent_path=thumbnail_src,
                                     record_identifier=sample_name,
                                 )
 
                                 sample_result[image_result]["thumbnail_path"] = new_thumbnail_path
 
+                            # thumbnail_path is optional; fall back to path
+                            thumbnail_path = sample_result[image_result].get(
+                                "thumbnail_path", sample_result[image_result]["path"]
+                            )
                             figures.append(
                                 [
                                     os.path.relpath(
@@ -482,7 +497,7 @@ class HTMLReportBuilder(object):
                                     ),
                                     sample_name,
                                     os.path.relpath(
-                                        sample_result[image_result]["thumbnail_path"],
+                                        thumbnail_path,
                                         self.pipeline_reports,
                                     ),
                                 ]
@@ -619,17 +634,21 @@ class HTMLReportBuilder(object):
 
                         result["path"] = new_image_path
 
+                        # thumbnail_path is optional; fall back to path
+                        thumbnail_src = result.get("thumbnail_path", result["path"])
                         new_thumbnail_path = self._create_copy_for_porting(
-                            parent_path=result["thumbnail_path"], record_identifier=sample_name
+                            parent_path=thumbnail_src, record_identifier=sample_name
                         )
 
                         result["thumbnail_path"] = new_thumbnail_path
 
+                    # thumbnail_path is optional; fall back to path
+                    thumbnail_path = result.get("thumbnail_path", result["path"])
                     figures.append(
                         [
                             os.path.relpath(result["path"], self.pipeline_reports),
                             result["title"],
-                            os.path.relpath(result["thumbnail_path"], self.pipeline_reports),
+                            os.path.relpath(thumbnail_path, self.pipeline_reports),
                         ]
                     )
                 except FileNotFoundError:
@@ -843,6 +862,105 @@ class HTMLReportBuilder(object):
             render_jinja_template("index.html", self.jinja_env, template_vars),
         )
 
+    def create_gallery_html(self, navbar, footer):
+        """
+        Generate a gallery-style HTML report focused on image results.
+
+        Args:
+            navbar (str): HTML to be included as the navbar.
+            footer (str): HTML to be included as the footer.
+        """
+        _LOGGER.info(f"Building gallery page for pipeline: {self.pipeline_name}")
+
+        if not os.path.exists(self.pipeline_reports):
+            os.makedirs(self.pipeline_reports)
+
+        # Collect images organized by type and by sample
+        images_by_type = {}  # {result_type: [{sample, path, thumbnail, title}, ...]}
+        images_by_sample = {}  # {sample_name: [{result_type, path, thumbnail, title}, ...]}
+
+        image_result_ids = [
+            k for k, v in self.schema.items() if v.get("type") == "image"
+        ]
+
+        if self.prj.cfg["multi_result_files"] is True:
+            pipeline_types = ["sample", "project"]
+        else:
+            pipeline_types = [self.prj.backend.pipeline_type]
+
+        for pipeline_type in pipeline_types:
+            self.prj.backend.pipeline_type = pipeline_type
+            for sample in self.prj.backend.select_records()["records"]:
+                sample_name = sample["record_identifier"]
+                sample_result = fetch_pipeline_results(
+                    project=self.prj,
+                    sample_name=sample_name,
+                )
+
+                for image_result in image_result_ids:
+                    if image_result not in sample_result:
+                        continue
+                    result = sample_result[image_result]
+                    if not result:
+                        continue
+
+                    try:
+                        # Handle portable mode
+                        if self.portable:
+                            new_image_path = self._create_copy_for_porting(
+                                parent_path=result["path"],
+                                record_identifier=sample_name,
+                            )
+                            result["path"] = new_image_path
+
+                            thumbnail_src = result.get("thumbnail_path", result["path"])
+                            new_thumbnail_path = self._create_copy_for_porting(
+                                parent_path=thumbnail_src,
+                                record_identifier=sample_name,
+                            )
+                            result["thumbnail_path"] = new_thumbnail_path
+
+                        # Get relative paths
+                        path_rel = os.path.relpath(result["path"], self.pipeline_reports)
+                        thumbnail_path = result.get("thumbnail_path", result["path"])
+                        thumbnail_rel = os.path.relpath(thumbnail_path, self.pipeline_reports)
+
+                        img_data = {
+                            "sample": sample_name,
+                            "result_type": image_result,
+                            "path": path_rel,
+                            "thumbnail": thumbnail_rel,
+                            "title": result.get("title", image_result),
+                        }
+
+                        # Add to by-type dict
+                        if image_result not in images_by_type:
+                            images_by_type[image_result] = []
+                        images_by_type[image_result].append(img_data)
+
+                        # Add to by-sample dict
+                        if sample_name not in images_by_sample:
+                            images_by_sample[sample_name] = []
+                        images_by_sample[sample_name].append(img_data)
+
+                    except Exception as e:
+                        _LOGGER.warning(f"Error processing image {image_result} for {sample_name}: {e}")
+
+        self._reset_pipeline_type()
+
+        template_vars = dict(
+            navbar=navbar,
+            footer=footer,
+            pipeline_name=self.pipeline_name,
+            images_by_type=images_by_type,
+            images_by_sample=images_by_sample,
+        )
+        _LOGGER.debug(f"gallery.html | template_vars:\n{template_vars}")
+        save_html(
+            self.index_html_path,
+            render_jinja_template("gallery.html", self.jinja_env, template_vars),
+        )
+
     def create_project_objects(self):
         """
         Render available project level outputs defined in the
@@ -925,13 +1043,21 @@ class HTMLReportBuilder(object):
 
                                 sample_result[image_result]["path"] = new_image_path
 
+                                # thumbnail_path is optional; fall back to path
+                                thumbnail_src = sample_result[image_result].get(
+                                    "thumbnail_path", sample_result[image_result]["path"]
+                                )
                                 new_thumbnail_path = self._create_copy_for_porting(
-                                    parent_path=sample_result[image_result]["thumbnail_path"],
+                                    parent_path=thumbnail_src,
                                     record_identifier=sample_name,
                                 )
 
                                 sample_result[image_result]["thumbnail_path"] = new_thumbnail_path
 
+                            # thumbnail_path is optional; fall back to path
+                            thumbnail_path = sample_result[image_result].get(
+                                "thumbnail_path", sample_result[image_result]["path"]
+                            )
                             figures.append(
                                 [
                                     os.path.relpath(
@@ -940,7 +1066,7 @@ class HTMLReportBuilder(object):
                                     ),
                                     sample_result[image_result]["title"],
                                     os.path.relpath(
-                                        sample_result[image_result]["thumbnail_path"],
+                                        thumbnail_path,
                                         self.pipeline_reports,
                                     ),
                                 ]
