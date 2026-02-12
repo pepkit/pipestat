@@ -282,3 +282,34 @@ def range_values():
         }
         range_values.append((r_id, val))
     return range_values
+
+
+@pytest.fixture
+def schema_with_shared_keys(tmp_path):
+    """Schema file with Time/Success defined at both sample and project levels."""
+    schema_content = """
+pipeline_name: test_pipeline
+samples:
+  Time:
+    type: string
+    description: "Sample runtime"
+  Success:
+    type: string
+    description: "Sample completion"
+  sample_only_result:
+    type: integer
+    description: "Sample-only result"
+project:
+  Time:
+    type: string
+    description: "Project runtime"
+  Success:
+    type: string
+    description: "Project completion"
+  project_only_result:
+    type: number
+    description: "Project-only result"
+"""
+    schema_file = tmp_path / "schema_shared_keys.yaml"
+    schema_file.write_text(schema_content)
+    return str(schema_file)

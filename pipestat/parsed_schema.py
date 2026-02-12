@@ -170,15 +170,6 @@ class ParsedSchema(object):
                 f"{len(reserved_keywords_used)} reserved keyword(s) used: {', '.join(reserved_keywords_used)}"
             )
 
-        # Check that no data item name overlap exists between project- and sample-level data.
-        project_sample_overlap = set(self.project_level_data) & set(self.sample_level_data)
-        if project_sample_overlap:
-            raise SchemaError(
-                f"Overlap between project- and sample-level keys: {', '.join(project_sample_overlap)}. "
-                f"Pipestat requires unique key names across schema levels. "
-                f"Use different names for project vs sample results, or remove "
-                f"the duplicates from one section."
-            )
 
     def __str__(self):
         """Generate string representation of the object.

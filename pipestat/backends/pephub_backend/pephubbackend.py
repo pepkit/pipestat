@@ -131,10 +131,15 @@ class PEPHUBBACKEND(PipestatBackend):
             return []
 
         if restrict_to is None:
+            schema_data = (
+                self.parsed_schema.project_level_data
+                if self.pipeline_type == "project"
+                else self.parsed_schema.sample_level_data
+            )
             return (
                 [
                     key
-                    for key in self.parsed_schema.results_data.keys()
+                    for key in schema_data.keys()
                     if getattr(record, key, None) is not None
                 ]
                 if record

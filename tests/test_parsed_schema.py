@@ -242,21 +242,30 @@ def test_reserved_keyword_use_in_schema__raises_expected_error_and_message(schem
     assert "reserved keyword(s) used" in observed_message
 
 
-def test_sample_project_data_item_name_overlap__raises_expected_error_and_message():
-    common_key = "shared_key"
-    schema_data = {
-        SCHEMA_PIPELINE_NAME_KEY: "test_pipe",
+def test_schema_accepts_shared_keys_at_both_levels():
+    """User can define the same result key at both sample and project levels."""
+    schema_dict = {
+        SCHEMA_PIPELINE_NAME_KEY: "test_pipeline",
         "samples": {
-            "just_in_sample": {"type": "string", "description": "placeholder"},
-            common_key: {"type": "string", "description": "in samples"},
+            "Time": {"type": "string", "description": "Sample runtime"},
+            "Success": {"type": "string", "description": "Sample completion"},
+            "sample_only_result": {"type": "integer", "description": "Sample-only"},
         },
-        "project": {common_key: {"type": "string", "description": "in project"}},
+        "project": {
+            "Time": {"type": "string", "description": "Project runtime"},
+            "Success": {"type": "string", "description": "Project completion"},
+            "project_only_result": {"type": "number", "description": "Project-only"},
+        },
     }
-    with pytest.raises(SchemaError) as err_ctx:
-        ParsedSchema(schema_data)
-    obs_msg = str(err_ctx.value)
-    assert f"Overlap between project- and sample-level keys: {common_key}" in obs_msg
-    assert "unique key names across schema levels" in obs_msg
+
+    # This should NOT raise SchemaError
+    schema = ParsedSchema(schema_dict)
+
+    # Both levels should have their own definitions
+    assert "Time" in schema.sample_level_data
+    assert "Time" in schema.project_level_data
+    assert schema.sample_level_data["Time"]["description"] == "Sample runtime"
+    assert schema.project_level_data["Time"]["description"] == "Project runtime"
 
 
 def test_JSON_schema_validation(output_schema_as_JSON_schema):

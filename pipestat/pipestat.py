@@ -1210,14 +1210,28 @@ class PipestatManager(MutableMapping):
 
     @property
     def result_schemas(self) -> Dict[str, Any]:
-        """Result schema mappings.
+        """Result schema mappings for the current pipeline type.
+
+        Returns schemas only for this manager's pipeline_type (sample or project),
+        not a merged view of both levels.
 
         Returns:
-            Dict[str, Any]: Schemas that formalize the structure of each result in a canonical jsonschema way.
+            Dict[str, Any]: Schemas that formalize the structure of each result.
+        """
+        if self.pipeline_type == "project":
+            return self.cfg[SCHEMA_KEY].project_level_data
+        return self.cfg[SCHEMA_KEY].sample_level_data
+
+    @property
+    def all_result_schemas(self) -> Dict[str, Dict[str, Any]]:
+        """All result schemas organized by level.
+
+        Returns:
+            Dict with 'sample' and 'project' keys, each containing that level's schemas.
         """
         return {
-            **self.cfg[SCHEMA_KEY].project_level_data,
-            **self.cfg[SCHEMA_KEY].sample_level_data,
+            "sample": self.cfg[SCHEMA_KEY].sample_level_data,
+            "project": self.cfg[SCHEMA_KEY].project_level_data,
         }
 
     @property
