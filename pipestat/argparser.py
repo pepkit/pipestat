@@ -2,11 +2,13 @@
 
 import argparse
 import os
+from importlib.metadata import version
 
 from ubiquerg import VersionInHelpParser
 
-from ._version import __version__
 from .const import ENV_VARS, PKG_NAME, STATUS_SCHEMA
+
+__version__ = version(PKG_NAME)
 
 REPORT_CMD = "report"
 INSPECT_CMD = "inspect"
@@ -283,7 +285,7 @@ def build_argparser(desc):
         "-o",
         "--overwrite",
         action="store_true",
-        help="Whether the result should override existing ones in " "case of name clashes",
+        help="Whether the result should override existing ones in case of name clashes",
     )
 
     sps[REPORT_CMD].add_argument(

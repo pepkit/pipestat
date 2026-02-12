@@ -1,8 +1,72 @@
-[tool.black]
-line-length = 99
-target-version = ['py38', 'py311']
-include = '\.pyi?$'
+[project]
+name = "pipestat"
+version = "0.13.0"
+description = "A pipeline results reporter"
+readme = "README.md"
+license = "BSD-2-Clause"
+requires-python = ">=3.10"
+authors = [
+    { name = "Michal Stolarczyk" },
+    { name = "Nathan Sheffield" },
+]
+keywords = ["project", "metadata", "bioinformatics", "sequencing", "ngs", "workflow"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "jsonschema",
+    "logmuse>=0.2.5",
+    "pyyaml",
+    "ubiquerg>=0.8.0",
+    "yacman>=0.9.5",
+    "pandas",
+    "eido",
+    "jinja2",
+]
+
+[project.urls]
+Homepage = "https://github.com/pepkit/pipestat"
+
+[project.scripts]
+pipestat = "pipestat.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.optional-dependencies]
+dbbackend = [
+    "psycopg>=3.1.13",
+    "pydantic>=2.5.3,<3.0.0",
+    "sqlmodel>=0.0.14",
+]
+pipestatreader = [
+    "fastapi",
+    "uvicorn",
+]
+test = [
+    "pytest>=4.6.9",
+    "pytest-cov>=2.8.1",
+    "coverage",
+]
+
+[tool.pytest.ini_options]
+addopts = "-rfE"
+testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 99
-target-version = 'py311'
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["F403", "F405", "E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pipestat"]

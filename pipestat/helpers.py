@@ -6,7 +6,7 @@ import logging
 import os
 from json import dumps
 from shutil import make_archive
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import jsonschema
 from yaml import dump
@@ -19,9 +19,9 @@ _LOGGER = logging.getLogger(__name__)
 
 def validate_type(
     value: Any,
-    schema: Dict[str, Any],
+    schema: dict[str, Any],
     strict_type: bool = False,
-    record_identifier: Optional[str] = None,
+    record_identifier: str | None = None,
 ) -> None:
     """Validate reported result against a partial schema, in case of failure try to cast the value.
 
@@ -53,17 +53,15 @@ def validate_type(
                     cls_fun = CLASSES_BY_TYPE[prop_dict[SCHEMA_TYPE_KEY]]
                     value[prop] = cls_fun(value[prop])
                 except Exception as e:
-                    _LOGGER.error(f"Could not cast the result into " f"required type: {str(e)}")
+                    _LOGGER.error(f"Could not cast the result into required type: {str(e)}")
                 else:
-                    _LOGGER.debug(
-                        f"Casted the reported result into required " f"type: {str(cls_fun)}"
-                    )
+                    _LOGGER.debug(f"Casted the reported result into required type: {str(cls_fun)}")
         jsonschema.validate(value, schema)
     else:
         _LOGGER.debug(f"Value '{value}' validated successfully against a schema")
 
 
-def mk_list_of_str(x: Union[str, List[str], None]) -> Optional[List[str]]:
+def mk_list_of_str(x: str | list[str] | None) -> list[str] | None:
     """Make sure the input is a list of strings.
 
     Args:
@@ -79,12 +77,10 @@ def mk_list_of_str(x: Union[str, List[str], None]) -> Optional[List[str]]:
         return x
     if isinstance(x, str):
         return [x]
-    raise TypeError(
-        f"String or list of strings required as input. Got: " f"{x.__class__.__name__}"
-    )
+    raise TypeError(f"String or list of strings required as input. Got: {x.__class__.__name__}")
 
 
-def make_subdirectories(path: Optional[str]) -> None:
+def make_subdirectories(path: str | None) -> None:
     """Takes an absolute file path and creates subdirectories to file if they do not exist.
 
     Args:
@@ -207,7 +203,7 @@ def force_symlink(file1: str, file2: str) -> None:
             os.symlink(file1, file2)
 
 
-def get_all_result_files(results_file_path: str) -> List[str]:
+def get_all_result_files(results_file_path: str) -> list[str]:
     """Collects any yaml result files relative to the CURRENT results_file_path.
 
     Args:
@@ -221,7 +217,7 @@ def get_all_result_files(results_file_path: str) -> List[str]:
     return files
 
 
-def zip_report(report_dir_name: str) -> Optional[str]:
+def zip_report(report_dir_name: str) -> str | None:
     """Walks through files and attempts to zip them into a Zip object using default compression.
 
     Gracefully fails and informs user if compression library is not available.

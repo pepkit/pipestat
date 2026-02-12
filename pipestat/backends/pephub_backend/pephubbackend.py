@@ -49,7 +49,6 @@ class PEPHUBBACKEND(PipestatBackend):
         self.result_formatter = result_formatter
 
         if pephubclient.is_registry_path(pephub_path):
-
             _LOGGER.debug("Initialize PEPHub Backend")
 
             # Deconstruct registry path so that phc can use it to create/update/delete samples
@@ -137,11 +136,7 @@ class PEPHUBBACKEND(PipestatBackend):
                 else self.parsed_schema.sample_level_data
             )
             return (
-                [
-                    key
-                    for key in schema_data.keys()
-                    if getattr(record, key, None) is not None
-                ]
+                [key for key in schema_data.keys() if getattr(record, key, None) is not None]
                 if record
                 else []
             )
@@ -273,7 +268,6 @@ class PEPHUBBACKEND(PipestatBackend):
         )
 
         if not existing:
-
             self.phc.sample.create(
                 namespace=self.pep_registry.namespace,
                 name=self.pep_registry.item,

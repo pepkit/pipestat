@@ -9,8 +9,7 @@ from logging import getLogger
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 from ubiquerg import create_lock, remove_lock
-from yacman import YAMLConfigManager
-from yacman import write_lock
+from yacman import YAMLConfigManager, write_lock
 
 from ...backends.abstract import PipestatBackend
 from ...const import CREATED_TIME, DATE_FORMAT, HISTORY_KEY, META_KEY, MODIFIED_TIME, PKG_NAME
@@ -297,9 +296,7 @@ class FileBackend(PipestatBackend):
                 f"'{record_identifier}' from '{self.pipeline_name}' namespace"
             )
             if not self._data[self.pipeline_name][self.pipeline_type][record_identifier]:
-                _LOGGER.info(
-                    f"Last result removed for '{record_identifier}'. " f"Removing the record"
-                )
+                _LOGGER.info(f"Last result removed for '{record_identifier}'. Removing the record")
                 rm_record = True
                 self.remove_record(
                     record_identifier=record_identifier,

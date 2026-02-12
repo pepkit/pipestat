@@ -1,6 +1,6 @@
 """Package exception types"""
 
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
 from .const import CLASSES_BY_TYPE, ENV_VARS
 
@@ -145,8 +145,9 @@ class InvalidTypeError(PipestatError):
 
     def __init__(self, type):
         super(InvalidTypeError, self).__init__(
-            "'{}' is an invalid type. Only the following types are "
-            "supported: {}".format(type, list(CLASSES_BY_TYPE.keys()))
+            "'{}' is an invalid type. Only the following types are supported: {}".format(
+                type, list(CLASSES_BY_TYPE.keys())
+            )
         )
 
 
@@ -163,7 +164,7 @@ class IncompatibleClassError(PipestatError):
 class UnrecognizedStatusError(PipestatError):
     """Exception for when a value to set as status isn't declared in the active status schema."""
 
-    def __init__(self, status: str, known: Optional[Iterable[str]] = None):
+    def __init__(self, status: str, known: Iterable[str] | None = None):
         self._status = status
         msg = f"Unrecognized status: {status}"
         if known is not None:

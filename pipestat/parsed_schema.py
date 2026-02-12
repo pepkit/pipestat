@@ -2,8 +2,9 @@
 
 import copy
 import logging
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Union
+from typing import Any
 
 import yacman
 
@@ -31,9 +32,9 @@ PATH_COL_SPEC = (Path, ...)
 
 def _safe_pop_one_mapping(
     mappingkey: str,
-    data: Dict[str, Any],
+    data: dict[str, Any],
     info_name: str,
-    subkeys: Optional[List[str]] = None,
+    subkeys: list[str] | None = None,
 ) -> Any:
     """Pop a mapping from nested dictionary data.
 
@@ -82,7 +83,7 @@ class ParsedSchema(object):
     _SAMPLES_KEY = "samples"
     _STATUS_KEY = "status"
 
-    def __init__(self, data: Union[Dict[str, Any], Path, str]) -> None:
+    def __init__(self, data: dict[str, Any] | Path | str) -> None:
         # initial validation and parse
         if not isinstance(data, dict):
             data = yacman.load_yaml(data)
@@ -170,7 +171,6 @@ class ParsedSchema(object):
                 f"{len(reserved_keywords_used)} reserved keyword(s) used: {', '.join(reserved_keywords_used)}"
             )
 
-
     def __str__(self):
         """Generate string representation of the object.
 
@@ -252,7 +252,7 @@ class ParsedSchema(object):
     def file_like_table_name(self) -> str:
         return self._table_name("files")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Create simple dictionary representation of this instance.
 
         Returns:
@@ -272,7 +272,7 @@ class ParsedSchema(object):
         return f"{self.pipeline_name}__{suffix}"
 
 
-def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:
+def _recursively_replace_custom_types(s: dict[str, Any]) -> dict[str, Any]:
     """Replace the custom types in pipestat schema with canonical types.
 
     Args:
@@ -304,8 +304,8 @@ def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def replace_JSON_refs(
-    target_schema: Dict[str, Any], source_schema: Dict[str, Any]
-) -> Dict[str, Any]:
+    target_schema: dict[str, Any], source_schema: dict[str, Any]
+) -> dict[str, Any]:
     """Recursively search and replace the $refs if they exist in schema.
 
     If their corresponding $defs exist in source schema, source_schema. If $defs exist in the target

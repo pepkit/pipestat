@@ -1,16 +1,14 @@
 import datetime
 import os
 from abc import ABC
-from collections.abc import MutableMapping
+from collections.abc import Callable, Iterator, MutableMapping
 from copy import deepcopy
 from logging import getLogger
-from typing import Any, Callable, Dict, Iterator, List, Optional, Union
+from typing import Any
 
 from jsonschema import validate
 from ubiquerg import mkabs
-from yacman import YAMLConfigManager
-from yacman import load_yaml
-from yacman import select_config
+from yacman import YAMLConfigManager, load_yaml, select_config
 
 from pipestat.backends.file_backend.filebackend import FileBackend
 
@@ -47,9 +45,9 @@ from .exceptions import (
     NoBackendSpecifiedError,
     PipestatDatabaseError,
     PipestatDependencyError,
+    PipestatSummarizeError,
     RecordNotFoundError,
     SchemaNotFoundError,
-    PipestatSummarizeError,
 )
 from .helpers import default_formatter, make_subdirectories, validate_type, zip_report
 from .reports import HTMLReportBuilder, _create_stats_objs_summaries
@@ -76,9 +74,7 @@ except ImportError:
 _LOGGER = getLogger(PKG_NAME)
 
 
-def check_dependencies(
-    dependency_list: Optional[list] = None, msg: Optional[str] = None
-) -> Callable:
+def check_dependencies(dependency_list: list | None = None, msg: str | None = None) -> Callable:
     """Decorator to check that the dependency list has successfully been imported.
 
     Args:
@@ -142,21 +138,21 @@ class PipestatManager(MutableMapping):
 
     def __init__(
         self,
-        project_name: Optional[str] = None,
-        record_identifier: Optional[str] = None,
-        schema_path: Optional[str] = None,
-        results_file_path: Optional[str] = None,
-        database_only: Optional[bool] = True,
-        config_file: Optional[str] = None,
-        config_dict: Optional[dict] = None,
-        flag_file_dir: Optional[str] = None,
+        project_name: str | None = None,
+        record_identifier: str | None = None,
+        schema_path: str | None = None,
+        results_file_path: str | None = None,
+        database_only: bool | None = True,
+        config_file: str | None = None,
+        config_dict: dict | None = None,
+        flag_file_dir: str | None = None,
         show_db_logs: bool = False,
-        pipeline_type: Optional[str] = None,
-        pipeline_name: Optional[str] = None,
+        pipeline_type: str | None = None,
+        pipeline_name: str | None = None,
         result_formatter: Callable = default_formatter,
         multi_pipelines: bool = False,
-        output_dir: Optional[str] = None,
-        pephub_path: Optional[str] = None,
+        output_dir: str | None = None,
+        pephub_path: str | None = None,
         lenient: bool = False,
     ) -> None:
         """Initialize the PipestatManager object.
@@ -338,7 +334,7 @@ class PipestatManager(MutableMapping):
         result = self.retrieve_one(record_identifier=key)
         return result
 
-    def __setitem__(self, key: str, value: Any) -> Union[List[str], bool]:
+    def __setitem__(self, key: str, value: Any) -> list[str] | bool:
         # This is a wrapper for the report function:
         result = self.report(record_identifier=key, values=value)
         return result
@@ -350,8 +346,8 @@ class PipestatManager(MutableMapping):
 
     def __iter__(
         self,
-        limit: Optional[int] = 1000,
-        cursor: Optional[int] = None,
+        limit: int | None = 1000,
+        cursor: int | None = None,
     ) -> Iterator:
         """Wrapper around select_records that creates an iterator of records.
 
@@ -371,7 +367,7 @@ class PipestatManager(MutableMapping):
     def __len__(self) -> int:
         return len(self.cfg)
 
-    def resolve_results_file_path(self, results_file_path: Optional[str]) -> Optional[str]:
+    def resolve_results_file_path(self, results_file_path: str | None) -> str | None:
         """Replace {record_identifier} in results_file_path if it exists.
 
         Args:
@@ -400,9 +396,9 @@ class PipestatManager(MutableMapping):
 
     def initialize_filebackend(
         self,
-        record_identifier: Optional[str] = None,
-        results_file_path: Optional[str] = None,
-        flag_file_dir: Optional[str] = None,
+        record_identifier: str | None = None,
+        results_file_path: str | None = None,
+        flag_file_dir: str | None = None,
     ) -> None:
         """Initializes the file backend.
 
@@ -446,7 +442,7 @@ class PipestatManager(MutableMapping):
         return
 
     def initialize_pephubbackend(
-        self, record_identifier: Optional[str] = None, pephub_path: Optional[str] = None
+        self, record_identifier: str | None = None, pephub_path: str | None = None
     ) -> None:
         """Initializes the pephub backend.
 
@@ -469,7 +465,7 @@ class PipestatManager(MutableMapping):
         msg="Missing required dependencies for this usage, e.g. try pip install pipestat['dbbackend']",
     )
     def initialize_dbbackend(
-        self, record_identifier: Optional[str] = None, show_db_logs: bool = False
+        self, record_identifier: str | None = None, show_db_logs: bool = False
     ) -> None:
         """Initializes the database backend.
 
@@ -516,8 +512,8 @@ class PipestatManager(MutableMapping):
     def clear_status(
         self,
         record_identifier: str = None,
-        flag_names: List[str] = None,
-    ) -> List[Union[str, None]]:
+        flag_names: list[str] = None,
+    ) -> list[str | None]:
         """Remove status flags.
 
         Args:
@@ -545,7 +541,7 @@ class PipestatManager(MutableMapping):
     def get_status(
         self,
         record_identifier: str = None,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Get the current pipeline status.
 
         Args:
@@ -561,10 +557,10 @@ class PipestatManager(MutableMapping):
     @require_backend
     def list_recent_results(
         self,
-        limit: Optional[int] = 1000,
-        start: Optional[str] = None,
-        end: Optional[str] = None,
-        time_column: Optional[str] = "modified",
+        limit: int | None = 1000,
+        start: str | None = None,
+        end: str | None = None,
+        time_column: str | None = "modified",
     ) -> dict:
         """List recent results within a time range.
 
@@ -625,7 +621,7 @@ class PipestatManager(MutableMapping):
         )
         return results
 
-    def process_schema(self, schema_path: Optional[str]) -> None:
+    def process_schema(self, schema_path: str | None) -> None:
         # Load pipestat schema in two parts: 1) main and 2) status
         self._schema_path = self.cfg[CONFIG_KEY].priority_get(
             "schema_path", env_var=ENV_VARS["schema"], override=schema_path
@@ -681,8 +677,8 @@ class PipestatManager(MutableMapping):
     @require_backend
     def remove_record(
         self,
-        record_identifier: Optional[str] = None,
-        rm_record: Optional[bool] = False,
+        record_identifier: str | None = None,
+        rm_record: bool | None = False,
     ) -> bool:
         return self.backend.remove_record(
             record_identifier=record_identifier,
@@ -692,13 +688,13 @@ class PipestatManager(MutableMapping):
     @require_backend
     def report(
         self,
-        values: Dict[str, Any],
-        record_identifier: Optional[str] = None,
+        values: dict[str, Any],
+        record_identifier: str | None = None,
         force_overwrite: bool = True,
-        result_formatter: Optional[Callable] = None,
+        result_formatter: Callable | None = None,
         strict_type: bool = True,
         history_enabled: bool = True,
-    ) -> Union[List[str], bool]:
+    ) -> list[str] | bool:
         """Report a result.
 
         Args:
@@ -768,8 +764,8 @@ class PipestatManager(MutableMapping):
     @require_backend
     def select_distinct(
         self,
-        columns: Optional[Union[str, List[str]]] = None,
-    ) -> List[Any]:
+        columns: str | list[str] | None = None,
+    ) -> list[Any]:
         """Retrieves unique results for a list of attributes.
 
         Args:
@@ -792,12 +788,12 @@ class PipestatManager(MutableMapping):
     @require_backend
     def select_records(
         self,
-        columns: Optional[List[str]] = None,
-        filter_conditions: Optional[List[Dict[str, Any]]] = None,
-        limit: Optional[int] = 1000,
-        cursor: Optional[int] = None,
-        bool_operator: Optional[str] = "AND",
-    ) -> Dict[str, Any]:
+        columns: list[str] | None = None,
+        filter_conditions: list[dict[str, Any]] | None = None,
+        limit: int | None = 1000,
+        cursor: int | None = None,
+        bool_operator: str | None = "AND",
+    ) -> dict[str, Any]:
         """Select records with optional filtering and pagination.
 
         Args:
@@ -834,8 +830,8 @@ class PipestatManager(MutableMapping):
     def retrieve_one(
         self,
         record_identifier: str = None,
-        result_identifier: Optional[Union[str, List[str]]] = None,
-    ) -> Union[Any, Dict[str, Any]]:
+        result_identifier: str | list[str] | None = None,
+    ) -> Any | dict[str, Any]:
         """Retrieve a single record.
 
         Args:
@@ -902,8 +898,8 @@ class PipestatManager(MutableMapping):
     def retrieve_history(
         self,
         record_identifier: str = None,
-        result_identifier: Optional[Union[str, List[str]]] = None,
-    ) -> Union[Any, Dict[str, Any]]:
+        result_identifier: str | list[str] | None = None,
+    ) -> Any | dict[str, Any]:
         """Retrieve a single record's history.
 
         Args:
@@ -970,9 +966,9 @@ class PipestatManager(MutableMapping):
 
     def retrieve_many(
         self,
-        record_identifiers: List[str],
-        result_identifier: Optional[str] = None,
-    ) -> Union[Any, Dict[str, Any]]:
+        record_identifiers: list[str],
+        result_identifier: str | None = None,
+    ) -> Any | dict[str, Any]:
         """Retrieve multiple records.
 
         Args:
@@ -1017,7 +1013,7 @@ class PipestatManager(MutableMapping):
         self.backend.set_status(status_identifier, r_id)
 
     @require_backend
-    def link(self, link_dir: str) -> Optional[str]:
+    def link(self, link_dir: str) -> str | None:
         """Create a link structure such that results are organized by type.
 
         Args:
@@ -1035,12 +1031,12 @@ class PipestatManager(MutableMapping):
     @require_backend
     def summarize(
         self,
-        looper_samples: Optional[list] = None,
-        amendment: Optional[str] = None,
-        portable: Optional[bool] = False,
-        output_dir: Optional[str] = None,
+        looper_samples: list | None = None,
+        amendment: str | None = None,
+        portable: bool | None = False,
+        output_dir: str | None = None,
         mode: str = "table",
-    ) -> Optional[str]:
+    ) -> str | None:
         """Build a browsable HTML report for reported results.
 
         Args:
@@ -1103,8 +1099,8 @@ class PipestatManager(MutableMapping):
     @require_backend
     def table(
         self,
-        output_dir: Optional[str] = None,
-    ) -> List[str]:
+        output_dir: str | None = None,
+    ) -> list[str]:
         """Generate stats (.tsv) and object (.yaml) files.
 
         Args:
@@ -1206,7 +1202,7 @@ class PipestatManager(MutableMapping):
         return self.cfg.get("lenient", False)
 
     @property
-    def highlighted_results(self) -> List[str]:
+    def highlighted_results(self) -> list[str]:
         """Highlighted results.
 
         Returns:
@@ -1269,7 +1265,7 @@ class PipestatManager(MutableMapping):
         return self.count_records()
 
     @property
-    def result_schemas(self) -> Dict[str, Any]:
+    def result_schemas(self) -> dict[str, Any]:
         """Result schema mappings for the current pipeline type.
 
         Returns schemas only for this manager's pipeline_type (sample or project),
@@ -1286,7 +1282,7 @@ class PipestatManager(MutableMapping):
         return self.cfg[SCHEMA_KEY].sample_level_data
 
     @property
-    def all_result_schemas(self) -> Dict[str, Dict[str, Any]]:
+    def all_result_schemas(self) -> dict[str, dict[str, Any]]:
         """All result schemas organized by level.
 
         Returns:
@@ -1319,7 +1315,7 @@ class PipestatManager(MutableMapping):
         return self.cfg[SCHEMA_PATH]
 
     @property
-    def status_schema(self) -> Dict:
+    def status_schema(self) -> dict:
         """Status schema mapping.
 
         Returns:
@@ -1328,7 +1324,7 @@ class PipestatManager(MutableMapping):
         return self.cfg[STATUS_SCHEMA_KEY]
 
     @property
-    def status_schema_source(self) -> Dict:
+    def status_schema_source(self) -> dict:
         """Status schema source.
 
         Returns:
@@ -1368,7 +1364,7 @@ class PipestatBoss(ABC):
         output_dir (str, optional): Target directory for report generation via summarize and table generation via table.
     """
 
-    def __init__(self, pipeline_list: Optional[list] = None, **kwargs) -> None:
+    def __init__(self, pipeline_list: list | None = None, **kwargs) -> None:
         _LOGGER.warning("Initialize PipestatBoss")
         if len(pipeline_list) > 3:
             _LOGGER.warning(

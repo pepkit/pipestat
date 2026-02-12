@@ -7,7 +7,7 @@ from typing import *
 import pytest
 import yaml
 
-from pipestat.const import RECORD_IDENTIFIER, SAMPLE_NAME, STATUS
+from pipestat.const import RECORD_IDENTIFIER, STATUS
 from pipestat.exceptions import SchemaError, SchemaValidationErrorDuringReport
 from pipestat.helpers import validate_type
 from pipestat.parsed_schema import NULL_MAPPING_VALUE, SCHEMA_PIPELINE_NAME_KEY, ParsedSchema
@@ -190,11 +190,11 @@ SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME = [
         ),
         (
             {SCHEMA_PIPELINE_NAME_KEY: "test_pipe", "samples": ["s1", "s2"]},
-            f"sample-level info in schema definition has invalid type: list",
+            "sample-level info in schema definition has invalid type: list",
         ),
         (
             {SCHEMA_PIPELINE_NAME_KEY: "test_pipe", "samples": "sample1"},
-            f"sample-level info in schema definition has invalid type: str",
+            "sample-level info in schema definition has invalid type: str",
         ),
     ]
     + [

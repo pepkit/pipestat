@@ -3,7 +3,7 @@
 import os
 from collections import defaultdict
 from logging import getLogger
-from typing import Any, Dict, Optional
+from typing import Any
 
 import yaml
 
@@ -19,10 +19,10 @@ FILE_EXTENSIONS = {".csv", ".tsv", ".json", ".pdf", ".txt", ".html", ".bed", ".b
 
 def infer_schema(
     results_file: str,
-    output_file: Optional[str] = None,
-    level: Optional[str] = None,
+    output_file: str | None = None,
+    level: str | None = None,
     strict: bool = False,
-    pipeline_name: Optional[str] = None,
+    pipeline_name: str | None = None,
 ) -> dict:
     """Infer a pipestat schema from a results file.
 
@@ -68,7 +68,7 @@ def infer_schema(
 
     for proc_level in levels_to_process:
         # Collect types per result key for this level
-        type_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        type_counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
         for pname, levels in data.items():
             if not isinstance(levels, dict):

@@ -196,11 +196,7 @@ class DBBackend(PipestatBackend):
                 else self.parsed_schema.sample_level_data
             )
             return (
-                [
-                    key
-                    for key in schema_data.keys()
-                    if getattr(record, key, None) is not None
-                ]
+                [key for key in schema_data.keys() if getattr(record, key, None) is not None]
                 if record
                 else []
             )
@@ -468,7 +464,6 @@ class DBBackend(PipestatBackend):
         ORM = self.get_model(table_name=self.table_name)
 
         with self.session as s:
-
             try:
                 total_count = len(s.exec(sql_select(ORM)).all())
             except Exception as e:

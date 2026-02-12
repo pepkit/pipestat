@@ -26,7 +26,8 @@ def _detect_postgres_container():
         # Explicit container name from test-integration.sh
         try:
             subprocess.check_output(
-                f"docker inspect {container} --format '{{{{.State.Status}}}}'", shell=True,
+                f"docker inspect {container} --format '{{{{.State.Status}}}}'",
+                shell=True,
                 stderr=subprocess.DEVNULL,
             )
             return True
@@ -35,10 +36,15 @@ def _detect_postgres_container():
     # Fallback: check for any pipestat test container
     for name in ["pipestat_test_db", "pipestat-db-test"]:
         try:
-            result = subprocess.check_output(
-                f"docker ps --filter 'name={name}' --format '{{{{.Names}}}}'", shell=True,
-                stderr=subprocess.DEVNULL,
-            ).decode().strip()
+            result = (
+                subprocess.check_output(
+                    f"docker ps --filter 'name={name}' --format '{{{{.Names}}}}'",
+                    shell=True,
+                    stderr=subprocess.DEVNULL,
+                )
+                .decode()
+                .strip()
+            )
             if result:
                 return True
         except subprocess.CalledProcessError:
@@ -56,6 +62,7 @@ if SERVICE_UNAVAILABLE:
 
 try:
     from pipestat.backends.db_backend.dbbackend import DBBackend  # noqa: F401
+
     DB_DEPENDENCIES = True
 except ImportError:
     register(

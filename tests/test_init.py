@@ -4,7 +4,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory, mkdtemp
 import pytest
 from yaml import dump
 
-from pipestat import PipestatManager, ProjectPipestatManager, SamplePipestatManager
+from pipestat import SamplePipestatManager
 from pipestat.const import PIPESTAT_GENERIC_CONFIG, SCHEMA_KEY
 from pipestat.exceptions import *
 from pipestat.helpers import init_generic_config

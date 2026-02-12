@@ -1,8 +1,0 @@
-jsonschema
-logmuse>=0.2.5
-pyyaml
-ubiquerg>=0.8.0
-yacman>=0.9.5
-pandas
-eido
-jinja2

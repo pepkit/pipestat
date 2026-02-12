@@ -4,7 +4,6 @@ import time
 from collections.abc import Mapping
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
-import pephubclient.exceptions
 import pytest
 from jsonschema import ValidationError
 from yacman import YAMLConfigManager
@@ -1631,7 +1630,6 @@ class TestFileTypeLinking:
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestTimeStamp:
-
     @pytest.mark.parametrize("backend", ["db", "file"])
     def test_list_recent_results(
         self,
@@ -2381,7 +2379,9 @@ class TestMultiResultFiles:
                 psm.report(record_identifier=r_id, values=val, force_overwrite=True)
 
             psm.summarize()
-            data = YAMLConfigManager.from_yaml_file(os.path.join(temp_dir, "aggregate_results.yaml"))
+            data = YAMLConfigManager.from_yaml_file(
+                os.path.join(temp_dir, "aggregate_results.yaml")
+            )
             assert r_id in data[psm.pipeline_name][psm.pipeline_type].keys()
 
 

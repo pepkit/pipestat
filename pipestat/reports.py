@@ -7,9 +7,9 @@ import shutil
 import sys
 from copy import deepcopy
 from datetime import timedelta
+from importlib.metadata import version as get_version
 from json import dumps
 from logging import getLogger
-from typing import List
 
 import jinja2
 import pandas as _pd
@@ -17,7 +17,6 @@ import yaml
 from peppy.const import AMENDMENTS_KEY
 from ubiquerg import mkabs
 
-from ._version import __version__
 from .const import (
     BUTTON_APPEARANCE_BY_FLAG,
     NO_DATA_PLACEHOLDER,
@@ -31,6 +30,7 @@ from .const import (
 )
 from .helpers import make_subdirectories
 
+__version__ = get_version(PKG_NAME)
 _LOGGER = getLogger(PKG_NAME)
 
 
@@ -201,7 +201,7 @@ class HTMLReportBuilder(object):
             header="Objects",
             pipeline_name=self.pipeline_name,
         )
-        _LOGGER.debug(f"object navbar_list_parent.html | template_vars:" f"\n{template_vars}")
+        _LOGGER.debug(f"object navbar_list_parent.html | template_vars:\n{template_vars}")
         return render_jinja_template("navbar_list_parent.html", self.jinja_env, template_vars)
 
     def create_sample_parent_html(self, navbar, footer):
@@ -250,7 +250,7 @@ class HTMLReportBuilder(object):
             header="Records",
             pipeline_name=self.pipeline_name,
         )
-        _LOGGER.debug(f"sample navbar_list_parent.html | template_vars:" f"\n{template_vars}")
+        _LOGGER.debug(f"sample navbar_list_parent.html | template_vars:\n{template_vars}")
         return render_jinja_template("navbar_list_parent.html", self.jinja_env, template_vars)
 
     def create_navbar(self, navbar_links, index_html_relpath):
@@ -879,9 +879,7 @@ class HTMLReportBuilder(object):
         images_by_type = {}  # {result_type: [{sample, path, thumbnail, title}, ...]}
         images_by_sample = {}  # {sample_name: [{result_type, path, thumbnail, title}, ...]}
 
-        image_result_ids = [
-            k for k, v in self.schema.items() if v.get("type") == "image"
-        ]
+        image_result_ids = [k for k, v in self.schema.items() if v.get("type") == "image"]
 
         if self.prj.cfg["multi_result_files"] is True:
             pipeline_types = ["sample", "project"]
@@ -944,7 +942,9 @@ class HTMLReportBuilder(object):
                         images_by_sample[sample_name].append(img_data)
 
                     except Exception as e:
-                        _LOGGER.warning(f"Error processing image {image_result} for {sample_name}: {e}")
+                        _LOGGER.warning(
+                            f"Error processing image {image_result} for {sample_name}: {e}"
+                        )
 
         self._reset_pipeline_type()
 
@@ -1560,7 +1560,7 @@ def get_file_for_table(prj, pipeline_name: str, appendix=None, directory=None) -
     return fp
 
 
-def _create_stats_objs_summaries(prj, pipeline_name: str) -> List[str]:
+def _create_stats_objs_summaries(prj, pipeline_name: str) -> list[str]:
     """
     Create stats spreadsheet and objects summary.
 
