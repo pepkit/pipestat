@@ -32,6 +32,14 @@ from pipestat.parsed_schema import ParsedSchema
 
 _LOGGER = logging.getLogger(__name__)
 
+# Cache for dynamically created models to avoid SQLAlchemy duplicate class warnings
+_MODEL_CACHE: dict[str, type] = {}
+
+
+def clear_model_cache() -> None:
+    """Clear the model cache. Useful for testing or creating fresh models."""
+    _MODEL_CACHE.clear()
+
 
 NULL_MAPPING_VALUE = {}
 SCHEMA_PIPELINE_NAME_KEY = "pipeline_name"
@@ -376,12 +384,28 @@ class ParsedSchemaDB(ParsedSchema):
 
 
 def _create_model(table_name: str, **kwargs):
-    return create_model(
+    """Create a SQLModel class dynamically, using cache to avoid duplicate warnings.
+
+    Args:
+        table_name: Name for the table/model class.
+        **kwargs: Field definitions for the model.
+
+    Returns:
+        The created (or cached) model class.
+    """
+    # Return cached model if it exists to avoid SQLAlchemy duplicate class warnings
+    if table_name in _MODEL_CACHE:
+        return _MODEL_CACHE[table_name]
+
+    # Create new model and cache it
+    model = create_model(
         table_name,
         __base__=get_base_model(),
         __cls_kwargs__={"table": True},
         **kwargs,
     )
+    _MODEL_CACHE[table_name] = model
+    return model
 
 
 def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:

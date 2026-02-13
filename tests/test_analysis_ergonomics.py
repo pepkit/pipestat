@@ -278,6 +278,220 @@ class TestInferSchema:
         assert schema["project"]["total_reads"]["type"] == "integer"
 
 
+class TestDualLevelReporting:
+    """Tests for dual-level reporting via level parameter."""
+
+    def test_report_with_level_parameter(self, tmp_path):
+        """report() accepts level parameter to switch between sample and project."""
+        schema_content = """
+pipeline_name: test_pipeline
+samples:
+  sample_metric:
+    type: integer
+    description: A sample metric
+project:
+  project_metric:
+    type: integer
+    description: A project metric
+"""
+        schema_file = tmp_path / "schema.yaml"
+        schema_file.write_text(schema_content)
+
+        psm = PipestatManager(
+            schema_path=str(schema_file),
+            results_file_path=str(tmp_path / "results.yaml"),
+            pipeline_name="test",
+            pipeline_type="sample",  # default to sample
+        )
+
+        # Report to sample level (default)
+        psm.report(record_identifier="s1", values={"sample_metric": 100})
+
+        # Report to project level via level parameter
+        psm.report(record_identifier="summary", values={"project_metric": 500}, level="project")
+
+        # Verify sample result
+        assert "s1" in psm.data["test"]["sample"]
+        assert psm.data["test"]["sample"]["s1"]["sample_metric"] == 100
+
+        # Verify project result
+        assert "summary" in psm.data["test"]["project"]
+        assert psm.data["test"]["project"]["summary"]["project_metric"] == 500
+
+    def test_retrieve_with_level_parameter(self, tmp_path):
+        """retrieve_one() accepts level parameter to switch between sample and project."""
+        schema_content = """
+pipeline_name: test_pipeline
+samples:
+  sample_metric:
+    type: integer
+    description: A sample metric
+project:
+  project_metric:
+    type: integer
+    description: A project metric
+"""
+        schema_file = tmp_path / "schema.yaml"
+        schema_file.write_text(schema_content)
+
+        psm = PipestatManager(
+            schema_path=str(schema_file),
+            results_file_path=str(tmp_path / "results.yaml"),
+            pipeline_name="test",
+            pipeline_type="sample",
+        )
+
+        # Report to both levels
+        psm.report(record_identifier="s1", values={"sample_metric": 100})
+        psm.report(record_identifier="proj1", values={"project_metric": 500}, level="project")
+
+        # Retrieve from sample level (default)
+        sample_result = psm.retrieve_one(record_identifier="s1")
+        assert sample_result["sample_metric"] == 100
+
+        # Retrieve from project level via level parameter
+        project_result = psm.retrieve_one(record_identifier="proj1", level="project")
+        assert project_result["project_metric"] == 500
+
+    def test_select_records_with_level_parameter(self, tmp_path):
+        """select_records() accepts level parameter to switch between sample and project."""
+        schema_content = """
+pipeline_name: test_pipeline
+samples:
+  sample_metric:
+    type: integer
+    description: A sample metric
+project:
+  project_metric:
+    type: integer
+    description: A project metric
+"""
+        schema_file = tmp_path / "schema.yaml"
+        schema_file.write_text(schema_content)
+
+        psm = PipestatManager(
+            schema_path=str(schema_file),
+            results_file_path=str(tmp_path / "results.yaml"),
+            pipeline_name="test",
+            pipeline_type="sample",
+        )
+
+        # Report to both levels
+        psm.report(record_identifier="s1", values={"sample_metric": 100})
+        psm.report(record_identifier="s2", values={"sample_metric": 200})
+        psm.report(record_identifier="proj1", values={"project_metric": 500}, level="project")
+
+        # Select from sample level (default)
+        sample_records = psm.select_records()
+        assert sample_records["total_size"] == 2
+
+        # Select from project level via level parameter
+        project_records = psm.select_records(level="project")
+        assert project_records["total_size"] == 1
+
+    def test_remove_with_level_parameter(self, tmp_path):
+        """remove() accepts level parameter to switch between sample and project."""
+        schema_content = """
+pipeline_name: test_pipeline
+samples:
+  sample_metric:
+    type: integer
+    description: A sample metric
+project:
+  project_metric:
+    type: integer
+    description: A project metric
+"""
+        schema_file = tmp_path / "schema.yaml"
+        schema_file.write_text(schema_content)
+
+        psm = PipestatManager(
+            schema_path=str(schema_file),
+            results_file_path=str(tmp_path / "results.yaml"),
+            pipeline_name="test",
+            pipeline_type="sample",
+        )
+
+        # Report to both levels
+        psm.report(record_identifier="s1", values={"sample_metric": 100})
+        psm.report(record_identifier="proj1", values={"project_metric": 500}, level="project")
+
+        # Remove from project level via level parameter
+        psm.remove(record_identifier="proj1", level="project")
+
+        # Verify sample still exists
+        assert "s1" in psm.data["test"]["sample"]
+        # Verify project was removed
+        assert "proj1" not in psm.data["test"]["project"]
+
+    def test_original_report_unchanged(self, tmp_path):
+        """report() without level parameter uses pipeline_type from init."""
+        schema_content = """
+pipeline_name: test_pipeline
+samples:
+  sample_metric:
+    type: integer
+    description: A sample metric
+project:
+  project_metric:
+    type: integer
+    description: A project metric
+"""
+        schema_file = tmp_path / "schema.yaml"
+        schema_file.write_text(schema_content)
+
+        # Init with project type
+        psm = PipestatManager(
+            schema_path=str(schema_file),
+            results_file_path=str(tmp_path / "results.yaml"),
+            pipeline_name="test",
+            pipeline_type="project",
+        )
+
+        # Report without level - should go to project (from init)
+        psm.report(record_identifier="proj1", values={"project_metric": 500})
+
+        # Verify went to project
+        assert "proj1" in psm.data["test"]["project"]
+        assert psm.data["test"]["sample"] == {}
+
+    def test_level_parameter_restores_after_call(self, tmp_path):
+        """The level swap is temporary - original pipeline_type is restored after call."""
+        schema_content = """
+pipeline_name: test_pipeline
+samples:
+  sample_metric:
+    type: integer
+    description: A sample metric
+project:
+  project_metric:
+    type: integer
+    description: A project metric
+"""
+        schema_file = tmp_path / "schema.yaml"
+        schema_file.write_text(schema_content)
+
+        psm = PipestatManager(
+            schema_path=str(schema_file),
+            results_file_path=str(tmp_path / "results.yaml"),
+            pipeline_name="test",
+            pipeline_type="sample",
+        )
+
+        # Verify initial type
+        assert psm.pipeline_type == "sample"
+
+        # Report with level override
+        psm.report(record_identifier="proj1", values={"project_metric": 500}, level="project")
+
+        # Type should be restored
+        assert psm.pipeline_type == "sample"
+
+        # Next report without level should go to sample
+        psm.report(record_identifier="s1", values={"sample_metric": 100})
+        assert "s1" in psm.data["test"]["sample"]
+
+
 class TestGalleryMode:
     """Tests for gallery mode in summarize()."""
 

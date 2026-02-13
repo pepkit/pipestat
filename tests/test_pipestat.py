@@ -746,7 +746,6 @@ class TestRetrieval:
             results = psm.select_records(limit=1)
             assert len(results["records"]) == 1
 
-    @pytest.mark.skip("This test needs to be re-done with the 0.6.0 api changes")
     @pytest.mark.parametrize(
         ["rec_id", "res_id"],
         [("nonexistent", "name_of_something"), ("sample1", "nonexistent")],
@@ -765,7 +764,7 @@ class TestRetrieval:
             results_file_path = f.name
             val_dict = {
                 "sample1": {"name_of_something": "test_name"},
-                "sample1": {"number_of_things": 2},
+                "sample2": {"number_of_things": 2},
             }
             backend_data = (
                 {"config_file": config_file_path}

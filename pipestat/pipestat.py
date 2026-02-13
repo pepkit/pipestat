@@ -654,6 +654,7 @@ class PipestatManager(MutableMapping):
         self,
         record_identifier: str = None,
         result_identifier: str = None,
+        level: str | None = None,
     ) -> bool:
         """Remove a result.
 
@@ -663,16 +664,31 @@ class PipestatManager(MutableMapping):
             record_identifier (str, optional): Name of the sample_level record.
             result_identifier (str, optional): Name of the result to be removed or None
                 if the record should be removed.
+            level (str, optional): Pipeline level ("sample" or "project"). If specified, temporarily
+                overrides the pipeline_type for this operation. Defaults to None (use init pipeline_type).
 
         Returns:
             bool: Whether the result has been removed.
         """
+        # Temporarily swap level if specified
+        orig_type = None
+        orig_backend_type = None
+        if level:
+            orig_type = self.cfg[PIPELINE_TYPE]
+            orig_backend_type = self.backend.pipeline_type
+            self.cfg[PIPELINE_TYPE] = level
+            self.backend.pipeline_type = level
 
-        r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
-        return self.backend.remove(
-            record_identifier=r_id,
-            result_identifier=result_identifier,
-        )
+        try:
+            r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
+            return self.backend.remove(
+                record_identifier=r_id,
+                result_identifier=result_identifier,
+            )
+        finally:
+            if level:
+                self.cfg[PIPELINE_TYPE] = orig_type
+                self.backend.pipeline_type = orig_backend_type
 
     @require_backend
     def remove_record(
@@ -694,6 +710,7 @@ class PipestatManager(MutableMapping):
         result_formatter: Callable | None = None,
         strict_type: bool = True,
         history_enabled: bool = True,
+        level: str | None = None,
     ) -> list[str] | bool:
         """Report a result.
 
@@ -706,6 +723,8 @@ class PipestatManager(MutableMapping):
             strict_type (bool, optional): Whether the type of the reported values should remain as is.
                 Pipestat would attempt to convert to the schema-defined one otherwise. Defaults to True.
             history_enabled (bool, optional): Should history of reported results be enabled? Defaults to True.
+            level (str, optional): Pipeline level ("sample" or "project"). If specified, temporarily
+                overrides the pipeline_type for this operation. Defaults to None (use init pipeline_type).
 
         Returns:
             Union[List[str], bool]: List of formatted strings for reported results.
@@ -714,52 +733,65 @@ class PipestatManager(MutableMapping):
             NotImplementedError: If no record identifier is supplied.
             ColumnNotFoundError: If a result attribute is not defined in the output schema.
         """
+        # Temporarily swap level if specified
+        orig_type = None
+        orig_backend_type = None
+        if level:
+            orig_type = self.cfg[PIPELINE_TYPE]
+            orig_backend_type = self.backend.pipeline_type
+            self.cfg[PIPELINE_TYPE] = level
+            self.backend.pipeline_type = level
 
-        result_formatter = result_formatter or self.cfg[RESULT_FORMATTER]
-        values = deepcopy(values)
-        r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
-        if r_id is None:
-            raise NotImplementedError("You must supply a record identifier to report results")
+        try:
+            result_formatter = result_formatter or self.cfg[RESULT_FORMATTER]
+            values = deepcopy(values)
+            r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
+            if r_id is None:
+                raise NotImplementedError("You must supply a record identifier to report results")
 
-        result_identifiers = list(values.keys())
+            result_identifiers = list(values.keys())
 
-        # Handle lenient mode: auto-wrap file paths and skip validation for unknown keys
-        if self.cfg.get("lenient"):
-            for r in result_identifiers:
-                values[r] = self._infer_and_wrap(r, values[r])
+            # Handle lenient mode: auto-wrap file paths and skip validation for unknown keys
+            if self.cfg.get("lenient"):
+                for r in result_identifiers:
+                    values[r] = self._infer_and_wrap(r, values[r])
 
-        if self.cfg[SCHEMA_KEY] is not None:
-            for r in result_identifiers:
-                # First confirm this property is defined in the schema
-                if r not in self.result_schemas:
-                    if self.cfg.get("lenient"):
-                        _LOGGER.warning(
-                            f"Result '{r}' not in schema; storing as-is (lenient mode)"
+            if self.cfg[SCHEMA_KEY] is not None:
+                for r in result_identifiers:
+                    # First confirm this property is defined in the schema
+                    if r not in self.result_schemas:
+                        if self.cfg.get("lenient"):
+                            _LOGGER.warning(
+                                f"Result '{r}' not in schema; storing as-is (lenient mode)"
+                            )
+                            continue  # skip validation, store raw
+                        raise ColumnNotFoundError(
+                            f"Can't report a result for attribute '{r}'; it is not defined in the output schema."
                         )
-                        continue  # skip validation, store raw
-                    raise ColumnNotFoundError(
-                        f"Can't report a result for attribute '{r}'; it is not defined in the output schema."
+
+                    validate_type(
+                        value=values[r],
+                        schema=self.result_schemas[r],
+                        strict_type=strict_type,
+                        record_identifier=record_identifier,
                     )
+            elif not self.cfg.get("lenient"):
+                raise SchemaNotFoundError("No schema provided and lenient mode is disabled")
+            # else: lenient mode with no schema - store everything as-is
 
-                validate_type(
-                    value=values[r],
-                    schema=self.result_schemas[r],
-                    strict_type=strict_type,
-                    record_identifier=record_identifier,
-                )
-        elif not self.cfg.get("lenient"):
-            raise SchemaNotFoundError("No schema provided and lenient mode is disabled")
-        # else: lenient mode with no schema - store everything as-is
+            reported_results = self.backend.report(
+                values=values,
+                record_identifier=r_id,
+                force_overwrite=force_overwrite,
+                result_formatter=result_formatter,
+                history_enabled=history_enabled,
+            )
 
-        reported_results = self.backend.report(
-            values=values,
-            record_identifier=r_id,
-            force_overwrite=force_overwrite,
-            result_formatter=result_formatter,
-            history_enabled=history_enabled,
-        )
-
-        return reported_results
+            return reported_results
+        finally:
+            if level:
+                self.cfg[PIPELINE_TYPE] = orig_type
+                self.backend.pipeline_type = orig_backend_type
 
     @require_backend
     def select_distinct(
@@ -793,6 +825,7 @@ class PipestatManager(MutableMapping):
         limit: int | None = 1000,
         cursor: int | None = None,
         bool_operator: str | None = "AND",
+        level: str | None = None,
     ) -> dict[str, Any]:
         """Select records with optional filtering and pagination.
 
@@ -809,6 +842,8 @@ class PipestatManager(MutableMapping):
             limit (int, optional): Maximum number of results to retrieve per page. Defaults to 1000.
             cursor (int, optional): Cursor position to begin retrieving records.
             bool_operator (str, optional): Perform filtering with AND or OR logic. Defaults to "AND".
+            level (str, optional): Pipeline level ("sample" or "project"). If specified, temporarily
+                overrides the pipeline_type for this operation. Defaults to None (use init pipeline_type).
 
         Returns:
             Dict[str, Any]: Dictionary containing:
@@ -817,26 +852,42 @@ class PipestatManager(MutableMapping):
                 - next_page_token (int): Cursor for next page
                 - records (List[Dict]): List of record dictionaries
         """
+        # Temporarily swap level if specified
+        orig_type = None
+        orig_backend_type = None
+        if level:
+            orig_type = self.cfg[PIPELINE_TYPE]
+            orig_backend_type = self.backend.pipeline_type
+            self.cfg[PIPELINE_TYPE] = level
+            self.backend.pipeline_type = level
 
-        return self.backend.select_records(
-            columns=columns,
-            filter_conditions=filter_conditions,
-            limit=limit,
-            cursor=cursor,
-            bool_operator=bool_operator,
-        )
+        try:
+            return self.backend.select_records(
+                columns=columns,
+                filter_conditions=filter_conditions,
+                limit=limit,
+                cursor=cursor,
+                bool_operator=bool_operator,
+            )
+        finally:
+            if level:
+                self.cfg[PIPELINE_TYPE] = orig_type
+                self.backend.pipeline_type = orig_backend_type
 
     @require_backend
     def retrieve_one(
         self,
         record_identifier: str = None,
         result_identifier: str | list[str] | None = None,
+        level: str | None = None,
     ) -> Any | dict[str, Any]:
         """Retrieve a single record.
 
         Args:
             record_identifier (str, optional): Single record_identifier.
             result_identifier (Union[str, List[str]], optional): Single result_identifier or list of result identifiers.
+            level (str, optional): Pipeline level ("sample" or "project"). If specified, temporarily
+                overrides the pipeline_type for this operation. Defaults to None (use init pipeline_type).
 
         Returns:
             Union[Any, Dict[str, Any]]: A mapping with filtered results reported for the record.
@@ -861,9 +912,9 @@ class PipestatManager(MutableMapping):
                 columns = result_identifier
             else:
                 raise ValueError("Result identifier must be a str or list[str]")
-            result = self.select_records(filter_conditions=filter_conditions, columns=columns)[
-                "records"
-            ]
+            result = self.select_records(
+                filter_conditions=filter_conditions, columns=columns, level=level
+            )["records"]
             if len(result) > 0:
                 if len(columns) > 1:
                     try:
@@ -884,7 +935,9 @@ class PipestatManager(MutableMapping):
                 )
         else:
             try:
-                result = self.select_records(filter_conditions=filter_conditions)["records"]
+                result = self.select_records(filter_conditions=filter_conditions, level=level)[
+                    "records"
+                ]
                 if len(result) > 0:
                     try:
                         return result[0]

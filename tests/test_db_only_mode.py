@@ -10,6 +10,8 @@ from .conftest import DB_DEPENDENCIES, DB_URL, SERVICE_UNAVAILABLE
 try:
     from sqlmodel import SQLModel, create_engine
     from sqlmodel.main import default_registry
+
+    from pipestat.backends.db_backend.db_parsed_schema import clear_model_cache
 except ModuleNotFoundError:
     pass
 
@@ -31,6 +33,7 @@ class ContextManagerDBTesting:
     def __exit__(self, exc_type, exc_value, exc_traceback):
         SQLModel.metadata.drop_all(self.engine)
         default_registry.dispose()
+        clear_model_cache()  # Clear cached models when registry is disposed
         self.connection.close()
 
 
