@@ -31,7 +31,8 @@ class FileBackend(PipestatBackend):
         status_file_dir: Optional[str] = None,
         result_formatter: Optional[staticmethod] = None,
         multi_pipelines: Optional[bool] = None,
-        lenient: Optional[bool] = False,
+        validate_results: bool = True,
+        additional_properties: bool | None = None,
     ):
         """
         Class representing a File backend.
@@ -46,7 +47,9 @@ class FileBackend(PipestatBackend):
             status_file_dir (str, optional): Directory for placing status flags.
             result_formatter (staticmethod, optional): Function for formatting result.
             multi_pipelines (bool, optional): Allows for running multiple pipelines for one file backend.
-            lenient (bool, optional): Allow results not defined in schema.
+            validate_results (bool, optional): Whether to validate results against schema. Defaults to True.
+            additional_properties (bool | None, optional): Override for allowing results not in schema.
+                If None, uses schema's additionalProperties setting (per JSON Schema spec, defaults to True).
         """
         super().__init__(pipeline_type)
         _LOGGER.debug("Initialize FileBackend")
@@ -60,7 +63,8 @@ class FileBackend(PipestatBackend):
         self.status_file_dir = status_file_dir
         self.result_formatter = result_formatter
         self.multi_pipelines = multi_pipelines
-        self.lenient = lenient
+        self.validate_results = validate_results
+        self.additional_properties = additional_properties
 
         self.determine_results_file()
 
@@ -378,7 +382,19 @@ class FileBackend(PipestatBackend):
         current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         result_identifiers = list(values.keys())
-        if self.parsed_schema is not None and not self.lenient:
+        # Determine if additional properties are allowed for this level
+        # - If override is set (not None), use it
+        # - Else use schema's per-level setting (defaults to True per JSON Schema spec)
+        if self.additional_properties is not None:
+            allow_additional = self.additional_properties
+        elif self.parsed_schema is not None and hasattr(self.parsed_schema, "additional_properties_for_level"):
+            allow_additional = self.parsed_schema.additional_properties_for_level(self.pipeline_type)
+        else:
+            allow_additional = True  # JSON Schema default
+
+        # Only check results are defined if we have a schema, validate_results is True,
+        # and additional_properties is False (strict mode)
+        if self.parsed_schema is not None and self.validate_results and not allow_additional:
             self.assert_results_defined(
                 results=result_identifiers, pipeline_type=self.pipeline_type
             )
@@ -581,7 +597,7 @@ class FileBackend(PipestatBackend):
                 else:
                     valid_columns.update(self.parsed_schema.sample_level_data.keys())
             else:
-                # In lenient mode without schema, check against existing data keys
+                # When validate_results=False without schema, check against existing data keys
                 for record_data in data.values():
                     valid_columns.update(record_data.keys())
             invalid_columns = set(columns) - valid_columns

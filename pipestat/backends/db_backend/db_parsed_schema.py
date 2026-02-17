@@ -237,6 +237,9 @@ class ParsedSchemaDB(ParsedSchema):
         field_defs = self._add_pipeline_name_field(field_defs)
         field_defs = self._add_created_time_field(field_defs)
         field_defs = self._add_modified_time_field(field_defs)
+        # Only add extended_data column if additionalProperties is True for this level
+        if self.additional_properties_for_level(pipeline_type):
+            field_defs = self._add_extended_data_field(field_defs)
 
         field_defs["source_record_id"] = (
             int,
@@ -276,6 +279,9 @@ class ParsedSchemaDB(ParsedSchema):
         field_defs = self._add_pipeline_name_field(field_defs)
         field_defs = self._add_created_time_field(field_defs)
         field_defs = self._add_modified_time_field(field_defs)
+        # Only add extended_data column if additionalProperties is True for this level
+        if self.additional_properties_for_level(pipeline_type):
+            field_defs = self._add_extended_data_field(field_defs)
         return _create_model(table_name, **field_defs)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -377,6 +383,15 @@ class ParsedSchemaDB(ParsedSchema):
 
         field_defs[MODIFIED_TIME] = (datetime.datetime, Field(default=None, nullable=True))
 
+        return field_defs
+
+    @staticmethod
+    def _add_extended_data_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
+        """Add catch-all JSONB column for additional properties not in schema."""
+        field_defs["pipestat_extended_data"] = (
+            Optional[dict],
+            Field(sa_column=Column(JSONB), default=null()),
+        )
         return field_defs
 
     def _table_name(self, suffix: str) -> str:

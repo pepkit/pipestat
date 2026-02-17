@@ -21,6 +21,7 @@ from .const import (
     DB_URL,
     DEFAULT_PIPELINE_NAME,
     ENV_VARS,
+    EXTENDED_DATA,
     FILE_KEY,
     MODIFIED_TIME,
     MULTI_PIPELINE,
@@ -153,7 +154,8 @@ class PipestatManager(MutableMapping):
         multi_pipelines: bool = False,
         output_dir: str | None = None,
         pephub_path: str | None = None,
-        lenient: bool = False,
+        validate_results: bool = True,
+        additional_properties: bool | None = None,
     ) -> None:
         """Initialize the PipestatManager object.
 
@@ -174,14 +176,20 @@ class PipestatManager(MutableMapping):
             multi_pipelines (bool, optional): Allows for running multiple pipelines for one file backend. Defaults to False.
             output_dir (str, optional): Target directory for report generation via summarize and table generation via table.
             pephub_path (str, optional): Path to PEPHub registry.
-            lenient (bool, optional): Allow reporting results without schema validation. Requires file backend. Defaults to False.
+            validate_results (bool, optional): Whether to validate results against schema. Defaults to True.
+            additional_properties (bool | None, optional): Override for allowing results not in schema.
+                If None (default), uses schema's additionalProperties setting (defaults to True per JSON Schema).
+                If True/False, overrides the schema setting.
         """
 
         super(PipestatManager, self).__init__()
 
         # Initialize the cfg dict as an attribute that holds all configuration data
         self.cfg = {}
-        self.cfg["lenient"] = lenient
+
+        self.cfg["validate_results"] = validate_results
+        # Store the override value; will resolve from schema after schema is loaded
+        self._additional_properties_override = additional_properties
 
         # Load and validate database configuration
         # If results_file_path exists, backend is a file else backend is database.
@@ -214,6 +222,17 @@ class PipestatManager(MutableMapping):
                 f"Schema loaded: {len(self.cfg[SCHEMA_KEY].sample_level_data)} sample-level keys, "
                 f"{len(self.cfg[SCHEMA_KEY].project_level_data)} project-level keys"
             )
+
+        # Resolve additional_properties: use override if provided, else use schema's setting
+        if self._additional_properties_override is not None:
+            self.cfg["additional_properties"] = self._additional_properties_override
+        elif self.cfg.get(SCHEMA_KEY):
+            # Will be resolved per-level at runtime, but store a default for backwards compat
+            # Default to sample level for initial value (most common case)
+            self.cfg["additional_properties"] = self.cfg[SCHEMA_KEY].sample_additional_properties
+        else:
+            # No schema, default to True
+            self.cfg["additional_properties"] = True
 
         self.cfg[RECORD_IDENTIFIER] = self.cfg[CONFIG_KEY].priority_get(
             "record_identifier", env_var=ENV_VARS["record_identifier"], override=record_identifier
@@ -271,14 +290,8 @@ class PipestatManager(MutableMapping):
 
         self.cfg[OUTPUT_DIR] = self.cfg[CONFIG_KEY].priority_get("output_dir", override=output_dir)
 
-        # Validate lenient mode requirements
-        if self.cfg["lenient"]:
-            if not self.cfg[FILE_KEY]:
-                raise PipestatDatabaseError(
-                    "Lenient mode requires file backend. "
-                    "Use 'pipestat infer-schema' to generate a schema from your results, "
-                    "then switch to database backend with the generated schema."
-                )
+        # Note: validate_results=False now works with all backends.
+        # DB backend stores additional properties in _extended_data JSONB column.
 
         if self.cfg[FILE_KEY]:
             self.initialize_filebackend(record_identifier, results_file_path, flag_file_dir)
@@ -436,7 +449,8 @@ class PipestatManager(MutableMapping):
             self.cfg[STATUS_FILE_DIR],
             self.cfg[RESULT_FORMATTER],
             self.cfg[MULTI_PIPELINE],
-            self.cfg.get("lenient", False),
+            self.cfg.get("validate_results", True),
+            self._additional_properties_override,  # Pass override (None if not set)
         )
 
         return
@@ -751,33 +765,60 @@ class PipestatManager(MutableMapping):
 
             result_identifiers = list(values.keys())
 
-            # Handle lenient mode: auto-wrap file paths and skip validation for unknown keys
-            if self.cfg.get("lenient"):
+            # Track extra values that are not in schema (for DB backend's _extended_data)
+            extra_values = {}
+
+            # Handle validate_results=False: auto-wrap file paths and skip validation
+            if not self.cfg.get("validate_results"):
                 for r in result_identifiers:
                     values[r] = self._infer_and_wrap(r, values[r])
 
-            if self.cfg[SCHEMA_KEY] is not None:
-                for r in result_identifiers:
-                    # First confirm this property is defined in the schema
-                    if r not in self.result_schemas:
-                        if self.cfg.get("lenient"):
-                            _LOGGER.warning(
-                                f"Result '{r}' not in schema; storing as-is (lenient mode)"
-                            )
-                            continue  # skip validation, store raw
-                        raise ColumnNotFoundError(
-                            f"Can't report a result for attribute '{r}'; it is not defined in the output schema."
-                        )
+            # Determine additional_properties setting: use override if set, else from schema
+            if self._additional_properties_override is not None:
+                allow_additional = self._additional_properties_override
+            elif self.cfg[SCHEMA_KEY] is not None:
+                allow_additional = self.cfg[SCHEMA_KEY].additional_properties_for_level(
+                    self.cfg[PIPELINE_TYPE]
+                )
+            else:
+                allow_additional = True  # No schema, allow everything
 
-                    validate_type(
-                        value=values[r],
-                        schema=self.result_schemas[r],
-                        strict_type=strict_type,
-                        record_identifier=record_identifier,
-                    )
-            elif not self.cfg.get("lenient"):
-                raise SchemaNotFoundError("No schema provided and lenient mode is disabled")
-            # else: lenient mode with no schema - store everything as-is
+            if self.cfg[SCHEMA_KEY] is not None:
+                for r in list(result_identifiers):  # Use list() to allow modification during iteration
+                    if r in self.result_schemas:
+                        # Schema-defined result: validate if validate_results=True
+                        if self.cfg.get("validate_results"):
+                            validate_type(
+                                value=values[r],
+                                schema=self.result_schemas[r],
+                                strict_type=strict_type,
+                                record_identifier=record_identifier,
+                            )
+                    else:
+                        # Not in schema
+                        if allow_additional:
+                            # Allow it - for DB backend, move to _extended_data
+                            _LOGGER.debug(f"Result '{r}' not in schema, storing as additional property")
+                            if not self.file:
+                                extra_values[r] = values.pop(r)
+                            # For file backend, keep in values as-is
+                        elif self.cfg.get("validate_results"):
+                            # Strict mode (validate_results=True, additional_properties=False) - error
+                            raise ColumnNotFoundError(
+                                f"Can't report result '{r}'; not defined in schema. "
+                                f"Use additional_properties=True to allow undefined results."
+                            )
+                        # else: validate_results=False, just store it
+            elif self.cfg.get("validate_results"):
+                raise SchemaNotFoundError("No schema provided and validation is enabled")
+            # else: validate_results=False with no schema - store everything as-is
+
+            # Handle _extended_data for DB backend
+            if extra_values and not self.file:
+                # Get existing extended data and merge
+                existing_extended = self._get_extended_data(r_id) or {}
+                existing_extended.update(extra_values)
+                values[EXTENDED_DATA] = existing_extended
 
             reported_results = self.backend.report(
                 values=values,
@@ -826,6 +867,7 @@ class PipestatManager(MutableMapping):
         cursor: int | None = None,
         bool_operator: str | None = "AND",
         level: str | None = None,
+        flatten_extended: bool = True,
     ) -> dict[str, Any]:
         """Select records with optional filtering and pagination.
 
@@ -844,6 +886,8 @@ class PipestatManager(MutableMapping):
             bool_operator (str, optional): Perform filtering with AND or OR logic. Defaults to "AND".
             level (str, optional): Pipeline level ("sample" or "project"). If specified, temporarily
                 overrides the pipeline_type for this operation. Defaults to None (use init pipeline_type).
+            flatten_extended (bool, optional): Whether to flatten _extended_data into records.
+                Defaults to True.
 
         Returns:
             Dict[str, Any]: Dictionary containing:
@@ -862,13 +906,23 @@ class PipestatManager(MutableMapping):
             self.backend.pipeline_type = level
 
         try:
-            return self.backend.select_records(
+            result = self.backend.select_records(
                 columns=columns,
                 filter_conditions=filter_conditions,
                 limit=limit,
                 cursor=cursor,
                 bool_operator=bool_operator,
             )
+
+            # Flatten extended_data for DB backend
+            if flatten_extended and not self.file:
+                for record in result["records"]:
+                    if EXTENDED_DATA in record:
+                        if record[EXTENDED_DATA]:
+                            record.update(record[EXTENDED_DATA])
+                        del record[EXTENDED_DATA]
+
+            return result
         finally:
             if level:
                 self.cfg[PIPELINE_TYPE] = orig_type
@@ -1171,12 +1225,12 @@ class PipestatManager(MutableMapping):
 
         return table_path_list
 
-    # File extensions for lenient mode auto-wrapping
+    # File extensions for auto-wrapping when validate_results=False
     _IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".svg", ".gif", ".webp"}
     _FILE_EXTENSIONS = {".csv", ".tsv", ".json", ".pdf", ".txt", ".html", ".bed", ".bam"}
 
     def _infer_and_wrap(self, key: str, value: Any) -> Any:
-        """In lenient mode, auto-wrap file paths as file/image objects.
+        """When validate_results=False, auto-wrap file paths as file/image objects.
 
         Args:
             key (str): Result key name (used as title).
@@ -1192,6 +1246,30 @@ class PipestatManager(MutableMapping):
             if ext in self._FILE_EXTENSIONS:
                 return {"path": value, "title": key}
         return value
+
+    def _get_extended_data(self, record_identifier: str) -> dict | None:
+        """Get existing _extended_data for a record (DB backend only).
+
+        Args:
+            record_identifier (str): Record to get extended data for.
+
+        Returns:
+            dict | None: Existing extended data or None.
+        """
+        if self.file:
+            return None
+        try:
+            result = self.backend.select_records(
+                columns=[EXTENDED_DATA],
+                filter_conditions=[
+                    {"key": "record_identifier", "operator": "eq", "value": record_identifier}
+                ],
+            )
+            if result["records"]:
+                return result["records"][0].get(EXTENDED_DATA)
+        except Exception:
+            pass
+        return None
 
     def _get_attr(self, attr: str) -> Any:
         """Safely get the name of the selected attribute of this object.
@@ -1246,13 +1324,28 @@ class PipestatManager(MutableMapping):
         return self.cfg[FILE_KEY]
 
     @property
-    def lenient(self) -> bool:
-        """Whether lenient mode is enabled.
+    def validate_results(self) -> bool:
+        """Whether schema validation is enabled.
 
         Returns:
-            bool: True if lenient mode allows reporting without schema validation.
+            bool: True if results are validated against schema.
         """
-        return self.cfg.get("lenient", False)
+        return self.cfg.get("validate_results", True)
+
+    @property
+    def additional_properties(self) -> bool:
+        """Whether additional properties (not in schema) are allowed for current level.
+
+        Returns the effective value: override if set, else schema's setting for current level.
+
+        Returns:
+            bool: True if results not defined in schema are allowed.
+        """
+        if self._additional_properties_override is not None:
+            return self._additional_properties_override
+        if self.cfg.get(SCHEMA_KEY):
+            return self.cfg[SCHEMA_KEY].additional_properties_for_level(self.cfg[PIPELINE_TYPE])
+        return True
 
     @property
     def highlighted_results(self) -> list[str]:
@@ -1326,7 +1419,7 @@ class PipestatManager(MutableMapping):
 
         Returns:
             Dict[str, Any]: Schemas that formalize the structure of each result.
-                Empty dict if no schema (lenient mode).
+                Empty dict if no schema.
         """
         if self.cfg[SCHEMA_KEY] is None:
             return {}
@@ -1340,7 +1433,7 @@ class PipestatManager(MutableMapping):
 
         Returns:
             Dict with 'sample' and 'project' keys, each containing that level's schemas.
-                Empty dicts if no schema (lenient mode).
+                Empty dicts if no schema.
         """
         if self.cfg[SCHEMA_KEY] is None:
             return {"sample": {}, "project": {}}

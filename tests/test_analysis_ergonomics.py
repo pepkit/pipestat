@@ -1,11 +1,11 @@
-"""Tests for analysis ergonomics features: lenient mode, optional thumbnail, infer-schema."""
+"""Tests for analysis ergonomics features: validation modes, optional thumbnail, infer-schema."""
 
 import os
 
 import pytest
 
 from pipestat import PipestatManager
-from pipestat.exceptions import PipestatDatabaseError, SchemaNotFoundError
+from pipestat.exceptions import ColumnNotFoundError, PipestatDatabaseError, SchemaNotFoundError
 from pipestat.infer import infer_schema
 
 
@@ -48,15 +48,15 @@ samples:
         assert "thumbnail_path" not in result["my_image"]  # not required
 
 
-class TestLenientMode:
-    """Tests for lenient mode (schema-optional reporting)."""
+class TestSchemaFreeMode:
+    """Tests for schema-free mode (validate_results=False)."""
 
-    def test_lenient_mode_allows_unschema_results(self, tmp_path):
-        """User can report results without a schema in lenient mode."""
+    def test_schema_free_allows_unschema_results(self, tmp_path):
+        """User can report results without a schema when validate_results=False."""
         psm = PipestatManager(
             results_file_path=str(tmp_path / "results.yaml"),
             pipeline_name="test",
-            lenient=True,  # no schema provided
+            validate_results=False,  # no schema provided
         )
 
         # Report arbitrary results - should not raise
@@ -68,12 +68,12 @@ class TestLenientMode:
         assert result["custom_metric"] == 42
         assert result["notes"] == "looks good"
 
-    def test_lenient_mode_auto_wraps_image_paths(self, tmp_path):
-        """Lenient mode auto-wraps image file paths as image objects."""
+    def test_schema_free_auto_wraps_image_paths(self, tmp_path):
+        """validate_results=False auto-wraps image file paths as image objects."""
         psm = PipestatManager(
             results_file_path=str(tmp_path / "results.yaml"),
             pipeline_name="test",
-            lenient=True,
+            validate_results=False,
         )
 
         # Report a string path to an image - should be auto-wrapped
@@ -83,12 +83,12 @@ class TestLenientMode:
         assert result["my_plot"]["path"] == "figures/plot.png"  # was wrapped
         assert result["my_plot"]["title"] == "my_plot"
 
-    def test_lenient_mode_auto_wraps_file_paths(self, tmp_path):
-        """Lenient mode auto-wraps file paths as file objects."""
+    def test_schema_free_auto_wraps_file_paths(self, tmp_path):
+        """validate_results=False auto-wraps file paths as file objects."""
         psm = PipestatManager(
             results_file_path=str(tmp_path / "results.yaml"),
             pipeline_name="test",
-            lenient=True,
+            validate_results=False,
         )
 
         # Report a string path to a CSV - should be auto-wrapped
@@ -98,12 +98,12 @@ class TestLenientMode:
         assert result["data_file"]["path"] == "output/data.csv"  # was wrapped
         assert result["data_file"]["title"] == "data_file"
 
-    def test_lenient_mode_allows_type_variance(self, tmp_path):
-        """Same result key can have different types across records in lenient mode."""
+    def test_schema_free_allows_type_variance(self, tmp_path):
+        """Same result key can have different types across records when validate_results=False."""
         psm = PipestatManager(
             results_file_path=str(tmp_path / "results.yaml"),
             pipeline_name="test",
-            lenient=True,
+            validate_results=False,
         )
 
         # Same key, different types - both allowed
@@ -113,8 +113,8 @@ class TestLenientMode:
         assert psm.retrieve_one("sample1")["status"] == "completed"
         assert psm.retrieve_one("sample2")["status"]["code"] == 0
 
-    def test_lenient_mode_with_schema_allows_extra_results(self, tmp_path):
-        """With schema + lenient mode, can report both schema-defined and extra results."""
+    def test_schema_free_with_schema_allows_extra_results(self, tmp_path):
+        """With schema + validate_results=False, can report both defined and extra results."""
         schema_content = """
 pipeline_name: test_pipeline
 samples:
@@ -129,7 +129,7 @@ samples:
             schema_path=str(schema_file),
             results_file_path=str(tmp_path / "results.yaml"),
             pipeline_name="test",
-            lenient=True,
+            validate_results=False,
         )
 
         # Report both defined and undefined results
@@ -142,23 +142,12 @@ samples:
         assert result["defined_result"] == 42
         assert result["extra_result"] == "bonus"
 
-    def test_lenient_requires_file_backend(self, tmp_path):
-        """Lenient mode raises error if database backend is requested."""
-        # Without a results file and without config, this will fail anyway,
-        # but the lenient check should be first
-        with pytest.raises(PipestatDatabaseError, match="Lenient mode requires file backend"):
-            PipestatManager(
-                pipeline_name="test",
-                lenient=True,
-                # No results_file_path - would try to use DB backend
-            )
-
     def test_strict_mode_requires_schema(self, tmp_path):
-        """Without lenient mode, reporting without schema raises error."""
+        """With validate_results=True (default), reporting without schema raises error."""
         psm = PipestatManager(
             results_file_path=str(tmp_path / "results.yaml"),
             pipeline_name="test",
-            lenient=False,
+            validate_results=True,
         )
 
         with pytest.raises(SchemaNotFoundError):
@@ -168,13 +157,13 @@ samples:
 class TestInferSchema:
     """Tests for schema inference from results file."""
 
-    def test_infer_schema_from_lenient_results(self, tmp_path):
-        """User can generate a schema from results created in lenient mode."""
-        # Create results in lenient mode
+    def test_infer_schema_from_schema_free_results(self, tmp_path):
+        """User can generate a schema from results created with validate_results=False."""
+        # Create results with validate_results=False
         psm = PipestatManager(
             results_file_path=str(tmp_path / "results.yaml"),
             pipeline_name="test",
-            lenient=True,
+            validate_results=False,
         )
         psm.report(record_identifier="s1", values={"count": 42, "name": "sample1"})
         psm.report(record_identifier="s2", values={"count": 17, "name": "sample2"})
@@ -191,7 +180,7 @@ class TestInferSchema:
         psm = PipestatManager(
             results_file_path=str(tmp_path / "results.yaml"),
             pipeline_name="test",
-            lenient=True,
+            validate_results=False,
         )
         psm.report(record_identifier="s1", values={"plot": "fig.png"})  # auto-wrapped
 
@@ -205,7 +194,7 @@ class TestInferSchema:
         psm = PipestatManager(
             results_file_path=str(tmp_path / "results.yaml"),
             pipeline_name="test",
-            lenient=True,
+            validate_results=False,
         )
         psm.report(record_identifier="s1", values={"data": "output.csv"})  # auto-wrapped
 
@@ -219,7 +208,7 @@ class TestInferSchema:
         psm = PipestatManager(
             results_file_path=str(tmp_path / "results.yaml"),
             pipeline_name="test",
-            lenient=True,
+            validate_results=False,
         )
         # 3 strings, 1 integer - string should win
         psm.report(record_identifier="s1", values={"status": "done"})
@@ -236,7 +225,7 @@ class TestInferSchema:
         psm = PipestatManager(
             results_file_path=str(tmp_path / "results.yaml"),
             pipeline_name="test",
-            lenient=True,
+            validate_results=False,
         )
         psm.report(record_identifier="s1", values={"count": 42})
 
@@ -256,7 +245,7 @@ class TestInferSchema:
             results_file_path=str(tmp_path / "results.yaml"),
             pipeline_name="test",
             pipeline_type="sample",
-            lenient=True,
+            validate_results=False,
         )
         sample_psm.report(record_identifier="s1", values={"read_count": 1000})
 
@@ -265,7 +254,7 @@ class TestInferSchema:
             results_file_path=str(tmp_path / "results.yaml"),
             pipeline_name="test",
             pipeline_type="project",
-            lenient=True,
+            validate_results=False,
         )
         project_psm.report(record_identifier="project", values={"total_reads": 5000})
 
@@ -276,6 +265,290 @@ class TestInferSchema:
         assert "project" in schema
         assert schema["samples"]["read_count"]["type"] == "integer"
         assert schema["project"]["total_reads"]["type"] == "integer"
+
+
+class TestValidationModes:
+    """Tests for validate and additional_properties parameters."""
+
+    def test_default_validates_schema_items(self, tmp_path):
+        """Schema-defined results are validated by default (validate=True)."""
+        schema_content = """
+pipeline_name: test_pipeline
+samples:
+  read_count:
+    type: integer
+    description: Number of reads
+"""
+        schema_file = tmp_path / "schema.yaml"
+        schema_file.write_text(schema_content)
+
+        psm = PipestatManager(
+            schema_path=str(schema_file),
+            results_file_path=str(tmp_path / "results.yaml"),
+            pipeline_name="test",
+        )
+
+        # Report valid integer - should work
+        psm.report(record_identifier="s1", values={"read_count": 1000})
+        assert psm.retrieve_one("s1")["read_count"] == 1000
+
+    def test_default_allows_additional_properties(self, tmp_path):
+        """Additional properties allowed by default (additional_properties=True)."""
+        schema_content = """
+pipeline_name: test_pipeline
+samples:
+  read_count:
+    type: integer
+    description: Number of reads
+"""
+        schema_file = tmp_path / "schema.yaml"
+        schema_file.write_text(schema_content)
+
+        psm = PipestatManager(
+            schema_path=str(schema_file),
+            results_file_path=str(tmp_path / "results.yaml"),
+            pipeline_name="test",
+        )
+
+        # Report both schema-defined and extra results
+        psm.report(
+            record_identifier="s1",
+            values={"read_count": 1000, "dynamic_result": "extra_value"},
+        )
+
+        result = psm.retrieve_one("s1")
+        assert result["read_count"] == 1000
+        assert result["dynamic_result"] == "extra_value"
+
+    def test_additional_properties_false_rejects_extras(self, tmp_path):
+        """Strict mode (additional_properties=False) rejects results not in schema."""
+        schema_content = """
+pipeline_name: test_pipeline
+samples:
+  read_count:
+    type: integer
+    description: Number of reads
+"""
+        schema_file = tmp_path / "schema.yaml"
+        schema_file.write_text(schema_content)
+
+        psm = PipestatManager(
+            schema_path=str(schema_file),
+            results_file_path=str(tmp_path / "results.yaml"),
+            pipeline_name="test",
+            additional_properties=False,
+        )
+
+        # Try to report undefined result - should raise
+        with pytest.raises(ColumnNotFoundError, match="not defined in schema"):
+            psm.report(record_identifier="s1", values={"not_in_schema": 123})
+
+    def test_validate_results_false_skips_all_validation(self, tmp_path):
+        """validate_results=False skips all validation."""
+        psm = PipestatManager(
+            results_file_path=str(tmp_path / "results.yaml"),
+            pipeline_name="test",
+            validate_results=False,
+        )
+
+        # Report anything - no schema needed
+        psm.report(
+            record_identifier="s1",
+            values={"anything": "goes", "no": "schema", "count": "not_an_int"},
+        )
+
+        result = psm.retrieve_one("s1")
+        assert result["anything"] == "goes"
+        assert result["no"] == "schema"
+        assert result["count"] == "not_an_int"
+
+    def test_validate_results_true_additional_true_is_flexible_default(self, tmp_path):
+        """validate_results=True + additional_properties=True is the flexible default."""
+        schema_content = """
+pipeline_name: test_pipeline
+samples:
+  read_count:
+    type: integer
+    description: Number of reads
+"""
+        schema_file = tmp_path / "schema.yaml"
+        schema_file.write_text(schema_content)
+
+        psm = PipestatManager(
+            schema_path=str(schema_file),
+            results_file_path=str(tmp_path / "results.yaml"),
+            pipeline_name="test",
+            # These are the defaults, but be explicit
+            validate_results=True,
+            additional_properties=True,
+        )
+
+        # Schema-defined result is validated
+        psm.report(record_identifier="s1", values={"read_count": 1000})
+
+        # Extra result is allowed
+        psm.report(record_identifier="s2", values={"dynamic_result": "allowed"})
+
+        assert psm.retrieve_one("s1")["read_count"] == 1000
+        assert psm.retrieve_one("s2")["dynamic_result"] == "allowed"
+
+    def test_validate_results_and_additional_properties_properties(self, tmp_path):
+        """Properties validate_results and additional_properties return correct values."""
+        schema_content = """
+pipeline_name: test_pipeline
+samples:
+  value:
+    type: integer
+    description: A value
+"""
+        schema_file = tmp_path / "schema.yaml"
+        schema_file.write_text(schema_content)
+
+        # Default values
+        psm1 = PipestatManager(
+            schema_path=str(schema_file),
+            results_file_path=str(tmp_path / "results1.yaml"),
+            pipeline_name="test",
+        )
+        assert psm1.validate_results is True
+        assert psm1.additional_properties is True
+
+        # Custom values
+        psm2 = PipestatManager(
+            schema_path=str(schema_file),
+            results_file_path=str(tmp_path / "results2.yaml"),
+            pipeline_name="test",
+            validate_results=False,
+            additional_properties=False,
+        )
+        assert psm2.validate_results is False
+        assert psm2.additional_properties is False
+
+    def test_schema_level_additional_properties_false(self, tmp_path):
+        """Schema-level additionalProperties: false is respected."""
+        schema_content = """
+pipeline_name: test_pipeline
+samples:
+  additionalProperties: false
+  read_count:
+    type: integer
+    description: Number of reads
+"""
+        schema_file = tmp_path / "schema.yaml"
+        schema_file.write_text(schema_content)
+
+        psm = PipestatManager(
+            schema_path=str(schema_file),
+            results_file_path=str(tmp_path / "results.yaml"),
+            pipeline_name="test",
+            # additional_properties is None (default) - should use schema's value
+        )
+
+        # Schema value should be used
+        assert psm.additional_properties is False
+
+        # Extra properties should be rejected
+        with pytest.raises(ColumnNotFoundError, match="not defined in schema"):
+            psm.report(record_identifier="s1", values={"extra_field": "value"})
+
+    def test_schema_level_additional_properties_true(self, tmp_path):
+        """Schema-level additionalProperties: true allows extra properties."""
+        schema_content = """
+pipeline_name: test_pipeline
+samples:
+  additionalProperties: true
+  read_count:
+    type: integer
+    description: Number of reads
+"""
+        schema_file = tmp_path / "schema.yaml"
+        schema_file.write_text(schema_content)
+
+        psm = PipestatManager(
+            schema_path=str(schema_file),
+            results_file_path=str(tmp_path / "results.yaml"),
+            pipeline_name="test",
+        )
+
+        # Schema value should be used
+        assert psm.additional_properties is True
+
+        # Extra properties should be allowed
+        psm.report(record_identifier="s1", values={"read_count": 100, "extra": "allowed"})
+        result = psm.retrieve_one("s1")
+        assert result["extra"] == "allowed"
+
+    def test_additional_properties_override_takes_precedence(self, tmp_path):
+        """PSM additional_properties parameter overrides schema value."""
+        schema_content = """
+pipeline_name: test_pipeline
+samples:
+  additionalProperties: false
+  read_count:
+    type: integer
+    description: Number of reads
+"""
+        schema_file = tmp_path / "schema.yaml"
+        schema_file.write_text(schema_content)
+
+        # Override schema's false with True
+        psm = PipestatManager(
+            schema_path=str(schema_file),
+            results_file_path=str(tmp_path / "results.yaml"),
+            pipeline_name="test",
+            additional_properties=True,  # Override
+        )
+
+        # Override should take effect
+        assert psm.additional_properties is True
+
+        # Extra properties allowed despite schema saying false
+        psm.report(record_identifier="s1", values={"extra": "overridden"})
+        assert psm.retrieve_one("s1")["extra"] == "overridden"
+
+    def test_per_level_additional_properties(self, tmp_path):
+        """Different levels can have different additionalProperties settings."""
+        schema_content = """
+pipeline_name: test_pipeline
+samples:
+  additionalProperties: false
+  sample_val:
+    type: integer
+    description: Sample value
+project:
+  additionalProperties: true
+  project_val:
+    type: integer
+    description: Project value
+"""
+        schema_file = tmp_path / "schema.yaml"
+        schema_file.write_text(schema_content)
+
+        # Sample level PSM - should NOT allow extras
+        sample_psm = PipestatManager(
+            schema_path=str(schema_file),
+            results_file_path=str(tmp_path / "results.yaml"),
+            pipeline_name="test",
+            pipeline_type="sample",
+        )
+        assert sample_psm.additional_properties is False
+
+        # Project level PSM - SHOULD allow extras
+        project_psm = PipestatManager(
+            schema_path=str(schema_file),
+            results_file_path=str(tmp_path / "results.yaml"),
+            pipeline_name="test",
+            pipeline_type="project",
+        )
+        assert project_psm.additional_properties is True
+
+        # Sample extras rejected
+        with pytest.raises(ColumnNotFoundError):
+            sample_psm.report(record_identifier="s1", values={"extra": "rejected"})
+
+        # Project extras allowed
+        project_psm.report(record_identifier="proj", values={"project_val": 1, "extra": "allowed"})
+        assert project_psm.retrieve_one("proj")["extra"] == "allowed"
 
 
 class TestDualLevelReporting:

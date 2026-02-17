@@ -99,6 +99,10 @@ class ParsedSchema(object):
 
         data = copy.deepcopy(data)
 
+        # Initialize additionalProperties settings (default True per JSON Schema spec)
+        self._sample_additional_properties = True
+        self._project_additional_properties = True
+
         # Currently supporting backwards compatibility with old output schema while now also supporting a JSON schema:
         if "properties" in list(data.keys()):
             # Assume top-level properties key implies proper JSON schema.
@@ -125,6 +129,18 @@ class ParsedSchema(object):
                 mappingkey="properties",
             )
 
+            # Parse additionalProperties from samples and project sections (JSON Schema format)
+            if "samples" in self.original_schema.get("properties", {}):
+                samples_section = self.original_schema["properties"]["samples"]
+                if "items" in samples_section:
+                    self._sample_additional_properties = samples_section["items"].get(
+                        "additionalProperties", True
+                    )
+            if "project" in self.original_schema.get("properties", {}):
+                self._project_additional_properties = self.original_schema["properties"][
+                    "project"
+                ].get("additionalProperties", True)
+
             self._status_data = _safe_pop_one_mapping(
                 subkeys=["status"],
                 data=data["properties"],
@@ -138,6 +154,20 @@ class ParsedSchema(object):
 
         else:
             self._pipeline_name = data.pop(SCHEMA_PIPELINE_NAME_KEY, None)
+            # Parse additionalProperties from old-style schema format (only if it's a dict)
+            if self._SAMPLES_KEY in self.original_schema and isinstance(
+                self.original_schema[self._SAMPLES_KEY], dict
+            ):
+                self._sample_additional_properties = self.original_schema[
+                    self._SAMPLES_KEY
+                ].get("additionalProperties", True)
+            if self._PROJECT_KEY in self.original_schema and isinstance(
+                self.original_schema[self._PROJECT_KEY], dict
+            ):
+                self._project_additional_properties = self.original_schema[
+                    self._PROJECT_KEY
+                ].get("additionalProperties", True)
+
             sample_data = _safe_pop_one_mapping(
                 mappingkey=self._SAMPLES_KEY, data=data, info_name="sample-level"
             )
@@ -148,6 +178,9 @@ class ParsedSchema(object):
             self._status_data = _safe_pop_one_mapping(
                 mappingkey=self._STATUS_KEY, data=data, info_name="status"
             )
+            # Remove additionalProperties before processing (it's metadata, not a result)
+            sample_data.pop("additionalProperties", None)
+            prj_data.pop("additionalProperties", None)
             self._sample_level_data = _recursively_replace_custom_types(sample_data)
 
             self._project_level_data = _recursively_replace_custom_types(prj_data)
@@ -231,6 +264,35 @@ class ParsedSchema(object):
     def status_data(self):
         """Return information relevant to pipeline status."""
         return copy.deepcopy(self._status_data)
+
+    @property
+    def sample_additional_properties(self) -> bool:
+        """Return whether sample-level results allow additional properties.
+
+        Per JSON Schema, additionalProperties defaults to True if not specified.
+        """
+        return self._sample_additional_properties
+
+    @property
+    def project_additional_properties(self) -> bool:
+        """Return whether project-level results allow additional properties.
+
+        Per JSON Schema, additionalProperties defaults to True if not specified.
+        """
+        return self._project_additional_properties
+
+    def additional_properties_for_level(self, level: str) -> bool:
+        """Return additionalProperties setting for specified level.
+
+        Args:
+            level: "sample" or "project"
+
+        Returns:
+            bool: Whether additional properties are allowed for that level.
+        """
+        if level == "project":
+            return self._project_additional_properties
+        return self._sample_additional_properties
 
     @property
     def project_table_name(self) -> str:

@@ -11,6 +11,7 @@ __all__ = [
     "CFG_SCHEMA",
     "CLASSES_BY_TYPE",
     "ENV_VARS",
+    "EXTENDED_DATA",
     "LOCK_PREFIX",
     "PKG_NAME",
     "SAMPLE_NAME",
@@ -80,6 +81,7 @@ MODIFIED_TIME = "pipestat_modified_time"
 
 META_KEY = "meta"
 HISTORY_KEY = "history"
+EXTENDED_DATA = "pipestat_extended_data"
 
 CANONICAL_TYPES = {
     "image": {

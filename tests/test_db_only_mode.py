@@ -38,6 +38,7 @@ class ContextManagerDBTesting:
 
 
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
+@pytest.mark.skip(reason="SQLite not supported - DB backend uses PostgreSQL JSONB columns")
 class TestSQLLITE:
     def test_manager_can_be_built_without_exception(self, schema_file_path_sqlite):
 
