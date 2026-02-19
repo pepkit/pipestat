@@ -158,15 +158,15 @@ class ParsedSchema(object):
             if self._SAMPLES_KEY in self.original_schema and isinstance(
                 self.original_schema[self._SAMPLES_KEY], dict
             ):
-                self._sample_additional_properties = self.original_schema[
-                    self._SAMPLES_KEY
-                ].get("additionalProperties", True)
+                self._sample_additional_properties = self.original_schema[self._SAMPLES_KEY].get(
+                    "additionalProperties", True
+                )
             if self._PROJECT_KEY in self.original_schema and isinstance(
                 self.original_schema[self._PROJECT_KEY], dict
             ):
-                self._project_additional_properties = self.original_schema[
-                    self._PROJECT_KEY
-                ].get("additionalProperties", True)
+                self._project_additional_properties = self.original_schema[self._PROJECT_KEY].get(
+                    "additionalProperties", True
+                )
 
             sample_data = _safe_pop_one_mapping(
                 mappingkey=self._SAMPLES_KEY, data=data, info_name="sample-level"

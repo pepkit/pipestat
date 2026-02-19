@@ -784,7 +784,9 @@ class PipestatManager(MutableMapping):
                 allow_additional = True  # No schema, allow everything
 
             if self.cfg[SCHEMA_KEY] is not None:
-                for r in list(result_identifiers):  # Use list() to allow modification during iteration
+                for r in list(
+                    result_identifiers
+                ):  # Use list() to allow modification during iteration
                     if r in self.result_schemas:
                         # Schema-defined result: validate if validate_results=True
                         if self.cfg.get("validate_results"):
@@ -798,7 +800,9 @@ class PipestatManager(MutableMapping):
                         # Not in schema
                         if allow_additional:
                             # Allow it - for DB backend, move to _extended_data
-                            _LOGGER.debug(f"Result '{r}' not in schema, storing as additional property")
+                            _LOGGER.debug(
+                                f"Result '{r}' not in schema, storing as additional property"
+                            )
                             if not self.file:
                                 extra_values[r] = values.pop(r)
                             # For file backend, keep in values as-is

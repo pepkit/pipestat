@@ -387,8 +387,12 @@ class FileBackend(PipestatBackend):
         # - Else use schema's per-level setting (defaults to True per JSON Schema spec)
         if self.additional_properties is not None:
             allow_additional = self.additional_properties
-        elif self.parsed_schema is not None and hasattr(self.parsed_schema, "additional_properties_for_level"):
-            allow_additional = self.parsed_schema.additional_properties_for_level(self.pipeline_type)
+        elif self.parsed_schema is not None and hasattr(
+            self.parsed_schema, "additional_properties_for_level"
+        ):
+            allow_additional = self.parsed_schema.additional_properties_for_level(
+                self.pipeline_type
+            )
         else:
             allow_additional = True  # JSON Schema default
 
