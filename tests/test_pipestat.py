@@ -81,7 +81,7 @@ class TestSplitClasses:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id, values=val)
             val_name = list(val.keys())[0]
             psm.set_status(status_identifier="running", record_identifier=rec_id)
             status = psm.get_status(record_identifier=rec_id)
@@ -125,10 +125,10 @@ class TestSplitClasses:
             rec_id2 = "sample"
 
             val = {"name_of_something": "ABCDEFG"}
-            psm.report(record_identifier=rec_id1, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id1, values=val)
 
             val = {"name_of_something": "HIJKLMOP"}
-            psm.report(record_identifier=rec_id2, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id2, values=val)
 
             result1 = psm.retrieve_one(
                 record_identifier=rec_id1, result_identifier="name_of_something"
@@ -169,7 +169,7 @@ class TestSplitClasses:
             )
             args.update(backend_data)
             psm = ProjectPipestatManager(**args)
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id, values=val)
             val_name = list(val.keys())[0]
             psm.set_status(status_identifier="running", record_identifier=rec_id)
             status = psm.get_status(record_identifier=rec_id)
@@ -222,7 +222,7 @@ class TestReporting:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id, values=val)
             if backend == "file":
                 print(psm.backend._data[STANDARD_TEST_PIPE_ID])
                 print(
@@ -281,7 +281,6 @@ class TestReporting:
                     assert psm.report(
                         record_identifier="constant_record_id",
                         values=val,
-                        force_overwrite=True,
                         strict_type=False,
                     )
 
@@ -290,7 +289,6 @@ class TestReporting:
                     assert psm.report(
                         record_identifier="constant_record_id",
                         values=val,
-                        force_overwrite=True,
                         strict_type=False,
                     )
 
@@ -345,7 +343,7 @@ class TestReporting:
             args.update(backend_data)
 
             psm = SamplePipestatManager(**args)
-            psm.report(record_identifier=REC_ID, values=val, force_overwrite=True)
+            psm.report(record_identifier=REC_ID, values=val)
             val_name = list(val.keys())[0]
             assert psm.select_records(
                 filter_conditions=[
@@ -387,7 +385,7 @@ class TestReporting:
             psm = SamplePipestatManager(**args)
             del val[list(val.keys())[0]]["path"]
             with pytest.raises(SchemaValidationErrorDuringReport):
-                psm.report(record_identifier=REC_ID, values=val, force_overwrite=True)
+                psm.report(record_identifier=REC_ID, values=val)
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -481,10 +479,10 @@ class TestReporting:
             psm = SamplePipestatManager(**args)
             # Report some other value to be overwritten
             psm.report(
-                record_identifier=rec_id, values={list(val.keys())[0]: 1000}, force_overwrite=True
+                record_identifier=rec_id, values={list(val.keys())[0]: 1000}
             )
             # Now overwrite
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id, values=val)
             assert (
                 psm.retrieve_one(record_identifier=rec_id)[list(val.keys())[0]]
                 == val[list(val.keys())[0]]
@@ -524,7 +522,6 @@ class TestReporting:
                     record_identifier=rec_id,
                     values=val,
                     strict_type=False,
-                    force_overwrite=True,
                 )
             else:
                 with pytest.raises((ValidationError, TypeError)):
@@ -532,7 +529,6 @@ class TestReporting:
                         record_identifier=rec_id,
                         values=val,
                         strict_type=False,
-                        force_overwrite=True,
                     )
 
     @pytest.mark.parametrize(
@@ -569,7 +565,6 @@ class TestReporting:
             results = psm.report(
                 record_identifier=rec_id,
                 values=val,
-                force_overwrite=True,
                 result_formatter=formatter,
             )
             assert rec_id in results[0]
@@ -607,7 +602,7 @@ class TestRetrieval:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id, values=val)
             retrieved_val = psm.select_records(
                 filter_conditions=[
                     {
@@ -651,7 +646,7 @@ class TestRetrieval:
             args.update(backend_data)
             args.update(record_identifier=rec_id)
             psm = SamplePipestatManager(**args)
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id, values=val)
             assert (
                 psm.retrieve_one(result_identifier=list(val.keys())[0]) == list(val.items())[0][1]
             )
@@ -682,7 +677,7 @@ class TestRetrieval:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id, values=val)
             assert psm.retrieve_one(
                 record_identifier=rec_id, result_identifier="number_of_things"
             ) == psm.retrieve_one(record_identifier=rec_id, result_identifier=["number_of_things"])
@@ -714,7 +709,7 @@ class TestRetrieval:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id, values=val)
 
             val_name = list(val.keys())[0]
             retrieved_val = psm[rec_id][val_name]
@@ -737,7 +732,7 @@ class TestRetrieval:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
             for k, v in val_dict.items():
-                psm.report(record_identifier=k, values=v, force_overwrite=True)
+                psm.report(record_identifier=k, values=v)
 
             results = psm.select_records()
 
@@ -775,7 +770,7 @@ class TestRetrieval:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
             for k, v in val_dict.items():
-                psm.report(record_identifier=k, values=v, force_overwrite=True)
+                psm.report(record_identifier=k, values=v)
 
             if res_id == "nonexistent" and backend == "db":
                 with pytest.raises(ColumnNotFoundError):
@@ -840,7 +835,7 @@ class TestRemoval:
 
             for val in vals:
                 for key, value in val.items():
-                    psm.report(record_identifier=key, values=value, force_overwrite=True)
+                    psm.report(record_identifier=key, values=value)
 
             psm.remove(result_identifier=res_id, record_identifier=rec_id)
 
@@ -875,7 +870,7 @@ class TestRemoval:
             psm = SamplePipestatManager(**args)
             for val in vals:
                 for key, value in val.items():
-                    psm.report(record_identifier=key, values=value, force_overwrite=True)
+                    psm.report(record_identifier=key, values=value)
             psm.remove(record_identifier=rec_id)
             col_name = list(list(vals[0].values())[0].keys())[0]
             value = list(list(vals[0].values())[0].values())[0]
@@ -1000,7 +995,7 @@ class TestNoRecordID:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            psm.report(record_identifier="constant_record_id", values=val, force_overwrite=True)
+            psm.report(record_identifier="constant_record_id", values=val)
             retrieved_val = psm.select_records(
                 filter_conditions=[
                     {
@@ -1032,7 +1027,7 @@ class TestNoRecordID:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            psm.report(record_identifier="constant_record_id", values=val, force_overwrite=True)
+            psm.report(record_identifier="constant_record_id", values=val)
             assert psm.remove(result_identifier=list(val.keys())[0])
 
 
@@ -1172,11 +1167,11 @@ class TestPipestatBoss:
 
             for i in values_sample:
                 for r, v in i.items():
-                    psb.samplemanager.report(record_identifier=r, values=v, force_overwrite=True)
+                    psb.samplemanager.report(record_identifier=r, values=v)
                     psb.samplemanager.set_status(record_identifier=r, status_identifier="running")
             for i in values_project:
                 for r, v in i.items():
-                    psb.projectmanager.report(record_identifier=r, values=v, force_overwrite=True)
+                    psb.projectmanager.report(record_identifier=r, values=v)
                     psb.projectmanager.set_status(record_identifier=r, status_identifier="running")
 
 
@@ -1205,7 +1200,7 @@ class TestHTMLReport:
 
             for i in values_sample:
                 for r, v in i.items():
-                    psm.report(record_identifier=r, values=v, force_overwrite=True)
+                    psm.report(record_identifier=r, values=v)
                     psm.set_status(record_identifier=r, status_identifier="running")
 
             htmlreportpath = psm.summarize(amendment="")
@@ -1260,7 +1255,6 @@ class TestHTMLReport:
                     psm.report(
                         record_identifier=r,
                         values=v,
-                        force_overwrite=True,
                     )
                     psm.set_status(record_identifier=r, status_identifier="running")
 
@@ -1293,7 +1287,6 @@ class TestHTMLReport:
                     psm.report(
                         record_identifier=r,
                         values=v,
-                        force_overwrite=True,
                     )
                     psm.set_status(record_identifier=r, status_identifier="running")
 
@@ -1326,7 +1319,6 @@ class TestHTMLReport:
                     psm.report(
                         record_identifier=r,
                         values=v,
-                        force_overwrite=True,
                     )
                     psm.set_status(record_identifier=r, status_identifier="running")
 
@@ -1363,7 +1355,6 @@ class TestHTMLReport:
                     psm.report(
                         record_identifier=r,
                         values=v,
-                        force_overwrite=True,
                     )
                     psm.set_status(record_identifier=r, status_identifier="running")
 
@@ -1372,7 +1363,6 @@ class TestHTMLReport:
             psm.report(
                 record_identifier=r,
                 values={"name_of_something": "name of something string"},
-                force_overwrite=True,
             )
             psm.set_status(record_identifier=r, status_identifier="completed")
             r = "SAMPLE FOUR WITH Spaces"
@@ -1381,7 +1371,6 @@ class TestHTMLReport:
                 values={
                     "output file with spaces": {"path": "here is path", "title": "here is a title"}
                 },
-                force_overwrite=True,
             )
 
             htmlreportpath = psm.summarize(amendment="")
@@ -1418,7 +1407,7 @@ class TestTableCreation:
 
             for i in values_sample:
                 for r, v in i.items():
-                    psm.report(record_identifier=r, values=v, force_overwrite=True)
+                    psm.report(record_identifier=r, values=v)
                     psm.set_status(record_identifier=r, status_identifier="running")
 
             table_paths = psm.table()
@@ -1446,7 +1435,7 @@ class TestTableCreation:
 
             for i in values_project:
                 for r, v in i.items():
-                    psm.report(record_identifier=r, values=v, force_overwrite=True)
+                    psm.report(record_identifier=r, values=v)
                     psm.set_status(record_identifier=r, status_identifier="running")
 
             table_paths = psm.table()
@@ -1604,7 +1593,7 @@ class TestFileTypeLinking:
 
             for i in values_complex_linking:
                 for r, v in i.items():
-                    psm.report(record_identifier=r, values=v, force_overwrite=True)
+                    psm.report(record_identifier=r, values=v)
                     psm.set_status(record_identifier=r, status_identifier="running")
 
             os.mkdir(temp_dir + "/test_file_links")
@@ -1652,12 +1641,12 @@ class TestTimeStamp:
             val = {"number_of_things": 1}
             for i in range(10):
                 rid = "sample" + str(i)
-                psm.report(record_identifier=rid, values=val, force_overwrite=True)
+                psm.report(record_identifier=rid, values=val)
 
             # Modify a couple of records
             val = {"number_of_things": 2}
-            psm.report(record_identifier="sample3", values=val, force_overwrite=True)
-            psm.report(record_identifier="sample4", values=val, force_overwrite=True)
+            psm.report(record_identifier="sample3", values=val)
+            psm.report(record_identifier="sample4", values=val)
 
             # Test default
             results = psm.list_recent_results()
@@ -1702,7 +1691,7 @@ class TestSelectRecords:
             for i in range_values:
                 r_id = i[0]
                 val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             result1 = psm.select_records(
                 filter_conditions=[
@@ -1773,7 +1762,7 @@ class TestSelectRecords:
             for i in range_values[:2]:
                 r_id = i[0]
                 val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             result1 = psm.select_records(
                 filter_conditions=[
@@ -1812,7 +1801,7 @@ class TestSelectRecords:
             for i in range_values[:2]:
                 r_id = i[0]
                 val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             result1 = psm.select_records(
                 columns=["record_identifier"],
@@ -1842,7 +1831,7 @@ class TestSelectRecords:
             for i in range_values[:2]:
                 r_id = i[0]
                 val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             result1 = psm.select_records()
 
@@ -1872,7 +1861,7 @@ class TestSelectRecords:
             for i in range_values[:2]:
                 r_id = i[0]
                 val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             result1 = psm.select_records(limit=1)
 
@@ -1902,7 +1891,7 @@ class TestSelectRecords:
             for i in range_values[:2]:
                 r_id = i[0]
                 val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             with pytest.raises(ValueError):
                 # Unknown operator raises error
@@ -1956,7 +1945,7 @@ class TestSelectRecords:
             for i in range_values[:2]:
                 r_id = i[0]
                 val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             if backend == "db":
                 with pytest.raises(ValueError):
@@ -1996,7 +1985,7 @@ class TestSelectRecords:
             for i in range_values[:2]:
                 r_id = i[0]
                 val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             result = psm.select_records(
                 filter_conditions=[
@@ -2041,7 +2030,7 @@ class TestSelectRecords:
             for i in range_values[:6]:
                 r_id = i[0]
                 val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             # Gets one or many records
             result1 = psm.retrieve_one(record_identifier="sample1")
@@ -2071,7 +2060,7 @@ class TestSelectRecords:
             for i in range_values[:6]:
                 r_id = i[0]
                 val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             result = psm.retrieve_many(["sample1", "sample3", "sample5"])
             assert len(result["records"]) == 3
@@ -2101,7 +2090,7 @@ class TestSelectRecords:
             for i in range_values[:2]:
                 r_id = i[0]
                 val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             # Gets one or many records
             result1 = psm.retrieve_one(record_identifier="sample1", result_identifier="md5sum")
@@ -2133,7 +2122,7 @@ class TestSelectRecords:
             for i in range_values[:2]:
                 r_id = i[0]
                 val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             # Gets one or many records
             result1 = psm.retrieve_one(
@@ -2164,7 +2153,7 @@ class TestSelectRecords:
             for i in range_values[:2]:
                 r_id = i[0]
                 val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             # Gets one or many records
             result1 = psm.retrieve_many(
@@ -2196,7 +2185,7 @@ class TestSelectRecords:
             for i in range_values[:10]:
                 r_id = i[0]
                 val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             for i in range(0, 10, 2):
                 r_id = "sample" + str(i)
@@ -2205,12 +2194,12 @@ class TestSelectRecords:
                     "number_of_things": 500,
                 }
                 # Overwrite a couple of results such that they are not all unique
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             val = {
                 "number_of_things": 900,
             }
-            psm.report(record_identifier="sample2", values=val, force_overwrite=True)
+            psm.report(record_identifier="sample2", values=val)
             # Gets one or many records
             result1 = psm.select_distinct(
                 columns=["md5sum", "number_of_things", "record_identifier"]
@@ -2244,7 +2233,7 @@ class TestSelectRecords:
             for i in range_values[:10]:
                 r_id = i[0]
                 val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             for i in range(0, 10, 2):
                 r_id = "sample" + str(i)
@@ -2253,12 +2242,12 @@ class TestSelectRecords:
                     "number_of_things": 500,
                 }
                 # Overwrite a couple of results such that they are not all unique
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             val = {
                 "number_of_things": 900,
             }
-            psm.report(record_identifier="sample2", values=val, force_overwrite=True)
+            psm.report(record_identifier="sample2", values=val)
             # Gets one or many records
             result3 = psm.select_distinct(columns="md5sum")
             assert len(result3) == 6
@@ -2290,7 +2279,7 @@ class TestPipestatIter:
             for i in range_values[:12]:
                 r_id = i[0]
                 val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             cursor = 10
             limit = 6
@@ -2348,7 +2337,7 @@ class TestMultiResultFiles:
                 backend_data = {"record_identifier": r_id, "results_file_path": results_file_path}
                 args.update(backend_data)
                 psm = SamplePipestatManager(**args)
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             files = glob.glob(os.path.dirname(psm.file) + "**/*.yaml")
             assert len(files) == n
@@ -2375,7 +2364,7 @@ class TestMultiResultFiles:
                 backend_data = {"record_identifier": r_id, "results_file_path": results_file_path}
                 args.update(backend_data)
                 psm = SamplePipestatManager(**args)
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             psm.summarize()
             data = YAMLConfigManager.from_yaml_file(
@@ -2418,7 +2407,7 @@ class TestSetIndexTrue:
             for i in range_values[:10]:
                 r_id = i[0]
                 val = i[1]
-                psm.report(record_identifier=r_id, values=val, force_overwrite=True)
+                psm.report(record_identifier=r_id, values=val)
 
             mod = psm.backend.get_model(table_name=psm.backend.table_name)
             assert mod.md5sum.index is True
@@ -2458,13 +2447,13 @@ class TestRetrieveHistory:
 
             val["number_of_things"] = 1
 
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id, values=val)
 
             val = {"name_of_something": "MODIFIED_test_name", "number_of_things": 2}
 
             time.sleep(1)
 
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id, values=val)
 
             history_result = psm.retrieve_history(
                 record_identifier="sample1", result_identifier="name_of_something"
@@ -2506,13 +2495,13 @@ class TestRetrieveHistory:
 
             val["number_of_things"] = 1
 
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id, values=val)
 
             val = {"name_of_something": "MODIFIED_test_name", "number_of_things": 2}
 
             time.sleep(1)
 
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id, values=val)
 
             history_result = psm.retrieve_history(
                 record_identifier="sample1",
@@ -2559,7 +2548,7 @@ class TestRetrieveHistory:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
 
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id, values=val)
 
             val = {
                 "output_image": {
@@ -2571,7 +2560,7 @@ class TestRetrieveHistory:
 
             time.sleep(1)
 
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id, values=val)
 
             val = {
                 "output_image": {
@@ -2583,7 +2572,7 @@ class TestRetrieveHistory:
 
             time.sleep(1)
 
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id, values=val)
 
             history_result = psm.retrieve_history(
                 record_identifier="sample1",

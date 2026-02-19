@@ -107,7 +107,7 @@ class TestStatus:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id, values=val)
             psm.set_status(status_identifier="running", record_identifier=rec_id)
             status = psm.get_status(record_identifier=rec_id)
             assert status == "running"

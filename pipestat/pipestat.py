@@ -156,6 +156,7 @@ class PipestatManager(MutableMapping):
         pephub_path: str | None = None,
         validate_results: bool = True,
         additional_properties: bool | None = None,
+        force_overwrite: bool = True,
     ) -> None:
         """Initialize the PipestatManager object.
 
@@ -180,13 +181,19 @@ class PipestatManager(MutableMapping):
             additional_properties (bool | None, optional): Override for allowing results not in schema.
                 If None (default), uses schema's additionalProperties setting (defaults to True per JSON Schema).
                 If True/False, overrides the schema setting.
+            force_overwrite (bool, optional): Default for whether report() should overwrite existing results.
+                Can be overridden per-call. Defaults to True.
         """
 
         super(PipestatManager, self).__init__()
 
+        if record_identifier is not None and not record_identifier:
+            raise ValueError("record_identifier cannot be empty")
+
         # Initialize the cfg dict as an attribute that holds all configuration data
         self.cfg = {}
 
+        self.cfg["force_overwrite"] = force_overwrite
         self.cfg["validate_results"] = validate_results
         # Store the override value; will resolve from schema after schema is loaded
         self._additional_properties_override = additional_properties
@@ -264,6 +271,15 @@ class PipestatManager(MutableMapping):
         self.cfg[PIPELINE_TYPE] = self.cfg[CONFIG_KEY].priority_get(
             "pipeline_type", default="sample", override=pipeline_type
         )
+
+        # Default project_name for project-level pipelines
+        if self.cfg[PIPELINE_TYPE] == "project" and not self.cfg.get(PROJECT_NAME):
+            _LOGGER.warning("No project_name provided for project-level pipeline. Defaulting to 'project'.")
+            self.cfg[PROJECT_NAME] = "project"
+
+        # Auto-default record_identifier for project-level pipelines
+        if self.cfg[PIPELINE_TYPE] == "project" and self.cfg[RECORD_IDENTIFIER] is None:
+            self.cfg[RECORD_IDENTIFIER] = self.cfg[PROJECT_NAME]
 
         self.cfg[FILE_KEY] = mkabs(
             self.resolve_results_file_path(
@@ -539,7 +555,7 @@ class PipestatManager(MutableMapping):
             List[Union[str, None]]: Collection of names of flags removed.
         """
 
-        r_id = record_identifier or self.record_identifier
+        r_id = self._resolve_record_identifier(record_identifier)
         return self.backend.clear_status(record_identifier=r_id, flag_names=flag_names)
 
     @require_backend
@@ -565,7 +581,7 @@ class PipestatManager(MutableMapping):
             str: Status identifier, e.g. 'running'.
         """
 
-        r_id = record_identifier or self.record_identifier
+        r_id = self._resolve_record_identifier(record_identifier)
         return self.backend.get_status(record_identifier=r_id)
 
     @require_backend
@@ -694,7 +710,7 @@ class PipestatManager(MutableMapping):
             self.backend.pipeline_type = level
 
         try:
-            r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
+            r_id = self._resolve_record_identifier(record_identifier)
             return self.backend.remove(
                 record_identifier=r_id,
                 result_identifier=result_identifier,
@@ -720,7 +736,7 @@ class PipestatManager(MutableMapping):
         self,
         values: dict[str, Any],
         record_identifier: str | None = None,
-        force_overwrite: bool = True,
+        force_overwrite: bool | None = None,
         result_formatter: Callable | None = None,
         strict_type: bool = True,
         history_enabled: bool = True,
@@ -732,7 +748,8 @@ class PipestatManager(MutableMapping):
             values (Dict[str, Any]): Dictionary of result-value pairs.
             record_identifier (str, optional): Unique identifier of the record, value in
                 'record_identifier' column to look for to determine if the record already exists.
-            force_overwrite (bool, optional): Whether to overwrite the existing record. Defaults to True.
+            force_overwrite (bool | None, optional): Whether to overwrite the existing record.
+                If None (default), uses the manager-level default set at __init__.
             result_formatter (staticmethod, optional): Function for formatting result.
             strict_type (bool, optional): Whether the type of the reported values should remain as is.
                 Pipestat would attempt to convert to the schema-defined one otherwise. Defaults to True.
@@ -757,9 +774,11 @@ class PipestatManager(MutableMapping):
             self.backend.pipeline_type = level
 
         try:
+            if force_overwrite is None:
+                force_overwrite = self.cfg["force_overwrite"]
             result_formatter = result_formatter or self.cfg[RESULT_FORMATTER]
             values = deepcopy(values)
-            r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
+            r_id = self._resolve_record_identifier(record_identifier)
             if r_id is None:
                 raise NotImplementedError("You must supply a record identifier to report results")
 
@@ -954,7 +973,7 @@ class PipestatManager(MutableMapping):
             RecordNotFoundError: If the record or results are not found.
             ValueError: If result_identifier is not a str or list[str].
         """
-        record_identifier = record_identifier or self.record_identifier
+        record_identifier = self._resolve_record_identifier(record_identifier)
 
         filter_conditions = [
             {
@@ -1021,7 +1040,7 @@ class PipestatManager(MutableMapping):
             Dict[str, Any]: A mapping with filtered historical results.
         """
 
-        record_identifier = record_identifier or self.record_identifier
+        record_identifier = self._resolve_record_identifier(record_identifier)
 
         if self.file:
             result = self.backend.select_records(
@@ -1120,7 +1139,7 @@ class PipestatManager(MutableMapping):
             status_identifier (str): Status to set, one of statuses defined in the status schema.
             record_identifier (str, optional): Sample_level record identifier to set the pipeline status for.
         """
-        r_id = record_identifier or self.record_identifier
+        r_id = self._resolve_record_identifier(record_identifier)
         self.backend.set_status(status_identifier, r_id)
 
     @require_backend
@@ -1275,6 +1294,30 @@ class PipestatManager(MutableMapping):
             pass
         return None
 
+    def _resolve_record_identifier(self, record_identifier: str | None) -> str | None:
+        """Resolve record_identifier, auto-defaulting for project level.
+
+        Args:
+            record_identifier: Explicitly provided record identifier, or None.
+
+        Returns:
+            Resolved record identifier string, or None if not resolvable.
+
+        Raises:
+            ValueError: If record_identifier is an empty string.
+        """
+        if record_identifier is not None and not record_identifier:
+            raise ValueError("record_identifier cannot be empty")
+        if record_identifier is not None:
+            return record_identifier
+        r_id = self.cfg.get(RECORD_IDENTIFIER)
+        if r_id is not None:
+            return r_id
+        # Auto-default for project level (covers level="project" on sample-level managers)
+        if self.cfg.get(PIPELINE_TYPE) == "project":
+            return self.cfg.get(PROJECT_NAME) or "project"
+        return None
+
     def _get_attr(self, attr: str) -> Any:
         """Safely get the name of the selected attribute of this object.
 
@@ -1397,13 +1440,13 @@ class PipestatManager(MutableMapping):
         return self.cfg[PIPELINE_TYPE]
 
     @property
-    def record_identifier(self) -> str:
-        """Record identifier.
+    def record_identifier(self) -> str | None:
+        """Record identifier. Defaults to project_name for project-level pipelines.
 
         Returns:
-            str: Record identifier.
+            str | None: Record identifier.
         """
-        return self.cfg[RECORD_IDENTIFIER]
+        return self._resolve_record_identifier(None)
 
     @property
     def record_count(self) -> int:
@@ -1486,13 +1529,11 @@ class PipestatManager(MutableMapping):
 class SamplePipestatManager(PipestatManager):
     def __init__(self, **kwargs) -> None:
         PipestatManager.__init__(self, pipeline_type="sample", **kwargs)
-        _LOGGER.warning("Initialize PipestatMgrSample")
 
 
 class ProjectPipestatManager(PipestatManager):
     def __init__(self, **kwargs) -> None:
         PipestatManager.__init__(self, pipeline_type="project", **kwargs)
-        _LOGGER.warning("Initialize PipestatMgrProject")
 
 
 class PipestatBoss(ABC):
