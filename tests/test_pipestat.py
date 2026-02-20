@@ -2284,7 +2284,7 @@ class TestPipestatIter:
             cursor = 10
             limit = 6
             count = 0
-            for j in psm.__iter__(cursor=cursor, limit=limit):
+            for j in psm.iter_records(cursor=cursor, limit=limit):
                 count += 1
 
             if backend == "db":
@@ -2886,3 +2886,62 @@ class TestSharedSchemaKeys:
         assert "project_only_result" in all_schemas["project"]
         assert "Time" in all_schemas["sample"]
         assert "Time" in all_schemas["project"]
+
+
+class TestBugFixes:
+    """Tests for bug fixes: retrieve_many raise, __len__, __iter__, functools.wraps, parital typo."""
+
+    def test_retrieve_many_raises_on_missing_records(self, schema_file_path, tmp_path):
+        """retrieve_many() must raise RecordNotFoundError for nonexistent records."""
+        psm = SamplePipestatManager(
+            schema_path=schema_file_path,
+            results_file_path=str(tmp_path / "results.yaml"),
+            database_only=False,
+        )
+        psm.report(record_identifier="existing_sample", values={"name_of_something": "val"})
+        with pytest.raises(RecordNotFoundError):
+            psm.retrieve_many(record_identifiers=["nonexistent1", "nonexistent2"])
+
+    def test_len_returns_record_count(self, schema_file_path, tmp_path):
+        """len(psm) must return the number of records, not the config key count."""
+        psm = SamplePipestatManager(
+            schema_path=schema_file_path,
+            results_file_path=str(tmp_path / "results.yaml"),
+            database_only=False,
+        )
+        assert len(psm) == 0
+        psm.report(record_identifier="sample1", values={"name_of_something": "a"})
+        assert len(psm) == 1
+        psm.report(record_identifier="sample2", values={"name_of_something": "b"})
+        assert len(psm) == 2
+
+    def test_iter_returns_all_records(self, schema_file_path, tmp_path):
+        """for record in psm: must iterate over all records."""
+        psm = SamplePipestatManager(
+            schema_path=schema_file_path,
+            results_file_path=str(tmp_path / "results.yaml"),
+            database_only=False,
+        )
+        psm.report(record_identifier="s1", values={"name_of_something": "a"})
+        psm.report(record_identifier="s2", values={"name_of_something": "b"})
+        records = list(psm)
+        assert len(records) == 2
+
+    def test_functools_wraps_preserves_metadata(self, schema_file_path, tmp_path):
+        """Decorated methods must retain their original __name__ and __doc__."""
+        psm = SamplePipestatManager(
+            schema_path=schema_file_path,
+            results_file_path=str(tmp_path / "results.yaml"),
+            database_only=False,
+        )
+        assert psm.report.__name__ == "report"
+        assert psm.count_records.__name__ == "count_records"
+        assert psm.report.__doc__ is not None
+        assert psm.count_records.__doc__ is not None
+
+    def test_partial_flag_key_in_constants(self):
+        """APPEARANCE_BY_FLAG must use 'partial', not 'parital'."""
+        from pipestat.const import APPEARANCE_BY_FLAG
+
+        assert "partial" in APPEARANCE_BY_FLAG
+        assert "parital" not in APPEARANCE_BY_FLAG

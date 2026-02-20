@@ -172,7 +172,7 @@ APPEARANCE_BY_FLAG = {
     "completed": {"button_class": "{type}-success", "flag": "Completed"},
     "running": {"button_class": "{type}-primary", "flag": "Running"},
     "failed": {"button_class": "{type}-danger", "flag": "Failed"},
-    "parital": {"button_class": "{type}-warning", "flag": "Partial"},
+    "partial": {"button_class": "{type}-warning", "flag": "Partial"},
     "waiting": {"button_class": "{type}-info", "flag": "Waiting"},
 }
 

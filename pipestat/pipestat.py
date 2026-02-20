@@ -1,4 +1,5 @@
 import datetime
+import functools
 import os
 from abc import ABC
 from collections.abc import Callable, Iterator, MutableMapping
@@ -90,6 +91,7 @@ def check_dependencies(dependency_list: list | None = None, msg: str | None = No
     """
 
     def wrapper(func: Callable) -> Callable:
+        @functools.wraps(func)
         def inner(*args, **kwargs) -> Any:
             dependencies_satisfied = True
             if dependency_list is not None:
@@ -119,6 +121,7 @@ def require_backend(func: Callable) -> Callable:
         NoBackendSpecifiedError: If no backend is configured.
     """
 
+    @functools.wraps(func)
     def inner(self, *args, **kwargs) -> Any:
         if not self.backend:
             raise NoBackendSpecifiedError
@@ -128,13 +131,27 @@ def require_backend(func: Callable) -> Callable:
 
 
 class PipestatManager(MutableMapping):
-    """Pipestat standardizes reporting of pipeline results and pipeline status management.
+    """Report, retrieve, and manage pipeline results.
 
-    It formalizes a way for pipeline developers and downstream tools developers to
-    communicate -- results produced by a pipeline can easily and reliably become an
-    input for downstream analyses. A PipestatManager object exposes an API for
-    interacting with the results and pipeline status and can be backed by either
-    a YAML-formatted file or a database.
+    PipestatManager stores structured results (scalars, files, images) in a
+    YAML file, database, or PEPhub backend, validated against a JSON Schema.
+    It also manages pipeline status flags (running/completed/failed).
+
+    Quick start (file backend):
+        psm = PipestatManager(
+            results_file_path="results.yaml",
+            schema_path="output_schema.yaml",
+        )
+        psm.report(
+            record_identifier="sample1",
+            values={"alignment_rate": 0.95},
+        )
+        result = psm.retrieve_one(record_identifier="sample1")
+
+    Implements MutableMapping, so dict-style access works:
+        psm["sample1"] = {"alignment_rate": 0.95}
+        record = psm["sample1"]
+        del psm["sample1"]
     """
 
     def __init__(
@@ -359,42 +376,91 @@ class PipestatManager(MutableMapping):
         return res
 
     def __getitem__(self, key: str) -> Any:
-        # This is a wrapper for the retrieve function:
+        """Retrieve all results for a record by its identifier.
+
+        Implements MutableMapping. Delegates to retrieve_one().
+
+        Example:
+            record = psm["sample1"]
+            # Returns: {"number_of_things": 42, "name_of_something": "foo", ...}
+
+        Args:
+            key: Record identifier.
+
+        Returns:
+            Dict of all reported results for the record.
+
+        Raises:
+            RecordNotFoundError: If no record with this identifier exists.
+        """
         result = self.retrieve_one(record_identifier=key)
         return result
 
     def __setitem__(self, key: str, value: Any) -> list[str] | bool:
-        # This is a wrapper for the report function:
+        """Report results for a record by its identifier.
+
+        Implements MutableMapping. Delegates to report().
+
+        Example:
+            psm["sample1"] = {"alignment_rate": 0.95, "num_reads": 1000000}
+
+        Args:
+            key: Record identifier.
+            value: Dict mapping result identifiers to their values.
+
+        Returns:
+            List of formatted result strings on success, or False if
+            results already exist and force_overwrite is disabled.
+        """
         result = self.report(record_identifier=key, values=value)
         return result
 
     def __delitem__(self, key: str) -> bool:
-        # This is a wrapper for the remove function; it removes the entire record:
+        """Remove an entire record by its identifier.
+
+        Implements MutableMapping. Delegates to remove() with no
+        result_identifier, which removes the full record.
+
+        Example:
+            del psm["sample1"]
+
+        Args:
+            key: Record identifier to remove.
+
+        Returns:
+            True if the record was removed.
+
+        Raises:
+            RecordNotFoundError: If no record with this identifier exists.
+        """
         result = self.remove(record_identifier=key)
         return result
 
-    def __iter__(
+    def iter_records(
         self,
         limit: int | None = 1000,
         cursor: int | None = None,
     ) -> Iterator:
-        """Wrapper around select_records that creates an iterator of records.
+        """Iterate over records with optional pagination.
 
         Args:
-            limit (int, optional): Maximum number of results to retrieve per page. Defaults to 1000.
-            cursor (int, optional): Cursor position to begin retrieving records.
+            limit: Maximum number of results to retrieve per page. Defaults to 1000.
+            cursor: Cursor position to begin retrieving records (DB backend only).
 
         Returns:
-            Iterator: Iterator over records.
+            Iterator over records.
         """
         if self.file:
-            # File backend does not support cursor-based paging
             return iter(self.select_records(limit=limit)["records"])
         else:
             return iter(self.select_records(limit=limit, cursor=cursor)["records"])
 
+    def __iter__(self) -> Iterator:
+        """Iterate over all records."""
+        return self.iter_records()
+
     def __len__(self) -> int:
-        return len(self.cfg)
+        return self.count_records()
 
     def resolve_results_file_path(self, results_file_path: str | None) -> str | None:
         """Replace {record_identifier} in results_file_path if it exists.
@@ -544,15 +610,25 @@ class PipestatManager(MutableMapping):
         record_identifier: str = None,
         flag_names: list[str] = None,
     ) -> list[str | None]:
-        """Remove status flags.
+        """Remove status flag files for a record.
+
+        Example:
+            # Remove all status flags for a record
+            removed = psm.clear_status(record_identifier="sample1")
+            # Returns: ["running", "completed"]  (names of flags that were removed)
+
+            # Remove specific flags only
+            psm.clear_status(record_identifier="sample1", flag_names=["running"])
 
         Args:
-            record_identifier (str, optional): Name of the sample_level record to remove flags for.
-            flag_names (List[str], optional): Names of flags to remove; if unspecified,
-                all schema-defined flag names will be used.
+            record_identifier: Record to remove flags for. If None, uses the
+                record_identifier set at init time.
+            flag_names: Names of flags to remove. If None, all schema-defined
+                flag names will be used.
 
         Returns:
-            List[Union[str, None]]: Collection of names of flags removed.
+            list[str | None]: Names of flags that were removed. None entries
+                indicate flags that did not exist.
         """
 
         r_id = self._resolve_record_identifier(record_identifier)
@@ -560,10 +636,14 @@ class PipestatManager(MutableMapping):
 
     @require_backend
     def count_records(self) -> int:
-        """Count records.
+        """Count the number of records in the backend.
+
+        Example:
+            n = psm.count_records()
+            # Returns: 42
 
         Returns:
-            int: Number of records.
+            int: Total number of records. Returns 0 if no records exist.
         """
         return self.backend.count_records()
 
@@ -572,13 +652,19 @@ class PipestatManager(MutableMapping):
         self,
         record_identifier: str = None,
     ) -> str | None:
-        """Get the current pipeline status.
+        """Get the current pipeline status for a record.
+
+        Example:
+            status = psm.get_status(record_identifier="sample1")
+            # Returns: "running", "completed", "failed", "waiting", "partial", or None
 
         Args:
-            record_identifier (str, optional): Name of the sample_level record.
+            record_identifier: Record to check. If None, uses the
+                record_identifier set at init time.
 
         Returns:
-            str: Status identifier, e.g. 'running'.
+            str: Status identifier (e.g. "running", "completed"), or None
+                if no status has been set for the record.
         """
 
         r_id = self._resolve_record_identifier(record_identifier)
@@ -592,21 +678,36 @@ class PipestatManager(MutableMapping):
         end: str | None = None,
         time_column: str | None = "modified",
     ) -> dict:
-        """List recent results within a time range.
+        """List results within a time range, filtered by creation or modification time.
+
+        Example:
+            # All results modified in the last day
+            result = psm.list_recent_results()
+
+            # Results modified within a specific window
+            result = psm.list_recent_results(
+                start="2024-06-01 00:00:00",
+                end="2024-05-01 00:00:00",
+            )
+
+            # Filter by creation time instead
+            result = psm.list_recent_results(time_column="created")
 
         Args:
-            limit (int, optional): Limit number of results returned. Defaults to 1000.
-            start (str, optional): Most recent result to filter on, defaults to now.
-                Format: YYYY-MM-DD HH:MM:SS, e.g. 2023-10-16 13:03:04.
-            end (str, optional): Oldest result to filter on.
-                Format: YYYY-MM-DD HH:MM:SS, e.g. 1970-10-16 13:03:04.
-            time_column (str, optional): Created or modified column/attribute to filter on. Defaults to "modified".
+            limit: Maximum number of results to return. Defaults to 1000.
+            start: Upper bound of time range (most recent). Defaults to now.
+                Format: "YYYY-MM-DD HH:MM:SS", e.g. "2024-06-15 13:03:04".
+            end: Lower bound of time range (oldest). Defaults to 1900-01-01.
+                Format: "YYYY-MM-DD HH:MM:SS", e.g. "2024-01-01 00:00:00".
+            time_column: Which timestamp to filter on: "modified" (default)
+                or "created".
 
         Returns:
-            dict: A dict containing start, end, num of records, and list of retrieved records.
+            dict: Same structure as select_records(): contains
+                "total_size", "page_size", "next_page_token", and "records" keys.
 
         Raises:
-            InvalidTimeFormatError: If start or end time format is incorrect.
+            InvalidTimeFormatError: If start or end does not match "YYYY-MM-DD HH:MM:SS".
         """
 
         if self.cfg["pephub_path"]:
@@ -686,19 +787,28 @@ class PipestatManager(MutableMapping):
         result_identifier: str = None,
         level: str | None = None,
     ) -> bool:
-        """Remove a result.
+        """Remove a result or an entire record.
 
-        If no result ID specified or last result is removed, the entire record will be removed.
+        Example:
+            # Remove a single result
+            psm.remove(record_identifier="sample1", result_identifier="number_of_things")
+
+            # Remove an entire record (all results)
+            psm.remove(record_identifier="sample1")
+
+        If result_identifier is None, or if removing the last remaining result,
+        the entire record is deleted.
 
         Args:
-            record_identifier (str, optional): Name of the sample_level record.
-            result_identifier (str, optional): Name of the result to be removed or None
-                if the record should be removed.
-            level (str, optional): Pipeline level ("sample" or "project"). If specified, temporarily
-                overrides the pipeline_type for this operation. Defaults to None (use init pipeline_type).
+            record_identifier: Record to modify. If None, uses the
+                record_identifier set at init time.
+            result_identifier: Specific result key to remove, or None to
+                remove the entire record.
+            level: Pipeline level ("sample" or "project"). Temporarily overrides
+                the pipeline_type for this single call.
 
         Returns:
-            bool: Whether the result has been removed.
+            True if the result or record was removed.
         """
         # Temporarily swap level if specified
         orig_type = None
@@ -742,27 +852,49 @@ class PipestatManager(MutableMapping):
         history_enabled: bool = True,
         level: str | None = None,
     ) -> list[str] | bool:
-        """Report a result.
+        """Report one or more results for a record.
+
+        Example:
+            psm.report(
+                record_identifier="sample1",
+                values={"alignment_rate": 0.95, "num_reads": 1000000},
+            )
+
+        The keys in `values` must match result identifiers defined in your
+        output schema (unless additional_properties is enabled). Returns a
+        list of formatted result strings on success. Returns False if the
+        record already has values for those keys and force_overwrite is
+        disabled.
 
         Args:
-            values (Dict[str, Any]): Dictionary of result-value pairs.
-            record_identifier (str, optional): Unique identifier of the record, value in
-                'record_identifier' column to look for to determine if the record already exists.
-            force_overwrite (bool | None, optional): Whether to overwrite the existing record.
-                If None (default), uses the manager-level default set at __init__.
-            result_formatter (staticmethod, optional): Function for formatting result.
-            strict_type (bool, optional): Whether the type of the reported values should remain as is.
-                Pipestat would attempt to convert to the schema-defined one otherwise. Defaults to True.
-            history_enabled (bool, optional): Should history of reported results be enabled? Defaults to True.
-            level (str, optional): Pipeline level ("sample" or "project"). If specified, temporarily
-                overrides the pipeline_type for this operation. Defaults to None (use init pipeline_type).
+            values: Dict mapping result identifiers to their values.
+                Scalar example: {"number_of_things": 42}
+                File example: {"output_file": {"path": "/path/to/file.csv", "title": "Output"}}
+                Image example: {"output_image": {"path": "fig.png", "thumbnail_path": "fig_thumb.png", "title": "Figure"}}
+            record_identifier: Unique identifier for the record (e.g. sample name).
+                If None, uses the record_identifier set at init time.
+            force_overwrite: Whether to overwrite existing results for this record.
+                If None (default), uses the manager-level default set at __init__
+                (which itself defaults to True).
+            result_formatter: Function for formatting each result into a display string.
+                Defaults to the formatter set at init time.
+            strict_type: If True (default), reported values must match the schema type
+                exactly. If False, pipestat attempts type coercion.
+            history_enabled: If True (default), previous values are saved in a
+                history log before overwriting.
+            level: Pipeline level ("sample" or "project"). Temporarily overrides
+                the pipeline_type for this single call.
 
         Returns:
-            Union[List[str], bool]: List of formatted strings for reported results.
+            list[str]: Formatted result strings, one per reported key,
+                e.g. ["Reported records for 'sample1' in 'default_pipeline_name' namespace:\n- number_of_things: 42"].
+            bool: False if results already exist and force_overwrite is False.
 
         Raises:
-            NotImplementedError: If no record identifier is supplied.
-            ColumnNotFoundError: If a result attribute is not defined in the output schema.
+            NotImplementedError: If no record_identifier is provided or resolvable.
+            ColumnNotFoundError: If a key in values is not in the schema and
+                additional_properties is disabled.
+            SchemaNotFoundError: If validate_results is True but no schema was provided.
         """
         # Temporarily swap level if specified
         orig_type = None
@@ -862,16 +994,25 @@ class PipestatManager(MutableMapping):
         self,
         columns: str | list[str] | None = None,
     ) -> list[Any]:
-        """Retrieves unique results for a list of attributes.
+        """Retrieve unique values for one or more result attributes.
+
+        Example:
+            # Get all distinct values of a column
+            distinct = psm.select_distinct(columns="name_of_something")
+            # Returns: ["foo", "bar", "baz"]
+
+            # Get distinct combinations of multiple columns
+            distinct = psm.select_distinct(columns=["name_of_something", "number_of_things"])
 
         Args:
-            columns (Union[str, List[str]], optional): Columns to include in the result.
+            columns: Column name (str) or list of column names to get distinct
+                values for.
 
         Returns:
-            List[Any]: List of distinct results.
+            list[Any]: List of distinct results.
 
         Raises:
-            ValueError: If columns is not a list of strings or string.
+            ValueError: If columns is not a str or list of strings.
         """
         if not isinstance(columns, list) and not isinstance(columns, str):
             raise ValueError(
@@ -894,30 +1035,51 @@ class PipestatManager(MutableMapping):
     ) -> dict[str, Any]:
         """Select records with optional filtering and pagination.
 
+        Example:
+            # All records, default limit of 1000
+            result = psm.select_records()
+
+            # Filter by record identifier
+            result = psm.select_records(
+                filter_conditions=[
+                    {"key": "record_identifier", "operator": "eq", "value": "sample1"}
+                ],
+            )
+
+            # Filter with multiple conditions (AND logic)
+            result = psm.select_records(
+                columns=["number_of_things", "name_of_something"],
+                filter_conditions=[
+                    {"key": "number_of_things", "operator": "ge", "value": 10},
+                    {"key": "name_of_something", "operator": "like", "value": "%test%"},
+                ],
+            )
+
+            # Access results
+            for record in result["records"]:
+                print(record)
+
         Args:
-            columns (List[str], optional): Columns to include in the result.
-            filter_conditions (List[Dict[str, Any]], optional): Filter conditions.
-                Format: [{"key": "id", "operator": "eq", "value": 1}].
-                Supported operators:
-                - eq for ==
-                - lt for <
-                - ge for >=
-                - in for in_
-                - like for like
-            limit (int, optional): Maximum number of results to retrieve per page. Defaults to 1000.
-            cursor (int, optional): Cursor position to begin retrieving records.
-            bool_operator (str, optional): Perform filtering with AND or OR logic. Defaults to "AND".
-            level (str, optional): Pipeline level ("sample" or "project"). If specified, temporarily
-                overrides the pipeline_type for this operation. Defaults to None (use init pipeline_type).
-            flatten_extended (bool, optional): Whether to flatten _extended_data into records.
-                Defaults to True.
+            columns: Restrict output to these result keys. None returns all columns.
+            filter_conditions: List of filter dicts. Each dict has:
+                - "key" (str): column name to filter on
+                - "operator" (str): one of "eq" (==), "lt" (<), "ge" (>=),
+                  "in" (membership), "like" (SQL LIKE pattern)
+                - "value": value to compare against
+            limit: Maximum records per page. Defaults to 1000.
+            cursor: Cursor position for pagination (DB backend only).
+            bool_operator: Combine filters with "AND" (default) or "OR".
+            level: Pipeline level ("sample" or "project"). Temporarily overrides
+                the pipeline_type for this single call.
+            flatten_extended: If True (default), merges _extended_data fields
+                into each record dict (DB backend only).
 
         Returns:
-            Dict[str, Any]: Dictionary containing:
-                - total_size (int): Total number of records
-                - page_size (int): Number of records in current page
-                - next_page_token (int): Cursor for next page
-                - records (List[Dict]): List of record dictionaries
+            dict with keys:
+                - "total_size" (int): total number of matching records
+                - "page_size" (int): number of records in this page
+                - "next_page_token" (int | None): cursor for next page, or None
+                - "records" (list[dict]): list of record dicts
         """
         # Temporarily swap level if specified
         orig_type = None
@@ -958,20 +1120,41 @@ class PipestatManager(MutableMapping):
         result_identifier: str | list[str] | None = None,
         level: str | None = None,
     ) -> Any | dict[str, Any]:
-        """Retrieve a single record.
+        """Retrieve results for a single record.
+
+        Return type depends on result_identifier:
+        - None: returns the full record as a dict.
+        - str: returns that single result's value directly (unwrapped).
+        - list[str]: returns a dict with only the requested keys.
+
+        Example:
+            # Full record
+            psm.retrieve_one(record_identifier="sample1")
+            # Returns: {"number_of_things": 42, "name_of_something": "foo"}
+
+            # Single result (unwrapped scalar)
+            psm.retrieve_one(record_identifier="sample1", result_identifier="number_of_things")
+            # Returns: 42
+
+            # Multiple specific results
+            psm.retrieve_one(record_identifier="sample1", result_identifier=["number_of_things", "name_of_something"])
+            # Returns: {"number_of_things": 42, "name_of_something": "foo"}
 
         Args:
-            record_identifier (str, optional): Single record_identifier.
-            result_identifier (Union[str, List[str]], optional): Single result_identifier or list of result identifiers.
-            level (str, optional): Pipeline level ("sample" or "project"). If specified, temporarily
-                overrides the pipeline_type for this operation. Defaults to None (use init pipeline_type).
+            record_identifier: Record to retrieve. If None, uses the
+                record_identifier set at init time.
+            result_identifier: Single result key (str), list of keys, or None
+                for all results.
+            level: Pipeline level ("sample" or "project"). Temporarily overrides
+                the pipeline_type for this single call.
 
         Returns:
-            Union[Any, Dict[str, Any]]: A mapping with filtered results reported for the record.
+            Any: The single result value when result_identifier is a str.
+            dict[str, Any]: Record dict when result_identifier is None or a list.
 
         Raises:
-            RecordNotFoundError: If the record or results are not found.
-            ValueError: If result_identifier is not a str or list[str].
+            RecordNotFoundError: If the record does not exist.
+            ValueError: If result_identifier is not a str, list[str], or None.
         """
         record_identifier = self._resolve_record_identifier(record_identifier)
 
@@ -1030,14 +1213,31 @@ class PipestatManager(MutableMapping):
         record_identifier: str = None,
         result_identifier: str | list[str] | None = None,
     ) -> Any | dict[str, Any]:
-        """Retrieve a single record's history.
+        """Retrieve the overwrite history for a record's results.
+
+        Example:
+            # Get all history for a record
+            history = psm.retrieve_history(record_identifier="sample1")
+            # Returns: {"number_of_things": [{"value": 10, "date": "2024-01-01"}, ...]}
+
+            # Get history for a specific result
+            history = psm.retrieve_history(
+                record_identifier="sample1",
+                result_identifier="number_of_things",
+            )
+
+        History is recorded when results are overwritten with history_enabled=True
+        (the default in report()).
 
         Args:
-            record_identifier (str, optional): Single record_identifier.
-            result_identifier (Union[str, List[str]], optional): Single result_identifier or list of result identifiers.
+            record_identifier: Record to get history for. If None, uses the
+                record_identifier set at init time.
+            result_identifier: Single result key (str), list of keys, or None
+                for all results' history.
 
         Returns:
-            Dict[str, Any]: A mapping with filtered historical results.
+            dict[str, Any]: Mapping of result identifiers to their historical values.
+                Empty dict if no history is available.
         """
 
         record_identifier = self._resolve_record_identifier(record_identifier)
@@ -1099,14 +1299,34 @@ class PipestatManager(MutableMapping):
         record_identifiers: list[str],
         result_identifier: str | None = None,
     ) -> Any | dict[str, Any]:
-        """Retrieve multiple records.
+        """Retrieve results for multiple records at once.
+
+        Example:
+            result = psm.retrieve_many(
+                record_identifiers=["sample1", "sample2", "sample3"],
+            )
+            for record in result["records"]:
+                print(record)
+
+            # Retrieve a specific result across multiple records
+            result = psm.retrieve_many(
+                record_identifiers=["sample1", "sample2"],
+                result_identifier="number_of_things",
+            )
+
+        Uses select_records() internally with an "in" filter on record_identifier.
 
         Args:
-            record_identifiers (List[str]): List of record identifiers.
-            result_identifier (str, optional): Single result_identifier to filter results.
+            record_identifiers: List of record identifiers to retrieve.
+            result_identifier: Single result key to filter results. If None,
+                returns all results for each record.
 
         Returns:
-            Dict[str, Any]: A mapping with filtered results reported for the records.
+            dict[str, Any]: Same structure as select_records(): contains
+                "total_size", "page_size", "next_page_token", and "records" keys.
+
+        Raises:
+            RecordNotFoundError: If none of the specified records exist.
         """
 
         filter = {
@@ -1120,7 +1340,7 @@ class PipestatManager(MutableMapping):
             result = self.select_records(filter_conditions=[filter])
 
         if len(result["records"]) == 0:
-            RecordNotFoundError(f"Records, '{record_identifiers}',  not found")
+            raise RecordNotFoundError(f"Records, '{record_identifiers}', not found")
         else:
             return result
 
@@ -1130,27 +1350,50 @@ class PipestatManager(MutableMapping):
         status_identifier: str,
         record_identifier: str = None,
     ) -> None:
-        """Set pipeline run status.
+        """Set the pipeline run status for a record.
 
-        The status identifier needs to match one of identifiers specified in the status schema.
-        A basic, ready to use, status schema is shipped with this package.
+        Example:
+            psm.set_status(record_identifier="sample1", status_identifier="running")
+            psm.set_status(record_identifier="sample1", status_identifier="completed")
+
+        Built-in status identifiers (from the default status schema):
+            - "running": the pipeline is running
+            - "completed": the pipeline has completed
+            - "failed": the pipeline has failed
+            - "waiting": the pipeline is waiting
+            - "partial": the pipeline stopped before completion point
+
+        Custom status schemas can define additional identifiers.
 
         Args:
-            status_identifier (str): Status to set, one of statuses defined in the status schema.
-            record_identifier (str, optional): Sample_level record identifier to set the pipeline status for.
+            status_identifier: Status to set. Must match an identifier in the
+                status schema.
+            record_identifier: Record to set status for. If None, uses the
+                record_identifier set at init time.
+
+        Raises:
+            UnrecognizedStatusError: If status_identifier is not in the status schema.
         """
         r_id = self._resolve_record_identifier(record_identifier)
         self.backend.set_status(status_identifier, r_id)
 
     @require_backend
     def link(self, link_dir: str) -> str | None:
-        """Create a link structure such that results are organized by type.
+        """Create a symlink directory structure organizing results by type.
+
+        Example:
+            linked_path = psm.link(link_dir="/path/to/links")
+            # Creates: /path/to/links/<result_type>/<record_id>_<filename>
+
+        Creates symlinks to file and image results, grouped by result type,
+        making it easy to browse outputs across records.
 
         Args:
-            link_dir (str): Path to desired symlink output directory.
+            link_dir: Path to the desired symlink output directory.
 
         Returns:
-            Union[str, None]: Path to symlink directory or None.
+            str | None: Path to the symlink directory, or None if no
+                linkable results exist.
         """
 
         self.check_multi_results()
@@ -1169,18 +1412,33 @@ class PipestatManager(MutableMapping):
     ) -> str | None:
         """Build a browsable HTML report for reported results.
 
+        Example:
+            # Generate a table-based report
+            report_path = psm.summarize(output_dir="/path/to/output")
+            # Returns: "/path/to/output/default_pipeline_name/stats_summary.html"
+
+            # Generate an image gallery report
+            report_path = psm.summarize(output_dir="/path/to/output", mode="gallery")
+
+            # Generate a portable ZIP archive
+            report_path = psm.summarize(output_dir="/path/to/output", portable=True)
+
         Args:
-            looper_samples (list, optional): List of looper Samples from PEP.
-            amendment (str, optional): Name indicating amendment to use.
-            portable (bool, optional): Moves figures and report files to directory for easy sharing. Defaults to False.
-            output_dir (str, optional): Overrides output_dir set during pipestatManager creation.
-            mode (str, optional): Report mode - "table" (default) or "gallery" for image-centric view.
+            looper_samples: List of looper Sample objects from a PEP. Used to
+                enrich the report with sample metadata.
+            amendment: PEP amendment name to use.
+            portable: If True, copies figures into the report directory and
+                produces a ZIP archive for easy sharing. Defaults to False.
+            output_dir: Override the output_dir set during PipestatManager creation.
+            mode: Report mode -- "table" (default) for tabular layout, or
+                "gallery" for image-centric view.
 
         Returns:
-            Union[str, None]: Path to the generated report or None.
+            str | None: Path to the generated HTML report (or ZIP if portable),
+                or None if generation fails.
 
         Raises:
-            PipestatSummarizeError: If no results are found at the specified backend.
+            PipestatSummarizeError: If no results are found at the backend.
         """
 
         if output_dir:
@@ -1231,13 +1489,20 @@ class PipestatManager(MutableMapping):
         self,
         output_dir: str | None = None,
     ) -> list[str]:
-        """Generate stats (.tsv) and object (.yaml) files.
+        """Generate stats (.tsv) and object (.yaml) summary files.
+
+        Example:
+            paths = psm.table(output_dir="/path/to/output")
+            # Returns: ["/path/to/output/stats.tsv", "/path/to/output/objects.yaml"]
+
+        Produces a TSV file of scalar results and a YAML file of complex
+        (file/image/object) results.
 
         Args:
-            output_dir (str, optional): Overrides output_dir set during pipestatManager creation.
+            output_dir: Override the output_dir set during PipestatManager creation.
 
         Returns:
-            List[str]: List containing output file paths of stats and objects.
+            list[str]: File paths of the generated stats and objects files.
         """
         if output_dir:
             self.cfg[OUTPUT_DIR] = output_dir
@@ -1527,11 +1792,18 @@ class PipestatManager(MutableMapping):
 
 
 class SamplePipestatManager(PipestatManager):
+    """PipestatManager pre-configured with pipeline_type="sample"."""
+
     def __init__(self, **kwargs) -> None:
         PipestatManager.__init__(self, pipeline_type="sample", **kwargs)
 
 
 class ProjectPipestatManager(PipestatManager):
+    """PipestatManager pre-configured with pipeline_type="project".
+
+    record_identifier defaults to project_name if not provided.
+    """
+
     def __init__(self, **kwargs) -> None:
         PipestatManager.__init__(self, pipeline_type="project", **kwargs)
 

@@ -144,7 +144,7 @@ class FileBackend(PipestatBackend):
             int: Number of records.
         """
 
-        return len(self._data[self.pipeline_name])
+        return len(self._data[self.pipeline_name][self.pipeline_type])
 
     def get_flag_file(
         self, record_identifier: Optional[str] = None
