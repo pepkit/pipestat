@@ -4,6 +4,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [0.13.0] - Unknown
 ### Changed
+- Renamed `PipestatBoss` to `PipestatDualManager` with `.sample`/`.project` attributes (replaces `.samplemanager`/`.projectmanager`)
+- Removed `MutableMapping` inheritance from `PipestatManager`; fixed `__len__` and `__iter__` semantics to operate on records
+- Added `__contains__` method for `record_identifier in psm` checks
+- Added class hierarchy documentation in module docstring
+- Reframed as general-purpose pipeline results manager (updated keywords, classifiers, README)
 - Migrate from `FutureYAMLConfigManager` to canonical `YAMLConfigManager` imports for yacman v1 compatibility
 - Bump yacman requirement to >=0.9.5
 
