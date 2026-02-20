@@ -1,4 +1,10 @@
-"""Infer pipestat schema from results file."""
+"""Infer pipestat schema from results file.
+
+CLI usage::
+
+    pipestat infer-schema -f results.yaml -o schema.yaml
+    pipestat infer-schema -f results.yaml --level sample --strict
+"""
 
 import os
 from collections import defaultdict
@@ -100,7 +106,7 @@ def infer_schema(
             else:
                 chosen_type = list(types.keys())[0]
 
-            schema_items[key] = _type_to_schema(chosen_type)
+            schema_items[key] = _type_to_schema(chosen_type, key=key)
 
         # Use correct key name for schema section
         section_key = "samples" if proc_level == "sample" else "project"
@@ -147,15 +153,17 @@ def _infer_type(value: Any) -> str:
     return "string"  # fallback
 
 
-def _type_to_schema(type_name: str) -> dict:
+def _type_to_schema(type_name: str, key: str = "") -> dict:
     """Convert inferred type name to JSON Schema dict.
 
     Args:
         type_name: Inferred type name.
+        key: Result key name (used for description placeholder).
 
     Returns:
         dict: JSON Schema representation.
     """
+    desc = f"Auto-inferred {type_name} result"
     if type_name == "image":
         return {
             "type": "object",
@@ -166,6 +174,7 @@ def _type_to_schema(type_name: str) -> dict:
                 "title": {"type": "string"},
             },
             "required": ["path", "title"],
+            "description": desc,
         }
     if type_name == "file":
         return {
@@ -176,5 +185,6 @@ def _type_to_schema(type_name: str) -> dict:
                 "title": {"type": "string"},
             },
             "required": ["path", "title"],
+            "description": desc,
         }
-    return {"type": type_name}
+    return {"type": type_name, "description": desc}

@@ -8,7 +8,7 @@ import pytest
 from jsonschema import ValidationError
 from yacman import YAMLConfigManager
 
-from pipestat import PipestatBoss, PipestatManager, ProjectPipestatManager, SamplePipestatManager
+from pipestat import PipestatDualManager, PipestatManager, ProjectPipestatManager, SamplePipestatManager
 from pipestat.cli import main
 from pipestat.const import *
 from pipestat.exceptions import *
@@ -1138,9 +1138,9 @@ def test_manager_has_correct_status_schema_and_status_schema_source(
 
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
-class TestPipestatBoss:
+class TestPipestatDualManager:
     @pytest.mark.parametrize("backend", ["file", "db"])
-    def test_basic_pipestatboss(
+    def test_basic_pipestat_dual_manager(
         self,
         config_file_path,
         output_schema_html_report,
@@ -1149,8 +1149,6 @@ class TestPipestatBoss:
         values_sample,
         values_project,
     ):
-        pipeline_list = ["sample", "project"]
-
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report, database_only=False)
@@ -1161,16 +1159,16 @@ class TestPipestatBoss:
             )
             args.update(backend_data)
 
-            psb = PipestatBoss(pipeline_list=pipeline_list, **args)
+            psb = PipestatDualManager(**args)
 
             for i in values_sample:
                 for r, v in i.items():
-                    psb.samplemanager.report(record_identifier=r, values=v)
-                    psb.samplemanager.set_status(record_identifier=r, status_identifier="running")
+                    psb.sample.report(record_identifier=r, values=v)
+                    psb.sample.set_status(record_identifier=r, status_identifier="running")
             for i in values_project:
                 for r, v in i.items():
-                    psb.projectmanager.report(record_identifier=r, values=v)
-                    psb.projectmanager.set_status(record_identifier=r, status_identifier="running")
+                    psb.project.report(record_identifier=r, values=v)
+                    psb.project.set_status(record_identifier=r, status_identifier="running")
 
 
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
