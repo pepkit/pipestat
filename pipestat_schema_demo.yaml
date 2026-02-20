@@ -1,6 +1,11 @@
-number:
-  type: integer
-  description: "A number reported by the pipeline"
-name_of_something:
-  type: string
-  description: "Name of something reported by the pipeline"
+pipeline_name: demo_pipeline
+samples:
+  alignment_rate:
+    type: number
+    description: "Percentage of reads aligned"
+  output_file:
+    type: file
+    description: "A file produced by the pipeline"
+  output_image:
+    type: image
+    description: "An image produced by the pipeline"
