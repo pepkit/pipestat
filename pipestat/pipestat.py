@@ -144,15 +144,14 @@ class PipestatManager:
     retrieve those results through the same API.
 
     Quick start (file backend):
-        psm = PipestatManager(
-            results_file_path="results.yaml",
+        psm = PipestatManager.from_file(
+            "results.yaml",
             schema_path="output_schema.yaml",
         )
-        psm.report(
-            record_identifier="sample1",
-            values={"alignment_rate": 0.95},
-        )
-        result = psm.retrieve_one(record_identifier="sample1")
+        psm.report(record_identifier="sample1", values={"alignment_rate": 0.95})
+
+    From a config file (used by looper):
+        psm = PipestatManager.from_config("pipestat_config.yaml")
 
     Dict-style access is supported as shorthand:
         psm["sample1"] = {"alignment_rate": 0.95}
@@ -161,39 +160,154 @@ class PipestatManager:
 
     To auto-generate a schema from existing results, use the CLI:
         pipestat infer-schema -f results.yaml -o schema.yaml
+
+    Identity concepts across backends:
+
+    | | Sample + File | Sample + DB | Project + File | Project + DB |
+    |---|---|---|---|---|
+    | record_identifier | Sample key in YAML | Row key, scoped by project_name | Defaults to project_name | Row key, scoped by project_name |
+    | pipeline_name | Top-level YAML key | DB table name | Same | Same |
+    | project_name | Not functional (file = project) | Required column, namespaces records | Same as sample + file | Required, namespaces records |
+
+    File backend: One file = one project. No collision possible.
+    DB backend: One table = all projects. project_name column required to prevent collisions.
     """
+
+    @classmethod
+    def from_file(
+        cls,
+        results_file_path: str,
+        schema_path: str | None = None,
+        record_identifier: str | None = None,
+        pipeline_name: str | None = None,
+        pipeline_type: str = "sample",
+        project_name: str | None = None,
+        flag_file_dir: str | None = None,
+        validate_results: bool | None = None,
+        additional_properties: bool | None = None,
+        multi_pipelines: bool = False,
+    ) -> "PipestatManager":
+        """Create a PipestatManager backed by a YAML file.
+
+        This is the recommended way to create a file-backed manager.
+
+        Example:
+            psm = PipestatManager.from_file("results.yaml", schema_path="output_schema.yaml")
+            psm.report(record_identifier="sample1", values={"reads": 1000})
+
+        Args:
+            results_file_path: YAML file to store results in.
+            schema_path: Path to the output schema. If None, validation is auto-disabled.
+            record_identifier: Default record to operate on.
+            pipeline_name: Name for this pipeline.
+            pipeline_type: "sample" or "project". Defaults to "sample".
+            project_name: Name of the project. For file backends, used only for
+                metadata/display since the file path provides natural project separation.
+            flag_file_dir: Custom directory for status flag files.
+            validate_results: Whether to validate results against schema.
+                If None (default), auto-detects: True when schema_path is provided, False otherwise.
+            additional_properties: Override for allowing results not in schema.
+            multi_pipelines: Allow multiple pipelines in one file.
+
+        Returns:
+            PipestatManager backed by a YAML file.
+        """
+        # Auto-detect validate_results from schema presence
+        if validate_results is None:
+            validate_results = schema_path is not None
+        return cls(
+            schema_path=schema_path,
+            results_file_path=results_file_path,
+            record_identifier=record_identifier,
+            pipeline_name=pipeline_name,
+            pipeline_type=pipeline_type,
+            project_name=project_name,
+            flag_file_dir=flag_file_dir,
+            validate_results=validate_results,
+            additional_properties=additional_properties,
+            multi_pipelines=multi_pipelines,
+        )
+
+    @classmethod
+    def from_config(
+        cls,
+        config_file: str,
+        pipeline_type: str | None = None,
+        multi_pipelines: bool = False,
+    ) -> "PipestatManager":
+        """Create a PipestatManager from a pipestat configuration file.
+
+        The config file specifies backend, schema, and all other settings.
+        This is what looper uses.
+
+        Example:
+            psm = PipestatManager.from_config("pipestat_config.yaml")
+
+        Args:
+            config_file: Path to the pipestat config YAML file.
+            pipeline_type: "sample" or "project". Overrides config value if set.
+            multi_pipelines: Allow multiple pipelines in one file.
+
+        Returns:
+            PipestatManager configured from the config file.
+        """
+        return cls(
+            config_file=config_file,
+            pipeline_type=pipeline_type,
+            multi_pipelines=multi_pipelines,
+        )
+
+    @classmethod
+    def from_pephub(
+        cls,
+        pephub_path: str,
+        schema_path: str | None = None,
+        pipeline_name: str | None = None,
+        pipeline_type: str = "sample",
+    ) -> "PipestatManager":
+        """Create a PipestatManager backed by PEPhub.
+
+        Args:
+            pephub_path: PEPhub registry path.
+            schema_path: Path to the output schema.
+            pipeline_name: Name for this pipeline.
+            pipeline_type: "sample" or "project". Defaults to "sample".
+
+        Returns:
+            PipestatManager backed by PEPhub.
+        """
+        return cls(
+            pephub_path=pephub_path,
+            schema_path=schema_path,
+            pipeline_name=pipeline_name,
+            pipeline_type=pipeline_type,
+        )
 
     def __init__(
         self,
-        project_name: str | None = None,
-        record_identifier: str | None = None,
         schema_path: str | None = None,
         results_file_path: str | None = None,
-        database_only: bool | None = True,
+        record_identifier: str | None = None,
         config_file: str | None = None,
-        config_dict: dict | None = None,
-        flag_file_dir: str | None = None,
-        show_db_logs: bool = False,
-        pipeline_type: str | None = None,
         pipeline_name: str | None = None,
-        result_formatter: Callable = default_formatter,
-        multi_pipelines: bool = False,
-        output_dir: str | None = None,
+        pipeline_type: str | None = None,
+        project_name: str | None = None,
+        flag_file_dir: str | None = None,
         pephub_path: str | None = None,
-        validate_results: bool = True,
+        multi_pipelines: bool = False,
+        validate_results: bool | None = None,
         additional_properties: bool | None = None,
-        force_overwrite: bool = True,
     ) -> None:
         """Initialize the PipestatManager object.
 
         Create a results manager backed by a YAML file or database.
+        Prefer the classmethods from_file() or from_config() for most use cases.
 
         Minimal file-backend usage (no schema required):
 
             psm = PipestatManager(
                 results_file_path="results.yaml",
                 pipeline_name="my_pipeline",
-                validate_results=False,
             )
             psm.report(record_identifier="sample1", values={"my_result": 42})
 
@@ -205,30 +319,26 @@ class PipestatManager:
             )
 
         Args:
-            project_name (str, optional): Name of the project.
-            record_identifier (str, optional): Record identifier to report for. This creates
-                a weak bound to the record, which can be overridden in object method calls.
             schema_path (str, optional): Path to the output schema that formalizes the results structure.
             results_file_path (str, optional): YAML file to report into, if file is used as the object back-end.
-            database_only (bool, optional): Whether the reported data should not be stored in memory, but only in the database. Defaults to True.
+            record_identifier (str, optional): Record identifier to report for. This creates
+                a weak bound to the record, which can be overridden in object method calls.
             config_file (str, optional): Path to the configuration file.
-            config_dict (dict, optional): A mapping with the config file content.
-            flag_file_dir (str, optional): Path to directory containing flag files.
-            show_db_logs (bool, optional): Toggles showing database logs. Defaults to False.
-            pipeline_type (str, optional): "sample" or "project".
             pipeline_name (str, optional): Name of the current pipeline.
-            result_formatter (staticmethod, optional): Function for formatting result. Defaults to default_formatter.
-            multi_pipelines (bool, optional): Allows for running multiple pipelines for one file backend. Defaults to False.
-            output_dir (str, optional): Target directory for report generation via summarize and table generation via table.
+            pipeline_type (str, optional): "sample" or "project".
+            project_name (str, optional): Name of the project. Required for database backends
+                to prevent record collisions between projects sharing the same pipeline.
+                For file backends, the file path provides natural project separation, so
+                this parameter is optional and used only for metadata/display.
+                Can also be set via config file or PIPESTAT_PROJECT_NAME env var.
+            flag_file_dir (str, optional): Path to directory containing flag files.
             pephub_path (str, optional): Path to PEPHub registry.
-            validate_results (bool, optional): Whether to validate results against schema.
-                Set to False for schema-optional mode where any key-value pair can be
-                reported without a schema. Defaults to True.
+            multi_pipelines (bool, optional): Allows for running multiple pipelines for one file backend. Defaults to False.
+            validate_results (bool | None, optional): Whether to validate results against schema.
+                If None (default), auto-detects: True when schema_path is provided, False otherwise.
             additional_properties (bool | None, optional): Override for allowing results not in schema.
                 If None (default), uses schema's additionalProperties setting (defaults to True per JSON Schema).
                 If True/False, overrides the schema setting.
-            force_overwrite (bool, optional): Default for whether report() should overwrite existing results.
-                Can be overridden per-call. Defaults to True.
         """
 
         if record_identifier is not None and not record_identifier:
@@ -237,7 +347,10 @@ class PipestatManager:
         # Initialize the cfg dict as an attribute that holds all configuration data
         self.cfg = {}
 
-        self.cfg["force_overwrite"] = force_overwrite
+        # Auto-detect validate_results from schema presence if not explicitly set
+        if validate_results is None:
+            validate_results = schema_path is not None
+        self.cfg["force_overwrite"] = True
         self.cfg["validate_results"] = validate_results
         # Store the override value; will resolve from schema after schema is loaded
         self._additional_properties_override = additional_properties
@@ -247,9 +360,7 @@ class PipestatManager:
 
         self.cfg["config_path"] = select_config(config_file, ENV_VARS["config"])
 
-        if config_dict is not None:
-            self.cfg[CONFIG_KEY] = YAMLConfigManager.from_obj(entries=config_dict)
-        elif self.cfg["config_path"] is not None:
+        if self.cfg["config_path"] is not None:
             self.cfg[CONFIG_KEY] = YAMLConfigManager.from_yaml_file(
                 filepath=self.cfg["config_path"]
             )
@@ -300,6 +411,7 @@ class PipestatManager:
         else:
             self.cfg[PIPELINE_NAME] = DEFAULT_PIPELINE_NAME
 
+        # Resolve project_name from constructor arg, config, or env var
         self.cfg[PROJECT_NAME] = self.cfg[CONFIG_KEY].priority_get(
             "project_name", env_var=ENV_VARS["project_name"], override=project_name
         )
@@ -310,7 +422,10 @@ class PipestatManager:
             override=record_identifier,
         )
 
-        self.cfg[DB_ONLY_KEY] = database_only
+        # Resolve database_only from config, defaulting to True
+        self.cfg[DB_ONLY_KEY] = self.cfg[CONFIG_KEY].priority_get(
+            "database_only", default=True
+        )
 
         self.cfg[PIPELINE_TYPE] = self.cfg[CONFIG_KEY].priority_get(
             "pipeline_type", default="sample", override=pipeline_type
@@ -342,16 +457,19 @@ class PipestatManager:
         else:
             make_subdirectories(self.cfg[FILE_KEY])
 
-        self.cfg[RESULT_FORMATTER] = result_formatter
+        self.cfg[RESULT_FORMATTER] = default_formatter
 
         self.cfg[MULTI_PIPELINE] = multi_pipelines
 
         self.cfg["multi_result_files"] = None
 
-        self.cfg[OUTPUT_DIR] = self.cfg[CONFIG_KEY].priority_get("output_dir", override=output_dir)
+        self.cfg[OUTPUT_DIR] = self.cfg[CONFIG_KEY].priority_get("output_dir")
 
         # Note: validate_results=False now works with all backends.
         # DB backend stores additional properties in _extended_data JSONB column.
+
+        # Resolve show_db_logs from environment variable
+        show_db_logs = os.environ.get("PIPESTAT_SHOW_DB_LOGS", "").lower() == "true"
 
         if self.cfg[FILE_KEY]:
             self.initialize_filebackend(record_identifier, results_file_path, flag_file_dir)
@@ -622,6 +740,12 @@ class PipestatManager:
             PipestatDatabaseError: If database configuration is invalid.
         """
         _LOGGER.debug("Determined database as backend")
+        if not self.cfg.get(PROJECT_NAME):
+            raise ValueError(
+                "project_name is required when using a database backend. "
+                "Set it via the project_name constructor parameter, config file, "
+                "or PIPESTAT_PROJECT_NAME environment variable."
+            )
         if self.cfg[SCHEMA_KEY] is None:
             raise SchemaNotFoundError("Output schema must be supplied for DB backends.")
         if CFG_DATABASE_KEY not in self.cfg[CONFIG_KEY]:
@@ -642,6 +766,7 @@ class PipestatManager:
         self.backend = DBBackend(
             record_identifier,
             self.cfg[PIPELINE_NAME],
+            self.cfg[PROJECT_NAME],
             show_db_logs,
             self.cfg[PIPELINE_TYPE],
             self.cfg[SCHEMA_KEY],
@@ -716,6 +841,19 @@ class PipestatManager:
 
         r_id = self._resolve_record_identifier(record_identifier)
         return self.backend.get_status(record_identifier=r_id)
+
+    @require_backend
+    def list_projects(self) -> list[str]:
+        """List all projects that have reported results in the database.
+
+        Only meaningful for database backends. For file backends, each file
+        IS a project, so this returns a single-element list containing the
+        current pipeline_name.
+
+        Returns:
+            list[str]: Sorted list of project names.
+        """
+        return self.backend.list_projects()
 
     @require_backend
     def list_recent_results(
@@ -1709,6 +1847,34 @@ class PipestatManager:
         return [k for k, v in self.result_schemas.items() if v.get("highlight") is True]
 
     @property
+    def force_overwrite(self) -> bool:
+        """Default for whether report() should overwrite existing results.
+
+        Can be overridden per-call via report(force_overwrite=...).
+
+        Returns:
+            bool: True if results are overwritten by default.
+        """
+        return self.cfg.get("force_overwrite", True)
+
+    @force_overwrite.setter
+    def force_overwrite(self, value: bool) -> None:
+        self.cfg["force_overwrite"] = value
+
+    @property
+    def result_formatter(self) -> Callable:
+        """Function for formatting results into display strings.
+
+        Returns:
+            Callable: The current result formatter function.
+        """
+        return self.cfg.get(RESULT_FORMATTER, default_formatter)
+
+    @result_formatter.setter
+    def result_formatter(self, value: Callable) -> None:
+        self.cfg[RESULT_FORMATTER] = value
+
+    @property
     def output_dir(self) -> str:
         """Output directory for report and stats generation.
 
@@ -1716,6 +1882,10 @@ class PipestatManager:
             str: Path to output_dir.
         """
         return self.cfg[OUTPUT_DIR]
+
+    @output_dir.setter
+    def output_dir(self, value: str) -> None:
+        self.cfg[OUTPUT_DIR] = value
 
     @property
     def pipeline_name(self) -> str:

@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from logging import getLogger
 from typing import Any, Dict, Generator, List, NoReturn, Optional, Tuple, Union
 
+from sqlalchemy import inspect as sa_inspect
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel import select as sql_select
 
@@ -28,6 +29,7 @@ class DBBackend(PipestatBackend):
         self,
         record_identifier: Optional[str] = None,
         pipeline_name: Optional[str] = None,
+        project_name: Optional[str] = None,
         show_db_logs: bool = False,
         pipeline_type: Optional[str] = False,
         parsed_schema: Optional[str] = None,
@@ -38,10 +40,19 @@ class DBBackend(PipestatBackend):
     ):
         """Class representing a Database backend.
 
+        Note: The DB backend stores all projects in a single table.
+        project_name is a required column that namespaces records, preventing
+        collisions when multiple projects share the same pipeline and database.
+        Without project_name, records with the same record_identifier from
+        different projects would overwrite each other.
+
         Args:
             record_identifier (str): Record identifier to report for. This creates a weak bound to the record,
                 which can be overridden in this object method calls.
             pipeline_name (str): Name of pipeline associated with result.
+            project_name (str): Project name for namespacing records. Required for DB backend
+                to prevent collisions between different projects sharing the same pipeline
+                and database. Each query filters by this value.
             show_db_logs (bool): Defaults to False, toggles showing database logs.
             pipeline_type (str): "sample" or "project".
             parsed_schema (str): Results output schema. Used to construct DB columns.
@@ -54,6 +65,7 @@ class DBBackend(PipestatBackend):
         super().__init__(pipeline_type)
         _LOGGER.debug(f"Initializing DBBackend for pipeline '{pipeline_name}'")
         self.pipeline_name = pipeline_name
+        self.project_name = project_name
         self.pipeline_type = pipeline_type or "sample"
         self.record_identifier = record_identifier
         self.parsed_schema = parsed_schema
@@ -67,7 +79,22 @@ class DBBackend(PipestatBackend):
         self.history_table = self._create_history_orms(pipeline_type=pipeline_type)
 
         self.table_name = list(self.orms.keys())[0]
+
+        # Check if table already exists (before create_all) so we can validate schema
+        inspector = sa_inspect(self._engine)
+        table_existed = inspector.has_table(self.table_name)
+
         SQLModel.metadata.create_all(self._engine)
+
+        # If table pre-existed, verify it has the project_name column
+        if table_existed:
+            columns = [c["name"] for c in inspector.get_columns(self.table_name)]
+            if "project_name" not in columns:
+                raise PipestatDatabaseError(
+                    f"Table '{self.table_name}' is missing the 'project_name' column. "
+                    "This column is now required. Drop and recreate the table, or run: "
+                    f"ALTER TABLE {self.table_name} ADD COLUMN project_name VARCHAR;"
+                )
 
     def check_record_exists(
         self,
@@ -104,6 +131,8 @@ class DBBackend(PipestatBackend):
         mod = self.get_model(table_name=self.table_name)
         with self.session as s:
             stmt = sql_select(mod)
+            if self.project_name:
+                stmt = stmt.where(getattr(mod, "project_name") == self.project_name)
             records = s.exec(stmt).all()
             return len(records)
 
@@ -241,11 +270,12 @@ class DBBackend(PipestatBackend):
                 record_identifier=record_identifier,
             ):
                 with self.session as s:
-                    records = s.exec(
-                        sql_select(ORMClass).where(
-                            getattr(ORMClass, "record_identifier") == record_identifier
-                        )
+                    stmt = sql_select(ORMClass).where(
+                        getattr(ORMClass, "record_identifier") == record_identifier
                     )
+                    if self.project_name:
+                        stmt = stmt.where(getattr(ORMClass, "project_name") == self.project_name)
+                    records = s.exec(stmt)
                     if rm_record is True:
                         self.remove_record(
                             record_identifier=record_identifier,
@@ -297,15 +327,12 @@ class DBBackend(PipestatBackend):
                     record_identifier=record_identifier,
                 ):
                     with self.session as s:
-                        source_record_id = (
-                            s.exec(
-                                sql_select(ORMClass).where(
-                                    getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
-                                )
-                            )
-                            .first()
-                            .id
+                        stmt = sql_select(ORMClass).where(
+                            getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
                         )
+                        if self.project_name:
+                            stmt = stmt.where(getattr(ORMClass, "project_name") == self.project_name)
+                        source_record_id = s.exec(stmt).first().id
                         linked_records = s.exec(
                             sql_select(ORMClass_History).where(
                                 getattr(ORMClass_History, "source_record_id") == source_record_id
@@ -315,11 +342,12 @@ class DBBackend(PipestatBackend):
                             s.delete(r)
                         s.commit()
                     with self.session as s:
-                        record = s.exec(
-                            sql_select(ORMClass).where(
-                                getattr(ORMClass, "record_identifier") == record_identifier
-                            )
-                        ).first()
+                        stmt = sql_select(ORMClass).where(
+                            getattr(ORMClass, "record_identifier") == record_identifier
+                        )
+                        if self.project_name:
+                            stmt = stmt.where(getattr(ORMClass, "project_name") == self.project_name)
+                        record = s.exec(stmt).first()
                         s.delete(record)
                         s.commit()
                 else:
@@ -377,6 +405,8 @@ class DBBackend(PipestatBackend):
             ORMClass = self.get_model(table_name=self.table_name)
             ORMClass_History = self.history_table[list(self.history_table.keys())[0]]
             values.update({RECORD_IDENTIFIER: record_identifier})
+            if self.project_name:
+                values.update({"project_name": self.project_name})
 
             if not self.check_record_exists(
                 record_identifier=record_identifier,
@@ -390,11 +420,12 @@ class DBBackend(PipestatBackend):
                     s.commit()
             else:
                 with self.session as s:
-                    record_to_update = s.exec(
-                        sql_select(ORMClass).where(
-                            getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
-                        )
-                    ).first()
+                    stmt = sql_select(ORMClass).where(
+                        getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
+                    )
+                    if self.project_name:
+                        stmt = stmt.where(getattr(ORMClass, "project_name") == self.project_name)
+                    record_to_update = s.exec(stmt).first()
                     old_record_attributes = record_to_update.model_dump()
                     values.update({MODIFIED_TIME: datetime.datetime.now()})
                     for result_id, result_value in values.items():
@@ -404,11 +435,12 @@ class DBBackend(PipestatBackend):
                     if "id" in old_record_attributes:
                         del old_record_attributes["id"]
                     with self.session as s:
-                        source_record = s.exec(
-                            sql_select(ORMClass).where(
-                                getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
-                            )
-                        ).first()
+                        stmt = sql_select(ORMClass).where(
+                            getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
+                        )
+                        if self.project_name:
+                            stmt = stmt.where(getattr(ORMClass, "project_name") == self.project_name)
+                        source_record = s.exec(stmt).first()
                         new_record_history = ORMClass_History(**old_record_attributes)
                         new_record_history.source_record_id = source_record.id
                         s.add(new_record_history)
@@ -460,6 +492,14 @@ class DBBackend(PipestatBackend):
                     "records": List[Dict[{key, Any}]],
                 }
         """
+
+        # Auto-inject project_name filter to scope queries to the current project
+        if self.project_name:
+            project_filter = {"key": "project_name", "operator": "eq", "value": self.project_name}
+            if filter_conditions is None:
+                filter_conditions = [project_filter]
+            else:
+                filter_conditions = list(filter_conditions) + [project_filter]
 
         ORM = self.get_model(table_name=self.table_name)
 
@@ -571,15 +611,12 @@ class DBBackend(PipestatBackend):
             raise RecordNotFoundError(f"{record_identifier} does not exist.")
         else:
             with self.session as s:
-                source_record_id = (
-                    s.exec(
-                        sql_select(ORMClass).where(
-                            getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
-                        )
-                    )
-                    .first()
-                    .id
+                stmt = sql_select(ORMClass).where(
+                    getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
                 )
+                if self.project_name:
+                    stmt = stmt.where(getattr(ORMClass, "project_name") == self.project_name)
+                source_record_id = s.exec(stmt).first().id
                 if columns is not None:
                     try:
                         statement = sql_select(
@@ -650,9 +687,24 @@ class DBBackend(PipestatBackend):
         ORM = self.get_model(table_name=self.table_name)
         with self.session as s:
             list_columns = [getattr(ORM, column) for column in columns]
-            result = s.exec(sql_select(*list_columns).distinct()).all()
+            stmt = sql_select(*list_columns).distinct()
+            if self.project_name:
+                stmt = stmt.where(getattr(ORM, "project_name") == self.project_name)
+            result = s.exec(stmt).all()
 
         return result
+
+    def list_projects(self) -> list[str]:
+        """List all distinct project names in the database table.
+
+        Returns:
+            list[str]: Sorted list of project names found in the table.
+        """
+        ORM = self.get_model(table_name=self.table_name)
+        with self.session as s:
+            stmt = sql_select(getattr(ORM, "project_name")).distinct()
+            results = s.exec(stmt).all()
+        return sorted([r for r in results if r is not None])
 
     def set_status(
         self,

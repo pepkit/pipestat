@@ -73,7 +73,7 @@ class TestSplitClasses:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -111,7 +111,7 @@ class TestSplitClasses:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -161,7 +161,7 @@ class TestSplitClasses:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=output_schema_html_report, database_only=False)
+            args = dict(schema_path=output_schema_html_report)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -214,7 +214,7 @@ class TestReporting:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -265,7 +265,7 @@ class TestReporting:
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             args = dict(
-                schema_path=schema_file_path, pipeline_type=pipeline_type, database_only=False
+                schema_path=schema_file_path, pipeline_type=pipeline_type
             )
             backend_data = (
                 {"config_file": config_file_path}
@@ -334,7 +334,7 @@ class TestReporting:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -374,7 +374,7 @@ class TestReporting:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -405,7 +405,7 @@ class TestReporting:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -469,7 +469,7 @@ class TestReporting:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -554,7 +554,7 @@ class TestReporting:
         """Simply test that we can pass the formatting functions and the returned result contains reported results"""
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -594,7 +594,7 @@ class TestRetrieval:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -637,7 +637,7 @@ class TestRetrieval:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -669,7 +669,7 @@ class TestRetrieval:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -701,7 +701,7 @@ class TestRetrieval:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -824,7 +824,7 @@ class TestRemoval:
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             vals = [val_dict]
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -860,7 +860,7 @@ class TestRemoval:
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             vals = [val_dict]
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -955,7 +955,6 @@ class TestNoRecordID:
             args = dict(
                 schema_path=schema_file_path,
                 record_identifier=CONST_REC_ID,
-                database_only=False,
             )
             backend_data = (
                 {"config_file": config_file_path}
@@ -1153,7 +1152,7 @@ class TestPipestatDualManager:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=output_schema_html_report, database_only=False)
+            args = dict(schema_path=output_schema_html_report)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1187,7 +1186,7 @@ class TestHTMLReport:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=output_schema_html_report, database_only=False)
+            args = dict(schema_path=output_schema_html_report)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1215,7 +1214,7 @@ class TestHTMLReport:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=output_schema_html_report, database_only=False)
+            args = dict(schema_path=output_schema_html_report)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1238,7 +1237,7 @@ class TestHTMLReport:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=output_schema_html_report, database_only=False)
+            args = dict(schema_path=output_schema_html_report)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1270,7 +1269,7 @@ class TestHTMLReport:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=output_schema_html_report, database_only=False)
+            args = dict(schema_path=output_schema_html_report)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1302,7 +1301,7 @@ class TestHTMLReport:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=output_schema_html_report, database_only=False)
+            args = dict(schema_path=output_schema_html_report)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1338,7 +1337,7 @@ class TestHTMLReport:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=output_schema_html_report, database_only=False)
+            args = dict(schema_path=output_schema_html_report)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1394,7 +1393,7 @@ class TestTableCreation:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=output_schema_html_report, database_only=False)
+            args = dict(schema_path=output_schema_html_report)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1422,7 +1421,7 @@ class TestTableCreation:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=output_schema_html_report, database_only=False)
+            args = dict(schema_path=output_schema_html_report)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1461,7 +1460,7 @@ class TestPipestatCLI:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1578,7 +1577,7 @@ class TestFileTypeLinking:
         with NamedTemporaryFile() as f, TemporaryDirectory() as d, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
             temp_dir = d
-            args = dict(schema_path=output_schema_as_JSON_schema, database_only=False)
+            args = dict(schema_path=output_schema_as_JSON_schema)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1626,7 +1625,7 @@ class TestTimeStamp:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1677,7 +1676,7 @@ class TestSelectRecords:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1748,7 +1747,7 @@ class TestSelectRecords:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1787,7 +1786,7 @@ class TestSelectRecords:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1817,7 +1816,7 @@ class TestSelectRecords:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1847,7 +1846,7 @@ class TestSelectRecords:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1877,7 +1876,7 @@ class TestSelectRecords:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1931,7 +1930,7 @@ class TestSelectRecords:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -1971,7 +1970,7 @@ class TestSelectRecords:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -2016,7 +2015,7 @@ class TestSelectRecords:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -2046,7 +2045,7 @@ class TestSelectRecords:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -2076,7 +2075,7 @@ class TestSelectRecords:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -2108,7 +2107,7 @@ class TestSelectRecords:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -2139,7 +2138,7 @@ class TestSelectRecords:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -2171,7 +2170,7 @@ class TestSelectRecords:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -2219,7 +2218,7 @@ class TestSelectRecords:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -2265,7 +2264,7 @@ class TestPipestatIter:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -2306,7 +2305,7 @@ class TestMultiResultFiles:
             temp_dir = d
             single_results_file_path = "{record_identifier}_results.yaml"
             results_file_path = os.path.join(temp_dir, single_results_file_path)
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = {"results_file_path": results_file_path}
             args.update(backend_data)
 
@@ -2326,7 +2325,7 @@ class TestMultiResultFiles:
             temp_dir = d
             single_results_file_path = "{record_identifier}_results.yaml"
             results_file_path = os.path.join(temp_dir, single_results_file_path)
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             n = 3
 
             for i in range_values[:n]:
@@ -2353,7 +2352,7 @@ class TestMultiResultFiles:
             temp_dir = d
             single_results_file_path = "{record_identifier}/results.yaml"
             results_file_path = os.path.join(temp_dir, single_results_file_path)
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             n = 3
 
             for i in range_values[:n]:
@@ -2393,7 +2392,7 @@ class TestSetIndexTrue:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=output_schema_with_index, database_only=False)
+            args = dict(schema_path=output_schema_with_index)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -2434,7 +2433,7 @@ class TestRetrieveHistory:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -2482,7 +2481,7 @@ class TestRetrieveHistory:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -2537,7 +2536,7 @@ class TestRetrieveHistory:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path, database_only=False)
+            args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -2894,7 +2893,6 @@ class TestBugFixes:
         psm = SamplePipestatManager(
             schema_path=schema_file_path,
             results_file_path=str(tmp_path / "results.yaml"),
-            database_only=False,
         )
         psm.report(record_identifier="existing_sample", values={"name_of_something": "val"})
         with pytest.raises(RecordNotFoundError):
@@ -2905,7 +2903,6 @@ class TestBugFixes:
         psm = SamplePipestatManager(
             schema_path=schema_file_path,
             results_file_path=str(tmp_path / "results.yaml"),
-            database_only=False,
         )
         assert len(psm) == 0
         psm.report(record_identifier="sample1", values={"name_of_something": "a"})
@@ -2918,7 +2915,6 @@ class TestBugFixes:
         psm = SamplePipestatManager(
             schema_path=schema_file_path,
             results_file_path=str(tmp_path / "results.yaml"),
-            database_only=False,
         )
         psm.report(record_identifier="s1", values={"name_of_something": "a"})
         psm.report(record_identifier="s2", values={"name_of_something": "b"})
@@ -2930,7 +2926,6 @@ class TestBugFixes:
         psm = SamplePipestatManager(
             schema_path=schema_file_path,
             results_file_path=str(tmp_path / "results.yaml"),
-            database_only=False,
         )
         assert psm.report.__name__ == "report"
         assert psm.count_records.__name__ == "count_records"

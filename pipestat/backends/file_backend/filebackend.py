@@ -37,6 +37,11 @@ class FileBackend(PipestatBackend):
         """
         Class representing a File backend.
 
+        Note: The file backend uses one YAML file per project. The file path
+        itself provides natural project separation, so project_name is not
+        needed as a functional parameter for the file backend. It is stored
+        only for metadata and display purposes.
+
         Args:
             results_file_path (str): YAML file to report into, if file is used as the object back-end.
             record_identifier (str, optional): Record identifier to report for. This creates a weak bound to the record, which can be overridden in this object method calls.
@@ -501,6 +506,18 @@ class FileBackend(PipestatBackend):
         # make sure that the order is correct
         unique_lists = list(set(final_values_list))
         return unique_lists
+
+    def list_projects(self) -> list[str]:
+        """List projects in this file backend.
+
+        File backend uses one file per project -- the file IS the project
+        boundary. This returns a single-element list with the current
+        project context.
+
+        Returns:
+            list[str]: Single-element list with the project name.
+        """
+        return [self.pipeline_name]
 
     def select_records(
         self,

@@ -1,9 +1,10 @@
 """Pipestat: a pipeline results manager.
 
 Classes:
-    PipestatManager - The core class. Use this directly for most cases.
-        Pass pipeline_type="sample" or pipeline_type="project" to control
-        what level of results you are managing.
+    PipestatManager - The core class. Recommended entry points:
+        PipestatManager.from_file("results.yaml", schema_path="schema.yaml")
+        PipestatManager.from_config("pipestat_config.yaml")
+        PipestatManager.from_pephub("databio/project:default")
 
     SamplePipestatManager - Convenience wrapper that sets pipeline_type="sample".
         Equivalent to PipestatManager(pipeline_type="sample", ...).

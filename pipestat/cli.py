@@ -81,13 +81,23 @@ def main(test_args=None):
             # at least config or results_file was found, so simply pass
             pass
 
+    def _create_psm_from_args(args):
+        """Create PipestatManager from CLI args using the appropriate classmethod."""
+        if args.config:
+            return PipestatManager.from_config(
+                config_file=args.config,
+                pipeline_type=getattr(args, "pipeline_type", None),
+            )
+        else:
+            return PipestatManager.from_file(
+                results_file_path=args.results_file,
+                schema_path=getattr(args, "schema", None),
+                pipeline_type=getattr(args, "pipeline_type", None),
+                flag_file_dir=getattr(args, "flag_dir", None),
+            )
+
     if args.command == SUMMARIZE_CMD:
-        psm = PipestatManager(
-            schema_path=args.schema,
-            results_file_path=args.results_file,
-            config_file=args.config,
-            pipeline_type=args.pipeline_type,
-        )
+        psm = _create_psm_from_args(args)
         results_path = args.config or args.results_file
         portable = args.portable or False
         mode = getattr(args, "mode", "table") or "table"
@@ -97,11 +107,7 @@ def main(test_args=None):
         sys.exit(0)
 
     if args.command == LINK_CMD:
-        psm = PipestatManager(
-            schema_path=args.schema,
-            results_file_path=args.results_file,
-            config_file=args.config,
-        )
+        psm = _create_psm_from_args(args)
         linkdir = psm.link(link_dir=args.link_dir)
         _LOGGER.info(f"\nGenerating symlink directory at: {linkdir}\n")
         sys.exit(0)
@@ -118,14 +124,7 @@ def main(test_args=None):
         call_reader()
         sys.exit(0)
 
-    psm = PipestatManager(
-        schema_path=args.schema,
-        results_file_path=args.results_file,
-        config_file=args.config,
-        database_only=args.database_only,
-        flag_file_dir=args.flag_dir,
-        pipeline_type=args.pipeline_type,
-    )
+    psm = _create_psm_from_args(args)
     types_to_read_from_json = ["object"] + list(CANONICAL_TYPES.keys())
 
     # The next few commands require a record_identifier. Need to also check ENV variables for its existence.
@@ -160,7 +159,7 @@ def main(test_args=None):
     if args.command == INSPECT_CMD:
         print("\n")
         print(psm)
-        if args.data and not args.database_only:
+        if args.data and psm.file:
             print("\nData:")
             print(psm.backend._data)
     if args.command == REMOVE_CMD:
