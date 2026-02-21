@@ -4,8 +4,6 @@ Pipestat standardizes reporting pipeline results to a YAML file, database, or PE
 Define results in a schema, report them with `report()`, retrieve with `retrieve_one()`.
 Backends: YAML file (default), PostgreSQL database, PEPhub.
 
-**Do not maintain backwards compatibility.** This is developmental software. Document the current API only.
-
 ## Key Terms
 
 - **`pipeline_name`** — Identifies which pipeline produced the results. In files, it's the top-level YAML key. In databases, it's the table name. Set in the schema (required).
