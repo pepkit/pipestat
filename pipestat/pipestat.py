@@ -144,13 +144,13 @@ class PipestatManager:
     retrieve those results through the same API.
 
     Quick start (file backend):
-        psm = PipestatManager.from_file(
+        psm = PipestatManager.from_file_backend(
             "results.yaml",
             schema_path="output_schema.yaml",
         )
         psm.report(record_identifier="sample1", values={"alignment_rate": 0.95})
 
-    From a config file (used by looper):
+    From a config file (generic -- config determines backend):
         psm = PipestatManager.from_config("pipestat_config.yaml")
 
     Dict-style access is supported as shorthand:
@@ -174,7 +174,7 @@ class PipestatManager:
     """
 
     @classmethod
-    def from_file(
+    def from_file_backend(
         cls,
         results_file_path: str,
         schema_path: str | None = None,
@@ -189,10 +189,10 @@ class PipestatManager:
     ) -> "PipestatManager":
         """Create a PipestatManager backed by a YAML file.
 
-        This is the recommended way to create a file-backed manager.
-
         Example:
-            psm = PipestatManager.from_file("results.yaml", schema_path="output_schema.yaml")
+            psm = PipestatManager.from_file_backend(
+                "results.yaml", schema_path="output_schema.yaml",
+            )
             psm.report(record_identifier="sample1", values={"reads": 1000})
 
         Args:
@@ -205,14 +205,14 @@ class PipestatManager:
                 metadata/display since the file path provides natural project separation.
             flag_file_dir: Custom directory for status flag files.
             validate_results: Whether to validate results against schema.
-                If None (default), auto-detects: True when schema_path is provided, False otherwise.
+                If None (default), auto-detects: True when schema_path is provided,
+                False otherwise.
             additional_properties: Override for allowing results not in schema.
             multi_pipelines: Allow multiple pipelines in one file.
 
         Returns:
             PipestatManager backed by a YAML file.
         """
-        # Auto-detect validate_results from schema presence
         if validate_results is None:
             validate_results = schema_path is not None
         return cls(
@@ -229,36 +229,46 @@ class PipestatManager:
         )
 
     @classmethod
-    def from_config(
+    def from_db_backend(
         cls,
-        config_file: str,
+        config: str | dict,
         pipeline_type: str | None = None,
         multi_pipelines: bool = False,
     ) -> "PipestatManager":
-        """Create a PipestatManager from a pipestat configuration file.
+        """Create a PipestatManager backed by a database.
 
-        The config file specifies backend, schema, and all other settings.
-        This is what looper uses.
+        The config must contain a 'database' section with connection details.
 
         Example:
-            psm = PipestatManager.from_config("pipestat_config.yaml")
+            psm = PipestatManager.from_db_backend("pipestat_config.yaml")
 
         Args:
-            config_file: Path to the pipestat config YAML file.
+            config: Path to a pipestat config YAML file with a 'database'
+                section, or a dict with the same structure.
             pipeline_type: "sample" or "project". Overrides config value if set.
             multi_pipelines: Allow multiple pipelines in one file.
 
         Returns:
-            PipestatManager configured from the config file.
+            PipestatManager backed by a database.
         """
+        if isinstance(config, dict):
+            # Write dict to a temp config file for __init__ to consume
+            import tempfile
+            import yaml
+            tmp = tempfile.NamedTemporaryFile(
+                mode="w", suffix=".yaml", delete=False,
+            )
+            yaml.dump(config, tmp)
+            tmp.close()
+            config = tmp.name
         return cls(
-            config_file=config_file,
+            config_file=config,
             pipeline_type=pipeline_type,
             multi_pipelines=multi_pipelines,
         )
 
     @classmethod
-    def from_pephub(
+    def from_pephub_backend(
         cls,
         pephub_path: str,
         schema_path: str | None = None,
@@ -266,6 +276,9 @@ class PipestatManager:
         pipeline_type: str = "sample",
     ) -> "PipestatManager":
         """Create a PipestatManager backed by PEPhub.
+
+        Example:
+            psm = PipestatManager.from_pephub_backend("databio/project:default")
 
         Args:
             pephub_path: PEPhub registry path.
@@ -281,6 +294,48 @@ class PipestatManager:
             schema_path=schema_path,
             pipeline_name=pipeline_name,
             pipeline_type=pipeline_type,
+        )
+
+    @classmethod
+    def from_config(
+        cls,
+        config: str | dict,
+        pipeline_type: str | None = None,
+        multi_pipelines: bool = False,
+    ) -> "PipestatManager":
+        """Create a PipestatManager from a configuration file or dict.
+
+        This is the generic constructor -- the config determines which backend
+        is used (file, database, or PEPhub). Use the backend-specific
+        classmethods (from_file_backend, from_db_backend, from_pephub_backend)
+        when you know which backend you want.
+
+        Example:
+            psm = PipestatManager.from_config("pipestat_config.yaml")
+
+        Args:
+            config: Path to a pipestat config YAML file, or a dict with
+                the same structure. The config determines backend, schema,
+                and all other settings.
+            pipeline_type: "sample" or "project". Overrides config value if set.
+            multi_pipelines: Allow multiple pipelines in one file.
+
+        Returns:
+            PipestatManager configured from the config.
+        """
+        if isinstance(config, dict):
+            import tempfile
+            import yaml
+            tmp = tempfile.NamedTemporaryFile(
+                mode="w", suffix=".yaml", delete=False,
+            )
+            yaml.dump(config, tmp)
+            tmp.close()
+            config = tmp.name
+        return cls(
+            config_file=config,
+            pipeline_type=pipeline_type,
+            multi_pipelines=multi_pipelines,
         )
 
     def __init__(
@@ -301,7 +356,8 @@ class PipestatManager:
         """Initialize the PipestatManager object.
 
         Create a results manager backed by a YAML file or database.
-        Prefer the classmethods from_file() or from_config() for most use cases.
+        Prefer the classmethods from_file_backend(), from_db_backend(),
+        from_pephub_backend(), or from_config() for most use cases.
 
         Minimal file-backend usage (no schema required):
 

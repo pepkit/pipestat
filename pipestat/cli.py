@@ -85,11 +85,11 @@ def main(test_args=None):
         """Create PipestatManager from CLI args using the appropriate classmethod."""
         if args.config:
             return PipestatManager.from_config(
-                config_file=args.config,
+                config=args.config,
                 pipeline_type=getattr(args, "pipeline_type", None),
             )
         else:
-            return PipestatManager.from_file(
+            return PipestatManager.from_file_backend(
                 results_file_path=args.results_file,
                 schema_path=getattr(args, "schema", None),
                 pipeline_type=getattr(args, "pipeline_type", None),

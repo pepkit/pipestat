@@ -1,10 +1,11 @@
 """Pipestat: a pipeline results manager.
 
 Classes:
-    PipestatManager - The core class. Recommended entry points:
-        PipestatManager.from_file("results.yaml", schema_path="schema.yaml")
-        PipestatManager.from_config("pipestat_config.yaml")
-        PipestatManager.from_pephub("databio/project:default")
+    PipestatManager - The core class. Backend-specific entry points:
+        PipestatManager.from_file_backend("results.yaml", schema_path="schema.yaml")
+        PipestatManager.from_db_backend("pipestat_config.yaml")
+        PipestatManager.from_pephub_backend("databio/project:default")
+        PipestatManager.from_config("pipestat_config.yaml")  # generic, config decides backend
 
     SamplePipestatManager - Convenience wrapper that sets pipeline_type="sample".
         Equivalent to PipestatManager(pipeline_type="sample", ...).
