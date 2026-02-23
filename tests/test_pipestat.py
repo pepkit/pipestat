@@ -478,9 +478,7 @@ class TestReporting:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
             # Report some other value to be overwritten
-            psm.report(
-                record_identifier=rec_id, values={list(val.keys())[0]: 1000}
-            )
+            psm.report(record_identifier=rec_id, values={list(val.keys())[0]: 1000})
             # Now overwrite
             psm.report(record_identifier=rec_id, values=val)
             assert (

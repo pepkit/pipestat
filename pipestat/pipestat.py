@@ -291,7 +291,9 @@ class PipestatManager(MutableMapping):
 
         # Default project_name for project-level pipelines
         if self.cfg[PIPELINE_TYPE] == "project" and not self.cfg.get(PROJECT_NAME):
-            _LOGGER.warning("No project_name provided for project-level pipeline. Defaulting to 'project'.")
+            _LOGGER.warning(
+                "No project_name provided for project-level pipeline. Defaulting to 'project'."
+            )
             self.cfg[PROJECT_NAME] = "project"
 
         # Auto-default record_identifier for project-level pipelines
