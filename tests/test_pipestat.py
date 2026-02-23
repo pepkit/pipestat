@@ -8,7 +8,12 @@ import pytest
 from jsonschema import ValidationError
 from yacman import YAMLConfigManager
 
-from pipestat import PipestatDualManager, PipestatManager, ProjectPipestatManager, SamplePipestatManager
+from pipestat import (
+    PipestatDualManager,
+    PipestatManager,
+    ProjectPipestatManager,
+    SamplePipestatManager,
+)
 from pipestat.cli import main
 from pipestat.const import *
 from pipestat.exceptions import *
