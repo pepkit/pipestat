@@ -207,13 +207,8 @@ class ParsedSchema(object):
                     "The key was renamed from 'pipeline_id' to 'pipeline_name'."
                 )
             else:
-                hint = (
-                    f"Every pipestat schema must include a top-level '{SCHEMA_PIPELINE_NAME_KEY}' key."
-                )
-            raise SchemaError(
-                f"{hint}\n\n"
-                f"Minimal working schema:\n\n{SCHEMA_TEMPLATE}"
-            )
+                hint = f"Every pipestat schema must include a top-level '{SCHEMA_PIPELINE_NAME_KEY}' key."
+            raise SchemaError(f"{hint}\n\nMinimal working schema:\n\n{SCHEMA_TEMPLATE}")
 
         # Sample- and/or project-level data must be declared.
         if not self._sample_level_data and not self._project_level_data:
@@ -371,7 +366,7 @@ def _recursively_replace_custom_types(s: dict[str, Any]) -> dict[str, Any]:
     for k, v in s.items():
         missing_req_keys = [req for req in [SCHEMA_TYPE_KEY, SCHEMA_DESC_KEY] if req not in v]
         if missing_req_keys:
-            example = f"  {k}:\n    type: string\n    description: \"Description of {k}\""
+            example = f'  {k}:\n    type: string\n    description: "Description of {k}"'
             raise SchemaError(
                 f"Result '{k}' is missing required key(s): {', '.join(missing_req_keys)}.\n"
                 f"Every result must have both 'type' and 'description'. Example:\n\n{example}"
