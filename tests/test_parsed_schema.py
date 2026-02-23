@@ -209,7 +209,7 @@ def test_insufficient_schema__raises_expected_error_and_message(schema_data, exp
     with pytest.raises(SchemaError) as err_ctx:
         ParsedSchema(schema_data)
     observed_message = str(err_ctx.value)
-    assert expected_message in observed_message
+    assert observed_message.startswith(expected_message)
 
 
 SIMPLE_ID_SECTION = [(SCHEMA_PIPELINE_NAME_KEY, "test_pipe")]

@@ -161,8 +161,8 @@ class TestMultiProjectDB:
 
         psm_a.remove(record_identifier="s1")
 
-        assert not psm_a.check_record_exists("s1")
-        assert psm_b.check_record_exists("s1")
+        assert psm_a.count_records() == 0
+        assert psm_b.count_records() == 1
 
     def test_status_scoped_by_project(self, two_managers):
         """Status is scoped by project."""
@@ -191,9 +191,9 @@ class TestMultiProjectDB:
         history_b = psm_b.retrieve_history(record_identifier="s1")
 
         # psm_a should have history (original value before update)
-        assert history_a.get("history", {})
+        assert history_a
         # psm_b should have no history (no updates)
-        assert not history_b.get("history", {})
+        assert not history_b
 
     def test_list_projects(self, two_managers):
         """list_projects returns all project names in the database."""

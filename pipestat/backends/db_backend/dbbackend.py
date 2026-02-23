@@ -499,19 +499,16 @@ class DBBackend(PipestatBackend):
                 }
         """
 
-        # Auto-inject project_name filter to scope queries to the current project
-        if self.project_name:
-            project_filter = {"key": "project_name", "operator": "eq", "value": self.project_name}
-            if filter_conditions is None:
-                filter_conditions = [project_filter]
-            else:
-                filter_conditions = list(filter_conditions) + [project_filter]
-
         ORM = self.get_model(table_name=self.table_name)
 
         with self.session as s:
             try:
-                total_count = len(s.exec(sql_select(ORM)).all())
+                count_stmt = sql_select(ORM)
+                if self.project_name:
+                    count_stmt = count_stmt.where(
+                        getattr(ORM, "project_name") == self.project_name
+                    )
+                total_count = len(s.exec(count_stmt).all())
             except Exception as e:
                 raise PipestatDatabaseError(
                     msg=f"Could not get total_count. Is the database empty? Original Error Message: {e}"
@@ -532,6 +529,10 @@ class DBBackend(PipestatBackend):
                     )
             else:
                 statement = sql_select(ORM).order_by(ORM.id)
+
+            # Always scope by project_name (AND'd, independent of user's bool_operator)
+            if self.project_name:
+                statement = statement.where(getattr(ORM, "project_name") == self.project_name)
 
             if cursor is not None:
                 statement = statement.where(ORM.id > cursor)

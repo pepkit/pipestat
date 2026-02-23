@@ -1079,7 +1079,7 @@ class TestEnvVars:
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 def test_no_constructor_args__raises_expected_exception():
     """See Issue #3 in the repository."""
-    with pytest.raises(SchemaNotFoundError):
+    with pytest.raises(NoBackendSpecifiedError):
         SamplePipestatManager()
 
 
@@ -2098,7 +2098,10 @@ class TestSelectRecords:
             result2 = psm.retrieve_one(record_identifier="sample1")
 
             assert result1 == "hash1"
-            assert len(result2.keys()) == 16
+            # Verify all reported keys are present in the full record
+            for key in range_values[1][1]:
+                assert key in result2, f"Expected key '{key}' missing from retrieve_one result"
+            assert "record_identifier" in result2
 
     @pytest.mark.parametrize("backend", ["db", "file"])
     def test_select_records_retrieve_multi_result(

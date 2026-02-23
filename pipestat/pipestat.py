@@ -1540,6 +1540,7 @@ class PipestatManager:
                 "pipestat_created_time",
                 "source_record_id",
                 "record_identifier",
+                "project_name",
             ]
             history = {
                 key: value for key, value in history.items() if key not in extra_keys_to_delete
