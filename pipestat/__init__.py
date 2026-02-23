@@ -24,7 +24,12 @@ import logmuse
 
 from .const import PKG_NAME
 from .exceptions import PipestatError
-from .pipestat import PipestatDualManager, PipestatManager, ProjectPipestatManager, SamplePipestatManager
+from .pipestat import (
+    PipestatDualManager,
+    PipestatManager,
+    ProjectPipestatManager,
+    SamplePipestatManager,
+)
 
 __all__ = [
     "PipestatError",

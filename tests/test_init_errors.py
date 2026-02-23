@@ -1,7 +1,7 @@
 """Tests for improved initialization error messages and schema-optional mode."""
 
 import os
-from tempfile import NamedTemporaryFile, TemporaryDirectory
+from tempfile import TemporaryDirectory
 
 import pytest
 from yaml import dump

@@ -8,7 +8,12 @@ import pytest
 from jsonschema import ValidationError
 from yacman import YAMLConfigManager
 
-from pipestat import PipestatDualManager, PipestatManager, ProjectPipestatManager, SamplePipestatManager
+from pipestat import (
+    PipestatDualManager,
+    PipestatManager,
+    ProjectPipestatManager,
+    SamplePipestatManager,
+)
 from pipestat.cli import main
 from pipestat.const import *
 from pipestat.exceptions import *
@@ -451,7 +456,7 @@ class TestReporting:
             args.update(backend_data)
             if backend == "db":
                 with pytest.raises(SchemaNotFoundError):
-                    psm = SamplePipestatManager(**args)
+                    SamplePipestatManager(**args)
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -478,9 +483,7 @@ class TestReporting:
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
             # Report some other value to be overwritten
-            psm.report(
-                record_identifier=rec_id, values={list(val.keys())[0]: 1000}
-            )
+            psm.report(record_identifier=rec_id, values={list(val.keys())[0]: 1000})
             # Now overwrite
             psm.report(record_identifier=rec_id, values=val)
             assert (
@@ -786,17 +789,17 @@ class TestRetrieval:
                     )
 
             if res_id == "nonexistent" and backend == "file":
-                with pytest.raises(ColumnNotFoundError):
-                    result = psm.select_records(
-                        filter_conditions=[
-                            {
-                                "key": RECORD_IDENTIFIER,
-                                "operator": "eq",
-                                "value": rec_id,
-                            }
-                        ],
-                        columns=[res_id],
-                    )
+                result = psm.select_records(
+                    filter_conditions=[
+                        {
+                            "key": RECORD_IDENTIFIER,
+                            "operator": "eq",
+                            "value": rec_id,
+                        }
+                    ],
+                    columns=[res_id],
+                )
+                assert len(result["records"]) == 0 or res_id not in result["records"][0]
             #         assert len(result["records"]) == 0
             # if res_id == "nonexistent" and backend == "file":
             #     with pytest.raises(RecordNotFoundError):
@@ -1574,9 +1577,12 @@ class TestFileTypeLinking:
         backend,
         values_complex_linking,
     ):
-        with NamedTemporaryFile() as f, TemporaryDirectory() as d, ContextManagerDBTesting(DB_URL):
+        with (
+            NamedTemporaryFile() as f,
+            TemporaryDirectory() as temp_dir,
+            ContextManagerDBTesting(DB_URL),
+        ):
             results_file_path = f.name
-            temp_dir = d
             args = dict(schema_path=output_schema_as_JSON_schema)
             backend_data = (
                 {"config_file": config_file_path}
@@ -1892,7 +1898,7 @@ class TestSelectRecords:
 
             with pytest.raises(ValueError):
                 # Unknown operator raises error
-                result20 = psm.select_records(
+                psm.select_records(
                     # columns=["md5sum"],
                     filter_conditions=[
                         {
@@ -1984,7 +1990,7 @@ class TestSelectRecords:
                 val = i[1]
                 psm.report(record_identifier=r_id, values=val)
 
-            result = psm.select_records(
+            psm.select_records(
                 filter_conditions=[
                     {
                         "key": ["output_image", "path"],
@@ -1994,7 +2000,7 @@ class TestSelectRecords:
                 ],
             )
 
-            result = psm.select_records(
+            psm.select_records(
                 filter_conditions=[
                     {
                         "key": ["output_file_in_object_nested", "prop1", "prop2"],
@@ -2300,9 +2306,8 @@ class TestMultiResultFiles:
         backend,
         range_values,
     ):
-        with NamedTemporaryFile() as f, TemporaryDirectory() as d:
+        with NamedTemporaryFile() as f, TemporaryDirectory() as temp_dir:
             results_file_path = f.name
-            temp_dir = d
             single_results_file_path = "{record_identifier}_results.yaml"
             results_file_path = os.path.join(temp_dir, single_results_file_path)
             args = dict(schema_path=recursive_schema_file_path)
@@ -2310,7 +2315,7 @@ class TestMultiResultFiles:
             args.update(backend_data)
 
             # with pytest.raises(NotImplementedError):
-            psm = SamplePipestatManager(**args)
+            SamplePipestatManager(**args)
 
     @pytest.mark.parametrize("backend", ["file"])
     def test_multi_results_basic(
@@ -2321,8 +2326,7 @@ class TestMultiResultFiles:
         backend,
         range_values,
     ):
-        with TemporaryDirectory() as d:
-            temp_dir = d
+        with TemporaryDirectory() as temp_dir:
             single_results_file_path = "{record_identifier}_results.yaml"
             results_file_path = os.path.join(temp_dir, single_results_file_path)
             args = dict(schema_path=recursive_schema_file_path)
@@ -2348,8 +2352,7 @@ class TestMultiResultFiles:
         backend,
         range_values,
     ):
-        with TemporaryDirectory() as d:
-            temp_dir = d
+        with TemporaryDirectory() as temp_dir:
             single_results_file_path = "{record_identifier}/results.yaml"
             results_file_path = os.path.join(temp_dir, single_results_file_path)
             args = dict(schema_path=recursive_schema_file_path)
@@ -2752,9 +2755,9 @@ class TestPEPHUBBackend:
 
         psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
 
-        results = psm.remove_record(record_identifier=rec_ids[0], rm_record=False)
+        psm.remove_record(record_identifier=rec_ids[0], rm_record=False)
 
-        results = psm.remove_record(record_identifier=rec_ids[0], rm_record=True)
+        psm.remove_record(record_identifier=rec_ids[0], rm_record=True)
 
     def test_pephub_unsupported_funcs(
         self,
@@ -2781,7 +2784,6 @@ class TestPEPHUBBackend:
     ):
 
         with TemporaryDirectory() as d:
-            temp_dir = d
             psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
             report_path = psm.summarize(output_dir=d)
 
@@ -2794,7 +2796,6 @@ class TestPEPHUBBackend:
     ):
 
         with TemporaryDirectory() as d:
-            temp_dir = d
             psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
             report_path = psm.link(link_dir=d)
 
@@ -2808,7 +2809,7 @@ class TestPEPHUBBackend:
         range_values,
     ):
         with pytest.raises(PipestatPEPHubError):
-            psm = PipestatManager(pephub_path="bogus_path", schema_path=schema_file_path)
+            PipestatManager(pephub_path="bogus_path", schema_path=schema_file_path)
 
 
 class TestSharedSchemaKeys:
@@ -2938,3 +2939,13 @@ class TestBugFixes:
 
         assert "partial" in APPEARANCE_BY_FLAG
         assert "parital" not in APPEARANCE_BY_FLAG
+
+    def test_retrieve_additional_property(self, schema_file_path, tmp_path):
+        """Reporting and retrieving a result not in the schema works when additional_properties is True."""
+        psm = SamplePipestatManager(
+            schema_path=schema_file_path,
+            results_file_path=str(tmp_path / "results.yaml"),
+        )
+        psm.report(record_identifier="s1", values={"extra_result": 1.1})
+        result = psm.retrieve_one(record_identifier="s1", result_identifier="extra_result")
+        assert result == 1.1

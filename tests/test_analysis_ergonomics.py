@@ -5,7 +5,7 @@ import os
 import pytest
 
 from pipestat import PipestatManager
-from pipestat.exceptions import ColumnNotFoundError, PipestatDatabaseError, SchemaNotFoundError
+from pipestat.exceptions import ColumnNotFoundError, SchemaNotFoundError
 from pipestat.infer import infer_schema
 
 

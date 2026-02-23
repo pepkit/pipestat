@@ -6,14 +6,16 @@ from tempfile import NamedTemporaryFile
 import pytest
 
 from pipestat import PipestatManager
-from pipestat.pipestat import ProjectPipestatManager, SamplePipestatManager
+from pipestat.pipestat import ProjectPipestatManager
 
 from .conftest import get_data_file_path
 
 
 @pytest.fixture
 def schema_with_project():
-    return get_data_file_path("sample_output_schema__with_project_with_samples_without_status.yaml")
+    return get_data_file_path(
+        "sample_output_schema__with_project_with_samples_without_status.yaml"
+    )
 
 
 @pytest.fixture
