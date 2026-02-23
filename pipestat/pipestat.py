@@ -254,9 +254,13 @@ class PipestatManager:
         if isinstance(config, dict):
             # Write dict to a temp config file for __init__ to consume
             import tempfile
+
             import yaml
+
             tmp = tempfile.NamedTemporaryFile(
-                mode="w", suffix=".yaml", delete=False,
+                mode="w",
+                suffix=".yaml",
+                delete=False,
             )
             yaml.dump(config, tmp)
             tmp.close()
@@ -325,9 +329,13 @@ class PipestatManager:
         """
         if isinstance(config, dict):
             import tempfile
+
             import yaml
+
             tmp = tempfile.NamedTemporaryFile(
-                mode="w", suffix=".yaml", delete=False,
+                mode="w",
+                suffix=".yaml",
+                delete=False,
             )
             yaml.dump(config, tmp)
             tmp.close()
@@ -479,9 +487,7 @@ class PipestatManager:
         )
 
         # Resolve database_only from config, defaulting to True
-        self.cfg[DB_ONLY_KEY] = self.cfg[CONFIG_KEY].priority_get(
-            "database_only", default=True
-        )
+        self.cfg[DB_ONLY_KEY] = self.cfg[CONFIG_KEY].priority_get("database_only", default=True)
 
         self.cfg[PIPELINE_TYPE] = self.cfg[CONFIG_KEY].priority_get(
             "pipeline_type", default="sample", override=pipeline_type

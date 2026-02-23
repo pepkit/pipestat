@@ -331,7 +331,9 @@ class DBBackend(PipestatBackend):
                             getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
                         )
                         if self.project_name:
-                            stmt = stmt.where(getattr(ORMClass, "project_name") == self.project_name)
+                            stmt = stmt.where(
+                                getattr(ORMClass, "project_name") == self.project_name
+                            )
                         source_record_id = s.exec(stmt).first().id
                         linked_records = s.exec(
                             sql_select(ORMClass_History).where(
@@ -346,7 +348,9 @@ class DBBackend(PipestatBackend):
                             getattr(ORMClass, "record_identifier") == record_identifier
                         )
                         if self.project_name:
-                            stmt = stmt.where(getattr(ORMClass, "project_name") == self.project_name)
+                            stmt = stmt.where(
+                                getattr(ORMClass, "project_name") == self.project_name
+                            )
                         record = s.exec(stmt).first()
                         s.delete(record)
                         s.commit()
@@ -439,7 +443,9 @@ class DBBackend(PipestatBackend):
                             getattr(ORMClass, RECORD_IDENTIFIER) == record_identifier
                         )
                         if self.project_name:
-                            stmt = stmt.where(getattr(ORMClass, "project_name") == self.project_name)
+                            stmt = stmt.where(
+                                getattr(ORMClass, "project_name") == self.project_name
+                            )
                         source_record = s.exec(stmt).first()
                         new_record_history = ORMClass_History(**old_record_attributes)
                         new_record_history.source_record_id = source_record.id

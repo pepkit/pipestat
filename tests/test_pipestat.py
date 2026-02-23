@@ -269,9 +269,7 @@ class TestReporting:
     ):
         with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            args = dict(
-                schema_path=schema_file_path, pipeline_type=pipeline_type
-            )
+            args = dict(schema_path=schema_file_path, pipeline_type=pipeline_type)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"

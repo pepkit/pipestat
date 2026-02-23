@@ -1,6 +1,5 @@
 """Tests for auto-default record_identifier at project level."""
 
-import os
 from tempfile import NamedTemporaryFile
 
 import pytest
@@ -48,7 +47,9 @@ class TestProjectRecordIdentifierDefaults:
             assert psm.record_identifier == "project"
             assert psm.project_name == "project"
 
-    def test_report_at_project_level_without_record_identifier(self, schema_with_project, monkeypatch):
+    def test_report_at_project_level_without_record_identifier(
+        self, schema_with_project, monkeypatch
+    ):
         """report() at project level without record_identifier succeeds."""
         monkeypatch.setenv("PIPESTAT_PROJECT_NAME", "rrbs")
         with NamedTemporaryFile(suffix=".yaml") as f:

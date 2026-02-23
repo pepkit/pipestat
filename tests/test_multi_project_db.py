@@ -9,7 +9,6 @@ DB dependencies are not installed or the test database is not available.
 """
 
 import os
-from tempfile import NamedTemporaryFile
 
 import pytest
 
@@ -110,7 +109,6 @@ def two_managers(tmp_path, schema_path):
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires DB dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="Requires running PostgreSQL")
 class TestMultiProjectDB:
-
     def test_same_record_id_different_projects_no_collision(self, two_managers):
         """Records with same ID in different projects do not overwrite each other."""
         psm_a, psm_b = two_managers
@@ -240,7 +238,6 @@ class TestMultiProjectDB:
 
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires DB dependencies")
 class TestProjectNameRequired:
-
     def test_missing_project_name_raises_for_db(self, tmp_path, schema_path):
         """Creating a DB-backed manager without project_name raises ValueError."""
         port = os.environ.get("PIPESTAT_TEST_DB_PORT", "5432")
