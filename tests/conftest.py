@@ -119,8 +119,25 @@ def recursive_schema_file_path():
 
 
 @pytest.fixture
-def config_file_path():
-    return get_data_file_path("config.yaml")
+def config_file_path(tmp_path):
+    """Generate config with dynamic DB port from PIPESTAT_TEST_DB_PORT env var."""
+    schema_path = get_data_file_path("sample_output_schema_recursive.yaml")
+    config_content = f"""\
+project_name: test
+record_identifier: sample1
+schema_path: {schema_path}
+database:
+  dialect: postgresql
+  driver: psycopg
+  name: pipestat-test
+  user: pipestatuser
+  password: shgfty^8922138$^!
+  host: 127.0.0.1
+  port: {DB_PORT}
+"""
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(config_content)
+    return str(config_file)
 
 
 @pytest.fixture
@@ -129,8 +146,23 @@ def config_file_path_pephub():
 
 
 @pytest.fixture
-def config_no_schema_file_path():
-    return get_data_file_path("config_no_schema.yaml")
+def config_no_schema_file_path(tmp_path):
+    """Generate no-schema config with dynamic DB port."""
+    config_content = f"""\
+project_name: test
+sample_name: sample1
+database:
+  dialect: postgresql
+  driver: psycopg
+  name: pipestat-test
+  user: pipestatuser
+  password: shgfty^8922138$^!
+  host: 127.0.0.1
+  port: {DB_PORT}
+"""
+    config_file = tmp_path / "config_no_schema.yaml"
+    config_file.write_text(config_content)
+    return str(config_file)
 
 
 @pytest.fixture

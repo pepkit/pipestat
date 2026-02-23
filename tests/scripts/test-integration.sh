@@ -32,9 +32,9 @@ for arg in "$@"; do
     fi
 done
 
-# Use fixed port 5432 to match tests/data/config.yaml
+# Pick a random available port (configs are generated dynamically by conftest.py)
 export PIPESTAT_TEST_RUN_ID="$$"
-export PIPESTAT_TEST_DB_PORT=5432
+export PIPESTAT_TEST_DB_PORT="${PIPESTAT_TEST_DB_PORT:-$(python3 -c 'import socket; s=socket.socket(); s.bind(("",0)); print(s.getsockname()[1]); s.close()')}"
 export PIPESTAT_TEST_CONTAINER="pipestat-db-test-${PIPESTAT_TEST_RUN_ID}"
 
 SERVICES_STARTED=false
