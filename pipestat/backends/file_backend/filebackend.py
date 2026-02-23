@@ -593,22 +593,6 @@ class FileBackend(PipestatBackend):
                 raise ValueError(
                     "Columns must be a list of strings, e.g. ['record_identifier', 'number_of_things']"
                 )
-            # Validate columns exist - check against schema if available, else check against data
-            valid_columns = {"record_identifier"}  # Always valid
-            if self.parsed_schema:
-                if self.pipeline_type == "project":
-                    valid_columns.update(self.parsed_schema.project_level_data.keys())
-                else:
-                    valid_columns.update(self.parsed_schema.sample_level_data.keys())
-            else:
-                # When validate_results=False without schema, check against existing data keys
-                for record_data in data.values():
-                    valid_columns.update(record_data.keys())
-            invalid_columns = set(columns) - valid_columns
-            if invalid_columns:
-                raise ColumnNotFoundError(
-                    f"One of the supplied columns does not exist: {invalid_columns}"
-                )
 
         total_count = len(data.keys())
 

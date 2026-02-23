@@ -2945,3 +2945,13 @@ class TestBugFixes:
 
         assert "partial" in APPEARANCE_BY_FLAG
         assert "parital" not in APPEARANCE_BY_FLAG
+
+    def test_retrieve_additional_property(self, schema_file_path, tmp_path):
+        """Reporting and retrieving a result not in the schema works when additional_properties is True."""
+        psm = SamplePipestatManager(
+            schema_path=schema_file_path,
+            results_file_path=str(tmp_path / "results.yaml"),
+        )
+        psm.report(record_identifier="s1", values={"extra_result": 1.1})
+        result = psm.retrieve_one(record_identifier="s1", result_identifier="extra_result")
+        assert result == 1.1
