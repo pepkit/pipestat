@@ -1575,7 +1575,11 @@ class TestFileTypeLinking:
         backend,
         values_complex_linking,
     ):
-        with NamedTemporaryFile() as f, TemporaryDirectory() as temp_dir, ContextManagerDBTesting(DB_URL):
+        with (
+            NamedTemporaryFile() as f,
+            TemporaryDirectory() as temp_dir,
+            ContextManagerDBTesting(DB_URL),
+        ):
             results_file_path = f.name
             args = dict(schema_path=output_schema_as_JSON_schema, database_only=False)
             backend_data = (
