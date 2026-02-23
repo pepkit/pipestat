@@ -73,6 +73,7 @@ class TestDemoSchemaValidity:
         """The repo-root demo schema parses without error."""
         schema_path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
+            "example_output_schemas",
             "pipestat_schema_demo.yaml",
         )
         parsed = ParsedSchema(schema_path)

@@ -29,8 +29,8 @@ class TestProjectRecordIdentifierDefaults:
         """Project-level with project_name: record_identifier == project_name."""
         with NamedTemporaryFile(suffix=".yaml") as f:
             psm = PipestatManager(
-                project_name="rrbs",
                 pipeline_type="project",
+                project_name="rrbs",
                 schema_path=schema_with_project,
                 results_file_path=f.name,
             )
@@ -51,8 +51,8 @@ class TestProjectRecordIdentifierDefaults:
         """report() at project level without record_identifier succeeds."""
         with NamedTemporaryFile(suffix=".yaml") as f:
             psm = PipestatManager(
-                project_name="rrbs",
                 pipeline_type="project",
+                project_name="rrbs",
                 schema_path=schema_with_project,
                 results_file_path=f.name,
             )
@@ -63,8 +63,8 @@ class TestProjectRecordIdentifierDefaults:
         """retrieve_one() at project level works without explicit record_identifier."""
         with NamedTemporaryFile(suffix=".yaml") as f:
             psm = PipestatManager(
-                project_name="rrbs",
                 pipeline_type="project",
+                project_name="rrbs",
                 schema_path=schema_with_project,
                 results_file_path=f.name,
             )
@@ -76,8 +76,8 @@ class TestProjectRecordIdentifierDefaults:
         """remove() at project level works without explicit record_identifier."""
         with NamedTemporaryFile(suffix=".yaml") as f:
             psm = PipestatManager(
-                project_name="rrbs",
                 pipeline_type="project",
+                project_name="rrbs",
                 schema_path=schema_with_project,
                 results_file_path=f.name,
             )
@@ -89,7 +89,6 @@ class TestProjectRecordIdentifierDefaults:
         """Explicit record_identifier overrides project_name default."""
         with NamedTemporaryFile(suffix=".yaml") as f:
             psm = PipestatManager(
-                project_name="rrbs",
                 pipeline_type="project",
                 record_identifier="custom",
                 schema_path=schema_with_project,
@@ -111,8 +110,8 @@ class TestProjectRecordIdentifierDefaults:
         """report() with level='project' on sample-level manager succeeds without explicit record_identifier."""
         with NamedTemporaryFile(suffix=".yaml") as f:
             psm = PipestatManager(
-                project_name="rrbs",
                 pipeline_type="sample",
+                project_name="rrbs",
                 schema_path=schema_with_project,
                 results_file_path=f.name,
             )

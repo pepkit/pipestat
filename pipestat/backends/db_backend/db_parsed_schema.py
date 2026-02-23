@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional
 
 from pydantic import ConfigDict, create_model
-from sqlalchemy import Column, null
+from sqlalchemy import Column, UniqueConstraint, null
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
@@ -235,6 +235,7 @@ class ParsedSchemaDB(ParsedSchema):
         field_defs = self._add_record_identifier_field(field_defs)
         field_defs = self._add_id_field(field_defs)
         field_defs = self._add_pipeline_name_field(field_defs)
+        field_defs = self._add_project_name_field(field_defs)
         field_defs = self._add_created_time_field(field_defs)
         field_defs = self._add_modified_time_field(field_defs)
         # Only add extended_data column if additionalProperties is True for this level
@@ -275,14 +276,21 @@ class ParsedSchemaDB(ParsedSchema):
         field_defs = self._add_status_field(field_defs)
         field_defs = self._add_record_identifier_field(field_defs)
         field_defs = self._add_id_field(field_defs)
-        # field_defs = self._add_project_name_field(field_defs)
+        field_defs = self._add_project_name_field(field_defs)
         field_defs = self._add_pipeline_name_field(field_defs)
         field_defs = self._add_created_time_field(field_defs)
         field_defs = self._add_modified_time_field(field_defs)
         # Only add extended_data column if additionalProperties is True for this level
         if self.additional_properties_for_level(pipeline_type):
             field_defs = self._add_extended_data_field(field_defs)
-        return _create_model(table_name, **field_defs)
+        return _create_model(
+            table_name,
+            table_args=(
+                UniqueConstraint("record_identifier", "project_name"),
+                {"extend_existing": True},
+            ),
+            **field_defs,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """Create simple dictionary representation of this instance."""
@@ -398,11 +406,12 @@ class ParsedSchemaDB(ParsedSchema):
         return f"{self.pipeline_name}__{suffix}"
 
 
-def _create_model(table_name: str, **kwargs):
+def _create_model(table_name: str, table_args=None, **kwargs):
     """Create a SQLModel class dynamically, using cache to avoid duplicate warnings.
 
     Args:
         table_name: Name for the table/model class.
+        table_args: Optional tuple of SQLAlchemy table args (constraints, etc.).
         **kwargs: Field definitions for the model.
 
     Returns:
@@ -412,10 +421,19 @@ def _create_model(table_name: str, **kwargs):
     if table_name in _MODEL_CACHE:
         return _MODEL_CACHE[table_name]
 
+    # Build base class with appropriate __table_args__
+    if table_args is not None:
+        base = get_base_model()
+
+        class BaseWithArgs(base):
+            __table_args__ = table_args
+    else:
+        BaseWithArgs = get_base_model()
+
     # Create new model and cache it
     model = create_model(
         table_name,
-        __base__=get_base_model(),
+        __base__=BaseWithArgs,
         __cls_kwargs__={"table": True},
         **kwargs,
     )
