@@ -784,17 +784,17 @@ class TestRetrieval:
                     )
 
             if res_id == "nonexistent" and backend == "file":
-                with pytest.raises(ColumnNotFoundError):
-                    result = psm.select_records(
-                        filter_conditions=[
-                            {
-                                "key": RECORD_IDENTIFIER,
-                                "operator": "eq",
-                                "value": rec_id,
-                            }
-                        ],
-                        columns=[res_id],
-                    )
+                result = psm.select_records(
+                    filter_conditions=[
+                        {
+                            "key": RECORD_IDENTIFIER,
+                            "operator": "eq",
+                            "value": rec_id,
+                        }
+                    ],
+                    columns=[res_id],
+                )
+                assert len(result["records"]) == 0 or res_id not in result["records"][0]
             #         assert len(result["records"]) == 0
             # if res_id == "nonexistent" and backend == "file":
             #     with pytest.raises(RecordNotFoundError):

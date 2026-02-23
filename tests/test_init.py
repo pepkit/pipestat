@@ -131,7 +131,7 @@ class TestPipestatManagerInstantiation:
             )
             val_dict = {
                 "sample1": {"name_of_something": "test_name"},
-                "sample1": {"number_of_things": 2},
+                "sample2": {"number_of_things": 2},
             }
             for k, v in val_dict.items():
                 psm.report(record_identifier=k, values=v)
@@ -152,7 +152,7 @@ class TestPipestatManagerInstantiation:
             )
             val_dict = {
                 "sample1": {"name_of_something": "test_name"},
-                "sample1": {"number_of_things": 2},
+                "sample2": {"number_of_things": 2},
             }
             for k, v in val_dict.items():
                 psm.report(record_identifier=k, values=v)
