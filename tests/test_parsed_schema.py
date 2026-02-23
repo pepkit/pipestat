@@ -159,7 +159,7 @@ def test_parsed_schema__has_correct_data_and_print(
     assert observed == expected
     try:
         print(str(schema))
-    except:
+    except Exception:
         assert False
 
 

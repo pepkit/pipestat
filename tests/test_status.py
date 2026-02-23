@@ -55,7 +55,7 @@ class TestStatus:
         custom_status_schema2,
     ):
         """Status management works even in case it has not been configured."""
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL) as _connection:
             args = dict(
                 schema_path=custom_status_schema2,
             )
@@ -71,7 +71,7 @@ class TestStatus:
         self, schema_file_path, config_file_path, backend_data, status_id
     ):
         """A status to set must be a value declared in the active schema, whether default or custom."""
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL) as _connection:
             args = dict(
                 schema_path=schema_file_path,
             )

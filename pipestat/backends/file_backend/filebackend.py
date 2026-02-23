@@ -13,7 +13,7 @@ from yacman import YAMLConfigManager, write_lock
 
 from ...backends.abstract import PipestatBackend
 from ...const import CREATED_TIME, DATE_FORMAT, HISTORY_KEY, META_KEY, MODIFIED_TIME, PKG_NAME
-from ...exceptions import ColumnNotFoundError, PipestatError, UnrecognizedStatusError
+from ...exceptions import PipestatError, UnrecognizedStatusError
 from ...helpers import get_all_result_files
 
 _LOGGER = getLogger(PKG_NAME)

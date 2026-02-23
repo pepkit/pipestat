@@ -5,7 +5,7 @@ from tempfile import NamedTemporaryFile
 import pytest
 
 from pipestat import PipestatManager
-from pipestat.pipestat import ProjectPipestatManager, SamplePipestatManager
+from pipestat.pipestat import ProjectPipestatManager
 
 from .conftest import get_data_file_path
 

@@ -451,7 +451,7 @@ class TestReporting:
             args.update(backend_data)
             if backend == "db":
                 with pytest.raises(SchemaNotFoundError):
-                    psm = SamplePipestatManager(**args)
+                    SamplePipestatManager(**args)
 
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -1575,9 +1575,8 @@ class TestFileTypeLinking:
         backend,
         values_complex_linking,
     ):
-        with NamedTemporaryFile() as f, TemporaryDirectory() as d, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, TemporaryDirectory() as temp_dir, ContextManagerDBTesting(DB_URL):
             results_file_path = f.name
-            temp_dir = d
             args = dict(schema_path=output_schema_as_JSON_schema, database_only=False)
             backend_data = (
                 {"config_file": config_file_path}
@@ -1893,7 +1892,7 @@ class TestSelectRecords:
 
             with pytest.raises(ValueError):
                 # Unknown operator raises error
-                result20 = psm.select_records(
+                psm.select_records(
                     # columns=["md5sum"],
                     filter_conditions=[
                         {
@@ -1985,7 +1984,7 @@ class TestSelectRecords:
                 val = i[1]
                 psm.report(record_identifier=r_id, values=val)
 
-            result = psm.select_records(
+            psm.select_records(
                 filter_conditions=[
                     {
                         "key": ["output_image", "path"],
@@ -1995,7 +1994,7 @@ class TestSelectRecords:
                 ],
             )
 
-            result = psm.select_records(
+            psm.select_records(
                 filter_conditions=[
                     {
                         "key": ["output_file_in_object_nested", "prop1", "prop2"],
@@ -2301,9 +2300,8 @@ class TestMultiResultFiles:
         backend,
         range_values,
     ):
-        with NamedTemporaryFile() as f, TemporaryDirectory() as d:
+        with NamedTemporaryFile() as f, TemporaryDirectory() as temp_dir:
             results_file_path = f.name
-            temp_dir = d
             single_results_file_path = "{record_identifier}_results.yaml"
             results_file_path = os.path.join(temp_dir, single_results_file_path)
             args = dict(schema_path=recursive_schema_file_path, database_only=False)
@@ -2311,7 +2309,7 @@ class TestMultiResultFiles:
             args.update(backend_data)
 
             # with pytest.raises(NotImplementedError):
-            psm = SamplePipestatManager(**args)
+            SamplePipestatManager(**args)
 
     @pytest.mark.parametrize("backend", ["file"])
     def test_multi_results_basic(
@@ -2322,8 +2320,7 @@ class TestMultiResultFiles:
         backend,
         range_values,
     ):
-        with TemporaryDirectory() as d:
-            temp_dir = d
+        with TemporaryDirectory() as temp_dir:
             single_results_file_path = "{record_identifier}_results.yaml"
             results_file_path = os.path.join(temp_dir, single_results_file_path)
             args = dict(schema_path=recursive_schema_file_path, database_only=False)
@@ -2349,8 +2346,7 @@ class TestMultiResultFiles:
         backend,
         range_values,
     ):
-        with TemporaryDirectory() as d:
-            temp_dir = d
+        with TemporaryDirectory() as temp_dir:
             single_results_file_path = "{record_identifier}/results.yaml"
             results_file_path = os.path.join(temp_dir, single_results_file_path)
             args = dict(schema_path=recursive_schema_file_path, database_only=False)
@@ -2753,9 +2749,9 @@ class TestPEPHUBBackend:
 
         psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
 
-        results = psm.remove_record(record_identifier=rec_ids[0], rm_record=False)
+        psm.remove_record(record_identifier=rec_ids[0], rm_record=False)
 
-        results = psm.remove_record(record_identifier=rec_ids[0], rm_record=True)
+        psm.remove_record(record_identifier=rec_ids[0], rm_record=True)
 
     def test_pephub_unsupported_funcs(
         self,
@@ -2782,7 +2778,6 @@ class TestPEPHUBBackend:
     ):
 
         with TemporaryDirectory() as d:
-            temp_dir = d
             psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
             report_path = psm.summarize(output_dir=d)
 
@@ -2795,7 +2790,6 @@ class TestPEPHUBBackend:
     ):
 
         with TemporaryDirectory() as d:
-            temp_dir = d
             psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
             report_path = psm.link(link_dir=d)
 
@@ -2809,7 +2803,7 @@ class TestPEPHUBBackend:
         range_values,
     ):
         with pytest.raises(PipestatPEPHubError):
-            psm = PipestatManager(pephub_path="bogus_path", schema_path=schema_file_path)
+            PipestatManager(pephub_path="bogus_path", schema_path=schema_file_path)
 
 
 class TestSharedSchemaKeys:

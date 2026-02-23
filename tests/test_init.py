@@ -39,7 +39,7 @@ class TestPipestatManagerInstantiation:
         # ToDo this test may be redundant with the modified test_report_requires_schema
         with pytest.raises(SchemaNotFoundError):
             # psm = PipestatManager(results_file_path=results_file_path)
-            psm = SamplePipestatManager(config_file=config_no_schema_file_path)
+            SamplePipestatManager(config_file=config_no_schema_file_path)
 
     def test_schema_recursive_custom_type_conversion(
         self, recursive_schema_file_path, results_file_path
