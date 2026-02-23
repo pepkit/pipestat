@@ -1,7 +1,7 @@
 """Tests for schema error messages, demo schema validity, and infer-schema description field."""
 
 import os
-from tempfile import NamedTemporaryFile, TemporaryDirectory
+from tempfile import TemporaryDirectory
 
 import pytest
 import yaml
