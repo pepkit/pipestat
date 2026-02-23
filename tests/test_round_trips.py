@@ -18,12 +18,18 @@ class TestRoundTrips:
     def test_round_trip_number(self, schema_file_path, tmp_path):
         psm = self._make_psm(schema_file_path, tmp_path)
         psm.report(record_identifier="s1", values={"percentage_of_things": 3.14})
-        assert psm.retrieve_one(record_identifier="s1", result_identifier="percentage_of_things") == 3.14
+        assert (
+            psm.retrieve_one(record_identifier="s1", result_identifier="percentage_of_things")
+            == 3.14
+        )
 
     def test_round_trip_string(self, schema_file_path, tmp_path):
         psm = self._make_psm(schema_file_path, tmp_path)
         psm.report(record_identifier="s1", values={"name_of_something": "hello"})
-        assert psm.retrieve_one(record_identifier="s1", result_identifier="name_of_something") == "hello"
+        assert (
+            psm.retrieve_one(record_identifier="s1", result_identifier="name_of_something")
+            == "hello"
+        )
 
     def test_round_trip_boolean(self, schema_file_path, tmp_path):
         psm = self._make_psm(schema_file_path, tmp_path)
@@ -54,7 +60,9 @@ class TestRoundTrips:
 
     def test_round_trip_full_record(self, schema_file_path, tmp_path):
         psm = self._make_psm(schema_file_path, tmp_path)
-        psm.report(record_identifier="s1", values={"number_of_things": 10, "name_of_something": "test"})
+        psm.report(
+            record_identifier="s1", values={"number_of_things": 10, "name_of_something": "test"}
+        )
         record = psm.retrieve_one(record_identifier="s1")
         assert record["number_of_things"] == 10
         assert record["name_of_something"] == "test"
@@ -81,7 +89,9 @@ class TestRoundTrips:
             schema_path=schema_file_path,
             results_file_path=results_path,
         )
-        assert psm2.retrieve_one(record_identifier="s1", result_identifier="number_of_things") == 77
+        assert (
+            psm2.retrieve_one(record_identifier="s1", result_identifier="number_of_things") == 77
+        )
 
     def test_round_trip_count_records(self, schema_file_path, tmp_path):
         psm = self._make_psm(schema_file_path, tmp_path)
