@@ -8,6 +8,7 @@ requires-python = ">=3.10"
 authors = [
     { name = "Michal Stolarczyk" },
     { name = "Nathan Sheffield" },
+    { name = "Donald Campbell" },
 ]
 keywords = ["project", "metadata", "bioinformatics", "sequencing", "ngs", "workflow"]
 classifiers = [
