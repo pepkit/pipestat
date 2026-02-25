@@ -63,6 +63,9 @@ test = [
 [tool.pytest.ini_options]
 addopts = "-rfE"
 testpaths = ["tests"]
+markers = [
+    "pephub: tests that require PEPhub login (run with --pephub)",
+]
 
 [tool.ruff]
 line-length = 99

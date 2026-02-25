@@ -10,12 +10,11 @@ from .conftest import (
 )
 
 
-@pytest.mark.skip(reason="requires pephub login to function")
+@pytest.mark.pephub
 class TestPEPHUBBackend:
     """
-    THESE TESTS WILL FAIL IF YOU ARE NOT SIGNED IN TO PEPHUB
-
-    use `phc login` to sign in.
+    These tests require PEPhub login. Use `phc login` to sign in,
+    then run with: pytest --pephub
     """
 
     @pytest.mark.parametrize(

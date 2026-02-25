@@ -7,6 +7,18 @@ from atexit import register
 import pytest
 from yacman import load_yaml
 
+
+def pytest_addoption(parser):
+    parser.addoption("--pephub", action="store_true", default=False, help="run PEPhub tests")
+
+
+def pytest_collection_modifyitems(config, items):
+    if not config.getoption("--pephub"):
+        skip_pephub = pytest.mark.skip(reason="needs --pephub flag to run")
+        for item in items:
+            if "pephub" in item.keywords:
+                item.add_marker(skip_pephub)
+
 from pipestat.const import STATUS_SCHEMA
 
 REC_ID = "constant_record_id"
