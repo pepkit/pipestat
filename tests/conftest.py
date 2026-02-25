@@ -9,46 +9,80 @@ from yacman import load_yaml
 
 from pipestat.const import STATUS_SCHEMA
 
+
+def pytest_addoption(parser):
+    parser.addoption("--pephub", action="store_true", default=False, help="run PEPhub tests")
+
+
+def pytest_collection_modifyitems(config, items):
+    if not config.getoption("--pephub"):
+        skip_pephub = pytest.mark.skip(reason="needs --pephub flag to run")
+        for item in items:
+            if "pephub" in item.keywords:
+                item.add_marker(skip_pephub)
+
+
 REC_ID = "constant_record_id"
 BACKEND_KEY_DB = "db"
 BACKEND_KEY_FILE = "file"
-DB_URL = "postgresql+psycopg://pipestatuser:shgfty^8922138$^!@127.0.0.1:5432/pipestat-test"
-DB_CMD = """
-docker run --rm -it --name pipestat_test_db \
-    -e POSTGRES_USER=pipestatuser \
-    -e POSTGRES_PASSWORD=shgfty^8922138$^! \
-    -e POSTGRES_DB=pipestat-test \
-    -p 127.0.0.1:5432:5432 \
-    postgres
-"""
+DB_PORT = os.environ.get("PIPESTAT_TEST_DB_PORT", "5432")
+DB_URL = f"postgresql+psycopg://pipestatuser:shgfty^8922138$^!@127.0.0.1:{DB_PORT}/pipestat-test"
 STANDARD_TEST_PIPE_ID = "default_pipeline_name"
 
 PEPHUB_URL = "databio/pipestat_demo:default"
 
-try:
-    subprocess.check_output(
-        "docker inspect pipestat_test_db --format '{{.State.Status}}'", shell=True
-    )
-    SERVICE_UNAVAILABLE = False
-except:
-    register(print, f"Some tests require a test database. To initiate it, run:\n{DB_CMD}")
-    SERVICE_UNAVAILABLE = True
 
-try:
-    result = subprocess.check_output(
-        "pipestat report --c 'tests/data/config.yaml' -i 'name_of_something' -v 'test_value' -r 'dependency_value'",
-        shell=True,
-    )
-    DB_DEPENDENCIES = True
-except:
+def _detect_postgres_container():
+    """Check if a pipestat test PostgreSQL container is running."""
+    container = os.environ.get("PIPESTAT_TEST_CONTAINER")
+    if container:
+        # Explicit container name from test-integration.sh
+        try:
+            subprocess.check_output(
+                f"docker inspect {container} --format '{{{{.State.Status}}}}'",
+                shell=True,
+                stderr=subprocess.DEVNULL,
+            )
+            return True
+        except subprocess.CalledProcessError:
+            return False
+    # Fallback: check for any pipestat test container
+    for name in ["pipestat_test_db", "pipestat-db-test"]:
+        try:
+            result = (
+                subprocess.check_output(
+                    f"docker ps --filter 'name={name}' --format '{{{{.Names}}}}'",
+                    shell=True,
+                    stderr=subprocess.DEVNULL,
+                )
+                .decode()
+                .strip()
+            )
+            if result:
+                return True
+        except subprocess.CalledProcessError:
+            pass
+    return False
+
+
+SERVICE_UNAVAILABLE = not _detect_postgres_container()
+if SERVICE_UNAVAILABLE:
     register(
         print,
-        f"Warning: you must install dependencies with pip install pipestat['dbbackend'] to run database tests.",
+        "Some tests require a test database. Run: ./tests/scripts/test-integration.sh\n"
+        "Or start manually: ./tests/scripts/services.sh start",
+    )
+
+try:
+    from pipestat.backends.db_backend.dbbackend import DBBackend  # noqa: F401
+
+    DB_DEPENDENCIES = True
+except ImportError:
+    register(
+        print,
+        "Warning: install DB dependencies with: pip install 'pipestat[dbbackend]'",
     )
     DB_DEPENDENCIES = False
-
-# SERVICE_UNAVAILABLE = False
-# DB_DEPENDENCIES = True
 
 
 def get_data_file_path(filename: str) -> str:
@@ -98,8 +132,25 @@ def recursive_schema_file_path():
 
 
 @pytest.fixture
-def config_file_path():
-    return get_data_file_path("config.yaml")
+def config_file_path(tmp_path):
+    """Generate config with dynamic DB port from PIPESTAT_TEST_DB_PORT env var."""
+    schema_path = get_data_file_path("sample_output_schema_recursive.yaml")
+    config_content = f"""\
+project_name: test
+record_identifier: sample1
+schema_path: {schema_path}
+database:
+  dialect: postgresql
+  driver: psycopg
+  name: pipestat-test
+  user: pipestatuser
+  password: shgfty^8922138$^!
+  host: 127.0.0.1
+  port: {DB_PORT}
+"""
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(config_content)
+    return str(config_file)
 
 
 @pytest.fixture
@@ -108,8 +159,23 @@ def config_file_path_pephub():
 
 
 @pytest.fixture
-def config_no_schema_file_path():
-    return get_data_file_path("config_no_schema.yaml")
+def config_no_schema_file_path(tmp_path):
+    """Generate no-schema config with dynamic DB port."""
+    config_content = f"""\
+project_name: test
+sample_name: sample1
+database:
+  dialect: postgresql
+  driver: psycopg
+  name: pipestat-test
+  user: pipestatuser
+  password: shgfty^8922138$^!
+  host: 127.0.0.1
+  port: {DB_PORT}
+"""
+    config_file = tmp_path / "config_no_schema.yaml"
+    config_file.write_text(config_content)
+    return str(config_file)
 
 
 @pytest.fixture
@@ -268,3 +334,34 @@ def range_values():
         }
         range_values.append((r_id, val))
     return range_values
+
+
+@pytest.fixture
+def schema_with_shared_keys(tmp_path):
+    """Schema file with Time/Success defined at both sample and project levels."""
+    schema_content = """
+pipeline_name: test_pipeline
+samples:
+  Time:
+    type: string
+    description: "Sample runtime"
+  Success:
+    type: string
+    description: "Sample completion"
+  sample_only_result:
+    type: integer
+    description: "Sample-only result"
+project:
+  Time:
+    type: string
+    description: "Project runtime"
+  Success:
+    type: string
+    description: "Project completion"
+  project_only_result:
+    type: number
+    description: "Project-only result"
+"""
+    schema_file = tmp_path / "schema_shared_keys.yaml"
+    schema_file.write_text(schema_content)
+    return str(schema_file)

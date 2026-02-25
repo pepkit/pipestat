@@ -2,6 +2,21 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.13.0] - 2026-02-25
+### Changed
+- Renamed `PipestatBoss` to `PipestatDualManager` with `.sample`/`.project` attributes (replaces `.samplemanager`/`.projectmanager`)
+- Removed `MutableMapping` inheritance from `PipestatManager`; fixed `__len__` and `__iter__` semantics to operate on records
+- Added `__contains__` method for `record_identifier in psm` checks
+- Added classmethod constructors: `from_file_backend()`, `from_db_backend()`, `from_pephub_backend()`, `from_config()`
+- Added `validate_results` and `additional_properties` options (replaces `lenient` mode)
+- Added support for shared schema keys across sample and project levels
+- Reframed as general-purpose pipeline results manager (updated keywords, classifiers, README)
+- Migrated to yacman v1 API (`YAMLConfigManager`, `write_lock` context managers)
+- Bumped yacman requirement to >=0.9.5
+- Converted docstrings to Google style, added type hints
+- PEPhub tests now gated by `--pephub` flag instead of hard skip
+- Broke up monolithic test file into modular test files
+
 ## [0.12.2] - 2025-09-25
 ### Fixed
 - Fix setting with copy warning for pephub backend [#206](https://github.com/pepkit/pipestat/issues/206)

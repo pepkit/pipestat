@@ -7,6 +7,7 @@ from ubiquerg import expandpath
 
 from .argparser import (
     HISTORY_CMD,
+    INFER_SCHEMA_CMD,
     INIT_CMD,
     INSPECT_CMD,
     LINK_CMD,
@@ -51,6 +52,19 @@ def main(test_args=None):
     _LOGGER.debug("Args namespace:\n{}".format(args))
     if args.command == INIT_CMD:
         sys.exit(int(not init_generic_config()))
+
+    if args.command == INFER_SCHEMA_CMD:
+        from .infer import infer_schema
+
+        infer_schema(
+            results_file=args.results_file,
+            output_file=args.output,
+            level=args.level,
+            strict=args.strict,
+            pipeline_name=getattr(args, "pipeline_name", None),
+        )
+        sys.exit(0)
+
     # if args.config and not args.schema and args.command != STATUS_CMD:
     #     parser.error("the following arguments are required: -s/--schema")
     if not args.config and not args.results_file:
@@ -67,26 +81,33 @@ def main(test_args=None):
             # at least config or results_file was found, so simply pass
             pass
 
+    def _create_psm_from_args(args):
+        """Create PipestatManager from CLI args using the appropriate classmethod."""
+        if args.config:
+            return PipestatManager.from_config(
+                config=args.config,
+                pipeline_type=getattr(args, "pipeline_type", None),
+            )
+        else:
+            return PipestatManager.from_file_backend(
+                results_file_path=args.results_file,
+                schema_path=getattr(args, "schema", None),
+                pipeline_type=getattr(args, "pipeline_type", None),
+                flag_file_dir=getattr(args, "flag_dir", None),
+            )
+
     if args.command == SUMMARIZE_CMD:
-        psm = PipestatManager(
-            schema_path=args.schema,
-            results_file_path=args.results_file,
-            config_file=args.config,
-            pipeline_type=args.pipeline_type,
-        )
+        psm = _create_psm_from_args(args)
         results_path = args.config or args.results_file
         portable = args.portable or False
-        html_report_path = psm.summarize(portable=portable)
+        mode = getattr(args, "mode", "table") or "table"
+        html_report_path = psm.summarize(portable=portable, mode=mode)
         _LOGGER.info(f"\nGenerating HTML Report from {results_path} at: {html_report_path}\n")
 
         sys.exit(0)
 
     if args.command == LINK_CMD:
-        psm = PipestatManager(
-            schema_path=args.schema,
-            results_file_path=args.results_file,
-            config_file=args.config,
-        )
+        psm = _create_psm_from_args(args)
         linkdir = psm.link(link_dir=args.link_dir)
         _LOGGER.info(f"\nGenerating symlink directory at: {linkdir}\n")
         sys.exit(0)
@@ -103,14 +124,7 @@ def main(test_args=None):
         call_reader()
         sys.exit(0)
 
-    psm = PipestatManager(
-        schema_path=args.schema,
-        results_file_path=args.results_file,
-        config_file=args.config,
-        database_only=args.database_only,
-        flag_file_dir=args.flag_dir,
-        pipeline_type=args.pipeline_type,
-    )
+    psm = _create_psm_from_args(args)
     types_to_read_from_json = ["object"] + list(CANONICAL_TYPES.keys())
 
     # The next few commands require a record_identifier. Need to also check ENV variables for its existence.
@@ -120,8 +134,8 @@ def main(test_args=None):
     if args.command == REPORT_CMD:
         value = args.value
         if psm.cfg[SCHEMA_KEY] is None:
-            raise SchemaNotFoundError(msg="report", cli=True)
-        result_metadata = psm.cfg[SCHEMA_KEY].results_data[args.result_identifier]
+            raise SchemaNotFoundError(msg="The schema is required to report results", cli=True)
+        result_metadata = psm.result_schemas[args.result_identifier]
         if result_metadata[SCHEMA_TYPE_KEY] in types_to_read_from_json:
             path_to_read = expandpath(value)
             if os.path.exists(path_to_read):
@@ -145,7 +159,7 @@ def main(test_args=None):
     if args.command == INSPECT_CMD:
         print("\n")
         print(psm)
-        if args.data and not args.database_only:
+        if args.data and psm.file:
             print("\nData:")
             print(psm.backend._data)
     if args.command == REMOVE_CMD:

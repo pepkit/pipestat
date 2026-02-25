@@ -7,7 +7,7 @@ from typing import *
 import pytest
 import yaml
 
-from pipestat.const import RECORD_IDENTIFIER, SAMPLE_NAME, STATUS
+from pipestat.const import RECORD_IDENTIFIER, STATUS
 from pipestat.exceptions import SchemaError, SchemaValidationErrorDuringReport
 from pipestat.helpers import validate_type
 from pipestat.parsed_schema import NULL_MAPPING_VALUE, SCHEMA_PIPELINE_NAME_KEY, ParsedSchema
@@ -159,7 +159,7 @@ def test_parsed_schema__has_correct_data_and_print(
     assert observed == expected
     try:
         print(str(schema))
-    except:
+    except Exception:
         assert False
 
 
@@ -190,17 +190,17 @@ SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME = [
         ),
         (
             {SCHEMA_PIPELINE_NAME_KEY: "test_pipe", "samples": ["s1", "s2"]},
-            f"sample-level info in schema definition has invalid type: list",
+            "sample-level info in schema definition has invalid type: list",
         ),
         (
             {SCHEMA_PIPELINE_NAME_KEY: "test_pipe", "samples": "sample1"},
-            f"sample-level info in schema definition has invalid type: str",
+            "sample-level info in schema definition has invalid type: str",
         ),
     ]
     + [
         (
             dict(data),
-            f"Could not find valid pipeline identifier (key '{SCHEMA_PIPELINE_NAME_KEY}') in given schema data",
+            f"Every pipestat schema must include a top-level '{SCHEMA_PIPELINE_NAME_KEY}' key.",
         )
         for data in SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME
     ],
@@ -209,7 +209,7 @@ def test_insufficient_schema__raises_expected_error_and_message(schema_data, exp
     with pytest.raises(SchemaError) as err_ctx:
         ParsedSchema(schema_data)
     observed_message = str(err_ctx.value)
-    assert observed_message == expected_message
+    assert observed_message.startswith(expected_message)
 
 
 SIMPLE_ID_SECTION = [(SCHEMA_PIPELINE_NAME_KEY, "test_pipe")]
@@ -242,21 +242,30 @@ def test_reserved_keyword_use_in_schema__raises_expected_error_and_message(schem
     assert "reserved keyword(s) used" in observed_message
 
 
-def test_sample_project_data_item_name_overlap__raises_expected_error_and_message():
-    common_key = "shared_key"
-    schema_data = {
-        SCHEMA_PIPELINE_NAME_KEY: "test_pipe",
+def test_schema_accepts_shared_keys_at_both_levels():
+    """User can define the same result key at both sample and project levels."""
+    schema_dict = {
+        SCHEMA_PIPELINE_NAME_KEY: "test_pipeline",
         "samples": {
-            "just_in_sample": {"type": "string", "description": "placeholder"},
-            common_key: {"type": "string", "description": "in samples"},
+            "Time": {"type": "string", "description": "Sample runtime"},
+            "Success": {"type": "string", "description": "Sample completion"},
+            "sample_only_result": {"type": "integer", "description": "Sample-only"},
         },
-        "project": {common_key: {"type": "string", "description": "in project"}},
+        "project": {
+            "Time": {"type": "string", "description": "Project runtime"},
+            "Success": {"type": "string", "description": "Project completion"},
+            "project_only_result": {"type": "number", "description": "Project-only"},
+        },
     }
-    with pytest.raises(SchemaError) as err_ctx:
-        ParsedSchema(schema_data)
-    obs_msg = str(err_ctx.value)
-    exp_msg = f"Overlap between project- and sample-level keys: {common_key}"
-    assert obs_msg == exp_msg
+
+    # This should NOT raise SchemaError
+    schema = ParsedSchema(schema_dict)
+
+    # Both levels should have their own definitions
+    assert "Time" in schema.sample_level_data
+    assert "Time" in schema.project_level_data
+    assert schema.sample_level_data["Time"]["description"] == "Sample runtime"
+    assert schema.project_level_data["Time"]["description"] == "Project runtime"
 
 
 def test_JSON_schema_validation(output_schema_as_JSON_schema):

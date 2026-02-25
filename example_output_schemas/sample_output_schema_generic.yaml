@@ -1,0 +1,29 @@
+pipeline_name: data_processing_pipeline
+samples:
+  accuracy:
+    type: number
+    description: "Model accuracy score (0-1)"
+  processing_time:
+    type: number
+    description: "Wall-clock processing time in seconds"
+  output_file:
+    type: object
+    object_type: file
+    properties:
+      path:
+        type: string
+      title:
+        type: string
+    required:
+      - path
+      - title
+  status_message:
+    type: string
+    description: "Human-readable status or summary message"
+project:
+  total_records:
+    type: integer
+    description: "Total number of records processed"
+  aggregate_accuracy:
+    type: number
+    description: "Mean accuracy across all records"

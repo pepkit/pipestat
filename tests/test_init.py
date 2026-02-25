@@ -4,7 +4,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory, mkdtemp
 import pytest
 from yaml import dump
 
-from pipestat import PipestatManager, ProjectPipestatManager, SamplePipestatManager
+from pipestat import SamplePipestatManager
 from pipestat.const import PIPESTAT_GENERIC_CONFIG, SCHEMA_KEY
 from pipestat.exceptions import *
 from pipestat.helpers import init_generic_config
@@ -39,7 +39,7 @@ class TestPipestatManagerInstantiation:
         # ToDo this test may be redundant with the modified test_report_requires_schema
         with pytest.raises(SchemaNotFoundError):
             # psm = PipestatManager(results_file_path=results_file_path)
-            psm = SamplePipestatManager(config_file=config_no_schema_file_path)
+            SamplePipestatManager(config_file=config_no_schema_file_path)
 
     def test_schema_recursive_custom_type_conversion(
         self, recursive_schema_file_path, results_file_path
@@ -61,8 +61,16 @@ class TestPipestatManagerInstantiation:
         """Object constructor raises exception if cfg is missing data"""
         tmp_pth = os.path.join(mkdtemp(), "res.yml")
         with open(tmp_pth, "w") as file:
-            dump({"database": {"host": "localhost"}}, file)
+            dump({"database": {"host": "localhost"}, "project_name": "test"}, file)
         with pytest.raises(MissingConfigDataError):
+            SamplePipestatManager(config_file=tmp_pth, schema_path=schema_file_path)
+
+    def test_missing_project_name_raises(self, schema_file_path):
+        """DB config without project_name raises ValueError"""
+        tmp_pth = os.path.join(mkdtemp(), "res.yml")
+        with open(tmp_pth, "w") as file:
+            dump({"database": {"host": "localhost"}}, file)
+        with pytest.raises(ValueError, match="project_name is required"):
             SamplePipestatManager(config_file=tmp_pth, schema_path=schema_file_path)
 
     def test_unknown_backend(self, schema_file_path):
@@ -131,10 +139,10 @@ class TestPipestatManagerInstantiation:
             )
             val_dict = {
                 "sample1": {"name_of_something": "test_name"},
-                "sample1": {"number_of_things": 2},
+                "sample2": {"number_of_things": 2},
             }
             for k, v in val_dict.items():
-                psm.report(record_identifier=k, values=v, force_overwrite=True)
+                psm.report(record_identifier=k, values=v)
             # Check that a new pipestatmanager object can correctly read the results_file.
             psm2 = SamplePipestatManager(
                 results_file_path=results_file_path,
@@ -152,10 +160,10 @@ class TestPipestatManagerInstantiation:
             )
             val_dict = {
                 "sample1": {"name_of_something": "test_name"},
-                "sample1": {"number_of_things": 2},
+                "sample2": {"number_of_things": 2},
             }
             for k, v in val_dict.items():
-                psm.report(record_identifier=k, values=v, force_overwrite=True)
+                psm.report(record_identifier=k, values=v)
             assert f"Records count: {len(psm.backend._data[STANDARD_TEST_PIPE_ID])}" in str(psm)
 
     def test_init_config(self, capfd):

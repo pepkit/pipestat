@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional
 
 from pydantic import ConfigDict, create_model
-from sqlalchemy import Column, null
+from sqlalchemy import Column, UniqueConstraint, null
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
@@ -31,6 +31,14 @@ from pipestat.exceptions import PipestatError, SchemaError
 from pipestat.parsed_schema import ParsedSchema
 
 _LOGGER = logging.getLogger(__name__)
+
+# Cache for dynamically created models to avoid SQLAlchemy duplicate class warnings
+_MODEL_CACHE: dict[str, type] = {}
+
+
+def clear_model_cache() -> None:
+    """Clear the model cache. Useful for testing or creating fresh models."""
+    _MODEL_CACHE.clear()
 
 
 NULL_MAPPING_VALUE = {}
@@ -196,9 +204,13 @@ class ParsedSchemaDB(ParsedSchema):
         return self._table_name("files")
 
     def build_history_model(self, pipeline_type):
-        """Creates model for history ORM
-        :param str pipeline_type: project or sample-level pipeline
-        :return model: (model, table_name)
+        """Creates model for history ORM.
+
+        Args:
+            pipeline_type (str): Project or sample-level pipeline.
+
+        Returns:
+            tuple: (model, table_name)
         """
         if pipeline_type == "project":
             history_table_name = self.project_table_name + "_history"
@@ -223,8 +235,12 @@ class ParsedSchemaDB(ParsedSchema):
         field_defs = self._add_record_identifier_field(field_defs)
         field_defs = self._add_id_field(field_defs)
         field_defs = self._add_pipeline_name_field(field_defs)
+        field_defs = self._add_project_name_field(field_defs)
         field_defs = self._add_created_time_field(field_defs)
         field_defs = self._add_modified_time_field(field_defs)
+        # Only add extended_data column if additionalProperties is True for this level
+        if self.additional_properties_for_level(pipeline_type):
+            field_defs = self._add_extended_data_field(field_defs)
 
         field_defs["source_record_id"] = (
             int,
@@ -260,11 +276,21 @@ class ParsedSchemaDB(ParsedSchema):
         field_defs = self._add_status_field(field_defs)
         field_defs = self._add_record_identifier_field(field_defs)
         field_defs = self._add_id_field(field_defs)
-        # field_defs = self._add_project_name_field(field_defs)
+        field_defs = self._add_project_name_field(field_defs)
         field_defs = self._add_pipeline_name_field(field_defs)
         field_defs = self._add_created_time_field(field_defs)
         field_defs = self._add_modified_time_field(field_defs)
-        return _create_model(table_name, **field_defs)
+        # Only add extended_data column if additionalProperties is True for this level
+        if self.additional_properties_for_level(pipeline_type):
+            field_defs = self._add_extended_data_field(field_defs)
+        return _create_model(
+            table_name,
+            table_args=(
+                UniqueConstraint("record_identifier", "project_name"),
+                {"extend_existing": True},
+            ),
+            **field_defs,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """Create simple dictionary representation of this instance."""
@@ -367,25 +393,62 @@ class ParsedSchemaDB(ParsedSchema):
 
         return field_defs
 
+    @staticmethod
+    def _add_extended_data_field(field_defs: Dict[str, Any]) -> Dict[str, Any]:
+        """Add catch-all JSONB column for additional properties not in schema."""
+        field_defs["pipestat_extended_data"] = (
+            Optional[dict],
+            Field(sa_column=Column(JSONB), default=null()),
+        )
+        return field_defs
+
     def _table_name(self, suffix: str) -> str:
         return f"{self.pipeline_name}__{suffix}"
 
 
-def _create_model(table_name: str, **kwargs):
-    return create_model(
+def _create_model(table_name: str, table_args=None, **kwargs):
+    """Create a SQLModel class dynamically, using cache to avoid duplicate warnings.
+
+    Args:
+        table_name: Name for the table/model class.
+        table_args: Optional tuple of SQLAlchemy table args (constraints, etc.).
+        **kwargs: Field definitions for the model.
+
+    Returns:
+        The created (or cached) model class.
+    """
+    # Return cached model if it exists to avoid SQLAlchemy duplicate class warnings
+    if table_name in _MODEL_CACHE:
+        return _MODEL_CACHE[table_name]
+
+    # Build base class with appropriate __table_args__
+    if table_args is not None:
+        base = get_base_model()
+
+        class BaseWithArgs(base):
+            __table_args__ = table_args
+    else:
+        BaseWithArgs = get_base_model()
+
+    # Create new model and cache it
+    model = create_model(
         table_name,
-        __base__=get_base_model(),
+        __base__=BaseWithArgs,
         __cls_kwargs__={"table": True},
         **kwargs,
     )
+    _MODEL_CACHE[table_name] = model
+    return model
 
 
 def _recursively_replace_custom_types(s: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Replace the custom types in pipestat schema with canonical types
+    """Replace the custom types in pipestat schema with canonical types.
 
-    :param dict s: schema to replace types in
-    :return dict: schema with types replaced
+    Args:
+        s (dict): Schema to replace types in.
+
+    Returns:
+        dict: Schema with types replaced.
     """
     for k, v in s.items():
         missing_req_keys = [req for req in [SCHEMA_TYPE_KEY, SCHEMA_DESC_KEY] if req not in v]

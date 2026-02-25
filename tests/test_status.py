@@ -55,7 +55,7 @@ class TestStatus:
         custom_status_schema2,
     ):
         """Status management works even in case it has not been configured."""
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL) as _connection:
             args = dict(
                 schema_path=custom_status_schema2,
             )
@@ -71,7 +71,7 @@ class TestStatus:
         self, schema_file_path, config_file_path, backend_data, status_id
     ):
         """A status to set must be a value declared in the active schema, whether default or custom."""
-        with ContextManagerDBTesting(DB_URL) as connection:
+        with ContextManagerDBTesting(DB_URL) as _connection:
             args = dict(
                 schema_path=schema_file_path,
             )
@@ -99,7 +99,7 @@ class TestStatus:
         """Test clearing flag files"""
         with NamedTemporaryFile() as f:
             results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"
@@ -107,7 +107,7 @@ class TestStatus:
             )
             args.update(backend_data)
             psm = SamplePipestatManager(**args)
-            psm.report(record_identifier=rec_id, values=val, force_overwrite=True)
+            psm.report(record_identifier=rec_id, values=val)
             psm.set_status(status_identifier="running", record_identifier=rec_id)
             status = psm.get_status(record_identifier=rec_id)
             assert status == "running"

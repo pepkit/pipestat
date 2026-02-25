@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    {% include "head.html" %}
+    <title>{{ pipeline_name }} - Gallery</title>
+    <style>
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+        }
+        .gallery-item {
+            cursor: pointer;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            overflow: hidden;
+            transition: box-shadow 0.2s;
+        }
+        .gallery-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .gallery-item img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+        .gallery-item .caption {
+            padding: 0.5rem;
+            font-size: 0.875rem;
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+        }
+        .gallery-item .caption .sample-name {
+            font-weight: 600;
+            color: #495057;
+        }
+        .gallery-item .caption .result-type {
+            color: #6c757d;
+            font-size: 0.75rem;
+        }
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 1050;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-backdrop.active {
+            display: flex;
+        }
+        .modal-backdrop img {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
+        }
+        .modal-backdrop .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+        }
+        .view-toggle {
+            margin-bottom: 1rem;
+        }
+        .view-toggle .btn {
+            margin-right: 0.5rem;
+        }
+        section {
+            margin-bottom: 2rem;
+        }
+        section h2 {
+            border-bottom: 2px solid #dee2e6;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+
+{{ navbar }}
+
+<body>
+    <div class="container">
+        <div class="row" style="margin-top: 20px; margin-bottom: 25px;">
+            <div class="col-12">
+                <h3>Gallery View</h3>
+                <h4 style="margin-bottom: 15px;">Pipeline name: <code>{{ pipeline_name }}</code></h4>
+
+                <div class="view-toggle">
+                    <button class="btn btn-primary" onclick="showView('by-type')">By Result Type</button>
+                    <button class="btn btn-outline-secondary" onclick="showView('by-sample')">By Sample</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="by-type">
+            {% for result_type, images in images_by_type.items() %}
+            <section>
+                <h2>{{ result_type }}</h2>
+                <div class="gallery-grid">
+                    {% for img in images %}
+                    <div class="gallery-item" onclick="openModal('{{ img.path }}')">
+                        <img src="{{ img.thumbnail }}" alt="{{ img.title }}">
+                        <div class="caption">
+                            <div class="sample-name">{{ img.sample }}</div>
+                            <div class="result-type">{{ img.title }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endfor %}
+        </div>
+
+        <div id="by-sample" style="display:none;">
+            {% for sample, images in images_by_sample.items() %}
+            <section>
+                <h2>{{ sample }}</h2>
+                <div class="gallery-grid">
+                    {% for img in images %}
+                    <div class="gallery-item" onclick="openModal('{{ img.path }}')">
+                        <img src="{{ img.thumbnail }}" alt="{{ img.title }}">
+                        <div class="caption">
+                            <div class="sample-name">{{ img.result_type }}</div>
+                            <div class="result-type">{{ img.title }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="modal-backdrop" id="imageModal" onclick="closeModal()">
+        <span class="close-btn">&times;</span>
+        <img id="modal-img" src="">
+    </div>
+
+    <script>
+        function showView(view) {
+            document.getElementById('by-type').style.display = view === 'by-type' ? 'block' : 'none';
+            document.getElementById('by-sample').style.display = view === 'by-sample' ? 'block' : 'none';
+
+            // Update button styles
+            var buttons = document.querySelectorAll('.view-toggle .btn');
+            buttons.forEach(function(btn) {
+                if (btn.textContent.toLowerCase().includes(view.replace('-', ' '))) {
+                    btn.classList.remove('btn-outline-secondary');
+                    btn.classList.add('btn-primary');
+                } else {
+                    btn.classList.remove('btn-primary');
+                    btn.classList.add('btn-outline-secondary');
+                }
+            });
+        }
+
+        function openModal(src) {
+            document.getElementById('modal-img').src = src;
+            document.getElementById('imageModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('imageModal').classList.remove('active');
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeModal();
+        });
+    </script>
+
+    <hr class="featurette-divider">
+    <footer class="text-muted">
+        {{ footer }}
+    </footer>
+</body>
+</html>

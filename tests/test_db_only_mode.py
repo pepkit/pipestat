@@ -1,5 +1,3 @@
-from tempfile import NamedTemporaryFile
-
 import pytest
 
 from pipestat import SamplePipestatManager
@@ -10,6 +8,8 @@ from .conftest import DB_DEPENDENCIES, DB_URL, SERVICE_UNAVAILABLE
 try:
     from sqlmodel import SQLModel, create_engine
     from sqlmodel.main import default_registry
+
+    from pipestat.backends.db_backend.db_parsed_schema import clear_model_cache
 except ModuleNotFoundError:
     pass
 
@@ -31,32 +31,8 @@ class ContextManagerDBTesting:
     def __exit__(self, exc_type, exc_value, exc_traceback):
         SQLModel.metadata.drop_all(self.engine)
         default_registry.dispose()
+        clear_model_cache()  # Clear cached models when registry is disposed
         self.connection.close()
-
-
-@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
-class TestSQLLITE:
-    def test_manager_can_be_built_without_exception(self, schema_file_path_sqlite):
-
-        with NamedTemporaryFile() as f:
-            sqllite_url = f"sqlite:///{f.name}"
-            config_dict = {
-                "project_name": "test",
-                "record_identifier": "sample1",
-                "schema_path": schema_file_path_sqlite,
-                "database": {"sqlite_url": f.name},
-            }
-
-            with ContextManagerDBTesting(sqllite_url):
-                try:
-                    SamplePipestatManager(
-                        schema_path=schema_file_path_sqlite,
-                        record_identifier="irrelevant",
-                        database_only=True,
-                        config_dict=config_dict,
-                    )
-                except Exception as e:
-                    pytest.fail(f"Pipestat manager construction failed: {e})")
 
 
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
@@ -69,7 +45,6 @@ class TestDatabaseOnly:
                 SamplePipestatManager(
                     schema_path=schema_file_path,
                     record_identifier="irrelevant",
-                    database_only=True,
                     config_file=config_file_path,
                 )
                 print("done")

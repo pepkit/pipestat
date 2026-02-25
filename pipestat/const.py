@@ -1,16 +1,7 @@
 """Project-wide constants"""
 
 import os
-import sys
 from pathlib import Path
-
-# Can be removed when 3.8 is deprecated
-if int(sys.version.split(".")[1]) < 9:
-    from typing import Dict, List
-
-    list_of_dicts = List[Dict]
-else:
-    list_of_dicts = list[dict]
 
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -20,6 +11,7 @@ __all__ = [
     "CFG_SCHEMA",
     "CLASSES_BY_TYPE",
     "ENV_VARS",
+    "EXTENDED_DATA",
     "LOCK_PREFIX",
     "PKG_NAME",
     "SAMPLE_NAME",
@@ -89,6 +81,7 @@ MODIFIED_TIME = "pipestat_modified_time"
 
 META_KEY = "meta"
 HISTORY_KEY = "history"
+EXTENDED_DATA = "pipestat_extended_data"
 
 CANONICAL_TYPES = {
     "image": {
@@ -98,7 +91,7 @@ CANONICAL_TYPES = {
             "thumbnail_path": {"type": "string"},
             "title": {"type": "string"},
         },
-        "required": ["path", "thumbnail_path", "title"],
+        "required": ["path", "title"],  # thumbnail_path optional; falls back to path
     },
     "file": {
         "type": "object",
@@ -132,7 +125,7 @@ CLASSES_BY_TYPE = {
     "file": str,
     "image": str,
     "link": str,
-    "array": list_of_dicts,
+    "array": list[dict],
 }
 
 CFG_SCHEMA = os.path.join(
@@ -179,19 +172,21 @@ APPEARANCE_BY_FLAG = {
     "completed": {"button_class": "{type}-success", "flag": "Completed"},
     "running": {"button_class": "{type}-primary", "flag": "Running"},
     "failed": {"button_class": "{type}-danger", "flag": "Failed"},
-    "parital": {"button_class": "{type}-warning", "flag": "Partial"},
+    "partial": {"button_class": "{type}-warning", "flag": "Partial"},
     "waiting": {"button_class": "{type}-info", "flag": "Waiting"},
 }
 
 
 def _get_apperance_dict(type, templ=APPEARANCE_BY_FLAG):
     """
-    Based on the type of the HTML element provided construct the appearence
-     mapping using the template
+    Based on the type of the HTML element provided construct the appearance mapping using the template.
 
-    :param dict templ: appearance template to populate
-    :param str type: type of HTML element to populate template with
-    :return dict: populated appearance template
+    Args:
+        type (str): Type of HTML element to populate template with.
+        templ (dict): Appearance template to populate.
+
+    Returns:
+        dict: Populated appearance template.
     """
     from copy import deepcopy
 

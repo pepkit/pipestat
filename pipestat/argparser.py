@@ -2,11 +2,13 @@
 
 import argparse
 import os
+from importlib.metadata import version
 
 from ubiquerg import VersionInHelpParser
 
-from ._version import __version__
 from .const import ENV_VARS, PKG_NAME, STATUS_SCHEMA
+
+__version__ = version(PKG_NAME)
 
 REPORT_CMD = "report"
 INSPECT_CMD = "inspect"
@@ -18,6 +20,7 @@ INIT_CMD = "init"
 SUMMARIZE_CMD = "summarize"
 LINK_CMD = "link"
 SERVE_CMD = "serve"
+INFER_SCHEMA_CMD = "infer-schema"
 SUBPARSER_MESSAGES = {
     REPORT_CMD: "Report a result.",
     INSPECT_CMD: "Inspect a database.",
@@ -29,6 +32,7 @@ SUBPARSER_MESSAGES = {
     LINK_CMD: "Create symlinks of reported files",
     SERVE_CMD: "Initializes pipestatreader API",
     HISTORY_CMD: "Retrieve history of reported results for one record identifier",
+    INFER_SCHEMA_CMD: "Infer schema from results file",
 }
 
 STATUS_GET_CMD = "get"
@@ -47,7 +51,13 @@ __all__ = (
 
 def _env_txt(arg_name):
     """
-    Check if env var set and produce text
+    Check if env var set and produce text.
+
+    Args:
+        arg_name (str): Argument name.
+
+    Returns:
+        str: Text describing environment variable status.
     """
     arg_val = os.environ.get(ENV_VARS[arg_name])
     txt = f"If not provided '{ENV_VARS[arg_name]}' env var will be used. "
@@ -57,8 +67,12 @@ def _env_txt(arg_name):
 def build_argparser(desc):
     """
     Builds argument parser.
-    :param str desc: additional description to print in help
-    :return argparse.ArgumentParser
+
+    Args:
+        desc (str): Additional description to print in help.
+
+    Returns:
+        argparse.ArgumentParser: Argument parser.
     """
     banner = "%(prog)s - report pipeline results"
     additional_description = desc
@@ -271,7 +285,7 @@ def build_argparser(desc):
         "-o",
         "--overwrite",
         action="store_true",
-        help="Whether the result should override existing ones in " "case of name clashes",
+        help="Whether the result should override existing ones in case of name clashes",
     )
 
     sps[REPORT_CMD].add_argument(
@@ -350,6 +364,14 @@ def build_argparser(desc):
             action="store_true",
             help="Makes html report portable.",
         )
+        sps[cmd].add_argument(
+            "--mode",
+            type=str,
+            choices=["table", "gallery"],
+            default="table",
+            metavar="M",
+            help="Report mode: 'table' (default) for data tables, 'gallery' for image-centric view.",
+        )
 
     # LINK
     for cmd in [LINK_CMD]:
@@ -381,5 +403,41 @@ def build_argparser(desc):
             type=str,
             help="Path to symlink directory ",
         )
+
+    # INFER-SCHEMA
+    sps[INFER_SCHEMA_CMD].add_argument(
+        "-f",
+        "--results-file",
+        type=str,
+        required=True,
+        metavar="F",
+        help="Path to the YAML results file to infer schema from.",
+    )
+    sps[INFER_SCHEMA_CMD].add_argument(
+        "-o",
+        "--output",
+        type=str,
+        metavar="O",
+        help="Path to write the inferred schema (stdout if omitted).",
+    )
+    sps[INFER_SCHEMA_CMD].add_argument(
+        "--level",
+        type=str,
+        choices=["sample", "project"],
+        default=None,
+        metavar="L",
+        help="Schema level to generate (auto-detects from data if omitted).",
+    )
+    sps[INFER_SCHEMA_CMD].add_argument(
+        "--strict",
+        action="store_true",
+        help="Error on type conflicts instead of using most common type.",
+    )
+    sps[INFER_SCHEMA_CMD].add_argument(
+        "--pipeline-name",
+        type=str,
+        metavar="P",
+        help="Override pipeline name in generated schema.",
+    )
 
     return parser

@@ -1,6 +1,6 @@
 """Package exception types"""
 
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
 from .const import CLASSES_BY_TYPE, ENV_VARS
 
@@ -48,7 +48,19 @@ class PipestatError(Exception):
 
 
 class NoBackendSpecifiedError(PipestatError):
-    """Subtype for designating lack of backend specification"""
+    """No backend was specified or could be determined."""
+
+    def __init__(self, msg: str | None = None):
+        if msg is None:
+            msg = (
+                "No storage backend specified. Pass one of:\n"
+                "  - results_file_path='results.yaml' for YAML file backend\n"
+                "  - config_file='pipestat_config.yaml' with a 'database' section for DB backend\n"
+                "  - pephub_path='namespace/project:sample' for PEPhub backend\n"
+                "These can also be set via environment variables: "
+                "PIPESTAT_RESULTS_FILE, PIPESTAT_CONFIG"
+            )
+        super().__init__(msg)
 
 
 class SchemaError(PipestatError):
@@ -62,7 +74,7 @@ class SchemaNotFoundError(SchemaError):
     """Schema not found error"""
 
     def __init__(self, msg, cli=False):
-        txt = f"Results schema not found. The schema is required to {msg}. "
+        txt = f"Results schema not found. {msg}. "
         txt += (
             "It needs to be supplied as an CLI argument"
             if cli
@@ -145,8 +157,9 @@ class InvalidTypeError(PipestatError):
 
     def __init__(self, type):
         super(InvalidTypeError, self).__init__(
-            "'{}' is an invalid type. Only the following types are "
-            "supported: {}".format(type, list(CLASSES_BY_TYPE.keys()))
+            "'{}' is an invalid type. Only the following types are supported: {}".format(
+                type, list(CLASSES_BY_TYPE.keys())
+            )
         )
 
 
@@ -163,7 +176,7 @@ class IncompatibleClassError(PipestatError):
 class UnrecognizedStatusError(PipestatError):
     """Exception for when a value to set as status isn't declared in the active status schema."""
 
-    def __init__(self, status: str, known: Optional[Iterable[str]] = None):
+    def __init__(self, status: str, known: Iterable[str] | None = None):
         self._status = status
         msg = f"Unrecognized status: {status}"
         if known is not None:

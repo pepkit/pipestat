@@ -1,16 +1,14 @@
 import datetime
+import functools
 import os
-from abc import ABC
-from collections.abc import MutableMapping
+from collections.abc import Callable, Iterator
 from copy import deepcopy
 from logging import getLogger
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Any
 
 from jsonschema import validate
 from ubiquerg import mkabs
-from yacman import FutureYAMLConfigManager as YAMLConfigManager
-from yacman import load_yaml
-from yacman.yacman_future import select_config
+from yacman import YAMLConfigManager, load_yaml, select_config
 
 from pipestat.backends.file_backend.filebackend import FileBackend
 
@@ -19,11 +17,11 @@ from .const import (
     CFG_SCHEMA,
     CONFIG_KEY,
     CREATED_TIME,
-    DATA_KEY,
     DB_ONLY_KEY,
     DB_URL,
     DEFAULT_PIPELINE_NAME,
     ENV_VARS,
+    EXTENDED_DATA,
     FILE_KEY,
     MODIFIED_TIME,
     MULTI_PIPELINE,
@@ -48,9 +46,9 @@ from .exceptions import (
     NoBackendSpecifiedError,
     PipestatDatabaseError,
     PipestatDependencyError,
+    PipestatSummarizeError,
     RecordNotFoundError,
     SchemaNotFoundError,
-    PipestatSummarizeError,
 )
 from .helpers import default_formatter, make_subdirectories, validate_type, zip_report
 from .reports import HTMLReportBuilder, _create_stats_objs_summaries
@@ -77,11 +75,23 @@ except ImportError:
 _LOGGER = getLogger(PKG_NAME)
 
 
-def check_dependencies(dependency_list: list = None, msg: str = None):
-    """Decorator to check that the dependency list has successfully been imported."""
+def check_dependencies(dependency_list: list | None = None, msg: str | None = None) -> Callable:
+    """Decorator to check that the dependency list has successfully been imported.
 
-    def wrapper(func):
-        def inner(*args, **kwargs):
+    Args:
+        dependency_list (list, optional): List of dependencies to check for import.
+        msg (str, optional): Error message to display if dependencies are not satisfied.
+
+    Returns:
+        function: Decorated function that checks dependencies before execution.
+
+    Raises:
+        PipestatDependencyError: If any required dependencies are missing.
+    """
+
+    def wrapper(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def inner(*args, **kwargs) -> Any:
             dependencies_satisfied = True
             if dependency_list is not None:
                 for i in dependency_list:
@@ -97,82 +107,324 @@ def check_dependencies(dependency_list: list = None, msg: str = None):
     return wrapper
 
 
-def require_backend(func):
-    """Decorator to ensure a backend exists for functions that require one"""
+def require_backend(func: Callable) -> Callable:
+    """Decorator to ensure a backend exists for functions that require one.
 
-    def inner(self, *args, **kwargs):
+    Args:
+        func (function): Function that requires a backend.
+
+    Returns:
+        function: Decorated function that checks for backend existence.
+
+    Raises:
+        NoBackendSpecifiedError: If no backend is configured.
+    """
+
+    @functools.wraps(func)
+    def inner(self, *args, **kwargs) -> Any:
         if not self.backend:
-            raise NoBackendSpecifiedError
+            raise NoBackendSpecifiedError(
+                "No backend is configured on this PipestatManager. "
+                "Initialize with a results_file_path, config_file, or pephub_path."
+            )
         return func(self, *args, **kwargs)
 
     return inner
 
 
-class PipestatManager(MutableMapping):
+class PipestatManager:
+    """Manage and store pipeline results with a standardized API.
+
+    PipestatManager provides a unified interface for reporting, retrieving, and
+    querying results from any computational pipeline. Results are validated against
+    a JSON Schema and stored in either a YAML file or a PostgreSQL database.
+
+    A pipeline author defines outputs in a schema, then uses PipestatManager to
+    report results as the pipeline runs. Downstream tools can then reliably
+    retrieve those results through the same API.
+
+    Quick start (file backend):
+        psm = PipestatManager.from_file_backend(
+            "results.yaml",
+            schema_path="output_schema.yaml",
+        )
+        psm.report(record_identifier="sample1", values={"alignment_rate": 0.95})
+
+    From a config file (generic -- config determines backend):
+        psm = PipestatManager.from_config("pipestat_config.yaml")
+
+    Dict-style access is supported as shorthand:
+        psm["sample1"] = {"alignment_rate": 0.95}
+        record = psm["sample1"]
+        del psm["sample1"]
+
+    To auto-generate a schema from existing results, use the CLI:
+        pipestat infer-schema -f results.yaml -o schema.yaml
+
+    Identity concepts across backends:
+
+    | | Sample + File | Sample + DB | Project + File | Project + DB |
+    |---|---|---|---|---|
+    | record_identifier | Sample key in YAML | Row key, scoped by project_name | Defaults to project_name | Row key, scoped by project_name |
+    | pipeline_name | Top-level YAML key | DB table name | Same | Same |
+    | project_name | Not functional (file = project) | Required column, namespaces records | Same as sample + file | Required, namespaces records |
+
+    File backend: One file = one project. No collision possible.
+    DB backend: One table = all projects. project_name column required to prevent collisions.
     """
-    Pipestat standardizes reporting of pipeline results and
-    pipeline status management. It formalizes a way for pipeline developers
-    and downstream tools developers to communicate -- results produced by a
-    pipeline can easily and reliably become an input for downstream analyses.
-    A PipestatManager object exposes an API for interacting with the results and
-    pipeline status and can be backed by either a YAML-formatted file
-    or a database.
-    """
+
+    @classmethod
+    def from_file_backend(
+        cls,
+        results_file_path: str,
+        schema_path: str | None = None,
+        record_identifier: str | None = None,
+        pipeline_name: str | None = None,
+        pipeline_type: str = "sample",
+        project_name: str | None = None,
+        flag_file_dir: str | None = None,
+        validate_results: bool | None = None,
+        additional_properties: bool | None = None,
+        multi_pipelines: bool = False,
+    ) -> "PipestatManager":
+        """Create a PipestatManager backed by a YAML file.
+
+        Example:
+            psm = PipestatManager.from_file_backend(
+                "results.yaml", schema_path="output_schema.yaml",
+            )
+            psm.report(record_identifier="sample1", values={"reads": 1000})
+
+        Args:
+            results_file_path: YAML file to store results in.
+            schema_path: Path to the output schema. If None, validation is auto-disabled.
+            record_identifier: Default record to operate on.
+            pipeline_name: Name for this pipeline.
+            pipeline_type: "sample" or "project". Defaults to "sample".
+            project_name: Name of the project. For file backends, used only for
+                metadata/display since the file path provides natural project separation.
+            flag_file_dir: Custom directory for status flag files.
+            validate_results: Whether to validate results against schema.
+                If None (default), auto-detects: True when schema_path is provided,
+                False otherwise.
+            additional_properties: Override for allowing results not in schema.
+            multi_pipelines: Allow multiple pipelines in one file.
+
+        Returns:
+            PipestatManager backed by a YAML file.
+        """
+        if validate_results is None:
+            validate_results = schema_path is not None
+        return cls(
+            schema_path=schema_path,
+            results_file_path=results_file_path,
+            record_identifier=record_identifier,
+            pipeline_name=pipeline_name,
+            pipeline_type=pipeline_type,
+            project_name=project_name,
+            flag_file_dir=flag_file_dir,
+            validate_results=validate_results,
+            additional_properties=additional_properties,
+            multi_pipelines=multi_pipelines,
+        )
+
+    @classmethod
+    def from_db_backend(
+        cls,
+        config: str | dict,
+        pipeline_type: str | None = None,
+        multi_pipelines: bool = False,
+    ) -> "PipestatManager":
+        """Create a PipestatManager backed by a database.
+
+        The config must contain a 'database' section with connection details.
+
+        Example:
+            psm = PipestatManager.from_db_backend("pipestat_config.yaml")
+
+        Args:
+            config: Path to a pipestat config YAML file with a 'database'
+                section, or a dict with the same structure.
+            pipeline_type: "sample" or "project". Overrides config value if set.
+            multi_pipelines: Allow multiple pipelines in one file.
+
+        Returns:
+            PipestatManager backed by a database.
+        """
+        if isinstance(config, dict):
+            # Write dict to a temp config file for __init__ to consume
+            import tempfile
+
+            import yaml
+
+            tmp = tempfile.NamedTemporaryFile(
+                mode="w",
+                suffix=".yaml",
+                delete=False,
+            )
+            yaml.dump(config, tmp)
+            tmp.close()
+            config = tmp.name
+        return cls(
+            config_file=config,
+            pipeline_type=pipeline_type,
+            multi_pipelines=multi_pipelines,
+        )
+
+    @classmethod
+    def from_pephub_backend(
+        cls,
+        pephub_path: str,
+        schema_path: str | None = None,
+        pipeline_name: str | None = None,
+        pipeline_type: str = "sample",
+    ) -> "PipestatManager":
+        """Create a PipestatManager backed by PEPhub.
+
+        Example:
+            psm = PipestatManager.from_pephub_backend("databio/project:default")
+
+        Args:
+            pephub_path: PEPhub registry path.
+            schema_path: Path to the output schema.
+            pipeline_name: Name for this pipeline.
+            pipeline_type: "sample" or "project". Defaults to "sample".
+
+        Returns:
+            PipestatManager backed by PEPhub.
+        """
+        return cls(
+            pephub_path=pephub_path,
+            schema_path=schema_path,
+            pipeline_name=pipeline_name,
+            pipeline_type=pipeline_type,
+        )
+
+    @classmethod
+    def from_config(
+        cls,
+        config: str | dict,
+        pipeline_type: str | None = None,
+        multi_pipelines: bool = False,
+    ) -> "PipestatManager":
+        """Create a PipestatManager from a configuration file or dict.
+
+        This is the generic constructor -- the config determines which backend
+        is used (file, database, or PEPhub). Use the backend-specific
+        classmethods (from_file_backend, from_db_backend, from_pephub_backend)
+        when you know which backend you want.
+
+        Example:
+            psm = PipestatManager.from_config("pipestat_config.yaml")
+
+        Args:
+            config: Path to a pipestat config YAML file, or a dict with
+                the same structure. The config determines backend, schema,
+                and all other settings.
+            pipeline_type: "sample" or "project". Overrides config value if set.
+            multi_pipelines: Allow multiple pipelines in one file.
+
+        Returns:
+            PipestatManager configured from the config.
+        """
+        if isinstance(config, dict):
+            import tempfile
+
+            import yaml
+
+            tmp = tempfile.NamedTemporaryFile(
+                mode="w",
+                suffix=".yaml",
+                delete=False,
+            )
+            yaml.dump(config, tmp)
+            tmp.close()
+            config = tmp.name
+        return cls(
+            config_file=config,
+            pipeline_type=pipeline_type,
+            multi_pipelines=multi_pipelines,
+        )
 
     def __init__(
         self,
-        project_name: Optional[str] = None,
-        record_identifier: Optional[str] = None,
-        schema_path: Optional[str] = None,
-        results_file_path: Optional[str] = None,
-        database_only: Optional[bool] = True,
-        config_file: Optional[str] = None,
-        config_dict: Optional[dict] = None,
-        flag_file_dir: Optional[str] = None,
-        show_db_logs: bool = False,
-        pipeline_type: Optional[str] = None,
-        pipeline_name: Optional[str] = None,
-        result_formatter: staticmethod = default_formatter,
+        schema_path: str | None = None,
+        results_file_path: str | None = None,
+        record_identifier: str | None = None,
+        config_file: str | None = None,
+        pipeline_name: str | None = None,
+        pipeline_type: str | None = None,
+        project_name: str | None = None,
+        flag_file_dir: str | None = None,
+        pephub_path: str | None = None,
         multi_pipelines: bool = False,
-        output_dir: Optional[str] = None,
-        pephub_path: Optional[str] = None,
-    ):
-        """
-        Initialize the PipestatManager object
+        validate_results: bool | None = None,
+        additional_properties: bool | None = None,
+    ) -> None:
+        """Initialize the PipestatManager object.
 
-        :param str record_identifier: record identifier to report for. This
-            creates a weak bound to the record, which can be overridden in
-            this object method calls
-        :param str schema_path: path to the output schema that formalizes
-            the results structure
-        :param str results_file_path: YAML file to report into, if file is
-            used as the object back-end
-        :param bool database_only: whether the reported data should not be
-            stored in the memory, but only in the database
-        :param str config_file: path to the configuration file
-        :param dict config_dict:  a mapping with the config file content
-        :param str flag_file_dir: path to directory containing flag files
-        :param bool show_db_logs: Defaults to False, toggles showing database logs
-        :param str pipeline_type: "sample" or "project"
-        :param str pipeline_name: name of the current pipeline, defaults to
-        :param str result_formatter: function for formatting result
-        :param bool multi_pipelines: allows for running multiple pipelines for one file backend
-        :param str output_dir: target directory for report generation via summarize and table generation via table.
+        Create a results manager backed by a YAML file or database.
+        Prefer the classmethods from_file_backend(), from_db_backend(),
+        from_pephub_backend(), or from_config() for most use cases.
+
+        Minimal file-backend usage (no schema required):
+
+            psm = PipestatManager(
+                results_file_path="results.yaml",
+                pipeline_name="my_pipeline",
+            )
+            psm.report(record_identifier="sample1", values={"my_result": 42})
+
+        With schema validation:
+
+            psm = PipestatManager(
+                schema_path="output_schema.yaml",
+                results_file_path="results.yaml",
+            )
+
+        Args:
+            schema_path (str, optional): Path to the output schema that formalizes the results structure.
+            results_file_path (str, optional): YAML file to report into, if file is used as the object back-end.
+            record_identifier (str, optional): Record identifier to report for. This creates
+                a weak bound to the record, which can be overridden in object method calls.
+            config_file (str, optional): Path to the configuration file.
+            pipeline_name (str, optional): Name of the current pipeline.
+            pipeline_type (str, optional): "sample" or "project".
+            project_name (str, optional): Name of the project. Required for database backends
+                to prevent record collisions between projects sharing the same pipeline.
+                For file backends, the file path provides natural project separation, so
+                this parameter is optional and used only for metadata/display.
+                Can also be set via config file or PIPESTAT_PROJECT_NAME env var.
+            flag_file_dir (str, optional): Path to directory containing flag files.
+            pephub_path (str, optional): Path to PEPHub registry.
+            multi_pipelines (bool, optional): Allows for running multiple pipelines for one file backend. Defaults to False.
+            validate_results (bool | None, optional): Whether to validate results against schema.
+                If None (default), auto-detects: True when schema_path is provided, False otherwise.
+            additional_properties (bool | None, optional): Override for allowing results not in schema.
+                If None (default), uses schema's additionalProperties setting (defaults to True per JSON Schema).
+                If True/False, overrides the schema setting.
         """
 
-        super(PipestatManager, self).__init__()
+        if record_identifier is not None and not record_identifier:
+            raise ValueError("record_identifier cannot be empty")
 
         # Initialize the cfg dict as an attribute that holds all configuration data
         self.cfg = {}
+
+        # Auto-detect validate_results from schema presence if not explicitly set
+        if validate_results is None:
+            validate_results = schema_path is not None
+        self.cfg["force_overwrite"] = True
+        self.cfg["validate_results"] = validate_results
+        # Store the override value; will resolve from schema after schema is loaded
+        self._additional_properties_override = additional_properties
 
         # Load and validate database configuration
         # If results_file_path exists, backend is a file else backend is database.
 
         self.cfg["config_path"] = select_config(config_file, ENV_VARS["config"])
 
-        if config_dict is not None:
-            self.cfg[CONFIG_KEY] = YAMLConfigManager.from_obj(entries=config_dict)
-        elif self.cfg["config_path"] is not None:
+        if self.cfg["config_path"] is not None:
             self.cfg[CONFIG_KEY] = YAMLConfigManager.from_yaml_file(
                 filepath=self.cfg["config_path"]
             )
@@ -191,6 +443,23 @@ class PipestatManager(MutableMapping):
         )
         self.process_schema(schema_path)
 
+        if self.cfg.get(SCHEMA_KEY):
+            _LOGGER.debug(
+                f"Schema loaded: {len(self.cfg[SCHEMA_KEY].sample_level_data)} sample-level keys, "
+                f"{len(self.cfg[SCHEMA_KEY].project_level_data)} project-level keys"
+            )
+
+        # Resolve additional_properties: use override if provided, else use schema's setting
+        if self._additional_properties_override is not None:
+            self.cfg["additional_properties"] = self._additional_properties_override
+        elif self.cfg.get(SCHEMA_KEY):
+            # Will be resolved per-level at runtime, but store a default for backwards compat
+            # Default to sample level for initial value (most common case)
+            self.cfg["additional_properties"] = self.cfg[SCHEMA_KEY].sample_additional_properties
+        else:
+            # No schema, default to True
+            self.cfg["additional_properties"] = True
+
         self.cfg[RECORD_IDENTIFIER] = self.cfg[CONFIG_KEY].priority_get(
             "record_identifier", env_var=ENV_VARS["record_identifier"], override=record_identifier
         )
@@ -206,6 +475,7 @@ class PipestatManager(MutableMapping):
         else:
             self.cfg[PIPELINE_NAME] = DEFAULT_PIPELINE_NAME
 
+        # Resolve project_name from constructor arg, config, or env var
         self.cfg[PROJECT_NAME] = self.cfg[CONFIG_KEY].priority_get(
             "project_name", env_var=ENV_VARS["project_name"], override=project_name
         )
@@ -216,11 +486,23 @@ class PipestatManager(MutableMapping):
             override=record_identifier,
         )
 
-        self.cfg[DB_ONLY_KEY] = database_only
+        # Resolve database_only from config, defaulting to True
+        self.cfg[DB_ONLY_KEY] = self.cfg[CONFIG_KEY].priority_get("database_only", default=True)
 
         self.cfg[PIPELINE_TYPE] = self.cfg[CONFIG_KEY].priority_get(
             "pipeline_type", default="sample", override=pipeline_type
         )
+
+        # Default project_name for project-level pipelines
+        if self.cfg[PIPELINE_TYPE] == "project" and not self.cfg.get(PROJECT_NAME):
+            _LOGGER.warning(
+                "No project_name provided for project-level pipeline. Defaulting to 'project'."
+            )
+            self.cfg[PROJECT_NAME] = "project"
+
+        # Auto-default record_identifier for project-level pipelines
+        if self.cfg[PIPELINE_TYPE] == "project" and self.cfg[RECORD_IDENTIFIER] is None:
+            self.cfg[RECORD_IDENTIFIER] = self.cfg[PROJECT_NAME]
 
         self.cfg[FILE_KEY] = mkabs(
             self.resolve_results_file_path(
@@ -239,27 +521,34 @@ class PipestatManager(MutableMapping):
         else:
             make_subdirectories(self.cfg[FILE_KEY])
 
-        self.cfg[RESULT_FORMATTER] = result_formatter
+        self.cfg[RESULT_FORMATTER] = default_formatter
 
         self.cfg[MULTI_PIPELINE] = multi_pipelines
 
         self.cfg["multi_result_files"] = None
 
-        self.cfg[OUTPUT_DIR] = self.cfg[CONFIG_KEY].priority_get("output_dir", override=output_dir)
+        self.cfg[OUTPUT_DIR] = self.cfg[CONFIG_KEY].priority_get("output_dir")
+
+        # Note: validate_results=False now works with all backends.
+        # DB backend stores additional properties in _extended_data JSONB column.
+
+        # Resolve show_db_logs from environment variable
+        show_db_logs = os.environ.get("PIPESTAT_SHOW_DB_LOGS", "").lower() == "true"
 
         if self.cfg[FILE_KEY]:
             self.initialize_filebackend(record_identifier, results_file_path, flag_file_dir)
-
         elif self.cfg["pephub_path"]:
             self.initialize_pephubbackend(record_identifier, self.cfg["pephub_path"])
-        else:
+        elif CFG_DATABASE_KEY in self.cfg[CONFIG_KEY]:
             self.initialize_dbbackend(record_identifier, show_db_logs)
+        else:
+            raise NoBackendSpecifiedError()
 
     def __str__(self):
-        """
-        Generate string representation of the object
+        """Generate string representation of the object.
 
-        :return str: string representation of the object
+        Returns:
+            str: String representation of the object.
         """
         res = f"{self.__class__.__name__} ({self.cfg[PIPELINE_NAME]})"
         res += "\nBackend: {}".format(
@@ -296,50 +585,124 @@ class PipestatManager(MutableMapping):
             res += f"\nHighlighted results: {', '.join(high_res)}"
         return res
 
-    def __getitem__(self, key):
-        # This is a wrapper for the retrieve function:
+    def __getitem__(self, key: str) -> Any:
+        """Retrieve a record by identifier. Shorthand for retrieve_one(record_identifier=key).
+
+        Example:
+            record = psm["sample1"]
+            # Returns: {"number_of_things": 42, "name_of_something": "foo", ...}
+
+        Args:
+            key: Record identifier.
+
+        Returns:
+            Dict of all reported results for the record.
+
+        Raises:
+            RecordNotFoundError: If no record with this identifier exists.
+        """
         result = self.retrieve_one(record_identifier=key)
         return result
 
-    def __setitem__(self, key, value):
-        # This is a wrapper for the report function:
+    def __setitem__(self, key: str, value: Any) -> list[str] | bool:
+        """Report results for a record. Shorthand for report(record_identifier=key, values=value).
+
+        Example:
+            psm["sample1"] = {"alignment_rate": 0.95, "num_reads": 1000000}
+
+        Args:
+            key: Record identifier.
+            value: Dict mapping result identifiers to their values.
+
+        Returns:
+            List of formatted result strings on success, or False if
+            results already exist and force_overwrite is disabled.
+        """
         result = self.report(record_identifier=key, values=value)
         return result
 
-    def __delitem__(self, key):
-        # This is a wrapper for the remove function; it removes the entire record:
+    def __delitem__(self, key: str) -> bool:
+        """Remove an entire record. Shorthand for remove(record_identifier=key).
+
+        Example:
+            del psm["sample1"]
+
+        Args:
+            key: Record identifier to remove.
+
+        Returns:
+            True if the record was removed.
+
+        Raises:
+            RecordNotFoundError: If no record with this identifier exists.
+        """
         result = self.remove(record_identifier=key)
         return result
 
-    def __iter__(
+    def iter_records(
         self,
-        limit: Optional[int] = 1000,
-        cursor: Optional[int] = None,
+        limit: int | None = 1000,
+        cursor: int | None = None,
     ) -> Iterator:
-        """
-        This is a wrapper around select_records that creates an iterator of records
+        """Iterate over records with optional pagination.
 
-        :param int limit: maximum number of results to retrieve per page
-        :param int cursor: cursor position to begin retrieving records
-        :return: Iterator
+        Args:
+            limit: Maximum number of results to retrieve per page. Defaults to 1000.
+            cursor: Cursor position to begin retrieving records (DB backend only).
+
+        Returns:
+            Iterator over records.
         """
         if self.file:
-            # File backend does not support cursor-based paging
             return iter(self.select_records(limit=limit)["records"])
         else:
             return iter(self.select_records(limit=limit, cursor=cursor)["records"])
 
-    def __len__(self):
-        return len(self.cfg)
+    def __iter__(self) -> Iterator[str]:
+        """Iterate over record identifiers.
 
-    def resolve_results_file_path(self, results_file_path):
+        Yields record_identifier strings for all records. For paginated access
+        to full records, use select_records() directly.
+        """
+        records = self.select_records()["records"]
+        return iter(r.get("record_identifier", "") for r in records)
+
+    def __len__(self) -> int:
+        """Return the number of records. Equivalent to record_count property."""
+        return self.count_records()
+
+    def __contains__(self, record_identifier: object) -> bool:
+        """Check whether a record exists.
+
+        Args:
+            record_identifier: The record identifier to check.
+
+        Returns:
+            True if the record exists.
+        """
+        if not isinstance(record_identifier, str):
+            return False
+        try:
+            self.retrieve_one(record_identifier=record_identifier)
+            return True
+        except RecordNotFoundError:
+            return False
+
+    def resolve_results_file_path(self, results_file_path: str | None) -> str | None:
         """Replace {record_identifier} in results_file_path if it exists.
-        :param str results_file_path: YAML file to report into, if file is
-        used as the object back-end
+
+        Args:
+            results_file_path (str): YAML file to report into, if file is used as the object back-end.
+
+        Returns:
+            str: Resolved file path with record_identifier substituted if applicable.
         """
         # Save for later when assessing if there may be multiple result files
         if results_file_path:
-            assert isinstance(results_file_path, str), TypeError("Path is expected to be a str")
+            if not isinstance(results_file_path, str):
+                raise TypeError(
+                    f"results_file_path must be a string, got {type(results_file_path).__name__}: {results_file_path!r}"
+                )
             if self.record_identifier:
                 try:
                     self.cfg["unresolved_result_path"] = results_file_path
@@ -357,15 +720,16 @@ class PipestatManager(MutableMapping):
 
     def initialize_filebackend(
         self,
-        record_identifier: str = None,
-        results_file_path: str = None,
-        flag_file_dir: str = None,
-    ):
-        """
-        Initializes the file backend
-        :param str record_identifier: the record identifier
-        :param str results_file_path: the path to the results file used for the backend
-        :param str flag_file_dir: the path to the flag file directory
+        record_identifier: str | None = None,
+        results_file_path: str | None = None,
+        flag_file_dir: str | None = None,
+    ) -> None:
+        """Initializes the file backend.
+
+        Args:
+            record_identifier (str, optional): The record identifier.
+            results_file_path (str, optional): The path to the results file used for the backend.
+            flag_file_dir (str, optional): The path to the flag file directory.
         """
 
         # Check if there will be multiple results_file_paths
@@ -396,15 +760,20 @@ class PipestatManager(MutableMapping):
             self.cfg[STATUS_FILE_DIR],
             self.cfg[RESULT_FORMATTER],
             self.cfg[MULTI_PIPELINE],
+            self.cfg.get("validate_results", True),
+            self._additional_properties_override,  # Pass override (None if not set)
         )
 
         return
 
-    def initialize_pephubbackend(self, record_identifier: str = None, pephub_path: str = None):
-        """
-        Initializes the pephub backend
-        :param str record_identifier: the record identifier
-        :param str pephub_path: the path to the pephub registry
+    def initialize_pephubbackend(
+        self, record_identifier: str | None = None, pephub_path: str | None = None
+    ) -> None:
+        """Initializes the pephub backend.
+
+        Args:
+            record_identifier (str, optional): The record identifier.
+            pephub_path (str, optional): The path to the pephub registry.
         """
         self.backend = PEPHUBBACKEND(
             record_identifier,
@@ -420,13 +789,27 @@ class PipestatManager(MutableMapping):
         dependency_list=["DBBackend"],
         msg="Missing required dependencies for this usage, e.g. try pip install pipestat['dbbackend']",
     )
-    def initialize_dbbackend(self, record_identifier: str = None, show_db_logs: bool = False):
-        """
-        Initializes the database backend
-        :param str record_identifier: the record identifier
-        :param bool show_db_logs: boolean to show_db_logs
+    def initialize_dbbackend(
+        self, record_identifier: str | None = None, show_db_logs: bool = False
+    ) -> None:
+        """Initializes the database backend.
+
+        Args:
+            record_identifier (str, optional): The record identifier.
+            show_db_logs (bool, optional): Boolean to show database logs. Defaults to False.
+
+        Raises:
+            SchemaNotFoundError: If output schema is not supplied for DB backends.
+            NoBackendSpecifiedError: If database configuration is missing.
+            PipestatDatabaseError: If database configuration is invalid.
         """
         _LOGGER.debug("Determined database as backend")
+        if not self.cfg.get(PROJECT_NAME):
+            raise ValueError(
+                "project_name is required when using a database backend. "
+                "Set it via the project_name constructor parameter, config file, "
+                "or PIPESTAT_PROJECT_NAME environment variable."
+            )
         if self.cfg[SCHEMA_KEY] is None:
             raise SchemaNotFoundError("Output schema must be supplied for DB backends.")
         if CFG_DATABASE_KEY not in self.cfg[CONFIG_KEY]:
@@ -447,6 +830,7 @@ class PipestatManager(MutableMapping):
         self.backend = DBBackend(
             record_identifier,
             self.cfg[PIPELINE_NAME],
+            self.cfg[PROJECT_NAME],
             show_db_logs,
             self.cfg[PIPELINE_TYPE],
             self.cfg[SCHEMA_KEY],
@@ -460,25 +844,42 @@ class PipestatManager(MutableMapping):
     def clear_status(
         self,
         record_identifier: str = None,
-        flag_names: List[str] = None,
-    ) -> List[Union[str, None]]:
-        """
-        Remove status flags
+        flag_names: list[str] = None,
+    ) -> list[str | None]:
+        """Remove status flag files for a record.
 
-        :param str record_identifier: name of the sample_level record to remove flags for
-        :param Iterable[str] flag_names: Names of flags to remove, optional; if
-            unspecified, all schema-defined flag names will be used.
-        :return List[Union[str,None]]: Collection of names of flags removed
+        Example:
+            # Remove all status flags for a record
+            removed = psm.clear_status(record_identifier="sample1")
+            # Returns: ["running", "completed"]  (names of flags that were removed)
+
+            # Remove specific flags only
+            psm.clear_status(record_identifier="sample1", flag_names=["running"])
+
+        Args:
+            record_identifier: Record to remove flags for. If None, uses the
+                record_identifier set at init time.
+            flag_names: Names of flags to remove. If None, all schema-defined
+                flag names will be used.
+
+        Returns:
+            list[str | None]: Names of flags that were removed. None entries
+                indicate flags that did not exist.
         """
 
-        r_id = record_identifier or self.record_identifier
+        r_id = self._resolve_record_identifier(record_identifier)
         return self.backend.clear_status(record_identifier=r_id, flag_names=flag_names)
 
     @require_backend
     def count_records(self) -> int:
-        """
-        Count records
-        :return int: number of records
+        """Count the number of records in the backend.
+
+        Example:
+            n = psm.count_records()
+            # Returns: 42
+
+        Returns:
+            int: Total number of records. Returns 0 if no records exist.
         """
         return self.backend.count_records()
 
@@ -486,35 +887,80 @@ class PipestatManager(MutableMapping):
     def get_status(
         self,
         record_identifier: str = None,
-    ) -> Optional[str]:
-        """
-        Get the current pipeline status
-        :param str record_identifier: name of the sample_level record
-        :return str: status identifier, e.g. 'running'
+    ) -> str | None:
+        """Get the current pipeline status for a record.
 
+        Example:
+            status = psm.get_status(record_identifier="sample1")
+            # Returns: "running", "completed", "failed", "waiting", "partial", or None
+
+        Args:
+            record_identifier: Record to check. If None, uses the
+                record_identifier set at init time.
+
+        Returns:
+            str: Status identifier (e.g. "running", "completed"), or None
+                if no status has been set for the record.
         """
 
-        r_id = record_identifier or self.record_identifier
+        r_id = self._resolve_record_identifier(record_identifier)
         return self.backend.get_status(record_identifier=r_id)
+
+    @require_backend
+    def list_projects(self) -> list[str]:
+        """List all projects that have reported results in the database.
+
+        Only meaningful for database backends. For file backends, each file
+        IS a project, so this returns a single-element list containing the
+        current pipeline_name.
+
+        Returns:
+            list[str]: Sorted list of project names.
+        """
+        return self.backend.list_projects()
 
     @require_backend
     def list_recent_results(
         self,
-        limit: Optional[int] = 1000,
-        start: Optional[str] = None,
-        end: Optional[str] = None,
-        time_column: Optional[str] = "modified",
+        limit: int | None = 1000,
+        start: str | None = None,
+        end: str | None = None,
+        time_column: str | None = "modified",
     ) -> dict:
-        """
-        :param int  limit: limit number of results returned
-        :param str start: most recent result to filter on, defaults to now, e.g. 2023-10-16 13:03:04.680400
-        :param str end: oldest result to filter on, e.g. 1970-10-16 13:03:04.680400
-        :param str time_column: created or modified column/attribute to filter on
-        :return dict results: a dict containing start, end, num of records, and list of retrieved records
+        """List results within a time range, filtered by creation or modification time.
+
+        Example:
+            # All results modified in the last day
+            result = psm.list_recent_results()
+
+            # Results modified within a specific window
+            result = psm.list_recent_results(
+                start="2024-06-01 00:00:00",
+                end="2024-05-01 00:00:00",
+            )
+
+            # Filter by creation time instead
+            result = psm.list_recent_results(time_column="created")
+
+        Args:
+            limit: Maximum number of results to return. Defaults to 1000.
+            start: Upper bound of time range (most recent). Defaults to now.
+                Format: "YYYY-MM-DD HH:MM:SS", e.g. "2024-06-15 13:03:04".
+            end: Lower bound of time range (oldest). Defaults to 1900-01-01.
+                Format: "YYYY-MM-DD HH:MM:SS", e.g. "2024-01-01 00:00:00".
+            time_column: Which timestamp to filter on: "modified" (default)
+                or "created".
+
+        Returns:
+            dict: Same structure as select_records(): contains
+                "total_size", "page_size", "next_page_token", and "records" keys.
+
+        Raises:
+            InvalidTimeFormatError: If start or end does not match "YYYY-MM-DD HH:MM:SS".
         """
 
         if self.cfg["pephub_path"]:
-            _LOGGER.warning(f"List recent results not supported for PEPHub backend")
+            _LOGGER.warning("List recent results not supported for PEPHub backend")
             return {}
         date_format = "%Y-%m-%d %H:%M:%S"
         if start is None:
@@ -555,14 +1001,18 @@ class PipestatManager(MutableMapping):
         )
         return results
 
-    def process_schema(self, schema_path):
+    def process_schema(self, schema_path: str | None) -> None:
         # Load pipestat schema in two parts: 1) main and 2) status
         self._schema_path = self.cfg[CONFIG_KEY].priority_get(
             "schema_path", env_var=ENV_VARS["schema"], override=schema_path
         )
 
         if self._schema_path is None:
-            _LOGGER.warning("No pipestat output schema was supplied to PipestatManager.")
+            _LOGGER.info(
+                "No output schema supplied. Running in schema-optional mode "
+                "(validate_results=%s). Results will not be validated against a schema.",
+                self.cfg["validate_results"],
+            )
             self.cfg[SCHEMA_KEY] = None
             self.cfg[STATUS_SCHEMA_KEY] = None
             self.cfg[STATUS_SCHEMA_SOURCE_KEY] = None
@@ -588,30 +1038,56 @@ class PipestatManager(MutableMapping):
         self,
         record_identifier: str = None,
         result_identifier: str = None,
+        level: str | None = None,
     ) -> bool:
+        """Remove a result or an entire record.
+
+        Example:
+            # Remove a single result
+            psm.remove(record_identifier="sample1", result_identifier="number_of_things")
+
+            # Remove an entire record (all results)
+            psm.remove(record_identifier="sample1")
+
+        If result_identifier is None, or if removing the last remaining result,
+        the entire record is deleted.
+
+        Args:
+            record_identifier: Record to modify. If None, uses the
+                record_identifier set at init time.
+            result_identifier: Specific result key to remove, or None to
+                remove the entire record.
+            level: Pipeline level ("sample" or "project"). Temporarily overrides
+                the pipeline_type for this single call.
+
+        Returns:
+            True if the result or record was removed.
         """
-        Remove a result.
+        # Temporarily swap level if specified
+        orig_type = None
+        orig_backend_type = None
+        if level:
+            orig_type = self.cfg[PIPELINE_TYPE]
+            orig_backend_type = self.backend.pipeline_type
+            self.cfg[PIPELINE_TYPE] = level
+            self.backend.pipeline_type = level
 
-        If no result ID specified or last result is removed, the entire record
-        will be removed.
-
-        :param str record_identifier: name of the sample_level record
-        :param str result_identifier: name of the result to be removed or None
-             if the record should be removed.
-        :return bool: whether the result has been removed
-        """
-
-        r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
-        return self.backend.remove(
-            record_identifier=r_id,
-            result_identifier=result_identifier,
-        )
+        try:
+            r_id = self._resolve_record_identifier(record_identifier)
+            return self.backend.remove(
+                record_identifier=r_id,
+                result_identifier=result_identifier,
+            )
+        finally:
+            if level:
+                self.cfg[PIPELINE_TYPE] = orig_type
+                self.backend.pipeline_type = orig_backend_type
 
     @require_backend
     def remove_record(
         self,
-        record_identifier: Optional[str] = None,
-        rm_record: Optional[bool] = False,
+        record_identifier: str | None = None,
+        rm_record: bool | None = False,
     ) -> bool:
         return self.backend.remove_record(
             record_identifier=record_identifier,
@@ -621,71 +1097,175 @@ class PipestatManager(MutableMapping):
     @require_backend
     def report(
         self,
-        values: Dict[str, Any],
-        record_identifier: Optional[str] = None,
-        force_overwrite: bool = True,
-        result_formatter: Optional[staticmethod] = None,
+        values: dict[str, Any],
+        record_identifier: str | None = None,
+        force_overwrite: bool | None = None,
+        result_formatter: Callable | None = None,
         strict_type: bool = True,
         history_enabled: bool = True,
-    ) -> Union[List[str], bool]:
+        level: str | None = None,
+    ) -> list[str] | bool:
+        """Report one or more results for a record.
+
+        Example:
+            psm.report(
+                record_identifier="sample1",
+                values={"alignment_rate": 0.95, "num_reads": 1000000},
+            )
+
+        The keys in `values` must match result identifiers defined in your
+        output schema (unless additional_properties is enabled). Returns a
+        list of formatted result strings on success. Returns False if the
+        record already has values for those keys and force_overwrite is
+        disabled.
+
+        Args:
+            values: Dict mapping result identifiers to their values.
+                Scalar example: {"number_of_things": 42}
+                File example: {"output_file": {"path": "/path/to/file.csv", "title": "Output"}}
+                Image example: {"output_image": {"path": "fig.png", "thumbnail_path": "fig_thumb.png", "title": "Figure"}}
+            record_identifier: Unique identifier for the record (e.g. sample name).
+                If None, uses the record_identifier set at init time.
+            force_overwrite: Whether to overwrite existing results for this record.
+                If None (default), uses the manager-level default set at __init__
+                (which itself defaults to True).
+            result_formatter: Function for formatting each result into a display string.
+                Defaults to the formatter set at init time.
+            strict_type: If True (default), reported values must match the schema type
+                exactly. If False, pipestat attempts type coercion.
+            history_enabled: If True (default), previous values are saved in a
+                history log before overwriting.
+            level: Pipeline level ("sample" or "project"). Temporarily overrides
+                the pipeline_type for this single call.
+
+        Returns:
+            list[str]: Formatted result strings, one per reported key,
+                e.g. ["Reported records for 'sample1' in 'default_pipeline_name' namespace:\n- number_of_things: 42"].
+            bool: False if results already exist and force_overwrite is False.
+
+        Raises:
+            NotImplementedError: If no record_identifier is provided or resolvable.
+            ColumnNotFoundError: If a key in values is not in the schema and
+                additional_properties is disabled.
+            SchemaNotFoundError: If validate_results is True but no schema was provided.
         """
-        Report a result.
+        # Temporarily swap level if specified
+        orig_type = None
+        orig_backend_type = None
+        if level:
+            orig_type = self.cfg[PIPELINE_TYPE]
+            orig_backend_type = self.backend.pipeline_type
+            self.cfg[PIPELINE_TYPE] = level
+            self.backend.pipeline_type = level
 
-        :param Dict[str, any] values: dictionary of result-value pairs
-        :param str record_identifier: unique identifier of the record, value
-            in 'record_identifier' column to look for to determine if the record
-            already exists
-        :param bool force_overwrite: whether to overwrite the existing record
-        :param str result_formatter: function for formatting result
-        :param bool strict_type: whether the type of the reported values should
-            remain as is. Pipestat would attempt to convert to the
-            schema-defined one otherwise
-        :param bool history_enabled: Should history of reported results be enabled?
-        :return str reported_results: return list of formatted string
-        """
+        try:
+            if force_overwrite is None:
+                force_overwrite = self.cfg["force_overwrite"]
+            result_formatter = result_formatter or self.cfg[RESULT_FORMATTER]
+            values = deepcopy(values)
+            r_id = self._resolve_record_identifier(record_identifier)
+            if r_id is None:
+                raise NotImplementedError("You must supply a record identifier to report results")
 
-        result_formatter = result_formatter or self.cfg[RESULT_FORMATTER]
-        values = deepcopy(values)
-        r_id = record_identifier or self.cfg[RECORD_IDENTIFIER]
-        if r_id is None:
-            raise NotImplementedError("You must supply a record identifier to report results")
+            result_identifiers = list(values.keys())
 
-        result_identifiers = list(values.keys())
-        if self.cfg[SCHEMA_KEY] is not None:
-            for r in result_identifiers:
-                # First confirm this property is defined in the schema
-                if r not in self.result_schemas:
-                    raise ColumnNotFoundError(
-                        f"Can't report a result for attribute '{r}'; it is not defined in the output schema."
-                    )
+            # Track extra values that are not in schema (for DB backend's _extended_data)
+            extra_values = {}
 
-                validate_type(
-                    value=values[r],
-                    schema=self.result_schemas[r],
-                    strict_type=strict_type,
-                    record_identifier=record_identifier,
+            # Handle validate_results=False: auto-wrap file paths and skip validation
+            if not self.cfg.get("validate_results"):
+                for r in result_identifiers:
+                    values[r] = self._infer_and_wrap(r, values[r])
+
+            # Determine additional_properties setting: use override if set, else from schema
+            if self._additional_properties_override is not None:
+                allow_additional = self._additional_properties_override
+            elif self.cfg[SCHEMA_KEY] is not None:
+                allow_additional = self.cfg[SCHEMA_KEY].additional_properties_for_level(
+                    self.cfg[PIPELINE_TYPE]
                 )
+            else:
+                allow_additional = True  # No schema, allow everything
 
-        reported_results = self.backend.report(
-            values=values,
-            record_identifier=r_id,
-            force_overwrite=force_overwrite,
-            result_formatter=result_formatter,
-            history_enabled=history_enabled,
-        )
+            if self.cfg[SCHEMA_KEY] is not None:
+                for r in list(
+                    result_identifiers
+                ):  # Use list() to allow modification during iteration
+                    if r in self.result_schemas:
+                        # Schema-defined result: validate if validate_results=True
+                        if self.cfg.get("validate_results"):
+                            validate_type(
+                                value=values[r],
+                                schema=self.result_schemas[r],
+                                strict_type=strict_type,
+                                record_identifier=record_identifier,
+                            )
+                    else:
+                        # Not in schema
+                        if allow_additional:
+                            # Allow it - for DB backend, move to _extended_data
+                            _LOGGER.debug(
+                                f"Result '{r}' not in schema, storing as additional property"
+                            )
+                            if not self.file:
+                                extra_values[r] = values.pop(r)
+                            # For file backend, keep in values as-is
+                        elif self.cfg.get("validate_results"):
+                            # Strict mode (validate_results=True, additional_properties=False) - error
+                            raise ColumnNotFoundError(
+                                f"Can't report result '{r}'; not defined in schema. "
+                                f"Use additional_properties=True to allow undefined results."
+                            )
+                        # else: validate_results=False, just store it
+            elif self.cfg.get("validate_results"):
+                raise SchemaNotFoundError("No schema provided and validation is enabled")
+            # else: validate_results=False with no schema - store everything as-is
 
-        return reported_results
+            # Handle _extended_data for DB backend
+            if extra_values and not self.file:
+                # Get existing extended data and merge
+                existing_extended = self._get_extended_data(r_id) or {}
+                existing_extended.update(extra_values)
+                values[EXTENDED_DATA] = existing_extended
+
+            reported_results = self.backend.report(
+                values=values,
+                record_identifier=r_id,
+                force_overwrite=force_overwrite,
+                result_formatter=result_formatter,
+                history_enabled=history_enabled,
+            )
+
+            return reported_results
+        finally:
+            if level:
+                self.cfg[PIPELINE_TYPE] = orig_type
+                self.backend.pipeline_type = orig_backend_type
 
     @require_backend
     def select_distinct(
         self,
-        columns: Optional[Union[str, List[str]]] = None,
-    ) -> List[Any]:
-        """
-        Retrieves unique results for a list of attributes.
+        columns: str | list[str] | None = None,
+    ) -> list[Any]:
+        """Retrieve unique values for one or more result attributes.
 
-        :param List[str] columns: columns to include in the result
-        :return list[any] result: this is a list of distinct results
+        Example:
+            # Get all distinct values of a column
+            distinct = psm.select_distinct(columns="name_of_something")
+            # Returns: ["foo", "bar", "baz"]
+
+            # Get distinct combinations of multiple columns
+            distinct = psm.select_distinct(columns=["name_of_something", "number_of_things"])
+
+        Args:
+            columns: Column name (str) or list of column names to get distinct
+                values for.
+
+        Returns:
+            list[Any]: List of distinct results.
+
+        Raises:
+            ValueError: If columns is not a str or list of strings.
         """
         if not isinstance(columns, list) and not isinstance(columns, str):
             raise ValueError(
@@ -698,52 +1278,138 @@ class PipestatManager(MutableMapping):
     @require_backend
     def select_records(
         self,
-        columns: Optional[List[str]] = None,
-        filter_conditions: Optional[List[Dict[str, Any]]] = None,
-        limit: Optional[int] = 1000,
-        cursor: Optional[int] = None,
-        bool_operator: Optional[str] = "AND",
-    ) -> Dict[str, Any]:
-        """
-        :param list[str] columns: columns to include in the result
-        :param list[dict]  filter_conditions: e.g. [{"key": ["id"], "operator": "eq", "value": 1)], operator list:
-            - eq for ==
-            - lt for <
-            - ge for >=
-            - in for in_
-            - like for like
-        :param int limit: maximum number of results to retrieve per page
-        :param int cursor: cursor position to begin retrieving records
-        :param bool bool_operator: Perform filtering with AND or OR Logic.
-        :return dict records_dict = {
-            "total_size": int,
-            "page_size": int,
-            "next_page_token": int,
-            "records": List[Dict[{key, Any}]],
-        }
-        """
+        columns: list[str] | None = None,
+        filter_conditions: list[dict[str, Any]] | None = None,
+        limit: int | None = 1000,
+        cursor: int | None = None,
+        bool_operator: str | None = "AND",
+        level: str | None = None,
+        flatten_extended: bool = True,
+    ) -> dict[str, Any]:
+        """Select records with optional filtering and pagination.
 
-        return self.backend.select_records(
-            columns=columns,
-            filter_conditions=filter_conditions,
-            limit=limit,
-            cursor=cursor,
-            bool_operator=bool_operator,
-        )
+        Example:
+            # All records, default limit of 1000
+            result = psm.select_records()
+
+            # Filter by record identifier
+            result = psm.select_records(
+                filter_conditions=[
+                    {"key": "record_identifier", "operator": "eq", "value": "sample1"}
+                ],
+            )
+
+            # Filter with multiple conditions (AND logic)
+            result = psm.select_records(
+                columns=["number_of_things", "name_of_something"],
+                filter_conditions=[
+                    {"key": "number_of_things", "operator": "ge", "value": 10},
+                    {"key": "name_of_something", "operator": "like", "value": "%test%"},
+                ],
+            )
+
+            # Access results
+            for record in result["records"]:
+                print(record)
+
+        Args:
+            columns: Restrict output to these result keys. None returns all columns.
+            filter_conditions: List of filter dicts. Each dict has:
+                - "key" (str): column name to filter on
+                - "operator" (str): one of "eq" (==), "lt" (<), "ge" (>=),
+                  "in" (membership), "like" (SQL LIKE pattern)
+                - "value": value to compare against
+            limit: Maximum records per page. Defaults to 1000.
+            cursor: Cursor position for pagination (DB backend only).
+            bool_operator: Combine filters with "AND" (default) or "OR".
+            level: Pipeline level ("sample" or "project"). Temporarily overrides
+                the pipeline_type for this single call.
+            flatten_extended: If True (default), merges _extended_data fields
+                into each record dict (DB backend only).
+
+        Returns:
+            dict with keys:
+                - "total_size" (int): total number of matching records
+                - "page_size" (int): number of records in this page
+                - "next_page_token" (int | None): cursor for next page, or None
+                - "records" (list[dict]): list of record dicts
+        """
+        # Temporarily swap level if specified
+        orig_type = None
+        orig_backend_type = None
+        if level:
+            orig_type = self.cfg[PIPELINE_TYPE]
+            orig_backend_type = self.backend.pipeline_type
+            self.cfg[PIPELINE_TYPE] = level
+            self.backend.pipeline_type = level
+
+        try:
+            result = self.backend.select_records(
+                columns=columns,
+                filter_conditions=filter_conditions,
+                limit=limit,
+                cursor=cursor,
+                bool_operator=bool_operator,
+            )
+
+            # Flatten extended_data for DB backend
+            if flatten_extended and not self.file:
+                for record in result["records"]:
+                    if EXTENDED_DATA in record:
+                        if record[EXTENDED_DATA]:
+                            record.update(record[EXTENDED_DATA])
+                        del record[EXTENDED_DATA]
+
+            return result
+        finally:
+            if level:
+                self.cfg[PIPELINE_TYPE] = orig_type
+                self.backend.pipeline_type = orig_backend_type
 
     @require_backend
     def retrieve_one(
         self,
         record_identifier: str = None,
-        result_identifier: Optional[Union[str, List[str]]] = None,
-    ) -> Union[Any, Dict[str, Any]]:
+        result_identifier: str | list[str] | None = None,
+        level: str | None = None,
+    ) -> Any | dict[str, Any]:
+        """Retrieve results for a single record.
+
+        Return type depends on result_identifier:
+        - None: returns the full record as a dict.
+        - str: returns that single result's value directly (unwrapped).
+        - list[str]: returns a dict with only the requested keys.
+
+        Example:
+            # Full record
+            psm.retrieve_one(record_identifier="sample1")
+            # Returns: {"number_of_things": 42, "name_of_something": "foo"}
+
+            # Single result (unwrapped scalar)
+            psm.retrieve_one(record_identifier="sample1", result_identifier="number_of_things")
+            # Returns: 42
+
+            # Multiple specific results
+            psm.retrieve_one(record_identifier="sample1", result_identifier=["number_of_things", "name_of_something"])
+            # Returns: {"number_of_things": 42, "name_of_something": "foo"}
+
+        Args:
+            record_identifier: Record to retrieve. If None, uses the
+                record_identifier set at init time.
+            result_identifier: Single result key (str), list of keys, or None
+                for all results.
+            level: Pipeline level ("sample" or "project"). Temporarily overrides
+                the pipeline_type for this single call.
+
+        Returns:
+            Any: The single result value when result_identifier is a str.
+            dict[str, Any]: Record dict when result_identifier is None or a list.
+
+        Raises:
+            RecordNotFoundError: If the record does not exist.
+            ValueError: If result_identifier is not a str, list[str], or None.
         """
-        Retrieve a single record
-        :param str record_identifier: single record_identifier
-        :param str result_identifier: single record_identifier or list of result identifiers
-        :return: Dict[str, any]: a mapping with filtered results reported for the record
-        """
-        record_identifier = record_identifier or self.record_identifier
+        record_identifier = self._resolve_record_identifier(record_identifier)
 
         filter_conditions = [
             {
@@ -759,9 +1425,9 @@ class PipestatManager(MutableMapping):
                 columns = result_identifier
             else:
                 raise ValueError("Result identifier must be a str or list[str]")
-            result = self.select_records(filter_conditions=filter_conditions, columns=columns)[
-                "records"
-            ]
+            result = self.select_records(
+                filter_conditions=filter_conditions, columns=columns, level=level
+            )["records"]
             if len(result) > 0:
                 if len(columns) > 1:
                     try:
@@ -782,7 +1448,9 @@ class PipestatManager(MutableMapping):
                 )
         else:
             try:
-                result = self.select_records(filter_conditions=filter_conditions)["records"]
+                result = self.select_records(filter_conditions=filter_conditions, level=level)[
+                    "records"
+                ]
                 if len(result) > 0:
                     try:
                         return result[0]
@@ -796,16 +1464,36 @@ class PipestatManager(MutableMapping):
     def retrieve_history(
         self,
         record_identifier: str = None,
-        result_identifier: Optional[Union[str, List[str]]] = None,
-    ) -> Union[Any, Dict[str, Any]]:
-        """
-        Retrieve a single record's history
-        :param str record_identifier: single record_identifier
-        :param str result_identifier: single result_identifier or list of result identifiers
-        :return: Dict[str, any]: a mapping with filtered historical results
+        result_identifier: str | list[str] | None = None,
+    ) -> Any | dict[str, Any]:
+        """Retrieve the overwrite history for a record's results.
+
+        Example:
+            # Get all history for a record
+            history = psm.retrieve_history(record_identifier="sample1")
+            # Returns: {"number_of_things": [{"value": 10, "date": "2024-01-01"}, ...]}
+
+            # Get history for a specific result
+            history = psm.retrieve_history(
+                record_identifier="sample1",
+                result_identifier="number_of_things",
+            )
+
+        History is recorded when results are overwritten with history_enabled=True
+        (the default in report()).
+
+        Args:
+            record_identifier: Record to get history for. If None, uses the
+                record_identifier set at init time.
+            result_identifier: Single result key (str), list of keys, or None
+                for all results' history.
+
+        Returns:
+            dict[str, Any]: Mapping of result identifiers to their historical values.
+                Empty dict if no history is available.
         """
 
-        record_identifier = record_identifier or self.record_identifier
+        record_identifier = self._resolve_record_identifier(record_identifier)
 
         if self.file:
             result = self.backend.select_records(
@@ -836,7 +1524,7 @@ class PipestatManager(MutableMapping):
                 return {}
 
         elif self.cfg["pephub_path"]:
-            _LOGGER.warning(f"Retrieving history not supported for PEPHub backend")
+            _LOGGER.warning("Retrieving history not supported for PEPHub backend")
             return None
         else:
             if result_identifier:
@@ -852,6 +1540,7 @@ class PipestatManager(MutableMapping):
                 "pipestat_created_time",
                 "source_record_id",
                 "record_identifier",
+                "project_name",
             ]
             history = {
                 key: value for key, value in history.items() if key not in extra_keys_to_delete
@@ -861,14 +1550,37 @@ class PipestatManager(MutableMapping):
 
     def retrieve_many(
         self,
-        record_identifiers: List[str],
-        result_identifier: Optional[str] = None,
-    ) -> Union[Any, Dict[str, Any]]:
-        """
-        :param record_identifiers: list of record identifiers
-        :param str result_identifier: single record_identifier
-        :return: Dict[str, any]: a mapping with filtered
-            results reported for the record
+        record_identifiers: list[str],
+        result_identifier: str | None = None,
+    ) -> Any | dict[str, Any]:
+        """Retrieve results for multiple records at once.
+
+        Example:
+            result = psm.retrieve_many(
+                record_identifiers=["sample1", "sample2", "sample3"],
+            )
+            for record in result["records"]:
+                print(record)
+
+            # Retrieve a specific result across multiple records
+            result = psm.retrieve_many(
+                record_identifiers=["sample1", "sample2"],
+                result_identifier="number_of_things",
+            )
+
+        Uses select_records() internally with an "in" filter on record_identifier.
+
+        Args:
+            record_identifiers: List of record identifiers to retrieve.
+            result_identifier: Single result key to filter results. If None,
+                returns all results for each record.
+
+        Returns:
+            dict[str, Any]: Same structure as select_records(): contains
+                "total_size", "page_size", "next_page_token", and "records" keys.
+
+        Raises:
+            RecordNotFoundError: If none of the specified records exist.
         """
 
         filter = {
@@ -882,7 +1594,7 @@ class PipestatManager(MutableMapping):
             result = self.select_records(filter_conditions=[filter])
 
         if len(result["records"]) == 0:
-            RecordNotFoundError(f"Records, '{record_identifiers}',  not found")
+            raise RecordNotFoundError(f"Records, '{record_identifiers}', not found")
         else:
             return result
 
@@ -892,27 +1604,50 @@ class PipestatManager(MutableMapping):
         status_identifier: str,
         record_identifier: str = None,
     ) -> None:
-        """
-        Set pipeline run status.
+        """Set the pipeline run status for a record.
 
-        The status identifier needs to match one of identifiers specified in
-        the status schema. A basic, ready to use, status schema is shipped with
-        this package.
+        Example:
+            psm.set_status(record_identifier="sample1", status_identifier="running")
+            psm.set_status(record_identifier="sample1", status_identifier="completed")
 
-        :param str status_identifier: status to set, one of statuses defined
-            in the status schema
-        :param str record_identifier: sample_level record identifier to set the
-            pipeline status for
+        Built-in status identifiers (from the default status schema):
+            - "running": the pipeline is running
+            - "completed": the pipeline has completed
+            - "failed": the pipeline has failed
+            - "waiting": the pipeline is waiting
+            - "partial": the pipeline stopped before completion point
+
+        Custom status schemas can define additional identifiers.
+
+        Args:
+            status_identifier: Status to set. Must match an identifier in the
+                status schema.
+            record_identifier: Record to set status for. If None, uses the
+                record_identifier set at init time.
+
+        Raises:
+            UnrecognizedStatusError: If status_identifier is not in the status schema.
         """
-        r_id = record_identifier or self.record_identifier
+        r_id = self._resolve_record_identifier(record_identifier)
         self.backend.set_status(status_identifier, r_id)
 
     @require_backend
-    def link(self, link_dir) -> Union[str, None]:
-        """
-        This function creates a link structure such that results are organized by type.
-        :param str link_dir: path to desired symlink output directory
-        :return str | None linked_results_path: path to symlink directory or None
+    def link(self, link_dir: str) -> str | None:
+        """Create a symlink directory structure organizing results by type.
+
+        Example:
+            linked_path = psm.link(link_dir="/path/to/links")
+            # Creates: /path/to/links/<result_type>/<record_id>_<filename>
+
+        Creates symlinks to file and image results, grouped by result type,
+        making it easy to browse outputs across records.
+
+        Args:
+            link_dir: Path to the desired symlink output directory.
+
+        Returns:
+            str | None: Path to the symlink directory, or None if no
+                linkable results exist.
         """
 
         self.check_multi_results()
@@ -923,19 +1658,41 @@ class PipestatManager(MutableMapping):
     @require_backend
     def summarize(
         self,
-        looper_samples: Optional[list] = None,
-        amendment: Optional[str] = None,
-        portable: Optional[bool] = False,
-        output_dir: Optional[str] = None,
-    ) -> Union[str, None]:
-        """
-        Builds a browsable html report for reported results.
-        :param Iterable[str] looper_samples: list of looper Samples from PEP
-        :param Iterable[str] amendment: name indicating amendment to use, optional
-        :param bool portable: moves figures and report files to directory for easy sharing
-        :param str output_dir: overrides output_dir set during pipestatManager creation.
-        :return str: report_path
+        looper_samples: list | None = None,
+        amendment: str | None = None,
+        portable: bool | None = False,
+        output_dir: str | None = None,
+        mode: str = "table",
+    ) -> str | None:
+        """Build a browsable HTML report for reported results.
 
+        Example:
+            # Generate a table-based report
+            report_path = psm.summarize(output_dir="/path/to/output")
+            # Returns: "/path/to/output/default_pipeline_name/stats_summary.html"
+
+            # Generate an image gallery report
+            report_path = psm.summarize(output_dir="/path/to/output", mode="gallery")
+
+            # Generate a portable ZIP archive
+            report_path = psm.summarize(output_dir="/path/to/output", portable=True)
+
+        Args:
+            looper_samples: List of looper Sample objects from a PEP. Used to
+                enrich the report with sample metadata.
+            amendment: PEP amendment name to use.
+            portable: If True, copies figures into the report directory and
+                produces a ZIP archive for easy sharing. Defaults to False.
+            output_dir: Override the output_dir set during PipestatManager creation.
+            mode: Report mode -- "table" (default) for tabular layout, or
+                "gallery" for image-centric view.
+
+        Returns:
+            str | None: Path to the generated HTML report (or ZIP if portable),
+                or None if generation fails.
+
+        Raises:
+            PipestatSummarizeError: If no results are found at the backend.
         """
 
         if output_dir:
@@ -943,7 +1700,7 @@ class PipestatManager(MutableMapping):
 
         if self.cfg["pephub_path"]:
             if OUTPUT_DIR not in self.cfg:
-                _LOGGER.warning(f"Output directory is required for pipestat summarize.")
+                _LOGGER.warning("Output directory is required for pipestat summarize.")
                 return None
 
         self.check_multi_results()
@@ -952,11 +1709,11 @@ class PipestatManager(MutableMapping):
         try:
             current_results = self.select_records()
             if len(current_results["records"]) < 1:
-                raise PipestatSummarizeError(f"No results found at specified backend")
+                raise PipestatSummarizeError("No results found at specified backend")
         except Exception as e:
             raise PipestatSummarizeError(f"PipestatSummarizeError due to exception: {e}")
 
-        html_report_builder = HTMLReportBuilder(prj=self, portable=portable)
+        html_report_builder = HTMLReportBuilder(prj=self, portable=portable, mode=mode)
         report_path = html_report_builder(
             pipeline_name=self.cfg[PIPELINE_NAME],
             amendment=amendment,
@@ -968,7 +1725,7 @@ class PipestatManager(MutableMapping):
 
         return report_path
 
-    def check_multi_results(self):
+    def check_multi_results(self) -> None:
         # Check to see if the user used a path with "{record-identifier}"
         if self.file:
             if "{record_identifier}" in self.cfg["unresolved_result_path"]:
@@ -984,13 +1741,22 @@ class PipestatManager(MutableMapping):
     @require_backend
     def table(
         self,
-        output_dir: Optional[str] = None,
-    ) -> List[str]:
-        """
-        Generates stats (.tsv) and object (.yaml) files.
-        :param str output_dir: overrides output_dir set during pipestatManager creation.
-        :return list[str] table_path_list: list containing output file paths of stats and objects
+        output_dir: str | None = None,
+    ) -> list[str]:
+        """Generate stats (.tsv) and object (.yaml) summary files.
 
+        Example:
+            paths = psm.table(output_dir="/path/to/output")
+            # Returns: ["/path/to/output/stats.tsv", "/path/to/output/objects.yaml"]
+
+        Produces a TSV file of scalar results and a YAML file of complex
+        (file/image/object) results.
+
+        Args:
+            output_dir: Override the output_dir set during PipestatManager creation.
+
+        Returns:
+            list[str]: File paths of the generated stats and objects files.
         """
         if output_dir:
             self.cfg[OUTPUT_DIR] = output_dir
@@ -1001,218 +1767,343 @@ class PipestatManager(MutableMapping):
 
         return table_path_list
 
-    def _get_attr(self, attr: str) -> Any:
-        """
-        Safely get the name of the selected attribute of this object
+    # File extensions for auto-wrapping when validate_results=False
+    _IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".svg", ".gif", ".webp"}
+    _FILE_EXTENSIONS = {".csv", ".tsv", ".json", ".pdf", ".txt", ".html", ".bed", ".bam"}
 
-        :param str attr: attr to select
-        :return:
+    def _infer_and_wrap(self, key: str, value: Any) -> Any:
+        """When validate_results=False, auto-wrap file paths as file/image objects.
+
+        Args:
+            key (str): Result key name (used as title).
+            value (Any): The value to potentially wrap.
+
+        Returns:
+            Any: Original value or wrapped file/image object.
         """
-        return self.get(attr)
+        if isinstance(value, str):
+            ext = os.path.splitext(value)[1].lower()
+            if ext in self._IMAGE_EXTENSIONS:
+                return {"path": value, "title": key}
+            if ext in self._FILE_EXTENSIONS:
+                return {"path": value, "title": key}
+        return value
+
+    def _get_extended_data(self, record_identifier: str) -> dict | None:
+        """Get existing _extended_data for a record (DB backend only).
+
+        Args:
+            record_identifier (str): Record to get extended data for.
+
+        Returns:
+            dict | None: Existing extended data or None.
+        """
+        if self.file:
+            return None
+        try:
+            result = self.backend.select_records(
+                columns=[EXTENDED_DATA],
+                filter_conditions=[
+                    {"key": "record_identifier", "operator": "eq", "value": record_identifier}
+                ],
+            )
+            if result["records"]:
+                return result["records"][0].get(EXTENDED_DATA)
+        except Exception:
+            pass
+        return None
+
+    def _resolve_record_identifier(self, record_identifier: str | None) -> str | None:
+        """Resolve record_identifier, auto-defaulting for project level.
+
+        Args:
+            record_identifier: Explicitly provided record identifier, or None.
+
+        Returns:
+            Resolved record identifier string, or None if not resolvable.
+
+        Raises:
+            ValueError: If record_identifier is an empty string.
+        """
+        if record_identifier is not None and not record_identifier:
+            raise ValueError("record_identifier cannot be empty")
+        if record_identifier is not None:
+            return record_identifier
+        r_id = self.cfg.get(RECORD_IDENTIFIER)
+        if r_id is not None:
+            return r_id
+        # Auto-default for project level (covers level="project" on sample-level managers)
+        if self.cfg.get(PIPELINE_TYPE) == "project":
+            return self.cfg.get(PROJECT_NAME) or "project"
+        return None
 
     @property
     def config_path(self) -> str:
-        """
-        Config path. None if the config was not provided or if provided
-        as a mapping of the config contents
+        """Config path.
 
-        :return str: path to the provided config
+        Returns None if the config was not provided or if provided as a mapping of the config contents.
+
+        Returns:
+            str: Path to the provided config.
         """
         return self.cfg.get("config_path", None)
 
     @property
     def data(self) -> YAMLConfigManager:
-        """
-        Data object
+        """Data object.
 
-        :return yacman.YAMLConfigManager: the object that stores the reported data
+        Returns:
+            yacman.YAMLConfigManager: The object that stores the reported data.
         """
         return self.backend._data
 
     @property
     def db_url(self) -> str:
-        """
-        Database URL, generated based on config credentials
+        """Database URL, generated based on config credentials.
 
-        :return str: database URL
-        :raise PipestatDatabaseError: if the object is not backed by a database
+        Returns:
+            str: Database URL.
+
+        Raises:
+            PipestatDatabaseError: If the object is not backed by a database.
         """
         return self.cfg[DB_URL]
 
     @property
     def file(self) -> str:
-        """
-        File path that the object is reporting the results into
+        """File path that the object is reporting the results into.
 
-        :return str: file path that the object is reporting the results into
+        Returns:
+            str: File path that the object is reporting the results into.
         """
         return self.cfg[FILE_KEY]
 
     @property
-    def highlighted_results(self) -> List[str]:
-        """
-        Highlighted results
+    def validate_results(self) -> bool:
+        """Whether schema validation is enabled.
 
-        :return List[str]: a collection of highlighted results
+        Returns:
+            bool: True if results are validated against schema.
+        """
+        return self.cfg.get("validate_results", True)
+
+    @property
+    def additional_properties(self) -> bool:
+        """Whether additional properties (not in schema) are allowed for current level.
+
+        Returns the effective value: override if set, else schema's setting for current level.
+
+        Returns:
+            bool: True if results not defined in schema are allowed.
+        """
+        if self._additional_properties_override is not None:
+            return self._additional_properties_override
+        if self.cfg.get(SCHEMA_KEY):
+            return self.cfg[SCHEMA_KEY].additional_properties_for_level(self.cfg[PIPELINE_TYPE])
+        return True
+
+    @property
+    def highlighted_results(self) -> list[str]:
+        """Highlighted results.
+
+        Returns:
+            List[str]: A collection of highlighted results.
         """
         return [k for k, v in self.result_schemas.items() if v.get("highlight") is True]
 
     @property
-    def output_dir(self) -> str:
-        """
-        Output directory for report and stats generation
+    def force_overwrite(self) -> bool:
+        """Default for whether report() should overwrite existing results.
 
-        :return str: path to output_dir
+        Can be overridden per-call via report(force_overwrite=...).
+
+        Returns:
+            bool: True if results are overwritten by default.
+        """
+        return self.cfg.get("force_overwrite", True)
+
+    @force_overwrite.setter
+    def force_overwrite(self, value: bool) -> None:
+        self.cfg["force_overwrite"] = value
+
+    @property
+    def result_formatter(self) -> Callable:
+        """Function for formatting results into display strings.
+
+        Returns:
+            Callable: The current result formatter function.
+        """
+        return self.cfg.get(RESULT_FORMATTER, default_formatter)
+
+    @result_formatter.setter
+    def result_formatter(self, value: Callable) -> None:
+        self.cfg[RESULT_FORMATTER] = value
+
+    @property
+    def output_dir(self) -> str:
+        """Output directory for report and stats generation.
+
+        Returns:
+            str: Path to output_dir.
         """
         return self.cfg[OUTPUT_DIR]
 
+    @output_dir.setter
+    def output_dir(self, value: str) -> None:
+        self.cfg[OUTPUT_DIR] = value
+
     @property
     def pipeline_name(self) -> str:
-        """
-        Pipeline name
+        """Pipeline name.
 
-        :return str: Pipeline name
+        Returns:
+            str: Pipeline name.
         """
         return self.cfg[PIPELINE_NAME]
 
     @property
     def project_name(self) -> str:
-        """
-        Project name the object writes the results to
+        """Project name the object writes the results to.
 
-        :return str: project name the object writes the results to
+        Returns:
+            str: Project name the object writes the results to.
         """
         return self.cfg[PROJECT_NAME]
 
     @property
     def pipeline_type(self) -> str:
-        """
-        Pipeline type: "sample" or "project"
+        """Pipeline type: "sample" or "project".
 
-        :return str: pipeline type
+        Returns:
+            str: Pipeline type.
         """
         return self.cfg[PIPELINE_TYPE]
 
     @property
-    def record_identifier(self) -> str:
-        """
-        Pipeline type: "sample" or "project"
+    def record_identifier(self) -> str | None:
+        """Record identifier. Defaults to project_name for project-level pipelines.
 
-        :return str: pipeline type
+        Returns:
+            str | None: Record identifier.
         """
-        return self.cfg[RECORD_IDENTIFIER]
+        return self._resolve_record_identifier(None)
 
     @property
     def record_count(self) -> int:
-        """
-        Number of records reported
+        """Number of records reported.
 
-        :return int: number of records reported
+        Returns:
+            int: Number of records reported.
         """
         return self.count_records()
 
     @property
-    def result_schemas(self) -> Dict[str, Any]:
-        """
-        Result schema mappings
+    def result_schemas(self) -> dict[str, Any]:
+        """Result schema mappings for the current pipeline type.
 
-        :return dict: schemas that formalize the structure of each result
-            in a canonical jsonschema way
+        Returns schemas only for this manager's pipeline_type (sample or project),
+        not a merged view of both levels.
+
+        Returns:
+            Dict[str, Any]: Schemas that formalize the structure of each result.
+                Empty dict if no schema.
         """
+        if self.cfg[SCHEMA_KEY] is None:
+            return {}
+        if self.pipeline_type == "project":
+            return self.cfg[SCHEMA_KEY].project_level_data
+        return self.cfg[SCHEMA_KEY].sample_level_data
+
+    @property
+    def all_result_schemas(self) -> dict[str, dict[str, Any]]:
+        """All result schemas organized by level.
+
+        Returns:
+            Dict with 'sample' and 'project' keys, each containing that level's schemas.
+                Empty dicts if no schema.
+        """
+        if self.cfg[SCHEMA_KEY] is None:
+            return {"sample": {}, "project": {}}
         return {
-            **self.cfg[SCHEMA_KEY].project_level_data,
-            **self.cfg[SCHEMA_KEY].sample_level_data,
+            "sample": self.cfg[SCHEMA_KEY].sample_level_data,
+            "project": self.cfg[SCHEMA_KEY].project_level_data,
         }
 
     @property
     def schema(self) -> ParsedSchema:
-        """
-        Schema mapping
+        """Schema mapping.
 
-        :return ParsedSchema: schema object that formalizes the results structure
+        Returns:
+            ParsedSchema: Schema object that formalizes the results structure.
         """
         return self.cfg["_schema"]
 
     @property
     def schema_path(self) -> str:
-        """
-        Schema path
+        """Schema path.
 
-        :return str: path to the provided schema
+        Returns:
+            str: Path to the provided schema.
         """
         return self.cfg[SCHEMA_PATH]
 
     @property
-    def status_schema(self) -> Dict:
-        """
-        Status schema mapping
+    def status_schema(self) -> dict:
+        """Status schema mapping.
 
-        :return dict: schema that formalizes the pipeline status structure
+        Returns:
+            Dict: Schema that formalizes the pipeline status structure.
         """
         return self.cfg[STATUS_SCHEMA_KEY]
 
     @property
-    def status_schema_source(self) -> Dict:
-        """
-        Status schema source
+    def status_schema_source(self) -> dict:
+        """Status schema source.
 
-        :return dict: source of the schema that formalizes
-            the pipeline status structure
+        Returns:
+            Dict: Source of the schema that formalizes the pipeline status structure.
         """
         return self.cfg[STATUS_SCHEMA_SOURCE_KEY]
 
 
 class SamplePipestatManager(PipestatManager):
-    def __init__(self, **kwargs):
+    """Convenience wrapper that creates a PipestatManager with pipeline_type="sample".
+
+    Equivalent to PipestatManager(pipeline_type="sample", **kwargs).
+    All arguments are forwarded to PipestatManager.__init__.
+    """
+
+    def __init__(self, **kwargs) -> None:
         PipestatManager.__init__(self, pipeline_type="sample", **kwargs)
-        _LOGGER.warning("Initialize PipestatMgrSample")
 
 
 class ProjectPipestatManager(PipestatManager):
-    def __init__(self, **kwargs):
+    """Convenience wrapper that creates a PipestatManager with pipeline_type="project".
+
+    Equivalent to PipestatManager(pipeline_type="project", **kwargs).
+    All arguments are forwarded to PipestatManager.__init__.
+    """
+
+    def __init__(self, **kwargs) -> None:
         PipestatManager.__init__(self, pipeline_type="project", **kwargs)
-        _LOGGER.warning("Initialize PipestatMgrProject")
 
 
-class PipestatBoss(ABC):
-    """
-    PipestatBoss simply holds Sample or Project Managers that are child classes of PipestatManager.
-        :param list[str] pipeline_list: list that holds pipeline types, e.g. ['sample','project']
-        :param str record_identifier: record identifier to report for. This
-            creates a weak bound to the record, which can be overridden in
-            this object method calls
-        :param str schema_path: path to the output schema that formalizes
-            the results structure
-        :param str results_file_path: YAML file to report into, if file is
-            used as the object back-end
-        :param bool database_only: whether the reported data should not be
-            stored in the memory, but only in the database
-        :param str | dict config: path to the configuration file or a mapping
-            with the config file content
-        :param str flag_file_dir: path to directory containing flag files
-        :param bool show_db_logs: Defaults to False, toggles showing database logs
-        :param str pipeline_type: "sample" or "project"
-        :param str result_formatter: function for formatting result
-        :param bool multi_pipelines: allows for running multiple pipelines for one file backend
-        :param str output_dir: target directory for report generation via summarize and table generation via table.
+class PipestatDualManager:
+    """Holds both a SamplePipestatManager and a ProjectPipestatManager.
+
+    Use this when your pipeline reports results at both the sample and project level
+    and you want a single object to manage both. Access the sub-managers via the
+    .sample and .project attributes.
+
+        dual = PipestatDualManager(schema_path="schema.yaml", results_file_path="results.yaml")
+        dual.sample.report(record_identifier="s1", values={"reads": 1000})
+        dual.project.report(values={"total_reads": 5000})
+
+    Args:
+        **kwargs: All arguments are forwarded to both sub-managers' __init__.
     """
 
-    def __init__(self, pipeline_list: Optional[list] = None, **kwargs):
-        _LOGGER.warning("Initialize PipestatBoss")
-        if len(pipeline_list) > 3:
-            _LOGGER.warning(
-                "PipestatBoss currently only supports one 'sample' and one 'project' pipeline. Ignoring extra types."
-            )
-        for i in pipeline_list:
-            if i == "sample":
-                self.samplemanager = SamplePipestatManager(**kwargs)
-            elif i == "project":
-                self.projectmanager = ProjectPipestatManager(**kwargs)
-            else:
-                _LOGGER.warning(f"This pipeline type is not supported. Pipeline supplied: {i}")
-
-    def __getitem__(self, key):
-        return getattr(self, key)
-
-    def __setitem__(self, key, value):
-        setattr(self, key, value)
+    def __init__(self, **kwargs) -> None:
+        _LOGGER.debug("Initialize PipestatDualManager")
+        self.sample = SamplePipestatManager(**kwargs)
+        self.project = ProjectPipestatManager(**kwargs)
