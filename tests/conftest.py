@@ -7,6 +7,8 @@ from atexit import register
 import pytest
 from yacman import load_yaml
 
+from pipestat.const import STATUS_SCHEMA
+
 
 def pytest_addoption(parser):
     parser.addoption("--pephub", action="store_true", default=False, help="run PEPhub tests")
@@ -19,7 +21,6 @@ def pytest_collection_modifyitems(config, items):
             if "pephub" in item.keywords:
                 item.add_marker(skip_pephub)
 
-from pipestat.const import STATUS_SCHEMA
 
 REC_ID = "constant_record_id"
 BACKEND_KEY_DB = "db"
