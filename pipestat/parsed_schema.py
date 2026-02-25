@@ -21,6 +21,16 @@ from .exceptions import SchemaError
 
 _LOGGER = logging.getLogger(__name__)
 
+SCHEMA_TEMPLATE = """\
+pipeline_name: my_pipeline
+samples:
+  my_result:
+    type: string
+    description: "A string result reported by the pipeline"
+  my_numeric_result:
+    type: number
+    description: "A numeric result reported by the pipeline"
+"""
 
 NULL_MAPPING_VALUE = {}
 SCHEMA_PIPELINE_NAME_KEY = "pipeline_name"
@@ -66,17 +76,17 @@ def _safe_pop_one_mapping(
 
 
 class ParsedSchema(object):
-    """
-    Store the results of parsing a pipestat schema configuration file.
+    """Parse and validate a pipestat schema configuration file.
 
-    In particular, there are different 'levels' (concepts, really) at which schema
-    elements may be defined; namely, there may be project-, sample-, or status-related
-    schema information in a configuration file.
+    Minimal schema example::
 
-    This class tames this complexity relative to interacting directly with a raw
-    Mapping-like object that would result from a parse, providing accessors for each
-    of the key groupings of schema information, as well as the name of the pipeline
-    for which the schema is written.
+        pipeline_name: my_pipeline
+        samples:
+          my_result:
+            type: string
+            description: "A string result"
+
+    To generate a schema from existing results, use ``pipestat infer-schema``.
     """
 
     _PROJECT_KEY = "project"
@@ -186,9 +196,19 @@ class ParsedSchema(object):
             self._project_level_data = _recursively_replace_custom_types(prj_data)
 
         if not isinstance(self._pipeline_name, str):
-            raise SchemaError(
-                f"Could not find valid pipeline identifier (key '{SCHEMA_PIPELINE_NAME_KEY}') in given schema data"
+            # Detect common mistake: using 'pipeline_id' instead of 'pipeline_name'
+            has_pipeline_id = "pipeline_id" in self.original_schema or (
+                "properties" in self.original_schema
+                and "pipeline_id" in self.original_schema.get("properties", {})
             )
+            if has_pipeline_id:
+                hint = (
+                    "Found 'pipeline_id' in schema -- did you mean 'pipeline_name'? "
+                    "The key was renamed from 'pipeline_id' to 'pipeline_name'."
+                )
+            else:
+                hint = f"Every pipestat schema must include a top-level '{SCHEMA_PIPELINE_NAME_KEY}' key."
+            raise SchemaError(f"{hint}\n\nMinimal working schema:\n\n{SCHEMA_TEMPLATE}")
 
         # Sample- and/or project-level data must be declared.
         if not self._sample_level_data and not self._project_level_data:
@@ -346,8 +366,10 @@ def _recursively_replace_custom_types(s: dict[str, Any]) -> dict[str, Any]:
     for k, v in s.items():
         missing_req_keys = [req for req in [SCHEMA_TYPE_KEY, SCHEMA_DESC_KEY] if req not in v]
         if missing_req_keys:
+            example = f'  {k}:\n    type: string\n    description: "Description of {k}"'
             raise SchemaError(
-                f"Result '{k}' is missing required key(s): {', '.join(missing_req_keys)}"
+                f"Result '{k}' is missing required key(s): {', '.join(missing_req_keys)}.\n"
+                f"Every result must have both 'type' and 'description'. Example:\n\n{example}"
             )
         curr_type_name = v[SCHEMA_TYPE_KEY]
         if curr_type_name == "object" and SCHEMA_PROP_KEY in s[k]:

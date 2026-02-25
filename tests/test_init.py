@@ -61,8 +61,16 @@ class TestPipestatManagerInstantiation:
         """Object constructor raises exception if cfg is missing data"""
         tmp_pth = os.path.join(mkdtemp(), "res.yml")
         with open(tmp_pth, "w") as file:
-            dump({"database": {"host": "localhost"}}, file)
+            dump({"database": {"host": "localhost"}, "project_name": "test"}, file)
         with pytest.raises(MissingConfigDataError):
+            SamplePipestatManager(config_file=tmp_pth, schema_path=schema_file_path)
+
+    def test_missing_project_name_raises(self, schema_file_path):
+        """DB config without project_name raises ValueError"""
+        tmp_pth = os.path.join(mkdtemp(), "res.yml")
+        with open(tmp_pth, "w") as file:
+            dump({"database": {"host": "localhost"}}, file)
+        with pytest.raises(ValueError, match="project_name is required"):
             SamplePipestatManager(config_file=tmp_pth, schema_path=schema_file_path)
 
     def test_unknown_backend(self, schema_file_path):

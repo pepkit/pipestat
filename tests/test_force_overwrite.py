@@ -23,8 +23,8 @@ class TestForceOverwriteManagerDefault:
             psm = PipestatManager(
                 schema_path=schema_file_path,
                 results_file_path=f.name,
-                force_overwrite=True,
             )
+            psm.force_overwrite = True
             psm.report(
                 record_identifier="sample1",
                 values={"name_of_something": "first_value"},
@@ -42,8 +42,8 @@ class TestForceOverwriteManagerDefault:
             psm = PipestatManager(
                 schema_path=schema_file_path,
                 results_file_path=f.name,
-                force_overwrite=False,
             )
+            psm.force_overwrite = False
             psm.report(
                 record_identifier="sample1",
                 values={"name_of_something": "first_value"},
@@ -63,8 +63,8 @@ class TestForceOverwriteManagerDefault:
             psm = PipestatManager(
                 schema_path=schema_file_path,
                 results_file_path=f.name,
-                force_overwrite=False,
             )
+            psm.force_overwrite = False
             psm.report(
                 record_identifier="sample1",
                 values={"name_of_something": "first_value"},
@@ -83,8 +83,8 @@ class TestForceOverwriteManagerDefault:
             psm = PipestatManager(
                 schema_path=schema_file_path,
                 results_file_path=f.name,
-                force_overwrite=True,
             )
+            psm.force_overwrite = True
             psm.report(
                 record_identifier="sample1",
                 values={"name_of_something": "first_value"},
@@ -105,4 +105,4 @@ class TestForceOverwriteManagerDefault:
                 schema_path=schema_file_path,
                 results_file_path=f.name,
             )
-            assert psm.cfg["force_overwrite"] is True
+            assert psm.force_overwrite is True

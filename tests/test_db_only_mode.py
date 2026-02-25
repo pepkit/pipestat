@@ -1,5 +1,3 @@
-from tempfile import NamedTemporaryFile
-
 import pytest
 
 from pipestat import SamplePipestatManager
@@ -38,32 +36,6 @@ class ContextManagerDBTesting:
 
 
 @pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
-@pytest.mark.skip(reason="SQLite not supported - DB backend uses PostgreSQL JSONB columns")
-class TestSQLLITE:
-    def test_manager_can_be_built_without_exception(self, schema_file_path_sqlite):
-
-        with NamedTemporaryFile() as f:
-            sqllite_url = f"sqlite:///{f.name}"
-            config_dict = {
-                "project_name": "test",
-                "record_identifier": "sample1",
-                "schema_path": schema_file_path_sqlite,
-                "database": {"sqlite_url": f.name},
-            }
-
-            with ContextManagerDBTesting(sqllite_url):
-                try:
-                    SamplePipestatManager(
-                        schema_path=schema_file_path_sqlite,
-                        record_identifier="irrelevant",
-                        database_only=True,
-                        config_dict=config_dict,
-                    )
-                except Exception as e:
-                    pytest.fail(f"Pipestat manager construction failed: {e})")
-
-
-@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
 @pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestDatabaseOnly:
     # TODO: parameterize this against different schemas.
@@ -73,7 +45,6 @@ class TestDatabaseOnly:
                 SamplePipestatManager(
                     schema_path=schema_file_path,
                     record_identifier="irrelevant",
-                    database_only=True,
                     config_file=config_file_path,
                 )
                 print("done")

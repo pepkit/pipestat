@@ -99,7 +99,7 @@ class TestStatus:
         """Test clearing flag files"""
         with NamedTemporaryFile() as f:
             results_file_path = f.name
-            args = dict(schema_path=schema_file_path, database_only=False)
+            args = dict(schema_path=schema_file_path)
             backend_data = (
                 {"config_file": config_file_path}
                 if backend == "db"

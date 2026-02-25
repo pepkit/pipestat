@@ -200,7 +200,7 @@ SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME = [
     + [
         (
             dict(data),
-            f"Could not find valid pipeline identifier (key '{SCHEMA_PIPELINE_NAME_KEY}') in given schema data",
+            f"Every pipestat schema must include a top-level '{SCHEMA_PIPELINE_NAME_KEY}' key.",
         )
         for data in SCHEMA_DATA_TUPLES_WITHOUT_PIPELINE_NAME
     ],
@@ -209,7 +209,7 @@ def test_insufficient_schema__raises_expected_error_and_message(schema_data, exp
     with pytest.raises(SchemaError) as err_ctx:
         ParsedSchema(schema_data)
     observed_message = str(err_ctx.value)
-    assert observed_message == expected_message
+    assert observed_message.startswith(expected_message)
 
 
 SIMPLE_ID_SECTION = [(SCHEMA_PIPELINE_NAME_KEY, "test_pipe")]

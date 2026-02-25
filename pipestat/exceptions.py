@@ -48,7 +48,19 @@ class PipestatError(Exception):
 
 
 class NoBackendSpecifiedError(PipestatError):
-    """Subtype for designating lack of backend specification"""
+    """No backend was specified or could be determined."""
+
+    def __init__(self, msg: str | None = None):
+        if msg is None:
+            msg = (
+                "No storage backend specified. Pass one of:\n"
+                "  - results_file_path='results.yaml' for YAML file backend\n"
+                "  - config_file='pipestat_config.yaml' with a 'database' section for DB backend\n"
+                "  - pephub_path='namespace/project:sample' for PEPhub backend\n"
+                "These can also be set via environment variables: "
+                "PIPESTAT_RESULTS_FILE, PIPESTAT_CONFIG"
+            )
+        super().__init__(msg)
 
 
 class SchemaError(PipestatError):
