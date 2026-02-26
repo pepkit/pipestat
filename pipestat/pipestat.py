@@ -1988,6 +1988,12 @@ class PipestatManager:
         """
         return self._resolve_record_identifier(None)
 
+    @record_identifier.setter
+    def record_identifier(self, value: str | None) -> None:
+        if value is not None and not value:
+            raise ValueError("record_identifier cannot be empty")
+        self.cfg[RECORD_IDENTIFIER] = value
+
     @property
     def record_count(self) -> int:
         """Number of records reported.
