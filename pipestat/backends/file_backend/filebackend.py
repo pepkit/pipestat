@@ -193,9 +193,13 @@ class FileBackend(PipestatBackend):
             assert isinstance(flag_file, str), TypeError(
                 "Flag file path is expected to be a str, were multiple flags found?"
             )
-            with open(flag_file, "r") as f:
-                status = f.read()
-            return status
+            try:
+                with open(flag_file, "r") as f:
+                    status = f.read()
+                return status
+            except FileNotFoundError:
+                _LOGGER.debug(f"Flag file disappeared: {flag_file}")
+                return None
         _LOGGER.debug(
             f"Could not determine status for '{r_id}' record. "
             f"No flags found in: {self.status_file_dir}"

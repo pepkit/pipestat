@@ -49,7 +49,6 @@ class TestPEPHUBBackend:
         results_file_path,
         range_values,
     ):
-
         psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
 
         # Value already exists should give an error unless forcing overwrite
@@ -74,7 +73,6 @@ class TestPEPHUBBackend:
         results_file_path,
         range_values,
     ):
-
         psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
 
         result = psm.retrieve_one(record_identifier=rec_id)
@@ -94,7 +92,6 @@ class TestPEPHUBBackend:
         config_file_path_pephub,
         schema_file_path,
     ):
-
         # Can pipestat obtain pephub url from config file AND successfully retrieve values?
         psm = PipestatManager(config_file=config_file_path_pephub, schema_path=schema_file_path)
 
@@ -109,7 +106,6 @@ class TestPEPHUBBackend:
         results_file_path,
         range_values,
     ):
-
         rec_ids = ["test_pipestat_01", "test_pipestat_02"]
 
         psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
@@ -159,7 +155,6 @@ class TestPEPHUBBackend:
         results_file_path,
         range_values,
     ):
-
         rec_ids = ["test_pipestat_01"]
 
         psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
@@ -175,7 +170,6 @@ class TestPEPHUBBackend:
         results_file_path,
         range_values,
     ):
-
         rec_ids = ["test_pipestat_01"]
 
         psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
@@ -191,7 +185,6 @@ class TestPEPHUBBackend:
         results_file_path,
         range_values,
     ):
-
         rec_ids = ["test_pipestat_01"]
 
         psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
@@ -207,7 +200,6 @@ class TestPEPHUBBackend:
         config_file_path,
         schema_file_path,
     ):
-
         with TemporaryDirectory() as d:
             psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
             report_path = psm.summarize(output_dir=d)
@@ -219,7 +211,6 @@ class TestPEPHUBBackend:
         config_file_path,
         schema_file_path,
     ):
-
         with TemporaryDirectory() as d:
             psm = PipestatManager(pephub_path=PEPHUB_URL, schema_path=schema_file_path)
             report_path = psm.link(link_dir=d)
