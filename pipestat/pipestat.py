@@ -51,26 +51,7 @@ from .exceptions import (
     SchemaNotFoundError,
 )
 from .helpers import default_formatter, make_subdirectories, validate_type, zip_report
-from .reports import HTMLReportBuilder, _create_stats_objs_summaries
-
-try:
-    from pipestat.backends.db_backend.db_parsed_schema import ParsedSchemaDB as ParsedSchema
-except ImportError:
-    from .parsed_schema import ParsedSchema
-
-try:
-    from pipestat.backends.db_backend.db_helpers import construct_db_url
-    from pipestat.backends.db_backend.dbbackend import DBBackend
-except ImportError:
-    # We let this pass, but if the user attempts to create DBBackend, check_dependencies raises exception.
-    pass
-
-try:
-    from pipestat.backends.pephub_backend.pephubbackend import PEPHUBBACKEND
-except ImportError:
-    # Let this pass, if phc dependencies cannot be imported, raise exception
-    pass
-
+from .parsed_schema import ParsedSchema
 
 _LOGGER = getLogger(PKG_NAME)
 
@@ -775,6 +756,14 @@ class PipestatManager:
             record_identifier (str, optional): The record identifier.
             pephub_path (str, optional): The path to the pephub registry.
         """
+        try:
+            from pipestat.backends.pephub_backend import PEPHUBBACKEND
+        except ImportError:
+            raise PipestatDependencyError(
+                msg="Missing required dependencies for PEPhub backend. "
+                "Install them with: pip install pipestat[pephub]"
+            )
+
         self.backend = PEPHUBBACKEND(
             record_identifier,
             pephub_path,
@@ -785,10 +774,6 @@ class PipestatManager:
             self.cfg[RESULT_FORMATTER],
         )
 
-    @check_dependencies(
-        dependency_list=["DBBackend"],
-        msg="Missing required dependencies for this usage, e.g. try pip install pipestat['dbbackend']",
-    )
     def initialize_dbbackend(
         self, record_identifier: str | None = None, show_db_logs: bool = False
     ) -> None:
@@ -803,6 +788,14 @@ class PipestatManager:
             NoBackendSpecifiedError: If database configuration is missing.
             PipestatDatabaseError: If database configuration is invalid.
         """
+        try:
+            from pipestat.backends.db_backend import DBBackend, ParsedSchemaDB, construct_db_url
+        except ImportError:
+            raise PipestatDependencyError(
+                msg="Missing required dependencies for database backend. "
+                "Install them with: pip install pipestat[dbbackend]"
+            )
+
         _LOGGER.debug("Determined database as backend")
         if not self.cfg.get(PROJECT_NAME):
             raise ValueError(
@@ -826,6 +819,10 @@ class PipestatManager:
         except KeyError:
             raise PipestatDatabaseError(f"No database section ('{CFG_DATABASE_KEY}') in config")
         self._show_db_logs = show_db_logs
+
+        # Re-parse schema with DB-aware parser for model building
+        if self._schema_path is not None:
+            self.cfg[SCHEMA_KEY] = ParsedSchemaDB(self._schema_path)
 
         self.backend = DBBackend(
             record_identifier,
@@ -1694,6 +1691,7 @@ class PipestatManager:
         Raises:
             PipestatSummarizeError: If no results are found at the backend.
         """
+        from .reports import HTMLReportBuilder
 
         if output_dir:
             self.cfg[OUTPUT_DIR] = output_dir
@@ -1758,6 +1756,8 @@ class PipestatManager:
         Returns:
             list[str]: File paths of the generated stats and objects files.
         """
+        from .reports import _create_stats_objs_summaries
+
         if output_dir:
             self.cfg[OUTPUT_DIR] = output_dir
 
