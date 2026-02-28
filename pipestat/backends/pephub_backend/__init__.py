@@ -1,1 +1,1 @@
-from .pephubbackend import PEPHUBBACKEND
+from .pephubbackend import PEPHUBBACKEND as PEPHUBBACKEND
