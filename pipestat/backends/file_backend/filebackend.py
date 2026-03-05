@@ -79,8 +79,8 @@ class FileBackend(PipestatBackend):
         """
 
         if "{record_identifier}" in self.results_file_path:
-            # In the special case where the user wants to use {record_identifier} in file path
-            pass
+            # Template path: _data will be initialized per-record when resolved
+            self._data = None
         else:
             if not os.path.exists(self.results_file_path):
                 _LOGGER.debug(
@@ -105,6 +105,8 @@ class FileBackend(PipestatBackend):
             bool: Whether the record exists in the table.
         """
 
+        if self._data is None:
+            return False
         return (
             self.pipeline_name in self._data
             and record_identifier in self._data[self.pipeline_name][self.pipeline_type]
@@ -148,8 +150,12 @@ class FileBackend(PipestatBackend):
         Returns:
             int: Number of records.
         """
-
-        return len(self._data[self.pipeline_name][self.pipeline_type])
+        if self._data is None:
+            return 0
+        try:
+            return len(self._data[self.pipeline_name][self.pipeline_type])
+        except (KeyError, TypeError):
+            return 0
 
     def get_flag_file(
         self, record_identifier: Optional[str] = None
@@ -243,6 +249,8 @@ class FileBackend(PipestatBackend):
         """
         record_identifier = record_identifier or self.record_identifier
 
+        if self._data is None:
+            return []
         try:
             results = list(
                 self._data[self.pipeline_name][self.pipeline_type][record_identifier].keys()

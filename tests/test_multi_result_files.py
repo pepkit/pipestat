@@ -83,3 +83,25 @@ class TestMultiResultFiles:
                 os.path.join(temp_dir, "aggregate_results.yaml")
             )
             assert r_id in data[psm.pipeline_name][psm.pipeline_type].keys()
+
+    @pytest.mark.parametrize("backend", ["file"])
+    def test_template_path_without_record_identifier(
+        self,
+        config_file_path,
+        results_file_path,
+        recursive_schema_file_path,
+        backend,
+        range_values,
+    ):
+        """PSM created with template path and no record_identifier can check status and list results."""
+        with TemporaryDirectory() as temp_dir:
+            results_file_path = os.path.join(temp_dir, "{record_identifier}/results.yaml")
+            psm = SamplePipestatManager(
+                results_file_path=results_file_path,
+                schema_path=recursive_schema_file_path,
+            )
+            # These are what looper calls on a PSM without record_identifier
+            assert psm.count_records() == 0
+            r_id = range_values[0][0]
+            assert psm.backend.check_record_exists(record_identifier=r_id) is False
+            assert psm.backend.list_results(record_identifier=r_id) == []
