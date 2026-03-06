@@ -18,11 +18,6 @@ Classes:
         Access the sub-managers via .sample and .project attributes.
 """
 
-# Project configuration, particularly for logging.
-
-import logmuse
-
-from .const import PKG_NAME
 from .exceptions import PipestatError
 from .pipestat import (
     PipestatDualManager,
@@ -38,5 +33,3 @@ __all__ = [
     "PipestatDualManager",
     "PipestatManager",
 ]
-
-logmuse.init_logger(PKG_NAME)

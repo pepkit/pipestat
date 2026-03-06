@@ -25,7 +25,7 @@ classifiers = [
 ]
 dependencies = [
     "jsonschema",
-    "logmuse>=0.2.5",
+    "logmuse>=0.3.0",
     "pyyaml",
     "ubiquerg>=0.9.1",
     "yacman>=1.0.0",
