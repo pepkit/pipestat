@@ -28,7 +28,7 @@ dependencies = [
     "logmuse>=0.2.5",
     "pyyaml",
     "ubiquerg>=0.9.1",
-    "yacman>=0.9.5",
+    "yacman>=1.0.0",
     "eido",
     "jinja2",
 ]
