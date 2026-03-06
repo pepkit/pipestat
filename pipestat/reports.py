@@ -12,10 +12,9 @@ from json import dumps
 from logging import getLogger
 
 import jinja2
-import pandas as _pd
 import yaml
 from peppy.const import AMENDMENTS_KEY
-from ubiquerg import mkabs
+from ubiquerg import mkabs, parse_timedelta
 
 from .const import (
     BUTTON_APPEARANCE_BY_FLAG,
@@ -1273,43 +1272,6 @@ def _make_relpath(file_name, wd, context=None):
     return relpath if not context else os.path.join(os.path.join(*context), relpath)
 
 
-def _read_csv_encodings(path, encodings=["utf-8", "ascii"], **kwargs):
-    """
-    Try to read file with the provided encodings.
-
-    Args:
-        path (str): Path to file.
-        encodings (list): List of encodings to try.
-        **kwargs: Additional keyword arguments.
-    """
-    idx = 0
-    while idx < len(encodings):
-        e = encodings[idx]
-        try:
-            t = _pd.read_csv(path, encoding=e, **kwargs)
-            return t
-        except UnicodeDecodeError:
-            pass
-        idx = idx + 1
-    _LOGGER.warning(f"Could not read the log file '{path}' with encodings '{encodings}'")
-
-
-def _read_tsv_to_json(path):
-    """
-    Read a tsv file to a JSON formatted string.
-
-    Args:
-        path (str): To file path.
-
-    Returns:
-        str: JSON formatted string.
-    """
-    assert os.path.exists(path), "The file '{}' does not exist".format(path)
-    _LOGGER.debug("Reading TSV from '{}'".format(path))
-    df = _pd.read_csv(path, sep="\t", index_col=False, header=None)
-    return df.to_json()
-
-
 def fetch_pipeline_results(
     project,
     sample_name=None,
@@ -1453,10 +1415,21 @@ def create_status_table(report_obj, project, pipeline_reports_dir: str, portable
                     0
                 ]  # Assumes the profile file will be in status dir
                 assert os.path.exists(profile), FileNotFoundError(f"Not found: {profile}")
-                df = _pd.read_csv(profile, sep="\t", comment="#", names=PROFILE_COLNAMES)
-                df["runtime"] = _pd.to_timedelta(df["runtime"])
-                times.append(_get_runtime(df))
-                mems.append(_get_maxmem(df))
+                rows = []
+                with open(profile) as fh:
+                    reader = csv.reader(fh, delimiter="\t")
+                    for row in reader:
+                        line = row[0].strip() if row else ""
+                        if not line or line.startswith("#"):
+                            continue
+                        if len(row) < len(PROFILE_COLNAMES):
+                            continue
+                        rows.append(dict(zip(PROFILE_COLNAMES, row)))
+                for r in rows:
+                    r["runtime"] = parse_timedelta(r["runtime"])
+                    r["mem"] = float(r["mem"])
+                times.append(_get_runtime(rows))
+                mems.append(_get_maxmem(rows))
             except Exception as e:
                 _warn("profile", e, sample)
                 times.append(NO_DATA_PLACEHOLDER)
@@ -1496,35 +1469,20 @@ def create_glossary_table(project):
     return render_jinja_template("glossary_table.html", get_jinja_env(), template_vars)
 
 
-def _get_maxmem(profile: _pd.DataFrame) -> str:
-    """
-    Get current peak memory.
-
-    Args:
-        profile (pandas.DataFrame): A data frame representing the current profile.tsv
-            for a sample.
-
-    Returns:
-        str: Max memory.
-    """
-    return f"{str(max(profile['mem']) if not profile['mem'].empty else 0)} GB"
+def _get_maxmem(rows: list[dict]) -> str:
+    """Get peak memory across all profile rows."""
+    if not rows:
+        return "0 GB"
+    return f"{max(r['mem'] for r in rows)} GB"
 
 
-def _get_runtime(profile_df: _pd.DataFrame) -> str:
-    """
-    Collect the unique and last duplicated runtimes, sum them and then return in str format.
-
-    Args:
-        profile_df (pandas.DataFrame): A data frame representing the current profile.tsv
-            for a sample.
-
-    Returns:
-        str: Sum of runtimes.
-    """
-    unique_df = profile_df[~profile_df.duplicated("cid", keep="last").values]
-    return str(
-        timedelta(seconds=sum(unique_df["runtime"].apply(lambda x: x.total_seconds())))
-    ).split(".")[0]
+def _get_runtime(rows: list[dict]) -> str:
+    """Sum unique command runtimes, deduplicating reruns by cid (keeping last)."""
+    seen = {}
+    for r in rows:
+        seen[r["cid"]] = r
+    total = sum(r["runtime"].total_seconds() for r in seen.values())
+    return str(timedelta(seconds=total)).split(".")[0]
 
 
 def get_file_for_table(prj, pipeline_name: str, appendix=None, directory=None) -> str:

@@ -1,6 +1,6 @@
 [project]
 name = "pipestat"
-version = "0.13.0"
+version = "0.13.1"
 description = "A pipeline results reporter"
 readme = "README.md"
 license = "BSD-2-Clause"
@@ -27,9 +27,8 @@ dependencies = [
     "jsonschema",
     "logmuse>=0.2.5",
     "pyyaml",
-    "ubiquerg>=0.8.0",
-    "yacman>=0.9.5",
-    "pandas",
+    "ubiquerg>=0.9.1",
+    "yacman>=1.0.0",
     "eido",
     "jinja2",
 ]

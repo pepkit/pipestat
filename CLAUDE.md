@@ -72,6 +72,7 @@ Classmethods for construction:
 - For project-level pipelines, `record_identifier` auto-defaults to `project_name` (which defaults to `"project"`)
 - `force_overwrite` defaults to `True` at manager level; it is a settable property
 - `result_formatter` is also a settable property (not an `__init__` param)
+- `record_identifier` is a settable property for changing the default record after construction
 - File/image results require `{"path": "...", "title": "..."}` dict format (`thumbnail_path` is optional for images)
 
 ## Schema-Free Mode
