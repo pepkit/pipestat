@@ -2,6 +2,10 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.13.1] - 2026-03-05
+### Changed
+- Fixed import-time logging that overrode root logger configuration
+
 ## [0.13.0] - 2026-02-25
 ### Changed
 - Renamed `PipestatBoss` to `PipestatDualManager` with `.sample`/`.project` attributes (replaces `.samplemanager`/`.projectmanager`)
