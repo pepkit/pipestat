@@ -2,9 +2,8 @@ import copy
 from logging import getLogger
 from typing import Any, Dict, List, Literal, NoReturn, Optional, Union
 
-import pephubclient
-from pephubclient import PEPHubClient
-from pephubclient.constants import RegistryPath
+from peppy import pephubclient
+from peppy.pephubclient import PEPHubClient, RegistryPath
 from ubiquerg import parse_registry_path
 
 from ...backends.abstract import PipestatBackend

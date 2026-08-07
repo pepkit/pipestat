@@ -29,7 +29,7 @@ dependencies = [
     "pyyaml",
     "ubiquerg>=0.9.1",
     "yacman>=1.0.0",
-    "eido",
+    "peppy>=0.50.0a4",
     "jinja2",
 ]
 
