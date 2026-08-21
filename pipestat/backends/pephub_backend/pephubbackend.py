@@ -170,9 +170,7 @@ class PEPHUBBACKEND(PipestatBackend):
             _LOGGER.error(f"Record '{record_identifier}' not found")
             return False
 
-        if result_identifier and not self.check_result_exists(
-            result_identifier, record_identifier
-        ):
+        if result_identifier and not self.check_result_exists(result_identifier, record_identifier):
             _LOGGER.error(f"'{result_identifier}' has not been reported for '{record_identifier}'")
             return False
 

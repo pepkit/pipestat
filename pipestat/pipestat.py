@@ -1729,9 +1729,9 @@ class PipestatManager:
             if "{record_identifier}" in self.cfg["unresolved_result_path"]:
                 # assume there are multiple result files in sub-directories
                 self.cfg["multi_result_files"] = True
-                results_directory = self.cfg["unresolved_result_path"].split(
-                    "{record_identifier}"
-                )[0]
+                results_directory = self.cfg["unresolved_result_path"].split("{record_identifier}")[
+                    0
+                ]
                 results_directory = mkabs(results_directory, self.cfg["config_path"])
                 make_subdirectories(results_directory)
                 self.backend.aggregate_multi_results(results_directory)

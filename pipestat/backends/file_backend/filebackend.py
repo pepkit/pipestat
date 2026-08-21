@@ -157,9 +157,7 @@ class FileBackend(PipestatBackend):
         except (KeyError, TypeError):
             return 0
 
-    def get_flag_file(
-        self, record_identifier: Optional[str] = None
-    ) -> Union[str, List[str], None]:
+    def get_flag_file(self, record_identifier: Optional[str] = None) -> Union[str, List[str], None]:
         """
         Get path to the status flag file for the specified record.
 
@@ -290,9 +288,7 @@ class FileBackend(PipestatBackend):
             _LOGGER.error(f"Record '{record_identifier}' not found")
             return False
 
-        if result_identifier and not self.check_result_exists(
-            result_identifier, record_identifier
-        ):
+        if result_identifier and not self.check_result_exists(result_identifier, record_identifier):
             _LOGGER.error(f"'{result_identifier}' has not been reported for '{record_identifier}'")
             return False
 
@@ -444,9 +440,7 @@ class FileBackend(PipestatBackend):
                 ].update({MODIFIED_TIME: current_time})
 
             else:
-                self._data[self.pipeline_name][self.pipeline_type].setdefault(
-                    record_identifier, {}
-                )
+                self._data[self.pipeline_name][self.pipeline_type].setdefault(record_identifier, {})
                 self._data[self.pipeline_name][self.pipeline_type][record_identifier].setdefault(
                     META_KEY, {}
                 )
@@ -466,9 +460,9 @@ class FileBackend(PipestatBackend):
                         ],
                         res_id=res_id,
                         time=current_time,
-                        value=self._data[self.pipeline_name][self.pipeline_type][
-                            record_identifier
-                        ][res_id],
+                        value=self._data[self.pipeline_name][self.pipeline_type][record_identifier][
+                            res_id
+                        ],
                     )
             self._data[self.pipeline_name][self.pipeline_type][record_identifier][res_id] = val
             results_formatted.append(

@@ -89,9 +89,7 @@ class TestRoundTrips:
             schema_path=schema_file_path,
             results_file_path=results_path,
         )
-        assert (
-            psm2.retrieve_one(record_identifier="s1", result_identifier="number_of_things") == 77
-        )
+        assert psm2.retrieve_one(record_identifier="s1", result_identifier="number_of_things") == 77
 
     def test_round_trip_count_records(self, schema_file_path, tmp_path):
         psm = self._make_psm(schema_file_path, tmp_path)

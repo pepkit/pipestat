@@ -39,7 +39,8 @@ schema_file.close()
 # 2. Create a manager with file backend
 results_file = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False).name
 psm = pipestat.PipestatManager.from_file_backend(
-    results_file, schema_path=schema_file.name,
+    results_file,
+    schema_path=schema_file.name,
 )
 
 # 3. Report a result
@@ -97,18 +98,25 @@ schema_file.close()
 results_file = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False).name
 
 psm = pipestat.PipestatManager.from_file_backend(
-    results_file, schema_path=schema_file.name,
+    results_file,
+    schema_path=schema_file.name,
 )
 
 # Report an image (thumbnail_path is optional)
-psm.report(record_identifier="sample1", values={
-    "qc_plot": {"path": "plots/qc.png", "title": "QC Plot"},
-})
+psm.report(
+    record_identifier="sample1",
+    values={
+        "qc_plot": {"path": "plots/qc.png", "title": "QC Plot"},
+    },
+)
 
 # Report a file
-psm.report(record_identifier="sample1", values={
-    "output_csv": {"path": "results/data.csv", "title": "Output Data"},
-})
+psm.report(
+    record_identifier="sample1",
+    values={
+        "output_csv": {"path": "results/data.csv", "title": "Output Data"},
+    },
+)
 
 print(psm.retrieve_one(record_identifier="sample1"))
 os.unlink(schema_file.name)
@@ -140,7 +148,8 @@ yaml.dump(schema, schema_file)
 schema_file.close()
 results_file = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False).name
 psm = pipestat.PipestatManager.from_file_backend(
-    results_file, schema_path=schema_file.name,
+    results_file,
+    schema_path=schema_file.name,
 )
 psm.report(record_identifier="sample1", values={"count": 42, "name": "foo", "ratio": 0.95})
 
@@ -158,6 +167,7 @@ print(subset)  # {"count": 42, "name": "foo"}
 
 # Handle missing records
 from pipestat.exceptions import RecordNotFoundError
+
 try:
     psm.retrieve_one(record_identifier="nonexistent")
 except RecordNotFoundError as e:
@@ -191,7 +201,8 @@ yaml.dump(schema, schema_file)
 schema_file.close()
 results_file = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False).name
 psm = pipestat.PipestatManager.from_file_backend(
-    results_file, schema_path=schema_file.name,
+    results_file,
+    schema_path=schema_file.name,
 )
 
 # Report several records
@@ -251,7 +262,8 @@ yaml.dump(schema, schema_file)
 schema_file.close()
 results_file = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False).name
 psm = pipestat.PipestatManager.from_file_backend(
-    results_file, schema_path=schema_file.name,
+    results_file,
+    schema_path=schema_file.name,
 )
 psm.report(record_identifier="sample1", values={"count": 1})
 
@@ -293,16 +305,22 @@ psm = pipestat.PipestatManager(
 )
 
 # Report arbitrary values -- no schema needed
-psm.report(record_identifier="sample1", values={
-    "alignment_rate": 0.95,
-    "read_count": 1000000,
-    "label": "experiment_A",
-})
+psm.report(
+    record_identifier="sample1",
+    values={
+        "alignment_rate": 0.95,
+        "read_count": 1000000,
+        "label": "experiment_A",
+    },
+)
 
 # File paths with image extensions are auto-wrapped to {"path": ..., "title": ...}
-psm.report(record_identifier="sample1", values={
-    "qc_plot": "plots/qc.png",  # auto-wrapped because .png
-})
+psm.report(
+    record_identifier="sample1",
+    values={
+        "qc_plot": "plots/qc.png",  # auto-wrapped because .png
+    },
+)
 
 print(psm.retrieve_one(record_identifier="sample1"))
 
@@ -310,6 +328,7 @@ print(psm.retrieve_one(record_identifier="sample1"))
 # CLI: pipestat infer-schema -f results.yaml -o inferred_schema.yaml
 # Python:
 from pipestat.infer import infer_schema
+
 schema = infer_schema(results_file)
 print(schema)
 
@@ -404,7 +423,9 @@ print("Project:", dual.project.retrieve_one())
 
 # Alternative: use a single PipestatManager with level= parameter
 psm = pipestat.PipestatManager.from_file_backend(
-    results_file, schema_path=schema_file.name, project_name="my_project",
+    results_file,
+    schema_path=schema_file.name,
+    project_name="my_project",
 )
 psm.report(record_identifier="sample3", values={"read_count": 500}, level="sample")
 psm.report(values={"total_reads": 3500}, level="project")
@@ -439,15 +460,19 @@ results_file = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False).name
 output_dir = tempfile.mkdtemp()
 
 psm = pipestat.PipestatManager.from_file_backend(
-    results_file, schema_path=schema_file.name,
+    results_file,
+    schema_path=schema_file.name,
 )
 
 # Report results for several samples
 for i in range(1, 6):
-    psm.report(record_identifier=f"sample{i}", values={
-        "score": i * 0.2,
-        "label": f"batch_{i % 3}",
-    })
+    psm.report(
+        record_identifier=f"sample{i}",
+        values={
+            "score": i * 0.2,
+            "label": f"batch_{i % 3}",
+        },
+    )
 
 # Generate HTML table report
 report_path = psm.summarize(output_dir=output_dir)

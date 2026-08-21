@@ -180,9 +180,7 @@ database:
 
 @pytest.fixture
 def schema_with_project_with_samples_without_status():
-    return get_data_file_path(
-        "sample_output_schema__with_project_with_samples_without_status.yaml"
-    )
+    return get_data_file_path("sample_output_schema__with_project_with_samples_without_status.yaml")
 
 
 @pytest.fixture

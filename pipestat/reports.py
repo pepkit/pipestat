@@ -70,9 +70,7 @@ class HTMLReportBuilder(object):
 
         _LOGGER.debug(f"Reports dir: {self.reports_dir}")
 
-    def __call__(
-        self, pipeline_name, project_index_html=None, amendment=None, looper_samples=None
-    ):
+    def __call__(self, pipeline_name, project_index_html=None, amendment=None, looper_samples=None):
         """
         Generate HTML report.
 
@@ -148,9 +146,7 @@ class HTMLReportBuilder(object):
         destination_dir = os.path.join(self.pipeline_reports, "resources")
         full_name = os.path.basename(parent_path)
 
-        destination_file = os.path.join(
-            os.path.join(destination_dir, record_identifier), full_name
-        )
+        destination_file = os.path.join(os.path.join(destination_dir, record_identifier), full_name)
 
         os.makedirs(os.path.dirname(destination_file), exist_ok=True)
 
@@ -187,9 +183,7 @@ class HTMLReportBuilder(object):
                 else ""
             )
             labels.append(f"<b>{key.replace('_', ' ')}</b>: {desc}")
-            page_path = os.path.join(
-                self.pipeline_reports, f"{key}.html".replace(" ", "_").lower()
-            )
+            page_path = os.path.join(self.pipeline_reports, f"{key}.html".replace(" ", "_").lower())
             pages.append(os.path.relpath(page_path, self.pipeline_reports))
 
         template_vars = dict(

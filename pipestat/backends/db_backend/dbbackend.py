@@ -505,9 +505,7 @@ class DBBackend(PipestatBackend):
             try:
                 count_stmt = sql_select(ORM)
                 if self.project_name:
-                    count_stmt = count_stmt.where(
-                        getattr(ORM, "project_name") == self.project_name
-                    )
+                    count_stmt = count_stmt.where(getattr(ORM, "project_name") == self.project_name)
                 total_count = len(s.exec(count_stmt).all())
             except Exception as e:
                 raise PipestatDatabaseError(
