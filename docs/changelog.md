@@ -2,6 +2,10 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.13.1] - 2026-03-05
+### Changed
+- Fixed import-time logging that overrode root logger configuration
+
 ## [0.13.0] - 2026-02-25
 ### Changed
 - Renamed `PipestatBoss` to `PipestatDualManager` with `.sample`/`.project` attributes (replaces `.samplemanager`/`.projectmanager`)
@@ -56,6 +60,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Added
 - pephub backend [#125](https://github.com/pepkit/pipestat/issues/125)
 
+
 ## [0.9.3] - 2024-06-06
 ### Fixed
 - fixed regression with summarizing or creating a table via aggregate_results.yaml and "{record_identifier}" in the results file path
@@ -92,16 +97,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Changed
 - Changed yacman requirement and using FutureYamlConfigManager.
 ### Fixed
-- Issue with retrieving similar record_identifiers, #159
+- Issue with retrieving similar record_identifiers, [#159](https://github.com/pepkit/pipestat/issues/159)
 
 ## [0.8.1] - 2024-02-07
 ### Changed
-- Readme to reflect docker db configuration for testing. #145
-- added dependency warning when attempting to run pytest suite without optional dependencies. #146
+- Readme to reflect docker db configuration for testing. [#145](https://github.com/pepkit/pipestat/issues/145)
+- Added dependency warning when attempting to run pytest suite without optional dependencies. [#146](https://github.com/pepkit/pipestat/issues/146)
 - Remove most docs in favor of new docs location: https://pep.databio.org/pipestat/
 ### Fixed
-- ensure log files are gathered for portable reports, #149
-- Fix minor html report title bugs #151
+- Ensure log files are gathered for portable reports, [#149](https://github.com/pepkit/pipestat/issues/149)
+- Fix minor html report title bugs [#151](https://github.com/pepkit/pipestat/issues/151)
 
 ## [0.8.0] - 2024-01-25
 ### Added

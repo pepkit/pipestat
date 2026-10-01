@@ -1,0 +1,39 @@
+site_name: Pipestat
+nav:
+  - Pipestat: README.md
+  - User guide:
+    - Quickstart: code/api-quickstart.md
+    - Use Python API: code/python-tutorial.md
+    - Use command line interface: code/cli.md
+  - How-to guides:
+    - Install: install.md
+    - Write a pipestat schema: pipestat-schema.md
+    - Reporting pipeline status: report_statuses.md
+    - Configure pipestat: configuration.md
+  - Advanced:
+    - Multi pipelines and result files: multi.md
+    - Report objects as results: code/reporting-objects.md
+    - Summarize reported results: summarize.md
+  - Reference:
+    - Terminology - Results and Record Identifiers: results_records.md
+    - Backends: backends.md
+    - CLI usage: usage.md
+    - Configuration format: config.md
+    - Testing configuration: testing.md
+    - Environment variables: env-vars.md
+    - Pipestat specification: pipestat-specification.md
+    - Python API: code/python-api.md
+    - Support: https://github.com/pepkit/pipestat/issues
+    - Contributing: contributing.md
+    - How to cite: /citations/
+    - Changelog: changelog.md
+
+renderers:
+  - hub-notebooks:
+      include: [notebooks/*.ipynb]
+      execute: false
+  - hub-python-api:
+      package_root: ..
+      packages: [pipestat]
+      include: [code/python-api.md]
+      docstring_style: google
