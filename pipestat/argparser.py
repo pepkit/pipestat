@@ -127,6 +127,19 @@ def build_argparser(desc):
                 "status_identifier",
                 help="Status identifier to set.",
             )
+            status_sps[cmd].add_argument(
+                "--job-id",
+                type=str,
+                metavar="J",
+                help="Job id to store with the status (default: $SLURM_JOB_ID)",
+            )
+        if cmd == STATUS_GET_CMD:
+            status_sps[cmd].add_argument(
+                "--check-job",
+                action="store_true",
+                help="Ask SLURM (sacct/squeue) whether the job that set a 'running' status "
+                "is still alive, and print the result as JSON. Never modifies the status.",
+            )
         status_sps[cmd].add_argument(
             "-f",
             "--results-file",

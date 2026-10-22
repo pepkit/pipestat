@@ -51,6 +51,7 @@ from .exceptions import (
     SchemaNotFoundError,
 )
 from .helpers import default_formatter, make_subdirectories, validate_type, zip_report
+from .job_state import StatusResolution, current_job_id, resolve_status
 from .parsed_schema import ParsedSchema
 
 _LOGGER = getLogger(PKG_NAME)
@@ -1600,12 +1601,14 @@ class PipestatManager:
         self,
         status_identifier: str,
         record_identifier: str = None,
+        job_id: str | None = None,
     ) -> None:
         """Set the pipeline run status for a record.
 
         Example:
             psm.set_status(record_identifier="sample1", status_identifier="running")
             psm.set_status(record_identifier="sample1", status_identifier="completed")
+            psm.set_status("running", "sample1", job_id="12345")
 
         Built-in status identifiers (from the default status schema):
             - "running": the pipeline is running
@@ -1621,12 +1624,69 @@ class PipestatManager:
                 status schema.
             record_identifier: Record to set status for. If None, uses the
                 record_identifier set at init time.
+            job_id: Id of the scheduler job setting the status, stored next to
+                it so a stale 'running' status can be detected later (see
+                resolve_status). Defaults to $SLURM_JOB_ID; if that is unset,
+                no id is stored. The status itself is unchanged.
 
         Raises:
             UnrecognizedStatusError: If status_identifier is not in the status schema.
         """
         r_id = self._resolve_record_identifier(record_identifier)
-        self.backend.set_status(status_identifier, r_id)
+        self.backend.set_status(status_identifier, r_id, job_id=job_id or current_job_id())
+
+    @require_backend
+    def get_status_job_id(self, record_identifier: str = None) -> str | None:
+        """Get the job id stored with a record's current status.
+
+        Example:
+            psm.set_status("running", "sample1", job_id="12345")
+            psm.get_status_job_id("sample1")
+            # Returns: "12345"
+
+        Args:
+            record_identifier: Record to check. If None, uses the
+                record_identifier set at init time.
+
+        Returns:
+            str | None: The stored job id, or None if none is stored.
+        """
+        r_id = self._resolve_record_identifier(record_identifier)
+        return self.backend.get_status_job_id(r_id)
+
+    @require_backend
+    def resolve_status(
+        self,
+        record_identifier: str = None,
+        job_state_fn: Callable[[str], str] | None = None,
+    ) -> StatusResolution:
+        """Get a record's status and whether a 'running' status is stale.
+
+        A 'running' status is stale when the job that set it has finished or
+        no longer exists, e.g. because the scheduler killed it before the
+        pipeline could report 'failed'. The status is only reported, never
+        changed; the caller decides what to do.
+
+        Example:
+            from pipestat import slurm_job_state
+            res = psm.resolve_status("sample1", job_state_fn=slurm_job_state)
+            # StatusResolution(record_identifier='sample1', status='running',
+            #                  job_id='12345', job_state='timeout', stale=True)
+
+        Args:
+            record_identifier: Record to check. If None, uses the
+                record_identifier set at init time.
+            job_state_fn: Function taking a job id and returning its state,
+                see pipestat.job_state. Without it nothing is probed:
+                job_state is None and stale is False.
+
+        Returns:
+            StatusResolution: The status, job id, job state and staleness.
+        """
+        r_id = self._resolve_record_identifier(record_identifier)
+        return resolve_status(
+            r_id, self.get_status(r_id), self.get_status_job_id(r_id), job_state_fn
+        )
 
     @require_backend
     def link(self, link_dir: str) -> str | None:

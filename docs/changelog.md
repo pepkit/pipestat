@@ -2,6 +2,12 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [Unreleased]
+### Added
+- `set_status` takes a `job_id` (default `$SLURM_JOB_ID`) and stores it next to the status: a `<flag>.job` file (file backend) or a `<table>_status_job` side table (database backend)
+- `get_status_job_id` and `resolve_status`, which reports `stale=True` when a `running` status's job is finished or gone; `slurm_job_state` probes SLURM via sacct/squeue
+- CLI `pipestat status set --job-id` and `pipestat status get --check-job`
+
 ## [0.13.1] - 2026-03-05
 ### Changed
 - Fixed import-time logging that overrode root logger configuration

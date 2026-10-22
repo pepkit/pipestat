@@ -79,6 +79,9 @@ class DBBackend(PipestatBackend):
         self.history_table = self._create_history_orms(pipeline_type=pipeline_type)
 
         self.table_name = list(self.orms.keys())[0]
+        self.status_job_orm, self.status_job_table_name = self.parsed_schema.build_status_job_model(
+            self.pipeline_type
+        )
 
         # Check if table already exists (before create_all) so we can validate schema
         inspector = sa_inspect(self._engine)
@@ -353,6 +356,9 @@ class DBBackend(PipestatBackend):
                             )
                         record = s.exec(stmt).first()
                         s.delete(record)
+                        status_job = s.exec(self._status_job_stmt(record_identifier)).first()
+                        if status_job is not None:
+                            s.delete(status_job)
                         s.commit()
                 else:
                     raise RecordNotFoundError(f"Record '{record_identifier}' not found")
@@ -715,6 +721,7 @@ class DBBackend(PipestatBackend):
         self,
         status_identifier: str,
         record_identifier: Optional[str] = None,
+        job_id: Optional[str] = None,
     ) -> None:
         """Set pipeline run status.
 
@@ -725,6 +732,8 @@ class DBBackend(PipestatBackend):
         Args:
             status_identifier (str): Status to set, one of statuses defined in the status schema.
             record_identifier (str): Record identifier to set the pipeline status for.
+            job_id (str, optional): Id of the job that set the status. Stored in the
+                '<table>_status_job' side table; the results table is unchanged.
         """
 
         record_identifier = record_identifier or self.record_identifier
@@ -745,8 +754,47 @@ class DBBackend(PipestatBackend):
                 f"Could not insert into the status table ('{self.table_name}'). Exception: {e}"
             )
             raise
+        with self.session as s:
+            status_job = s.exec(self._status_job_stmt(record_identifier)).first()
+            if status_job is None and job_id is None:
+                return
+            if status_job is None:
+                status_job = self.status_job_orm(
+                    record_identifier=record_identifier, project_name=self.project_name
+                )
+            status_job.status = status_identifier
+            status_job.job_id = None if job_id is None else str(job_id)
+            s.add(status_job)
+            s.commit()
         if prev_status:
             _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
+
+    def get_status_job_id(self, record_identifier: str) -> Optional[str]:
+        """Get the job id stored with the current status.
+
+        The id is ignored when the side table names a different status than
+        the results table, because a tool that does not know about job ids
+        may have changed the status since.
+
+        Args:
+            record_identifier (str): Record identifier.
+
+        Returns:
+            str | None: The stored job id, or None.
+        """
+        with self.session as s:
+            status_job = s.exec(self._status_job_stmt(record_identifier)).first()
+        if status_job is None or status_job.status != self.get_status(record_identifier):
+            return None
+        return status_job.job_id
+
+    def _status_job_stmt(self, record_identifier: str) -> Any:
+        """Select statement for a record's row in the status job side table."""
+        ORM = self.status_job_orm
+        return sql_select(ORM).where(
+            ORM.record_identifier == record_identifier,
+            ORM.project_name == self.project_name,
+        )
 
     def _create_orms(self, pipeline_type: str) -> Dict[str, Any]:
         """Create ORMs.

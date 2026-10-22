@@ -19,6 +19,7 @@ Classes:
 """
 
 from .exceptions import PipestatError
+from .job_state import StatusResolution, slurm_job_state
 from .pipestat import (
     PipestatDualManager,
     PipestatManager,
@@ -32,4 +33,6 @@ __all__ = [
     "ProjectPipestatManager",
     "PipestatDualManager",
     "PipestatManager",
+    "StatusResolution",
+    "slurm_job_state",
 ]
