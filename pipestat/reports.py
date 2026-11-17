@@ -13,7 +13,6 @@ from logging import getLogger
 
 import jinja2
 import yaml
-from peppy.const import AMENDMENTS_KEY
 from ubiquerg import mkabs, parse_timedelta
 
 from .const import (
@@ -1197,33 +1196,6 @@ def get_jinja_env(templates_dirname=None):
         templates_dirname = os.path.join(file_dir, TEMPLATES_DIRNAME)
     _LOGGER.debug("Using templates dir: " + templates_dirname)
     return jinja2.Environment(loader=jinja2.FileSystemLoader(templates_dirname))
-
-
-def _get_file_for_sample(prj, sample_name, appendix, pipeline_name=None, basename=False):
-    """
-    Safely looks for files matching the appendix in the specified location for the sample.
-
-    Args:
-        prj: Project object.
-        sample_name (str): Name of the sample that the file name should be found for.
-        appendix (str): The ending specific for the file.
-        pipeline_name (str): Pipeline name.
-        basename (bool): Whether to return basename only.
-
-    Returns:
-        str: The name of the matched file.
-    """
-    fp = os.path.join(prj.results_folder, sample_name)
-    prepend_name = ""
-    if pipeline_name:
-        prepend_name += pipeline_name
-    if hasattr(prj, AMENDMENTS_KEY) and getattr(prj, AMENDMENTS_KEY):
-        prepend_name += f"_{'_'.join(getattr(prj, AMENDMENTS_KEY))}"
-    prepend_name = prepend_name + "_" if prepend_name else ""
-    fp = os.path.join(fp, f"{prepend_name}{appendix}")
-    if os.path.exists(fp):
-        return os.path.basename(fp) if basename else fp
-    raise FileNotFoundError(fp)
 
 
 def _get_relpath_to_file(file_name, sample_name, location, relative_to):
