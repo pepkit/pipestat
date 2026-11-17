@@ -39,7 +39,7 @@ start_postgres() {
         -e POSTGRES_DB="$DB_NAME" \
         -p "127.0.0.1:${DB_PORT}:5432" \
         --tmpfs /var/lib/postgresql/data \
-        postgres:17
+        postgres:17 -c max_connections=500
 
     echo "Waiting for PostgreSQL..."
     for i in $(seq 1 30); do

@@ -4,28 +4,15 @@ These tests verify that project_name correctly namespaces records in the
 database backend, preventing collisions when multiple projects share the
 same pipeline and database.
 
-All tests require a running PostgreSQL database. They are skipped if the
-DB dependencies are not installed or the test database is not available.
+All tests require a running PostgreSQL database (see tests/integration/conftest.py).
 """
-
-import os
 
 import pytest
 
 from pipestat import PipestatManager
 from pipestat.const import *
 
-from .conftest import DB_DEPENDENCIES, DB_URL, SERVICE_UNAVAILABLE
-
-if DB_DEPENDENCIES:
-    try:
-        from sqlmodel import SQLModel, create_engine
-        from sqlmodel.main import default_registry
-
-        from pipestat.backends.db_backend.db_parsed_schema import clear_model_cache
-    except ImportError:
-        pass
-
+from ..conftest import DB_HOST, DB_PORT, DB_URL, ContextManagerDBTesting
 
 SCHEMA_CONTENT = """\
 pipeline_name: test_multi_project
@@ -43,27 +30,8 @@ project:
 """
 
 
-class ContextManagerDBTesting:
-    """Context manager to connect to DB and drop all tables on exit."""
-
-    def __init__(self, db_url):
-        self.db_url = db_url
-
-    def __enter__(self):
-        self.engine = create_engine(self.db_url, echo=True)
-        self.connection = self.engine.connect()
-        return self.connection
-
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        SQLModel.metadata.drop_all(self.engine)
-        default_registry.dispose()
-        clear_model_cache()
-        self.connection.close()
-
-
 def _make_config(tmp_path, project_name, schema_path):
     """Create a pipestat config file for the given project."""
-    port = os.environ.get("PIPESTAT_TEST_DB_PORT", "5432")
     config_content = f"""\
 project_name: {project_name}
 schema_path: {schema_path}
@@ -73,8 +41,8 @@ database:
   name: pipestat-test
   user: pipestatuser
   password: shgfty^8922138$^!
-  host: 127.0.0.1
-  port: {port}
+  host: {DB_HOST}
+  port: {DB_PORT}
 """
     config_file = tmp_path / f"config_{project_name}.yaml"
     config_file.write_text(config_content)
@@ -106,8 +74,6 @@ def two_managers(tmp_path, schema_path):
         yield psm_a, psm_b
 
 
-@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires DB dependencies")
-@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="Requires running PostgreSQL")
 class TestMultiProjectDB:
     def test_same_record_id_different_projects_no_collision(self, two_managers):
         """Records with same ID in different projects do not overwrite each other."""
@@ -236,11 +202,9 @@ class TestMultiProjectDB:
             assert result_b["number_of_things"] == 200
 
 
-@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires DB dependencies")
 class TestProjectNameRequired:
     def test_missing_project_name_raises_for_db(self, tmp_path, schema_path):
         """Creating a DB-backed manager without project_name raises ValueError."""
-        port = os.environ.get("PIPESTAT_TEST_DB_PORT", "5432")
         config_content = f"""\
 schema_path: {schema_path}
 database:
@@ -249,8 +213,8 @@ database:
   name: pipestat-test
   user: pipestatuser
   password: shgfty^8922138$^!
-  host: 127.0.0.1
-  port: {port}
+  host: {DB_HOST}
+  port: {DB_PORT}
 """
         config_file = tmp_path / "config_no_project.yaml"
         config_file.write_text(config_content)

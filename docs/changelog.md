@@ -2,6 +2,22 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.14.0] - 2026-11-17
+### Added
+- `set_status` takes a `job_id` (default `$SLURM_JOB_ID`) and stores it next to the status: a `<flag>.job` file (file backend) or a `<table>_status_job` side table (database backend)
+- `get_status_job_id` and `resolve_status`, which reports `stale=True` when a `running` status's job is finished or gone; `slurm_job_state` probes SLURM via sacct/squeue
+- CLI `pipestat status set --job-id` and `pipestat status get --check-job`
+- `pephub` install extra (`pip install pipestat[pephub]`) for the PEPhub backend
+
+### Changed
+- Inside a SLURM job, `set_status` now stores `$SLURM_JOB_ID` automatically
+
+### Fixed
+- PEPhub backend: reporting a new result for an existing record no longer erases that record's earlier results
+- Database backend failed to write results with sqlmodel 0.0.50+, which requires timezone-aware timestamps; timestamps are now stored in UTC
+- Removed unused `eido` dependency
+- Removed undeclared `peppy` import (used only by dead code), which broke `summarize` and `table` when peppy was not installed
+
 ## [0.13.1] - 2026-03-05
 ### Changed
 - Fixed import-time logging that overrode root logger configuration
@@ -60,7 +76,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Added
 - pephub backend [#125](https://github.com/pepkit/pipestat/issues/125)
 
-
 ## [0.9.3] - 2024-06-06
 ### Fixed
 - fixed regression with summarizing or creating a table via aggregate_results.yaml and "{record_identifier}" in the results file path
@@ -97,16 +112,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Changed
 - Changed yacman requirement and using FutureYamlConfigManager.
 ### Fixed
-- Issue with retrieving similar record_identifiers, [#159](https://github.com/pepkit/pipestat/issues/159)
+- Issue with retrieving similar record_identifiers, #159
 
 ## [0.8.1] - 2024-02-07
 ### Changed
-- Readme to reflect docker db configuration for testing. [#145](https://github.com/pepkit/pipestat/issues/145)
-- Added dependency warning when attempting to run pytest suite without optional dependencies. [#146](https://github.com/pepkit/pipestat/issues/146)
+- Readme to reflect docker db configuration for testing. #145
+- added dependency warning when attempting to run pytest suite without optional dependencies. #146
 - Remove most docs in favor of new docs location: https://pep.databio.org/pipestat/
 ### Fixed
-- Ensure log files are gathered for portable reports, [#149](https://github.com/pepkit/pipestat/issues/149)
-- Fix minor html report title bugs [#151](https://github.com/pepkit/pipestat/issues/151)
+- ensure log files are gathered for portable reports, #149
+- Fix minor html report title bugs #151
 
 ## [0.8.0] - 2024-01-25
 ### Added

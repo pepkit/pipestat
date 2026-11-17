@@ -141,6 +141,7 @@ class FileBackend(PipestatBackend):
             else:
                 _LOGGER.info(f"Removed existing flag: {path_flag_file}")
                 removed.append(f)
+            _remove_if_exists(path_flag_file + ".job")
         return removed
 
     def count_records(self) -> int:
@@ -157,9 +158,7 @@ class FileBackend(PipestatBackend):
         except (KeyError, TypeError):
             return 0
 
-    def get_flag_file(
-        self, record_identifier: Optional[str] = None
-    ) -> Union[str, List[str], None]:
+    def get_flag_file(self, record_identifier: Optional[str] = None) -> Union[str, List[str], None]:
         """
         Get path to the status flag file for the specified record.
 
@@ -290,9 +289,7 @@ class FileBackend(PipestatBackend):
             _LOGGER.error(f"Record '{record_identifier}' not found")
             return False
 
-        if result_identifier and not self.check_result_exists(
-            result_identifier, record_identifier
-        ):
+        if result_identifier and not self.check_result_exists(result_identifier, record_identifier):
             _LOGGER.error(f"'{result_identifier}' has not been reported for '{record_identifier}'")
             return False
 
@@ -444,9 +441,7 @@ class FileBackend(PipestatBackend):
                 ].update({MODIFIED_TIME: current_time})
 
             else:
-                self._data[self.pipeline_name][self.pipeline_type].setdefault(
-                    record_identifier, {}
-                )
+                self._data[self.pipeline_name][self.pipeline_type].setdefault(record_identifier, {})
                 self._data[self.pipeline_name][self.pipeline_type][record_identifier].setdefault(
                     META_KEY, {}
                 )
@@ -466,9 +461,9 @@ class FileBackend(PipestatBackend):
                         ],
                         res_id=res_id,
                         time=current_time,
-                        value=self._data[self.pipeline_name][self.pipeline_type][
-                            record_identifier
-                        ][res_id],
+                        value=self._data[self.pipeline_name][self.pipeline_type][record_identifier][
+                            res_id
+                        ],
                     )
             self._data[self.pipeline_name][self.pipeline_type][record_identifier][res_id] = val
             results_formatted.append(
@@ -730,6 +725,7 @@ class FileBackend(PipestatBackend):
         self,
         status_identifier: str,
         record_identifier: Optional[str] = None,
+        job_id: Optional[str] = None,
     ) -> None:
         """
         Set pipeline run status.
@@ -741,6 +737,8 @@ class FileBackend(PipestatBackend):
         Args:
             status_identifier (str): Status to set, one of statuses defined in the status schema.
             record_identifier (str, optional): Record identifier to set the pipeline status for.
+            job_id (str, optional): Id of the job that set the status. Written to a
+                '<flag>.job' file next to the flag; the flag itself is unchanged.
         """
         r_id = record_identifier or self.record_identifier
         if self.status_schema is not None:
@@ -755,14 +753,48 @@ class FileBackend(PipestatBackend):
         if prev_status is not None:
             prev_flag_path = self.get_status_flag_path(prev_status, record_identifier)
             os.remove(prev_flag_path)
+            _remove_if_exists(prev_flag_path + ".job")
         flag_path = self.get_status_flag_path(status_identifier, record_identifier)
         create_lock(flag_path)
         with open(flag_path, "w") as f:
             f.write(status_identifier)
         remove_lock(flag_path)
 
+        if job_id is not None:
+            with open(flag_path + ".job", "w") as f:
+                f.write(str(job_id))
+        else:
+            _remove_if_exists(flag_path + ".job")
+
         if prev_status:
             _LOGGER.debug(f"Changed status from '{prev_status}' to '{status_identifier}'")
+
+    def get_status_job_id(self, record_identifier: str) -> Optional[str]:
+        """
+        Get the job id stored with the current status flag.
+
+        The id is ignored when its '<flag>.job' file is older than the flag,
+        because a tool that does not know about job ids may have rewritten
+        the flag since.
+
+        Args:
+            record_identifier (str): Record identifier.
+
+        Returns:
+            str | None: The stored job id, or None.
+        """
+        flag_file = self.get_flag_file(record_identifier=record_identifier)
+        if not isinstance(flag_file, str):
+            return None
+        job_file = flag_file + ".job"
+        try:
+            if os.path.getmtime(job_file) < os.path.getmtime(flag_file):
+                _LOGGER.debug(f"Ignoring job id file older than its flag: {job_file}")
+                return None
+            with open(job_file, "r") as f:
+                return f.read().strip() or None
+        except FileNotFoundError:
+            return None
 
     def _htmlreportbuilder(self) -> None:
         """
@@ -890,3 +922,11 @@ class FileBackend(PipestatBackend):
             data[HISTORY_KEY].setdefault(res_id, {})
 
         data[HISTORY_KEY][res_id].update({time: value})
+
+
+def _remove_if_exists(path: str) -> None:
+    """Remove a file, ignoring it if it does not exist."""
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass

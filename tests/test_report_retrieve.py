@@ -16,18 +16,12 @@ from pipestat.helpers import default_formatter, markdown_formatter
 from pipestat.parsed_schema import ParsedSchema
 
 from .conftest import (
-    BACKEND_KEY_DB,
-    BACKEND_KEY_FILE,
     COMMON_CUSTOM_STATUS_DATA,
-    DB_DEPENDENCIES,
-    DB_URL,
     DEFAULT_STATUS_DATA,
     REC_ID,
-    SERVICE_UNAVAILABLE,
-    STANDARD_TEST_PIPE_ID,
+    db_context,
     get_data_file_path,
 )
-from .test_db_only_mode import ContextManagerDBTesting
 
 CONST_REC_ID = "constant_record_id"
 PROJECT_SAMPLE_LEVEL = "sample"
@@ -45,8 +39,6 @@ def assert_is_in_files(fs, s):
             assert s in fh.read()
 
 
-@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
-@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestSplitClasses:
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -59,7 +51,7 @@ class TestSplitClasses:
             ("sample3", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_basics_all(
         self,
         rec_id,
@@ -69,7 +61,7 @@ class TestSplitClasses:
         results_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path)
             backend_data = (
@@ -107,7 +99,7 @@ class TestSplitClasses:
         results_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path)
             backend_data = (
@@ -147,7 +139,7 @@ class TestSplitClasses:
             ("project_name_2", {"percentage_of_things": 10.1}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_basics_project_level(
         self,
         rec_id,
@@ -157,7 +149,7 @@ class TestSplitClasses:
         results_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report)
             backend_data = (
@@ -186,61 +178,7 @@ class TestSplitClasses:
                     psm.retrieve_one(record_identifier=rec_id)
 
 
-@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
-@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
 class TestReporting:
-    @pytest.mark.parametrize(
-        ["rec_id", "val"],
-        [
-            ("sample1", {"name_of_something": "test_name"}),
-            ("sample1", {"number_of_things": 1}),
-            ("sample2", {"number_of_things": 2}),
-            ("sample2", {"percentage_of_things": 10.1}),
-            ("sample2", {"name_of_something": "test_name"}),
-            ("sample3", {"name_of_something": "test_name"}),
-        ],
-    )
-    @pytest.mark.parametrize("backend", ["db"])
-    def test_report_basic(
-        self,
-        rec_id,
-        val,
-        config_file_path,
-        schema_file_path,
-        results_file_path,
-        backend,
-    ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
-            results_file_path = f.name
-            args = dict(schema_path=schema_file_path)
-            backend_data = (
-                {"config_file": config_file_path}
-                if backend == "db"
-                else {"results_file_path": results_file_path}
-            )
-            args.update(backend_data)
-            psm = SamplePipestatManager(**args)
-            psm.report(record_identifier=rec_id, values=val)
-            if backend == "file":
-                print(psm.backend._data[STANDARD_TEST_PIPE_ID])
-                print(
-                    "Test if",
-                    rec_id,
-                    " is in ",
-                    psm.backend._data[STANDARD_TEST_PIPE_ID],
-                )
-                assert rec_id in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL]
-                print("Test if", list(val.keys())[0], " is in ", rec_id)
-                assert (
-                    list(val.keys())[0]
-                    in psm.backend._data[STANDARD_TEST_PIPE_ID][PROJECT_SAMPLE_LEVEL][rec_id]
-                )
-                if backend == "file":
-                    assert_is_in_files(results_file_path, str(list(val.values())[0]))
-            if backend == "db":
-                # This is being captured in TestSplitClasses
-                pass
-
     @pytest.mark.parametrize(
         "val",
         [
@@ -250,7 +188,7 @@ class TestReporting:
         ],
     )
     @pytest.mark.parametrize("pipeline_type", ["project", "sample"])
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_report_samples_and_project_with_pipestatmanager(
         self,
         val,
@@ -260,7 +198,7 @@ class TestReporting:
         backend,
         pipeline_type,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path, pipeline_type=pipeline_type)
             backend_data = (
@@ -328,7 +266,7 @@ class TestReporting:
     def test_complex_object_report(
         self, val, config_file_path, recursive_schema_file_path, results_file_path, backend
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=recursive_schema_file_path)
             backend_data = (
@@ -352,44 +290,12 @@ class TestReporting:
             )
 
     @pytest.mark.parametrize(
-        "val",
-        [
-            {"output_file": {"path": "path_string", "title": "title_string"}},
-            {
-                "output_image": {
-                    "path": "path_string",
-                    "thumbnail_path": "thumbnail_path_string",
-                    "title": "title_string",
-                }
-            },
-        ],
-    )
-    @pytest.mark.parametrize("backend", ["db"])
-    def test_complex_object_report_missing_fields(
-        self, val, config_file_path, recursive_schema_file_path, results_file_path, backend
-    ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
-            results_file_path = f.name
-            args = dict(schema_path=recursive_schema_file_path)
-            backend_data = (
-                {"config_file": config_file_path}
-                if backend == "db"
-                else {"results_file_path": results_file_path}
-            )
-            args.update(backend_data)
-
-            psm = SamplePipestatManager(**args)
-            del val[list(val.keys())[0]]["path"]
-            with pytest.raises(SchemaValidationErrorDuringReport):
-                psm.report(record_identifier=REC_ID, values=val)
-
-    @pytest.mark.parametrize(
         ["rec_id", "val"],
         [
             ("sample1", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_report_setitem(
         self,
         rec_id,
@@ -399,7 +305,7 @@ class TestReporting:
         results_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path)
             backend_data = (
@@ -419,7 +325,7 @@ class TestReporting:
             ("sample3", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_report_requires_schema(
         self,
         rec_id,
@@ -436,7 +342,7 @@ class TestReporting:
         instantiation stage since there is no way to init relational DB table
         with no columns predefined
         """
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict()
             backend_data = (
@@ -453,7 +359,7 @@ class TestReporting:
         ["rec_id", "val"],
         [("sample1", {"number_of_things": 2}), ("sample2", {"number_of_things": 1})],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_report_overwrite(
         self,
         rec_id,
@@ -463,7 +369,7 @@ class TestReporting:
         results_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path)
             backend_data = (
@@ -490,7 +396,7 @@ class TestReporting:
             ("sample2", {"output_file": {"path": 1, "title": "abc"}}, True),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_report_type_casting(
         self,
         rec_id,
@@ -501,7 +407,7 @@ class TestReporting:
         backend,
         success,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path)
             backend_data = (
@@ -546,7 +452,7 @@ class TestReporting:
         formatter,
     ):
         """Simply test that we can pass the formatting functions and the returned result contains reported results"""
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path)
             backend_data = (
@@ -566,8 +472,6 @@ class TestReporting:
             assert value in results[0]
 
 
-@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
-@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestRetrieval:
     @pytest.mark.parametrize(
         ["rec_id", "val"],
@@ -576,7 +480,7 @@ class TestRetrieval:
             ("sample1", {"number_of_things": 2}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_retrieve_basic(
         self,
         rec_id,
@@ -586,7 +490,7 @@ class TestRetrieval:
         schema_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path)
             backend_data = (
@@ -619,7 +523,7 @@ class TestRetrieval:
             ("sample1", {"number_of_things": 2}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_retrieve_basic_no_record_identifier(
         self,
         rec_id,
@@ -629,7 +533,7 @@ class TestRetrieval:
         schema_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path)
             backend_data = (
@@ -651,7 +555,7 @@ class TestRetrieval:
             ("sample1", {"number_of_things": 2}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_retrieve_one_single_result_as_list(
         self,
         rec_id,
@@ -661,7 +565,7 @@ class TestRetrieval:
         schema_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path)
             backend_data = (
@@ -683,7 +587,7 @@ class TestRetrieval:
             ("sample1", {"number_of_things": 2}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_retrieve_getitem(
         self,
         rec_id,
@@ -693,7 +597,7 @@ class TestRetrieval:
         schema_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path)
             backend_data = (
@@ -711,11 +615,11 @@ class TestRetrieval:
 
             assert retrieved_val == value
 
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_select_records_no_filter(
         self, config_file_path, results_file_path, schema_file_path, backend, val_dict
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             backend_data = (
                 {"config_file": config_file_path}
@@ -739,7 +643,7 @@ class TestRetrieval:
         ["rec_id", "res_id"],
         [("nonexistent", "name_of_something"), ("sample1", "nonexistent")],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_retrieve_nonexistent(
         self,
         rec_id,
@@ -749,7 +653,7 @@ class TestRetrieval:
         schema_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             val_dict = {
                 "sample1": {"name_of_something": "test_name"},
@@ -793,8 +697,6 @@ class TestRetrieval:
                 assert len(result["records"]) == 0 or res_id not in result["records"][0]
 
 
-@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
-@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
 class TestNoRecordID:
     @pytest.mark.parametrize(
         "val",
@@ -804,7 +706,7 @@ class TestNoRecordID:
             {"percentage_of_things": 10.1},
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     @pytest.mark.parametrize("pipeline_type", ["sample"])
     def test_report(
         self,
@@ -815,7 +717,7 @@ class TestNoRecordID:
         backend,
         pipeline_type,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(
                 schema_path=schema_file_path,
@@ -847,9 +749,9 @@ class TestNoRecordID:
             {"number_of_things": 1},
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_retrieve(self, val, config_file_path, schema_file_path, results_file_path, backend):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path, record_identifier=CONST_REC_ID)
             backend_data = (
@@ -879,9 +781,9 @@ class TestNoRecordID:
             {"number_of_things": 1},
         ],
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_remove(self, val, config_file_path, schema_file_path, results_file_path, backend):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path, record_identifier=CONST_REC_ID)
             backend_data = (
@@ -954,13 +856,11 @@ def absolutize_file(f: str) -> str:
         ]
     ],
 )
-@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
-@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
-@pytest.mark.parametrize("backend_data", [BACKEND_KEY_FILE, BACKEND_KEY_DB], indirect=True)
+@pytest.mark.backends("file", "db")
 def test_manager_has_correct_status_schema_and_status_schema_source(
-    schema_file_path, exp_status_schema, exp_status_schema_path, backend_data
+    schema_file_path, exp_status_schema, exp_status_schema_path, backend, backend_data
 ):
-    with ContextManagerDBTesting(DB_URL):
+    with db_context(backend):
         psm = SamplePipestatManager(schema_path=schema_file_path, **backend_data)
         assert psm.cfg[STATUS_SCHEMA_KEY] == exp_status_schema
         assert psm.cfg[STATUS_SCHEMA_SOURCE_KEY] == exp_status_schema_path

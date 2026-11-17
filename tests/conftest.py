@@ -1,88 +1,138 @@
-"""Test fixtures and helpers to make widely available in the package"""
+"""Test fixtures and helpers to make widely available in the package.
 
+Test layout:
+- tests/            unit and file-backend tests; run with plain `pytest tests`.
+- tests/integration integration tests that need a real PostgreSQL. They run only when
+                    RUN_INTEGRATION_TESTS=true (tests/scripts/test-integration.sh sets it).
+
+Tests that should run against both backends are written once, in tests/, and marked
+`@pytest.mark.backends("file", "db")`. In tests/ they get `backend="file"`; the integration
+package re-collects the same test classes, where they get `backend="db"`.
+"""
+
+import importlib.util
 import os
-import subprocess
-from atexit import register
+from contextlib import nullcontext
+from pathlib import Path
 
 import pytest
 from yacman import load_yaml
 
 from pipestat.const import STATUS_SCHEMA
 
-
-def pytest_addoption(parser):
-    parser.addoption("--pephub", action="store_true", default=False, help="run PEPhub tests")
-
-
-def pytest_collection_modifyitems(config, items):
-    if not config.getoption("--pephub"):
-        skip_pephub = pytest.mark.skip(reason="needs --pephub flag to run")
-        for item in items:
-            if "pephub" in item.keywords:
-                item.add_marker(skip_pephub)
-
+TESTS_DIR = Path(__file__).parent
+INTEGRATION_DIR = TESTS_DIR / "integration"
+RUN_INTEGRATION_TESTS = os.getenv("RUN_INTEGRATION_TESTS") == "true"
 
 REC_ID = "constant_record_id"
 BACKEND_KEY_DB = "db"
 BACKEND_KEY_FILE = "file"
+DB_HOST = os.environ.get("PIPESTAT_TEST_DB_HOST", "127.0.0.1")
 DB_PORT = os.environ.get("PIPESTAT_TEST_DB_PORT", "5432")
-DB_URL = f"postgresql+psycopg://pipestatuser:shgfty^8922138$^!@127.0.0.1:{DB_PORT}/pipestat-test"
+DB_URL = f"postgresql+psycopg://pipestatuser:shgfty^8922138$^!@{DB_HOST}:{DB_PORT}/pipestat-test"
 STANDARD_TEST_PIPE_ID = "default_pipeline_name"
 
-PEPHUB_URL = "databio/pipestat_demo:default"
+# For unit tests that need the DB packages installed but no running database.
+requires_db_deps = pytest.mark.skipif(
+    importlib.util.find_spec("sqlmodel") is None,
+    reason="needs DB dependencies: uv pip install -e '.[dbbackend]'",
+)
 
 
-def _detect_postgres_container():
-    """Check if a pipestat test PostgreSQL container is running."""
-    container = os.environ.get("PIPESTAT_TEST_CONTAINER")
-    if container:
-        # Explicit container name from test-integration.sh
-        try:
-            subprocess.check_output(
-                f"docker inspect {container} --format '{{{{.State.Status}}}}'",
-                shell=True,
-                stderr=subprocess.DEVNULL,
-            )
-            return True
-        except subprocess.CalledProcessError:
-            return False
-    # Fallback: check for any pipestat test container
-    for name in ["pipestat_test_db", "pipestat-db-test"]:
-        try:
-            result = (
-                subprocess.check_output(
-                    f"docker ps --filter 'name={name}' --format '{{{{.Names}}}}'",
-                    shell=True,
-                    stderr=subprocess.DEVNULL,
-                )
-                .decode()
-                .strip()
-            )
-            if result:
-                return True
-        except subprocess.CalledProcessError:
-            pass
-    return False
-
-
-SERVICE_UNAVAILABLE = not _detect_postgres_container()
-if SERVICE_UNAVAILABLE:
-    register(
-        print,
-        "Some tests require a test database. Run: ./tests/scripts/test-integration.sh\n"
-        "Or start manually: ./tests/scripts/services.sh start",
+def pytest_addoption(parser):
+    parser.addoption(
+        "--pephub-live",
+        action="store_true",
+        default=False,
+        help="run PEPhub tests against the live pephub.databio.org service (needs `phc login`)",
     )
 
-try:
-    from pipestat.backends.db_backend.dbbackend import DBBackend  # noqa: F401
 
-    DB_DEPENDENCIES = True
-except ImportError:
-    register(
-        print,
-        "Warning: install DB dependencies with: pip install 'pipestat[dbbackend]'",
+def _in_integration_dir(path) -> bool:
+    return INTEGRATION_DIR in Path(path).parents
+
+
+def _backend_for(path) -> str:
+    """The backend that shared tests use, given the directory they are collected from."""
+    return BACKEND_KEY_DB if _in_integration_dir(path) else BACKEND_KEY_FILE
+
+
+def pytest_generate_tests(metafunc):
+    """Parametrize `backend` for tests marked with @pytest.mark.backends(...)."""
+    marker = metafunc.definition.get_closest_marker("backends")
+    if marker is not None and "backend" in metafunc.fixturenames:
+        metafunc.parametrize("backend", [_backend_for(metafunc.definition.path)])
+
+
+def _is_reused_test(item) -> bool:
+    """True if the test was defined outside the module that collected it (a re-collected class)."""
+    func = getattr(item, "function", None)
+    return func is not None and func.__module__ != item.module.__name__
+
+
+def pytest_collection_modifyitems(config, items):
+    """Route shared tests to the right directory and gate integration tests.
+
+    - A test marked `backends(...)` runs only where its backend is available: as "file" in
+      tests/, as "db" in tests/integration/. Other combinations are deselected.
+    - Re-collected (imported) tests without a db variant are deselected in tests/integration/,
+      so file-only tests are not run twice.
+    - Tests in tests/integration/ are skipped unless RUN_INTEGRATION_TESTS=true.
+    """
+    skip_integration = pytest.mark.skip(
+        reason="integration test: run tests/scripts/test-integration.sh "
+        "(or set RUN_INTEGRATION_TESTS=true with a test database running)"
     )
-    DB_DEPENDENCIES = False
+    kept, deselected = [], []
+    for item in items:
+        in_integration = _in_integration_dir(item.path)
+        marker = item.get_closest_marker("backends")
+        if marker is not None:
+            wanted = _backend_for(item.path) in marker.args
+        else:
+            wanted = not (in_integration and _is_reused_test(item))
+        if not wanted:
+            deselected.append(item)
+            continue
+        if in_integration and not RUN_INTEGRATION_TESTS:
+            item.add_marker(skip_integration)
+        kept.append(item)
+    if deselected:
+        config.hook.pytest_deselected(items=deselected)
+        items[:] = kept
+
+
+class ContextManagerDBTesting:
+    """
+    Connect to the database at db_url and drop everything from it on exit, so each test
+    starts with an empty database.
+    """
+
+    def __init__(self, db_url):
+        self.db_url = db_url
+
+    def __enter__(self):
+        from sqlmodel import create_engine
+
+        self.engine = create_engine(self.db_url, echo=True)
+        self.connection = self.engine.connect()
+        return self.connection
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        from sqlmodel import SQLModel
+        from sqlmodel.main import default_registry
+
+        from pipestat.backends.db_backend.db_parsed_schema import clear_model_cache
+
+        SQLModel.metadata.drop_all(self.engine)
+        default_registry.dispose()
+        clear_model_cache()  # Clear cached models when registry is disposed
+        self.connection.close()
+
+
+def db_context(backend):
+    """Clean-database context for the db backend; a no-op for the file backend."""
+    return ContextManagerDBTesting(DB_URL) if backend == BACKEND_KEY_DB else nullcontext()
 
 
 def get_data_file_path(filename: str) -> str:
@@ -98,12 +148,12 @@ DEFAULT_STATUS_DATA = load_yaml(filepath=STATUS_SCHEMA)
 
 
 @pytest.fixture
-def backend_data(request, config_file_path, results_file_path):
-    if request.param == BACKEND_KEY_DB:
+def backend_data(backend, config_file_path, results_file_path):
+    if backend == BACKEND_KEY_DB:
         return {"config_file": config_file_path}
-    elif request.param == BACKEND_KEY_FILE:
+    elif backend == BACKEND_KEY_FILE:
         return {"results_file_path": results_file_path}
-    raise Exception(f"Unrecognized initial parametrization for backend data: {request.param}")
+    raise Exception(f"Unrecognized backend: {backend}")
 
 
 @pytest.fixture
@@ -145,17 +195,12 @@ database:
   name: pipestat-test
   user: pipestatuser
   password: shgfty^8922138$^!
-  host: 127.0.0.1
+  host: {DB_HOST}
   port: {DB_PORT}
 """
     config_file = tmp_path / "config.yaml"
     config_file.write_text(config_content)
     return str(config_file)
-
-
-@pytest.fixture
-def config_file_path_pephub():
-    return get_data_file_path("config_pephub_url.yaml")
 
 
 @pytest.fixture
@@ -170,7 +215,7 @@ database:
   name: pipestat-test
   user: pipestatuser
   password: shgfty^8922138$^!
-  host: 127.0.0.1
+  host: {DB_HOST}
   port: {DB_PORT}
 """
     config_file = tmp_path / "config_no_schema.yaml"
@@ -180,9 +225,7 @@ database:
 
 @pytest.fixture
 def schema_with_project_with_samples_without_status():
-    return get_data_file_path(
-        "sample_output_schema__with_project_with_samples_without_status.yaml"
-    )
+    return get_data_file_path("sample_output_schema__with_project_with_samples_without_status.yaml")
 
 
 @pytest.fixture

@@ -12,21 +12,13 @@ from pipestat.exceptions import PipestatSummarizeError
 from pipestat.parsed_schema import ParsedSchema
 
 from .conftest import (
-    DB_DEPENDENCIES,
-    DB_URL,
-    SERVICE_UNAVAILABLE,
+    db_context,
     get_data_file_path,
 )
-from .test_db_only_mode import ContextManagerDBTesting
-
-pytestmark = [
-    pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies"),
-    pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available"),
-]
 
 
 class TestHTMLReport:
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_basics_samples_html_report(
         self,
         config_file_path,
@@ -35,7 +27,7 @@ class TestHTMLReport:
         backend,
         values_sample,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report)
             backend_data = (
@@ -54,7 +46,7 @@ class TestHTMLReport:
             htmlreportpath = psm.summarize(amendment="")
             assert htmlreportpath is not None
 
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_exception_samples_html_report(
         self,
         config_file_path,
@@ -63,7 +55,7 @@ class TestHTMLReport:
         backend,
         values_sample,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report)
             backend_data = (
@@ -77,7 +69,7 @@ class TestHTMLReport:
             with pytest.raises(PipestatSummarizeError):
                 _ = psm.summarize(amendment="")
 
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_basics_project_html_report(
         self,
         config_file_path,
@@ -86,7 +78,7 @@ class TestHTMLReport:
         backend,
         values_project,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report)
             backend_data = (
@@ -109,7 +101,7 @@ class TestHTMLReport:
             htmlreportpath = psm.summarize(amendment="")
             assert htmlreportpath is not None
 
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_html_report_portable(
         self,
         config_file_path,
@@ -118,7 +110,7 @@ class TestHTMLReport:
         backend,
         values_project,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report)
             backend_data = (
@@ -141,7 +133,7 @@ class TestHTMLReport:
             htmlreportpath = psm.summarize(amendment="", portable=True)
             assert htmlreportpath is not None
 
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_zip_html_report_portable(
         self,
         config_file_path,
@@ -150,7 +142,7 @@ class TestHTMLReport:
         backend,
         values_project,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report)
             backend_data = (
@@ -177,7 +169,7 @@ class TestHTMLReport:
 
             assert len(zip_files) > 0
 
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_report_spaces_in_record_identifiers(
         self,
         config_file_path,
@@ -186,7 +178,7 @@ class TestHTMLReport:
         backend,
         values_project,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report)
             backend_data = (
@@ -231,7 +223,7 @@ class TestHTMLReport:
 
 
 class TestTableCreation:
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_basics_table_for_samples(
         self,
         config_file_path,
@@ -240,7 +232,7 @@ class TestTableCreation:
         backend,
         values_sample,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report)
             backend_data = (
@@ -259,7 +251,7 @@ class TestTableCreation:
             table_paths = psm.table()
             assert table_paths is not None
 
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_basics_table_for_project(
         self,
         config_file_path,
@@ -268,7 +260,7 @@ class TestTableCreation:
         backend,
         values_project,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report)
             backend_data = (
@@ -289,7 +281,7 @@ class TestTableCreation:
 
 
 class TestFileTypeLinking:
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_linking(
         self,
         config_file_path,
@@ -301,7 +293,7 @@ class TestFileTypeLinking:
         with (
             NamedTemporaryFile() as f,
             TemporaryDirectory() as temp_dir,
-            ContextManagerDBTesting(DB_URL),
+            db_context(backend),
         ):
             results_file_path = f.name
             args = dict(schema_path=output_schema_as_JSON_schema)

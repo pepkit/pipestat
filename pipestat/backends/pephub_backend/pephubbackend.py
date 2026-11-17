@@ -170,9 +170,7 @@ class PEPHUBBACKEND(PipestatBackend):
             _LOGGER.error(f"Record '{record_identifier}' not found")
             return False
 
-        if result_identifier and not self.check_result_exists(
-            result_identifier, record_identifier
-        ):
+        if result_identifier and not self.check_result_exists(result_identifier, record_identifier):
             _LOGGER.error(f"'{result_identifier}' has not been reported for '{record_identifier}'")
             return False
 
@@ -267,30 +265,26 @@ class PEPHUBBACKEND(PipestatBackend):
             restrict_to=result_identifiers,
         )
 
-        if not existing:
-            self.phc.sample.create(
-                namespace=self.pep_registry.namespace,
-                name=self.pep_registry.item,
-                tag=self.pep_registry.tag,
-                sample_name=record_identifier,
-                sample_dict=values,
-                overwrite=force_overwrite,
-            )
-
-        elif existing:
+        if existing:
             existing_str = ", ".join(existing)
             _LOGGER.warning(f"These results exist for '{record_identifier}': {existing_str}")
             if not force_overwrite:
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
 
-            self.phc.sample.update(
-                namespace=self.pep_registry.namespace,
-                name=self.pep_registry.item,
-                tag=self.pep_registry.tag,
-                sample_name=record_identifier,
-                sample_dict=values,
-            )
+        registry = dict(
+            namespace=self.pep_registry.namespace,
+            name=self.pep_registry.item,
+            tag=self.pep_registry.tag,
+            sample_name=record_identifier,
+            sample_dict=values,
+        )
+        # create() replaces the whole sample, so only use it for a new record;
+        # update() merges, keeping results reported earlier.
+        if self.check_record_exists(record_identifier):
+            self.phc.sample.update(**registry)
+        else:
+            self.phc.sample.create(**registry, overwrite=False)
 
         for res_id, val in values.items():
             results_formatted.append(
@@ -307,6 +301,7 @@ class PEPHUBBACKEND(PipestatBackend):
         self,
         status_identifier: str,
         record_identifier: Optional[str] = None,
+        job_id: Optional[str] = None,
     ) -> None:
         """
         Set pipeline run status.
@@ -318,6 +313,7 @@ class PEPHUBBACKEND(PipestatBackend):
         Args:
             status_identifier (str): Status to set, one of statuses defined in the status schema.
             record_identifier (str): Record identifier to set the pipeline status for.
+            job_id (str, optional): Accepted for API compatibility; not stored by this backend.
         """
 
         record_identifier = record_identifier or self.record_identifier

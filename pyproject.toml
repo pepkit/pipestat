@@ -1,6 +1,6 @@
 [project]
 name = "pipestat"
-version = "0.13.1"
+version = "0.14.0"
 description = "A pipeline results reporter"
 readme = "README.md"
 license = "BSD-2-Clause"
@@ -29,7 +29,6 @@ dependencies = [
     "pyyaml",
     "ubiquerg>=0.9.1",
     "yacman>=1.0.0",
-    "eido",
     "jinja2",
 ]
 
@@ -49,6 +48,9 @@ dbbackend = [
     "pydantic>=2.5.3,<3.0.0",
     "sqlmodel>=0.0.14",
 ]
+pephub = [
+    "pephubclient",
+]
 pipestatreader = [
     "fastapi",
     "uvicorn",
@@ -63,11 +65,12 @@ test = [
 addopts = "-rfE"
 testpaths = ["tests"]
 markers = [
-    "pephub: tests that require PEPhub login (run with --pephub)",
+    "backends(*names): run this test with each listed backend (\"file\" in tests/, \"db\" in tests/integration/)",
 ]
 
 [tool.ruff]
-line-length = 99
+line-length = 100
+extend-exclude = ["docs"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
