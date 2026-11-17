@@ -265,30 +265,26 @@ class PEPHUBBACKEND(PipestatBackend):
             restrict_to=result_identifiers,
         )
 
-        if not existing:
-            self.phc.sample.create(
-                namespace=self.pep_registry.namespace,
-                name=self.pep_registry.item,
-                tag=self.pep_registry.tag,
-                sample_name=record_identifier,
-                sample_dict=values,
-                overwrite=force_overwrite,
-            )
-
-        elif existing:
+        if existing:
             existing_str = ", ".join(existing)
             _LOGGER.warning(f"These results exist for '{record_identifier}': {existing_str}")
             if not force_overwrite:
                 return False
             _LOGGER.info(f"Overwriting existing results: {existing_str}")
 
-            self.phc.sample.update(
-                namespace=self.pep_registry.namespace,
-                name=self.pep_registry.item,
-                tag=self.pep_registry.tag,
-                sample_name=record_identifier,
-                sample_dict=values,
-            )
+        registry = dict(
+            namespace=self.pep_registry.namespace,
+            name=self.pep_registry.item,
+            tag=self.pep_registry.tag,
+            sample_name=record_identifier,
+            sample_dict=values,
+        )
+        # create() replaces the whole sample, so only use it for a new record;
+        # update() merges, keeping results reported earlier.
+        if self.check_record_exists(record_identifier):
+            self.phc.sample.update(**registry)
+        else:
+            self.phc.sample.create(**registry, overwrite=False)
 
         for res_id, val in values.items():
             results_formatted.append(
