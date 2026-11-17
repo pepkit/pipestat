@@ -1,5 +1,7 @@
+import json
 import os
 import sys
+from dataclasses import asdict
 from logging import getLogger
 
 import logmuse
@@ -24,6 +26,7 @@ from .argparser import (
 from .const import CANONICAL_TYPES, PKG_NAME, SCHEMA_KEY, SCHEMA_TYPE_KEY
 from .exceptions import PipestatStartupError, SchemaNotFoundError
 from .helpers import init_generic_config
+from .job_state import slurm_job_state
 from .pipestat import PipestatManager, check_dependencies
 
 try:
@@ -175,11 +178,16 @@ def main(test_args=None):
         )
     if args.command == STATUS_CMD:
         if args.subcommand == STATUS_GET_CMD:
-            print(psm.get_status(record_identifier=args.record_identifier))
+            if args.check_job:
+                res = psm.resolve_status(args.record_identifier, job_state_fn=slurm_job_state)
+                print(json.dumps(asdict(res)))
+            else:
+                print(psm.get_status(record_identifier=args.record_identifier))
         if args.subcommand == STATUS_SET_CMD:
             psm.set_status(
                 status_identifier=args.status_identifier,
                 record_identifier=args.record_identifier,
+                job_id=args.job_id,
             )
     if args.command == HISTORY_CMD:
         print(f"\nHistory for Record: {args.record_identifier}")

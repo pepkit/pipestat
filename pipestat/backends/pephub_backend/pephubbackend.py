@@ -305,6 +305,7 @@ class PEPHUBBACKEND(PipestatBackend):
         self,
         status_identifier: str,
         record_identifier: Optional[str] = None,
+        job_id: Optional[str] = None,
     ) -> None:
         """
         Set pipeline run status.
@@ -316,6 +317,7 @@ class PEPHUBBACKEND(PipestatBackend):
         Args:
             status_identifier (str): Status to set, one of statuses defined in the status schema.
             record_identifier (str): Record identifier to set the pipeline status for.
+            job_id (str, optional): Accepted for API compatibility; not stored by this backend.
         """
 
         record_identifier = record_identifier or self.record_identifier

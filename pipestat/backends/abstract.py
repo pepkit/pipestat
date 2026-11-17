@@ -176,14 +176,27 @@ class PipestatBackend(ABC):
         self,
         status_identifier: str,
         record_identifier: Optional[str] = None,
+        job_id: Optional[str] = None,
     ) -> None:
         """Set pipeline status (not implemented in abstract backend).
 
         Args:
             status_identifier (str): Status identifier to set.
             record_identifier (str, optional): Record identifier. Defaults to None.
+            job_id (str, optional): Id of the job that set the status. Defaults to None.
         """
         _LOGGER.warning("Not implemented yet for this backend")
+
+    def get_status_job_id(self, record_identifier: str) -> Optional[str]:
+        """Get the job id stored with the current status; None if the backend stores none.
+
+        Args:
+            record_identifier (str): Record identifier.
+
+        Returns:
+            str | None: The stored job id, or None.
+        """
+        return None
 
     def list_results(self) -> List[str]:
         """List results (not implemented in abstract backend).
