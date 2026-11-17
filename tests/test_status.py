@@ -10,17 +10,11 @@ from pipestat.const import FILE_KEY, STATUS_FILE_DIR
 from pipestat.exceptions import UnrecognizedStatusError
 
 from .conftest import (
-    BACKEND_KEY_DB,
     BACKEND_KEY_FILE,
-    DB_DEPENDENCIES,
-    DB_URL,
-    SERVICE_UNAVAILABLE,
+    db_context,
 )
-from .test_db_only_mode import ContextManagerDBTesting
 
 
-@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
-@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
 class TestStatus:
     def test_status_file_default_location(self, schema_file_path, results_file_path):
         """status file location is set to the results file dir
@@ -31,13 +25,13 @@ class TestStatus:
         )
         assert psm.cfg[STATUS_FILE_DIR] == os.path.dirname(psm.cfg[FILE_KEY])
 
-    @pytest.mark.parametrize("backend_data", [BACKEND_KEY_FILE, BACKEND_KEY_DB], indirect=True)
+    @pytest.mark.backends("file", "db")
     @pytest.mark.parametrize("status_id", ["running", "failed", "completed"])
     def test_status_not_configured(
-        self, schema_file_path, config_file_path, backend_data, status_id
+        self, schema_file_path, config_file_path, backend, backend_data, status_id
     ):
         """Status management works even in case it has not been configured."""
-        with ContextManagerDBTesting(DB_URL):
+        with db_context(backend):
             args = dict(
                 schema_path=schema_file_path,
             )
@@ -46,16 +40,17 @@ class TestStatus:
             psm.set_status(record_identifier="sample1", status_identifier=status_id)
             assert psm.get_status(record_identifier="sample1") == status_id
 
-    @pytest.mark.parametrize("backend_data", [BACKEND_KEY_FILE, BACKEND_KEY_DB], indirect=True)
+    @pytest.mark.backends("file", "db")
     @pytest.mark.parametrize("status_id", ["running_custom", "failed_custom", "completed_custom"])
     def test_custom_status_schema(
         self,
+        backend,
         backend_data,
         status_id,
         custom_status_schema2,
     ):
         """Status management works even in case it has not been configured."""
-        with ContextManagerDBTesting(DB_URL) as _connection:
+        with db_context(backend) as _connection:
             args = dict(
                 schema_path=custom_status_schema2,
             )
@@ -65,13 +60,13 @@ class TestStatus:
             psm.set_status(record_identifier="sample1", status_identifier=status_id)
             assert psm.get_status(record_identifier="sample1") == status_id
 
-    @pytest.mark.parametrize("backend_data", [BACKEND_KEY_FILE, BACKEND_KEY_DB], indirect=True)
+    @pytest.mark.backends("file", "db")
     @pytest.mark.parametrize("status_id", ["NOTINSCHEMA"])
     def test_status_not_in_schema__raises_expected_error(
-        self, schema_file_path, config_file_path, backend_data, status_id
+        self, schema_file_path, config_file_path, backend, backend_data, status_id
     ):
         """A status to set must be a value declared in the active schema, whether default or custom."""
-        with ContextManagerDBTesting(DB_URL) as _connection:
+        with db_context(backend) as _connection:
             args = dict(
                 schema_path=schema_file_path,
             )

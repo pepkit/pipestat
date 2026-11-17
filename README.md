@@ -57,27 +57,32 @@ This inspects your results and produces a schema with the correct types. See `pi
 
 ## Developer tests
 
-###  Optional Dependencies
-
-Note: to run the pytest suite locally, you will need to install the related requirements:
+Set up an environment with [uv](https://docs.astral.sh/uv/):
 
 ```bash
-cd pipestat
-
-pip install -r requirements/requirements-test.txt
-
+uv venv
+uv pip install -e ".[test,dbbackend,pephub]"
 ```
 
-### Database Backend Configuration for Tests
+Unit tests need no services. Run them with plain pytest:
 
-Many of the tests require a postgres database to be set up otherwise many of the tests will skip.
-
-We recommend using docker:
 ```bash
-docker run --rm -it --name pipestat_test_db \
-    -e POSTGRES_USER=postgres \
-    -e POSTGRES_PASSWORD=pipestat-password \
-    -e POSTGRES_DB=pipestat-test \
-    -p 5432:5432 \
-    postgres
+.venv/bin/python -m pytest tests
 ```
+
+Database tests live in `tests/integration/` and need PostgreSQL. They are skipped unless
+`RUN_INTEGRATION_TESTS=true`. The easiest way to run everything (unit and integration) is
+the runner script, which starts a throwaway PostgreSQL in Docker and removes it afterward:
+
+```bash
+tests/scripts/test-integration.sh              # installs with uv, then runs all tests
+tests/scripts/test-integration.sh --no-install # skip the install step
+tests/scripts/test-integration.sh -k select    # extra args go to pytest
+```
+
+If `RUN_INTEGRATION_TESTS=true` is set but the database can't be reached, the run stops with
+an error instead of skipping tests. CI runs the same script.
+
+PEPhub backend tests use an in-memory fake PEPhub client, so they need no network or login.
+`pytest tests/test_pephub.py --pephub-live` runs them against the live pephub.databio.org
+service instead; that needs `phc login` and writes to a real PEP.

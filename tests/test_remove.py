@@ -5,21 +5,13 @@ import pytest
 from pipestat import SamplePipestatManager
 
 from .conftest import (
-    DB_DEPENDENCIES,
-    DB_URL,
-    SERVICE_UNAVAILABLE,
+    db_context,
 )
-from .test_db_only_mode import ContextManagerDBTesting
-
-pytestmark = [
-    pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies"),
-    pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available"),
-]
 
 
 class TestRemoval:
     @pytest.mark.parametrize(["rec_id", "res_id", "val"], [("sample2", "number_of_things", 1)])
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_remove_basic(
         self,
         rec_id,
@@ -31,7 +23,7 @@ class TestRemoval:
         backend,
         val_dict,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             vals = [val_dict]
             args = dict(schema_path=schema_file_path)
@@ -63,11 +55,11 @@ class TestRemoval:
             assert len(result["records"]) == 0
 
     @pytest.mark.parametrize("rec_id", ["sample1"])
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_remove_record(
         self, rec_id, schema_file_path, config_file_path, results_file_path, backend, val_dict
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             vals = [val_dict]
             args = dict(schema_path=schema_file_path)
@@ -98,7 +90,7 @@ class TestRemoval:
     @pytest.mark.parametrize(
         ["rec_id", "res_id"], [("sample2", "nonexistent"), ("sample2", "bogus")]
     )
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_remove_nonexistent_result(
         self,
         rec_id,
@@ -108,7 +100,7 @@ class TestRemoval:
         results_file_path,
         backend,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path)
             backend_data = (
@@ -121,11 +113,11 @@ class TestRemoval:
             assert not psm.remove(record_identifier=rec_id, result_identifier=res_id)
 
     @pytest.mark.parametrize("rec_id", ["nonexistent", "bogus"])
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_remove_nonexistent_record(
         self, rec_id, schema_file_path, config_file_path, results_file_path, backend
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path)
             backend_data = (

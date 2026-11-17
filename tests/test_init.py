@@ -2,19 +2,17 @@ import os
 from tempfile import NamedTemporaryFile, TemporaryDirectory, mkdtemp
 
 import pytest
-from yaml import dump
+from yaml import dump, safe_load
 
 from pipestat import SamplePipestatManager
-from pipestat.const import PIPESTAT_GENERIC_CONFIG, SCHEMA_KEY
+from pipestat.const import PIPESTAT_GENERIC_CONFIG
 from pipestat.exceptions import *
 from pipestat.helpers import init_generic_config
 from pipestat.parsed_schema import SCHEMA_PIPELINE_NAME_KEY
 
-from .conftest import DB_DEPENDENCIES, SERVICE_UNAVAILABLE, STANDARD_TEST_PIPE_ID
+from .conftest import STANDARD_TEST_PIPE_ID, requires_db_deps
 
 
-@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
-@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires postgres service to be available")
 class TestPipestatManagerInstantiation:
     def test_obj_creation_file(self, schema_file_path, results_file_path):
         """Object constructor works with file as backend"""
@@ -25,21 +23,6 @@ class TestPipestatManagerInstantiation:
             ),
             SamplePipestatManager,
         )
-
-    def test_obj_creation_db(self, config_file_path):
-        """Object constructor works with database as backend"""
-        assert isinstance(
-            SamplePipestatManager(config_file=config_file_path), SamplePipestatManager
-        )
-
-    def test_schema_is_required_to_create_manager(self, config_no_schema_file_path):
-        """
-        Object constructor raises exception if schema is not provided.
-        """
-        # ToDo this test may be redundant with the modified test_report_requires_schema
-        with pytest.raises(SchemaNotFoundError):
-            # psm = PipestatManager(results_file_path=results_file_path)
-            SamplePipestatManager(config_file=config_no_schema_file_path)
 
     def test_schema_recursive_custom_type_conversion(
         self, recursive_schema_file_path, results_file_path
@@ -57,6 +40,7 @@ class TestPipestatManagerInstantiation:
             in psm.result_schemas["output_file_in_object"]["properties"]["prop2"]["properties"]
         )
 
+    @requires_db_deps
     def test_missing_cfg_data(self, schema_file_path):
         """Object constructor raises exception if cfg is missing data"""
         tmp_pth = os.path.join(mkdtemp(), "res.yml")
@@ -65,6 +49,7 @@ class TestPipestatManagerInstantiation:
         with pytest.raises(MissingConfigDataError):
             SamplePipestatManager(config_file=tmp_pth, schema_path=schema_file_path)
 
+    @requires_db_deps
     def test_missing_project_name_raises(self, schema_file_path):
         """DB config without project_name raises ValueError"""
         tmp_pth = os.path.join(mkdtemp(), "res.yml")
@@ -89,24 +74,17 @@ class TestPipestatManagerInstantiation:
         )
         assert os.path.exists(tmp_res_file)
 
-    @pytest.mark.skipif(reason="Test broken with error message change")
     def test_use_other_project_name_file(self, schema_file_path, tmp_path):
-        """Results file can be used with just one project name"""
-        tmp_res_file = os.path.join(mkdtemp(), "res.yml")
-        print(f"Temporary results file: {tmp_res_file}")
-        assert not os.path.exists(tmp_res_file)
+        """A results file holds one pipeline unless multi_pipelines is True."""
+        tmp_res_file = str(tmp_path / "res.yml")
         psm1 = SamplePipestatManager(
             results_file_path=tmp_res_file,
             schema_path=schema_file_path,
         )
         assert os.path.exists(tmp_res_file)
         with open(schema_file_path, "r") as init_schema_file:
-            init_schema = oyaml.safe_load(init_schema_file)
-
-        assert (
-            psm1.cfg[SCHEMA_KEY].pipeline_name
-            == init_schema["properties"][SCHEMA_PIPELINE_NAME_KEY]
-        )
+            init_schema = safe_load(init_schema_file)
+        assert psm1.pipeline_name == init_schema["properties"][SCHEMA_PIPELINE_NAME_KEY]
 
         ns2 = "namespace2"
         temp_schema_path = str(tmp_path / "schema.yaml")
@@ -118,10 +96,20 @@ class TestPipestatManagerInstantiation:
                 results_file_path=tmp_res_file,
                 schema_path=temp_schema_path,
             )
-        # exp_msg = f"'{tmp_res_file}' is already in use for 1 namespaces: {psm1.cfg[SCHEMA_KEY].pipeline_name} and multi_pipelines = False."
-        exp_msg = f"Trying to report result for namespace '{psm1.cfg[SCHEMA_KEY].pipeline_name}' at '{tmp_res_file}', but 1 other namespaces are already in the file: [{ns2}]. Pipestat will not report multiple namespaces to one file unless `multi_pipelines` is True."
-        obs_msg = str(exc_ctx.value)
-        assert obs_msg == exp_msg
+        exp_msg = (
+            f"Trying to report result for namespace '{ns2}' at '{tmp_res_file}', but 1 other "
+            f"namespaces are already in the file: [{psm1.pipeline_name}]. Pipestat will not "
+            "report multiple namespaces to one file unless `multi_pipelines` is True."
+        )
+        assert str(exc_ctx.value) == exp_msg
+
+        # With multi_pipelines=True the second pipeline may share the file.
+        psm2 = SamplePipestatManager(
+            results_file_path=tmp_res_file,
+            schema_path=temp_schema_path,
+            multi_pipelines=True,
+        )
+        assert psm2.pipeline_name == ns2
 
     @pytest.mark.parametrize("pth", [["/$HOME/path.yaml"], 1])
     def test_wrong_class_results_file(self, schema_file_path, pth):

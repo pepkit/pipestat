@@ -85,8 +85,20 @@ Classmethods for construction:
 ## Development Commands
 
 ```
-pip install -e .
-pip install -r requirements/requirements-test.txt
-pytest tests -x -vv
-# DB tests need postgres: docker run -e POSTGRES_PASSWORD=pass -p 5432:5432 postgres
+uv venv && uv pip install -e ".[test,dbbackend,pephub]"
+.venv/bin/python -m pytest tests            # unit tests; integration tests are skipped
+tests/scripts/test-integration.sh           # everything, against a throwaway PostgreSQL in Docker
+tests/scripts/test-integration.sh --no-install -k select   # skip install; extra args go to pytest
+ruff check . && ruff format --check .
 ```
+
+Test layout:
+- `tests/` -- unit and file-backend tests. No services needed.
+- `tests/integration/` -- tests that need PostgreSQL. Skipped unless `RUN_INTEGRATION_TESTS=true`
+  (the runner script sets it). With it set, an unreachable database stops the run with an error.
+- A test that should run on both backends is written once in `tests/` with
+  `@pytest.mark.backends("file", "db")` and takes a `backend` argument. It runs with `"file"` in
+  `tests/`. The matching `tests/integration/test_*.py` imports its class, where it runs with `"db"`.
+  Wrap DB work in `with db_context(backend):` (from `tests/conftest.py`) to get a clean database.
+- PEPhub tests (`tests/test_pephub.py`) use an in-memory fake client by default.
+  `--pephub-live` runs them against pephub.databio.org (needs `phc login`; writes to a real PEP).

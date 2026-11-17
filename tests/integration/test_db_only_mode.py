@@ -3,40 +3,9 @@ import pytest
 from pipestat import SamplePipestatManager
 from pipestat.const import *
 
-from .conftest import DB_DEPENDENCIES, DB_URL, SERVICE_UNAVAILABLE
-
-try:
-    from sqlmodel import SQLModel, create_engine
-    from sqlmodel.main import default_registry
-
-    from pipestat.backends.db_backend.db_parsed_schema import clear_model_cache
-except ModuleNotFoundError:
-    pass
+from ..conftest import DB_URL, ContextManagerDBTesting
 
 
-class ContextManagerDBTesting:
-    """
-    Creates context manager to connect to database at db_url and drop everything from the database upon exit to ensure
-    the db is empty for each new test.
-    """
-
-    def __init__(self, db_url):
-        self.db_url = db_url
-
-    def __enter__(self):
-        self.engine = create_engine(self.db_url, echo=True)
-        self.connection = self.engine.connect()
-        return self.connection
-
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        SQLModel.metadata.drop_all(self.engine)
-        default_registry.dispose()
-        clear_model_cache()  # Clear cached models when registry is disposed
-        self.connection.close()
-
-
-@pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies")
-@pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available")
 class TestDatabaseOnly:
     # TODO: parameterize this against different schemas.
     def test_manager_can_be_built_without_exception(self, config_file_path, schema_file_path):

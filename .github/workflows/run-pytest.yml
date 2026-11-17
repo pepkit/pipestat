@@ -13,29 +13,17 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10", "3.14"]
-        os: [ubuntu-latest] # can't use macOS when using service containers or container jobs
+        os: [ubuntu-latest] # integration tests start PostgreSQL with docker, which ubuntu runners have
     runs-on: ${{ matrix.os }}
-    services:
-        postgres:
-          image: postgres
-          env: # needs to match DB config in: ../../tests/data/config.yaml
-            POSTGRES_USER: postgres
-            POSTGRES_PASSWORD: pipestat-password
-            POSTGRES_DB: pipestat-test
-          ports:
-          - 5432:5432
-          options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+    - name: Set up uv with Python ${{ matrix.python-version }}
+      uses: astral-sh/setup-uv@v6
       with:
         python-version: ${{ matrix.python-version }}
-        allow-prereleases: true
 
-    - name: Install pipestat with test and db dependencies
-      run: pip install ".[test,dbbackend]"
-
-    - name: Run pytest tests
-      run: pytest tests -x -vv --cov=./ --cov-report=xml
+    # Installs pipestat with uv, starts a throwaway PostgreSQL in docker, and runs every
+    # test (unit + tests/integration) with RUN_INTEGRATION_TESTS=true.
+    - name: Run unit and integration tests
+      run: tests/scripts/test-integration.sh --cov=./ --cov-report=xml
