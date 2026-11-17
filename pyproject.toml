@@ -70,6 +70,7 @@ markers = [
 
 [tool.ruff]
 line-length = 100
+extend-exclude = ["docs/notebooks"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
