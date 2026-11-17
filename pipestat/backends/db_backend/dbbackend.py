@@ -421,7 +421,7 @@ class DBBackend(PipestatBackend):
             if not self.check_record_exists(
                 record_identifier=record_identifier,
             ):
-                current_time = datetime.datetime.now()
+                current_time = datetime.datetime.now(datetime.timezone.utc)
                 values.update({CREATED_TIME: current_time})
                 values.update({MODIFIED_TIME: current_time})
                 new_record = ORMClass(**values)
@@ -437,7 +437,7 @@ class DBBackend(PipestatBackend):
                         stmt = stmt.where(getattr(ORMClass, "project_name") == self.project_name)
                     record_to_update = s.exec(stmt).first()
                     old_record_attributes = record_to_update.model_dump()
-                    values.update({MODIFIED_TIME: datetime.datetime.now()})
+                    values.update({MODIFIED_TIME: datetime.datetime.now(datetime.timezone.utc)})
                     for result_id, result_value in values.items():
                         setattr(record_to_update, result_id, result_value)
                     s.commit()
