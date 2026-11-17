@@ -2,11 +2,21 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
-## [Unreleased]
+## [0.14.0] - 2026-11-17
 ### Added
 - `set_status` takes a `job_id` (default `$SLURM_JOB_ID`) and stores it next to the status: a `<flag>.job` file (file backend) or a `<table>_status_job` side table (database backend)
 - `get_status_job_id` and `resolve_status`, which reports `stale=True` when a `running` status's job is finished or gone; `slurm_job_state` probes SLURM via sacct/squeue
 - CLI `pipestat status set --job-id` and `pipestat status get --check-job`
+- `pephub` install extra (`pip install pipestat[pephub]`) for the PEPhub backend
+
+### Changed
+- Inside a SLURM job, `set_status` now stores `$SLURM_JOB_ID` automatically
+
+### Fixed
+- PEPhub backend: reporting a new result for an existing record no longer erases that record's earlier results
+- Database backend failed to write results with sqlmodel 0.0.50+, which requires timezone-aware timestamps; timestamps are now stored in UTC
+- Removed unused `eido` dependency
+- Removed undeclared `peppy` import (used only by dead code), which broke `summarize` and `table` when peppy was not installed
 
 ## [0.13.1] - 2026-03-05
 ### Changed
