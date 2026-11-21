@@ -31,6 +31,9 @@ from .helpers import make_subdirectories
 __version__ = get_version(PKG_NAME)
 _LOGGER = getLogger(PKG_NAME)
 
+# Rows per page when reading a DB backend. File-based backends are read in one call.
+RECORD_PAGE_SIZE = 500
+
 
 class HTMLReportBuilder(object):
     """Generate HTML summary report for project/samples"""
@@ -98,7 +101,11 @@ class HTMLReportBuilder(object):
         self.index_html_path = os.path.join(self.pipeline_reports, "index.html")
         self.looper_samples = looper_samples or None
 
-        self.schema = deepcopy(self.prj.result_schemas)
+        # Read the schema once per report: the manager's result_schemas property deep-copies on every access.
+        self._schemas = self.prj.result_schemas
+        self._record_cache = {}
+        self._record_lookup_cache = {}
+        self.schema = deepcopy(self._schemas)
         for k, v in self.schema.items():
             if "object_type" in self.schema[k]:
                 self.schema[k]["type"] = self.schema[k]["object_type"]
@@ -121,6 +128,34 @@ class HTMLReportBuilder(object):
         else:
             self.create_index_html(navbar, self.create_footer())
         return self.index_html_path
+
+    def _records(self):
+        """All records for the backend's current pipeline type, read once per report.
+
+        Every page builder iterates these rows instead of issuing its own select and
+        per-record retrieve, which is what made report generation quadratic.
+        """
+        key = self.prj.backend.pipeline_type
+        if key not in self._record_cache:
+            self._record_cache[key] = load_records(self.prj)
+        return self._record_cache[key]
+
+    def _record_lookup(self):
+        """Map record_identifier to its row for the backend's current pipeline type."""
+        key = self.prj.backend.pipeline_type
+        if key not in self._record_lookup_cache:
+            self._record_lookup_cache[key] = {r["record_identifier"]: r for r in self._records()}
+        return self._record_lookup_cache[key]
+
+    def _fetch_results(self, sample_name, **kwargs):
+        """fetch_pipeline_results using the cached row, falling back to retrieve_one."""
+        return fetch_pipeline_results(
+            project=self.prj,
+            sample_name=sample_name,
+            record=self._record_lookup().get(sample_name),
+            schemas=self._schemas,
+            **kwargs,
+        )
 
     def _reset_pipeline_type(self):
         """
@@ -176,11 +211,7 @@ class HTMLReportBuilder(object):
         obj_result_ids = self.get_nonhighlighted_results(OBJECT_TYPES)
 
         for key in obj_result_ids:
-            desc = (
-                self.prj.result_schemas[key]["description"]
-                if "description" in self.prj.result_schemas[key]
-                else ""
-            )
+            desc = self._schemas[key]["description"] if "description" in self._schemas[key] else ""
             labels.append(f"<b>{key.replace('_', ' ')}</b>: {desc}")
             page_path = os.path.join(self.pipeline_reports, f"{key}.html".replace(" ", "_").lower())
             pages.append(os.path.relpath(page_path, self.pipeline_reports))
@@ -219,7 +250,7 @@ class HTMLReportBuilder(object):
 
         for pipeline_type in pipeline_types:
             self.prj.backend.pipeline_type = pipeline_type
-            for sample in self.prj.backend.select_records()["records"]:
+            for sample in self._records():
                 sample_name = sample["record_identifier"]
                 sample_dir = self.pipeline_reports
 
@@ -392,10 +423,9 @@ class HTMLReportBuilder(object):
 
             for pipeline_type in pipeline_types:
                 self.prj.backend.pipeline_type = pipeline_type
-                for sample in self.prj.backend.select_records()["records"]:
+                for sample in self._records():
                     sample_name = sample["record_identifier"]
-                    sample_result = fetch_pipeline_results(
-                        project=self.prj,
+                    sample_result = self._fetch_results(
                         sample_name=sample_name,
                     )
                     if file_result not in sample_result:
@@ -422,8 +452,8 @@ class HTMLReportBuilder(object):
                             links.append(["LinkPathNotFound"])
                 else:
                     link_desc = (
-                        self.prj.result_schemas[file_result]["description"]
-                        if "description" in self.prj.result_schemas[file_result]
+                        self._schemas[file_result]["description"]
+                        if "description" in self._schemas[file_result]
                         else "No description in schema"
                     )
                     template_vars = dict(
@@ -448,10 +478,9 @@ class HTMLReportBuilder(object):
 
             for pipeline_type in pipeline_types:
                 self.prj.backend.pipeline_type = pipeline_type
-                for sample in self.prj.backend.select_records()["records"]:
+                for sample in self._records():
                     sample_name = sample["record_identifier"]
-                    sample_result = fetch_pipeline_results(
-                        project=self.prj,
+                    sample_result = self._fetch_results(
                         sample_name=sample_name,
                     )
                     if image_result not in sample_result:
@@ -498,8 +527,8 @@ class HTMLReportBuilder(object):
                             figures.append(["FigurePathNotFound"])
                 else:
                     img_desc = (
-                        self.prj.result_schemas[image_result]["description"]
-                        if "description" in self.prj.result_schemas[image_result]
+                        self._schemas[image_result]["description"]
+                        if "description" in self._schemas[image_result]
                         else "No description in schema"
                     )
                     template_vars = dict(
@@ -570,8 +599,7 @@ class HTMLReportBuilder(object):
             else:
                 button_class = flag_dict["button_class"]
                 flag = flag_dict["flag"]
-        highlighted_results = fetch_pipeline_results(
-            project=self.prj,
+        highlighted_results = self._fetch_results(
             sample_name=sample_name,
             inclusion_fun=lambda x: x == "file",
             highlighted=True,
@@ -583,8 +611,7 @@ class HTMLReportBuilder(object):
             )
 
         links = []
-        file_results = fetch_pipeline_results(
-            project=self.prj,
+        file_results = self._fetch_results(
             sample_name=sample_name,
             inclusion_fun=lambda x: x == "file",
         )
@@ -610,8 +637,7 @@ class HTMLReportBuilder(object):
                     )
                 except FileNotFoundError:
                     _LOGGER.warning(f"File not found for {result_id} and {result}")
-        image_results = fetch_pipeline_results(
-            project=self.prj,
+        image_results = self._fetch_results(
             sample_name=sample_name,
             inclusion_fun=lambda x: x == "image",
         )
@@ -754,10 +780,9 @@ class HTMLReportBuilder(object):
         sorted_sample_stat_results = {}
         for pipeline_type in pipeline_types:
             self.prj.backend.pipeline_type = pipeline_type
-            for sample in self.prj.backend.select_records()["records"]:
+            for sample in self._records():
                 sample_name = sample["record_identifier"]
-                sample_stat_results = fetch_pipeline_results(
-                    project=self.prj,
+                sample_stat_results = self._fetch_results(
                     sample_name=sample_name,
                     inclusion_fun=None,
                     casting_fun=str,
@@ -880,10 +905,9 @@ class HTMLReportBuilder(object):
 
         for pipeline_type in pipeline_types:
             self.prj.backend.pipeline_type = pipeline_type
-            for sample in self.prj.backend.select_records()["records"]:
+            for sample in self._records():
                 sample_name = sample["record_identifier"]
-                sample_result = fetch_pipeline_results(
-                    project=self.prj,
+                sample_result = self._fetch_results(
                     sample_name=sample_name,
                 )
 
@@ -975,10 +999,9 @@ class HTMLReportBuilder(object):
 
             for pipeline_type in pipeline_types:
                 self.prj.backend.pipeline_type = pipeline_type
-                for sample in self.prj.backend.select_records()["records"]:
+                for sample in self._records():
                     sample_name = sample["record_identifier"]
-                    sample_result = fetch_pipeline_results(
-                        project=self.prj,
+                    sample_result = self._fetch_results(
                         sample_name=sample_name,
                     )
                     if file_result not in sample_result:
@@ -1005,8 +1028,8 @@ class HTMLReportBuilder(object):
                             links.append(["LinkPathNotFound"])
                 else:
                     _link_desc = (
-                        self.prj.result_schemas[file_result]["description"]
-                        if "description" in self.prj.result_schemas[file_result]
+                        self._schemas[file_result]["description"]
+                        if "description" in self._schemas[file_result]
                         else "No description in schema"
                     )
 
@@ -1017,10 +1040,9 @@ class HTMLReportBuilder(object):
 
             for pipeline_type in pipeline_types:
                 self.prj.backend.pipeline_type = pipeline_type
-                for sample in self.prj.backend.select_records()["records"]:
+                for sample in self._records():
                     sample_name = sample["record_identifier"]
-                    sample_result = fetch_pipeline_results(
-                        project=self.prj,
+                    sample_result = self._fetch_results(
                         sample_name=sample_name,
                     )
                     if image_result not in sample_result:
@@ -1100,10 +1122,9 @@ class HTMLReportBuilder(object):
 
         for pipeline_type in pipeline_types:
             self.prj.backend.pipeline_type = pipeline_type
-            for sample in self.prj.backend.select_records()["records"]:
+            for sample in self._records():
                 sample_name = sample["record_identifier"]
-                results[sample_name] = fetch_pipeline_results(
-                    project=self.prj,
+                results[sample_name] = self._fetch_results(
                     sample_name=sample_name,
                     inclusion_fun=lambda x: x not in OBJECT_TYPES,
                     casting_fun=str,
@@ -1134,7 +1155,7 @@ class HTMLReportBuilder(object):
 
         for pipeline_type in pipeline_types:
             self.prj.backend.pipeline_type = pipeline_type
-            for sample in self.prj.backend.select_records()["records"]:
+            for sample in self._records():
                 sample_name = sample["record_identifier"]
                 page_name = os.path.join(
                     self.pipeline_reports,
@@ -1238,12 +1259,48 @@ def _make_relpath(file_name, wd, context=None):
     return relpath if not context else os.path.join(os.path.join(*context), relpath)
 
 
+def _is_db_backend(prj) -> bool:
+    try:
+        from .backends.db_backend import DBBackend
+    except ImportError:  # DB extras not installed, so this cannot be a DB backend
+        return False
+    return isinstance(prj.backend, DBBackend)
+
+
+def load_records(prj) -> list[dict]:
+    """Read every record for the backend's current pipeline type.
+
+    The default select_records limit (1000) is not applied, so reports include all records.
+    The DB backend is read in pages of RECORD_PAGE_SIZE, following the keyset cursor until
+    next_page_token is None. File-based backends hold their records in memory, so one call
+    returns everything.
+
+    Args:
+        prj (PipestatManager): Manager whose backend is read.
+
+    Returns:
+        list[dict]: Records in the same shape retrieve_one returns them.
+    """
+    if not _is_db_backend(prj):
+        return prj.select_records(limit=None)["records"]
+    records = []
+    cursor = None
+    while True:
+        page = prj.select_records(limit=RECORD_PAGE_SIZE, cursor=cursor)
+        records.extend(page["records"])
+        cursor = page["next_page_token"]
+        if cursor is None or not page["records"]:
+            return records
+
+
 def fetch_pipeline_results(
     project,
     sample_name=None,
     inclusion_fun=None,
     casting_fun=None,
     highlighted=False,
+    record=None,
+    schemas=None,
 ):
     """
     Get the specific pipeline results for sample based on inclusion function.
@@ -1257,6 +1314,8 @@ def fetch_pipeline_results(
         casting_fun (callable): A function that will be used to cast the each of the
             results to a proper type before returning, e.g int, str.
         highlighted (bool): Return the highlighted or regular results.
+        record (dict): Already-loaded record for sample_name. If None, it is retrieved.
+        schemas (dict): Result schemas to use. If None, project.result_schemas is read.
 
     Returns:
         dict: Selected pipeline results.
@@ -1268,13 +1327,14 @@ def fetch_pipeline_results(
     inclusion_fun = inclusion_fun or pass_all_fun
     casting_fun = casting_fun or pass_all_fun
     psm = project
+    if schemas is None:
+        schemas = psm.result_schemas
     # exclude object-like results from the stats results mapping
-    rep_data = psm.retrieve_one(record_identifier=sample_name)
+    rep_data = record if record is not None else psm.retrieve_one(record_identifier=sample_name)
     results = {
         k: casting_fun(v)
         for k, v in rep_data.items()
-        if k in psm.result_schemas
-        and inclusion_fun(psm.result_schemas[k].get("object_type", psm.result_schemas[k]["type"]))
+        if k in schemas and inclusion_fun(schemas[k].get("object_type", schemas[k]["type"]))
     }
     if highlighted:
         return {k: v for k, v in results.items() if k in psm.highlighted_results}
@@ -1330,7 +1390,7 @@ def create_status_table(report_obj, project, pipeline_reports_dir: str, portable
 
     for pipeline_type in pipeline_types:
         project.backend.pipeline_type = pipeline_type
-        for sample in project.backend.select_records()["records"]:
+        for sample in report_obj._records():
             sample_name = sample["record_identifier"]
             psm = project
             sample_names.append(sample_name)
@@ -1504,7 +1564,8 @@ def _create_stats_objs_summaries(prj, pipeline_name: str) -> list[str]:
 
     record_index = 0
 
-    all_result_identifiers = list(prj.result_schemas.keys())
+    schemas = prj.result_schemas
+    all_result_identifiers = list(schemas.keys())
 
     if prj.cfg["multi_result_files"] is True:
         pipeline_types = ["sample", "project"]
@@ -1513,16 +1574,16 @@ def _create_stats_objs_summaries(prj, pipeline_name: str) -> list[str]:
 
     for pipeline_type in pipeline_types:
         prj.backend.pipeline_type = pipeline_type
-        records = prj.backend.select_records()["records"]
+        records = load_records(prj)
         for record in records:
             record_index += 1
             record_name = record["record_identifier"]
 
             if prj.cfg[PIPELINE_TYPE] == "sample":
                 reported_stats = [record_index, record_name, "sample"]
-                rep_data = prj.retrieve_one(record_identifier=record_name)
+                rep_data = dict(record)
             else:
-                rep_data = prj.retrieve_one(record_identifier=record_name)
+                rep_data = dict(record)
                 reported_stats = [record_index, record_name, "project"]
             for key in all_result_identifiers:
                 if key not in rep_data.keys():
@@ -1533,7 +1594,7 @@ def _create_stats_objs_summaries(prj, pipeline_name: str) -> list[str]:
 
             for k, v in rep_data.items():
                 if v:
-                    if k in prj.result_schemas and prj.result_schemas[k]["type"] in OBJECT_TYPES:
+                    if k in schemas and schemas[k]["type"] in OBJECT_TYPES:
                         if k in all_result_identifiers:
                             all_result_identifiers.remove(k)
                         if v != "None reported":
@@ -1547,10 +1608,7 @@ def _create_stats_objs_summaries(prj, pipeline_name: str) -> list[str]:
                             reported_objects[record_name].update(sample_reported_objects)
                         else:
                             reported_objects.update({record_name: sample_reported_objects})
-                    if (
-                        k in prj.result_schemas
-                        and prj.result_schemas[k]["type"] not in OBJECT_TYPES
-                    ):
+                    if k in schemas and schemas[k]["type"] not in OBJECT_TYPES:
                         if k not in columns:
                             columns.append(k)
                         reported_stats.append(v)
