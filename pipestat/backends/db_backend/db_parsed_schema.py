@@ -292,6 +292,40 @@ class ParsedSchemaDB(ParsedSchema):
             **field_defs,
         )
 
+    def build_status_job_model(self, pipeline_type):
+        """Create the model for the '<results table>_status_job' side table.
+
+        It holds, per record, the status and the id of the job that set it. A
+        separate table keeps existing results tables unchanged.
+
+        Args:
+            pipeline_type (str): Project or sample-level pipeline.
+
+        Returns:
+            tuple: (model, table_name)
+        """
+        if pipeline_type not in ("project", "sample"):
+            raise PipestatError(
+                f"Building model requires pipeline type. Provided type: '{pipeline_type}' "
+            )
+        table_name = self._table_name(pipeline_type) + "_status_job"
+        field_defs = {
+            ID_KEY: (Optional[int], Field(default=None, primary_key=True)),
+            RECORD_IDENTIFIER: (str, Field(nullable=False)),
+            PROJECT_NAME: (str, Field(nullable=False)),
+            STATUS: (Optional[str], Field(default=None, nullable=True)),
+            "job_id": (Optional[str], Field(default=None, nullable=True)),
+        }
+        model = _create_model(
+            table_name,
+            table_args=(
+                UniqueConstraint(RECORD_IDENTIFIER, PROJECT_NAME),
+                {"extend_existing": True},
+            ),
+            **field_defs,
+        )
+        return model, table_name
+
     def to_dict(self) -> Dict[str, Any]:
         """Create simple dictionary representation of this instance."""
         data = {SCHEMA_PIPELINE_NAME_KEY: self.pipeline_name}

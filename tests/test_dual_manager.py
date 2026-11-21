@@ -5,20 +5,12 @@ import pytest
 from pipestat import PipestatDualManager
 
 from .conftest import (
-    DB_DEPENDENCIES,
-    DB_URL,
-    SERVICE_UNAVAILABLE,
+    db_context,
 )
-from .test_db_only_mode import ContextManagerDBTesting
-
-pytestmark = [
-    pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies"),
-    pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available"),
-]
 
 
 class TestPipestatDualManager:
-    @pytest.mark.parametrize("backend", ["file", "db"])
+    @pytest.mark.backends("file", "db")
     def test_basic_pipestat_dual_manager(
         self,
         config_file_path,
@@ -28,7 +20,7 @@ class TestPipestatDualManager:
         values_sample,
         values_project,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=output_schema_html_report)
             backend_data = (

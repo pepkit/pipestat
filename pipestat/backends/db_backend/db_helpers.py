@@ -1,4 +1,5 @@
 # DB Sepcific imports
+import datetime
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import quote_plus
 
@@ -92,6 +93,8 @@ def selection_filter(
 
             op = filter_condition["operator"]
             value = filter_condition["value"]
+            if isinstance(value, datetime.datetime) and value.tzinfo is None:
+                value = value.astimezone()  # timestamp columns are timezone-aware; read as local
 
             if column is None:
                 raise ValueError(

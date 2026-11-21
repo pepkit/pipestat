@@ -6,16 +6,8 @@ import pytest
 from pipestat import SamplePipestatManager
 
 from .conftest import (
-    DB_DEPENDENCIES,
-    DB_URL,
-    SERVICE_UNAVAILABLE,
+    db_context,
 )
-from .test_db_only_mode import ContextManagerDBTesting
-
-pytestmark = [
-    pytest.mark.skipif(not DB_DEPENDENCIES, reason="Requires dependencies"),
-    pytest.mark.skipif(SERVICE_UNAVAILABLE, reason="requires service X to be available"),
-]
 
 
 class TestRetrieveHistory:
@@ -25,7 +17,7 @@ class TestRetrieveHistory:
             ("sample1", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["db", "file"])
+    @pytest.mark.backends("file", "db")
     def test_select_history_basic(
         self,
         config_file_path,
@@ -36,7 +28,7 @@ class TestRetrieveHistory:
         rec_id,
         val,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path)
             backend_data = (
@@ -73,7 +65,7 @@ class TestRetrieveHistory:
             ("sample1", {"name_of_something": "test_name"}),
         ],
     )
-    @pytest.mark.parametrize("backend", ["db", "file"])
+    @pytest.mark.backends("file", "db")
     def test_select_history_multi_results(
         self,
         config_file_path,
@@ -84,7 +76,7 @@ class TestRetrieveHistory:
         rec_id,
         val,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=schema_file_path)
             backend_data = (
@@ -128,7 +120,7 @@ class TestRetrieveHistory:
             ),
         ],
     )
-    @pytest.mark.parametrize("backend", ["db", "file"])
+    @pytest.mark.backends("file", "db")
     def test_select_history_complex_objects(
         self,
         config_file_path,
@@ -139,7 +131,7 @@ class TestRetrieveHistory:
         rec_id,
         val,
     ):
-        with NamedTemporaryFile() as f, ContextManagerDBTesting(DB_URL):
+        with NamedTemporaryFile() as f, db_context(backend):
             results_file_path = f.name
             args = dict(schema_path=recursive_schema_file_path)
             backend_data = (

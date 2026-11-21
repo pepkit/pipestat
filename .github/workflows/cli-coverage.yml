@@ -11,41 +11,25 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.12"]
-        os: [ ubuntu-latest ] # can't use macOS when using service containers or container jobs
+        os: [ ubuntu-latest ] # integration tests start PostgreSQL with docker, which ubuntu runners have
     runs-on: ${{ matrix.os }}
-    services:
-      postgres:
-        image: postgres
-        env: # needs to match DB config in: ../../tests/data/config.yaml
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: pipestat-password
-          POSTGRES_DB: pipestat-test
-          POSTGRES_HOST: localhost
-        ports:
-          - 5432:5432
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - name: Set up uv with Python ${{ matrix.python-version }}
+        uses: astral-sh/setup-uv@v6
         with:
-          python-version:  ${{ matrix.python-version }}
+          python-version: ${{ matrix.python-version }}
 
-      - name: Install pipestat with test and db dependencies
-        run: pip install ".[test,dbbackend]"
+      # Runs every test (unit + tests/integration) against a throwaway PostgreSQL in docker
+      - name: Run tests with coverage
+        run: tests/scripts/test-integration.sh --cov=./ --cov-report=html
 
-      - name: Install additional coverage tools
-        run: pip install smokeshow
+      - name: Install smokeshow
+        run: uv pip install smokeshow
 
-      - name: Run tests
-        run: coverage run -m pytest
-
-      - name: build coverage
-        run: coverage html -i
-
-      - run: smokeshow upload htmlcov
+      - run: .venv/bin/smokeshow upload htmlcov
         env:
           SMOKESHOW_GITHUB_STATUS_DESCRIPTION: Coverage {coverage-percentage}
           #SMOKESHOW_GITHUB_COVERAGE_THRESHOLD: 50

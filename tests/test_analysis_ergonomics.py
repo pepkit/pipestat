@@ -60,9 +60,7 @@ class TestSchemaFreeMode:
         )
 
         # Report arbitrary results - should not raise
-        psm.report(
-            record_identifier="sample1", values={"custom_metric": 42, "notes": "looks good"}
-        )
+        psm.report(record_identifier="sample1", values={"custom_metric": 42, "notes": "looks good"})
 
         result = psm.retrieve_one("sample1")
         assert result["custom_metric"] == 42
